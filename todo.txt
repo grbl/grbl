@@ -1,0 +1,7 @@
+* Use timer interrupts to drive steppers
+* Tool table
+* Tool length offsets
+* Tool change M6
+* Coolant control
+* Path Control Modes
+* Spindle speed support
