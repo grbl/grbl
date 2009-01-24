@@ -1,6 +1,12 @@
 Grbl - An embedded rs274/ngc (g-code) interpreter, cartesian bot controller, readout and exerciser
 Inspired by the Arduino GCode Interpreter by Mike Ellery
 
+Status:
+* Linear interpolation machine control complete (No arcs yet)
+* GCode interpreter complete
+* Basic serial protocol complete
+* As of yet completely untested in a real environemnt. Still waiting for my micRo kit from Lumenlab.com
+
 Goals: 
 * Suitable for both milling and deposition fabrication
 * Support GCode from common free and cheap CAM-packages right out of the box
