@@ -1,4 +1,4 @@
-Grbl - An embedded rs274/ngc (g-code) interpreter, cartesian bot controller, readout and exerciser for the AVR series of microcontrollers.
+Grbl - An embedded rs274/ngc (g-code) interpreter, CNC controller, readout and exerciser for the AVR series of microcontrollers.
 Inspired by the Arduino GCode Interpreter by Mike Ellery
 
 Status:
@@ -10,7 +10,7 @@ Status:
 Goals: 
 * Runs on the atmega168
 * Runs on a standard Arduino
-* Suitable for both milling and deposition fabrication
+* Suitable for both milling and deposition fabrication (e.g. RepRap)
 * Support GCode from common free and cheap CAM-packages right out of the box
 * Optional support for a alphanumeric LCD readout, a joystick and a few buttons for program control
 * Optional support for automated cutter length calibration when milling
