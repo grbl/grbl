@@ -9,7 +9,7 @@ Status:
 
 Goals: 
 * Runs on the atmega168
-* Runs on the Arduino boards with at least an atmega168 
+* Runs on a standard Arduino
 * Suitable for both milling and deposition fabrication
 * Support GCode from common free and cheap CAM-packages right out of the box
 * Optional support for a alphanumeric LCD readout, a joystick and a few buttons for program control
@@ -17,7 +17,8 @@ Goals:
 * Support "headless" fabrication by buffering all code to SD-card or similar
 
 Limitations:
-* No support for Arduino software (but will run fine on an Arduino board if you program it with an ISP)
-* Limited GCode-support. Focus on the kind of GCode produced by automated CAM tools. Leave human GCoders frustrated.
+* Limited GCode-support. Focus on the kind of GCode produced by CAM tools. Leave human GCoders frustrated.
+* No rotation axes, only x,y and z.
+
 
 
