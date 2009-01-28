@@ -20,19 +20,20 @@
 
 #include <avr/io.h>
 #include <avr/sleep.h>
+#include "stepper.h"
+#include "spindle_control.h"
 #include "motion_control.h"
 #include "gcode.h"
-#include "spindle_control.h"
 #include "serial_protocol.h"
 
 int main(void)
 {
+  st_init();
   mc_init(); // initialize motion control subsystem
-  gc_init(); // initialize gcode-parser
   spindle_init(); // initialize spindle controller
+  gc_init(); // initialize gcode-parser
   sp_init(); // initialize the serial protocol
   
-  gc_execute_line("123.1");  
   for(;;){
     sleep_mode();
     sp_process(); // process the serial protocol

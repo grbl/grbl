@@ -39,19 +39,17 @@
 #define STEPPERS_ENABLE_PORT    PORTB
 #define STEPPERS_ENABLE_BIT         6
 
-#define STEP_DDR       DDRB
-#define STEP_PORT      PORTB 
+#define MOTORS_DDR       DDRB
+#define MOTORS_PORT      PORTB 
 #define X_STEP_BIT           0
 #define Y_STEP_BIT           2
 #define Z_STEP_BIT           4
-#define STEP_MASK (1<<X_STEP_BIT)|(1<<Y_STEP_BIT)|(1<<Z_STEP_BIT)
-
-#define DIRECTION_DDR        DDRB
-#define DIRECTION_PORT       PORTB 
 #define X_DIRECTION_BIT            1
 #define Y_DIRECTION_BIT            3
 #define Z_DIRECTION_BIT            5
+#define STEP_MASK (1<<X_STEP_BIT)|(1<<Y_STEP_BIT)|(1<<Z_STEP_BIT)
 #define DIRECTION_MASK (1<<X_DIRECTION_BIT)|(1<<Y_DIRECTION_BIT)|(1<<Z_DIRECTION_BIT)
+#define MOTORS_MASK STEP_MASK | DIRECTION_MASK
 
 #define LIMIT_DDR      DDRC
 #define LIMIT_PORT     PORTC 

@@ -15,11 +15,11 @@ class CircleTest
   def init
     @pixels = []
     @tool_position = [14,14]
-    30.times { @pixels << '.'*30 }
+    40.times { @pixels << '.'*40 }
   end
 
   def plot_pixel(x,y, c) 
-    return if x<0 || y<0 || x>29 || y > 29
+    return if x<0 || y<0 || x>39 || y > 39
     @pixels[y] = @pixels[y][0..x][0..-2]+c+@pixels[y][(x+1)..-1]
   end
   
@@ -34,11 +34,11 @@ class CircleTest
   # dP[x, y+1]: 1 + 2 y
   # dP[x, y-1]: 1 - 2 y
 
-  # dP[x+1, y+1]: 2 (1 + x + y)
-  # dP[x+1, y-1]: 2 (1 + x - y)
-  # dP[x-1, y-1]: 2 (1 - x - y)
-  # dP[x-1, y+1]: 2 (1 - x + y)
-  
+  # dP[x+1, y+1]: 2 (1 + x + y) 1+2x+1+2y
+  # dP[x+1, y-1]: 2 (1 + x - y) 1+2x+1-2y
+  # dP[x-1, y-1]: 2 (1 - x - y) 2-2x-2y 
+  # dP[x-1, y+1]: 2 (1 - x + y) 2-2x+2x
+   
   # dP[x+a, y+b]: |dx| - 2*dx*x + |dy| + 2*dy*y
   
   # Algorithm from the wikipedia aricle on the Midpoint circle algorithm.
@@ -111,6 +111,7 @@ class CircleTest
 
   # A DDA-direct search circle interpolator. Optimal and impure
   def arc_clean(theta, angular_travel, radius) 
+    radius = radius
     x = (sin(theta)*radius).round
     y = (cos(theta)*radius).round
     angular_direction = angular_travel.sign
@@ -130,8 +131,10 @@ class CircleTest
         plot_pixel(x+14, -y+14, "X")
       end
         
-      dx = (y==0) ? angular_direction : y.sign*angular_direction
-      dy = (x==0) ? angular_direction : -x.sign*angular_direction
+      dx = (y==0) ? -x.sign : y.sign*angular_direction
+      dy = (x==0) ? -y.sign : -x.sign*angular_direction
+      
+      pp [[x,y],[dx,dy]]
 
       if x.abs<y.abs
         f_straight = f + 1+2*x*dx
@@ -173,12 +176,250 @@ class CircleTest
     puts "Diameter: #{max_x-min_x}"
   end
 
+  # A DDA-direct search circle interpolator. Optimal and impure
+  def arc_supaoptimal(theta, angular_travel, radius) 
+    radius = radius
+    x = (sin(theta)*radius).round
+    y = (cos(theta)*radius).round
+    angular_direction = angular_travel.sign
+    tx = (sin(theta+angular_travel)*(radius-0.5)).floor
+    ty = (cos(theta+angular_travel)*(radius-0.5)).floor
+    f = (x**2 + y**2 - radius**2).round
+    x2 = 2*x
+    y2 = 2*y
+    dx = (y==0) ? -x.sign : y.sign*angular_direction
+    dy = (x==0) ? -y.sign : -x.sign*angular_direction
+    
+    max_steps = (angular_travel.abs*radius*2).floor
+    
+    # dP[x+1,y]: 1 + 2 x
+    # dP[x, y+1]: 1 + 2 y
+    
+    max_steps.times do |i|
+      if i > 0
+        plot_pixel(x+20, -y+20, "012"[i%3].chr)
+      else
+        plot_pixel(x+20, -y+20, "X")
+      end
+        
+      
+      raise "x2 out of range" unless x2 == 2*x
+      raise "y2 out of range" unless y2 == 2*y
+      f_should_be = (x**2+y**2-radius**2)
+      if f.round != f_should_be.round
+        show
+        raise "f out of range. Is #{f}, should be #{f_should_be}"
+        
+      end
+
+      if x.abs<y.abs
+        x += dx
+        
+        f += 1+x2*dx
+        x2 += 2*dx
+        f_diagonal = f + 1 + y2*dy
+        if  (f.abs >= f_diagonal.abs)
+          y += dy
+          dx = y.sign*angular_direction unless y == 0
+          y2 += 2*dy
+          f = f_diagonal
+        end
+        dy = -x.sign*angular_direction unless x == 0
+      else
+        y += dy
+        f += 1+y2*dy
+        y2 += 2*dy
+        f_diagonal = f + 1 + x2*dx
+        if  (f.abs >= f_diagonal.abs)
+          x += dx
+          dy = -x.sign*angular_direction unless x == 0
+          x2 += 2*dx
+          f = f_diagonal
+        end
+        dx = y.sign*angular_direction unless y == 0
+      end
+      break if x*ty.sign*angular_direction>=tx*ty.sign*angular_direction && y*tx.sign*angular_direction<=ty*tx.sign*angular_direction
+    end
+    plot_pixel(tx+20, -ty+20, "o")
+    return {:tx => tx, :ty => ty, :x => x, :y => y}
+  end
+
+  # A DDA-direct search circle interpolator unrolled for each octant. Optimal and impure
+  def arc_unrolled(theta, angular_travel, radius) 
+    radius = radius
+    x = (sin(theta)*radius).round
+    y = (cos(theta)*radius).round
+    angular_direction = angular_travel.sign
+    tx = (sin(theta+angular_travel)*(radius-0.5)).floor
+    ty = (cos(theta+angular_travel)*(radius-0.5)).floor
+    f = (x**2 + y**2 - radius**2).round
+    x2 = 2*x
+    y2 = 2*y
+    dx = (y==0) ? -x.sign : y.sign*angular_direction
+    dy = (x==0) ? -y.sign : -x.sign*angular_direction
+    
+    max_steps = (angular_travel.abs*radius*2).floor
+    
+    # Quandrants of the circls
+    #       \ 1|2 /
+    #      8\ | / 3
+    #         \|/
+    # ---------|-----------
+    #     7   /|\  4
+    #       /  | \  
+    #     / 6 | 5 \ 
+    #            
+    #
+    #
+    
+    if angular_direction>0 # clockwise
+      if x.abs<y.abs # quad 1,2,6,5
+        if y>0 # quad 1,2
+          while x<0 # quad 1  x+,y+
+            x += 1        
+            f += 1+x2
+            x2 += 2
+            f_diagonal = f + 1 + y2
+            if  (f.abs >= f_diagonal.abs)
+              y += 1
+              y2 += 2
+              f = f_diagonal
+            end
+          end
+          while x>=0 # quad 2, x+, y-
+            x += 1        
+            f += 1+x2
+            x2 += 2
+            f_diagonal = f + 1 - y2
+            if  (f.abs >= f_diagonal.abs)
+              y -= 1
+              y2 -= 2
+              f = f_diagonal
+            end
+          end
+        end
+        if y<=0 # quad 6, 5
+          while x<0 # quad 6 x-, y+
+            x -= 1        
+            f += 1-x2
+            x2 -= 2
+            f_diagonal = f + 1 + y2
+            if  (f.abs >= f_diagonal.abs)
+              y += 1
+              y2 += 2
+              f = f_diagonal
+            end
+          end
+          while x>=0 # quad 5 x-, y-
+            x -= 1        
+            f += 1-x2
+            x2 -= 2
+            f_diagonal = f + 1 - y2
+            if  (f.abs >= f_diagonal.abs)
+              y -= 1
+              y2 -= 2
+              f = f_diagonal
+            end
+          end
+        end
+        # Quandrants of the circls
+        #       \ 1|2 /
+        #      8\ | / 3
+        #         \|/
+        # ---------|-----------
+        #     7   /|\  4
+        #       /  | \  
+        #     / 6 | 5 \ 
+      else 3 # quad 3,4,7,8
+        if x>0 # quad 3,4
+          while y>0 # quad 3  x+,y+
+            x += 1        
+            f += 1+x2
+            x2 += 2
+            f_diagonal = f + 1 + y2
+            if  (f.abs >= f_diagonal.abs)
+              y += 1
+              y2 += 2
+              f = f_diagonal
+            end
+          end
+          while x>=0 # quad 2, x+, y-
+            x += 1        
+            f += 1+x2
+            x2 += 2
+            f_diagonal = f + 1 - y2
+            if  (f.abs >= f_diagonal.abs)
+              y -= 1
+              y2 -= 2
+              f = f_diagonal
+            end
+          end
+        end
+        if y<=0 # quad 6, 5
+          while x<0 # quad 6 x-, y+
+            x -= 1        
+            f += 1-x2
+            x2 -= 2
+            f_diagonal = f + 1 + y2
+            if  (f.abs >= f_diagonal.abs)
+              y += 1
+              y2 += 2
+              f = f_diagonal
+            end
+          end
+          while x>=0 # quad 5 x-, y-
+            x -= 1        
+            f += 1-x2
+            x2 -= 2
+            f_diagonal = f + 1 - y2
+            if  (f.abs >= f_diagonal.abs)
+              y -= 1
+              y2 -= 2
+              f = f_diagonal
+            end
+          end
+      end  
+        
+      else
+        y += dy
+        f += 1+y2*dy
+        y2 += 2*dy
+        f_diagonal = f + 1 + x2*dx
+        if  (f.abs >= f_diagonal.abs)
+          x += dx
+          dy = -x.sign*angular_direction unless x == 0
+          x2 += 2*dx
+          f = f_diagonal
+        end
+        dx = y.sign*angular_direction unless y == 0
+      end
+      break if x*ty.sign*angular_direction>=tx*ty.sign*angular_direction && y*tx.sign*angular_direction<=ty*tx.sign*angular_direction
+    end
+    plot_pixel(tx+20, -ty+20, "o")
+    return {:tx => tx, :ty => ty, :x => x, :y => y}
+  end
+
   
 end
 
 test = CircleTest.new
 test.init
 
-test.arc_clean(0, -Math::PI, 5)
+#test.arc_clean(0, Math::PI*2, 5)
+(1..10000).each do |r|
+  test.init
+  data = test.arc_supaoptimal(2.9, Math::PI*1, r)
+  if (data[:tx]-data[:x]).abs > 1 || (data[:ty]-data[:y]).abs > 1
+    puts "r=#{r} fails target control" 
+    pp data
+    puts
+  end
+end
+
+# test.init
+# data = test.arc_supaoptimal(1.1, -Math::PI, 19)
+# pp data
+
+#test.pure_arc(0,1,1,4)
 
 test.show

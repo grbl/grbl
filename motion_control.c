@@ -27,6 +27,7 @@
 #include <math.h>
 #include <stdlib.h>
 #include "nuts_bolts.h"
+#include "stepper.h"
 
 // position represents the current position of the head measured in steps
 // target is the target for the current linear motion
@@ -38,7 +39,6 @@
 #define MODE_ARC 2
 #define MODE_DWELL 3
 #define MODE_HOME 4
-#define MODE_LIMIT_OVERRUN -1
 
 #define PHASE_HOME_RETURN 0
 #define PHASE_HOME_NUDGE 1
@@ -55,17 +55,15 @@ struct LinearMotionParameters {
     maximum_steps;   // The larges absolute step-count of any axis
 };
 
-// Parameters when mode is MODE_LINEAR
 struct ArcMotionParameters {
-  uint32_t radius;
-  int16_t degrees;
-  int ccw;
-};
-
-struct HomeCycleParameters {
-  int8_t direction[3];  // The direction of travel along each axis (-1, 0 or 1)
-  int8_t phase;       // current phase of the home cycle. 
-  int8_t away[3];     // a vector of booleans. True for each axis that is still away.
+  int8_t angular_direction; // 1 = clockwise, -1 = anticlockwise
+  uint32_t circle_x, circle_y, target_x, target_y; // current position and target position in the 
+                                                   // local coordinate system of the circle where [0,0] is the 
+                                                   // center of the circle.
+  int32_t error, x2, y2;                           // error is always == (circle_x**2 + circle_y**2 - radius**2), 
+                                                   // x2 is always 2*x, y2 is always 2*y
+  uint8_t axis_x, axis_y;                           // maps the circle axes to stepper axes
+  int32_t target[3];                                // The target position in absolute steps
 };
 
 /* The whole state of the motion-control-system in one struct. Makes the code a little bit hard to 
@@ -75,57 +73,39 @@ struct HomeCycleParameters {
 struct MotionControlState {
   int8_t mode;            // The current operation mode
   int32_t position[3];    // The current position of the tool in absolute steps
-  int32_t update_delay_us;  // Microseconds between each update in the current mode
+  int32_t pace;  // Microseconds between each update in the current mode
   union {
     struct LinearMotionParameters linear; // variables used in MODE_LINEAR
     struct ArcMotionParameters arc;       // variables used in MODE_ARC
-    struct HomeCycleParameters home;      // variables used in MODE_HOME
     uint32_t dwell_milliseconds;          // variable used in MODE_DWELL
-    int8_t limit_overrun_direction[3];    // variable used in MODE_LIMIT_OVERRUN
   };
 };
 struct MotionControlState state;
 
-int check_limit_switches();
+uint8_t direction_bits; // The direction bits to be used with any upcoming step-instruction
+
 void enable_steppers();
 void disable_steppers();
-void set_direction_pins(int8_t *direction);
+void set_direction_bits(int8_t *direction);
 inline void step_steppers(uint8_t *enabled);
-void limit_overrun(uint8_t *direction);
-int check_limit_switch(int axis);
 inline void step_axis(uint8_t axis);
 
 void mc_init()
 {
 	// Initialize state variables
   memset(&state, 0, sizeof(state));
-
-	// Configure directions of interface pins
-  STEP_DDR   |= STEP_MASK;
-  DIRECTION_DDR |= DIRECTION_MASK;
-  LIMIT_DDR &= ~(LIMIT_MASK);
-  STEPPERS_ENABLE_DDR |= 1<<STEPPERS_ENABLE_BIT;
-	
-	disable_steppers();
-}
-
-void limit_overrun(uint8_t *direction) 
-{
-  state.mode = MODE_LIMIT_OVERRUN;
-  memcpy(state.limit_overrun_direction, direction, sizeof(state.limit_overrun_direction));
 }
 
 void mc_dwell(uint32_t milliseconds) 
 {
-  mc_wait();
+  st_synchronize();
   state.mode = MODE_DWELL;
   state.dwell_milliseconds = milliseconds;
-  state.update_delay_us = 1000;
+  state.pace = 1000;
 }
 
 void mc_linear_motion(double x, double y, double z, float feed_rate, int invert_feed_rate)
 {
-  mc_wait();
   state.mode = MODE_LINEAR;
   
 	state.linear.target[X_AXIS] = trunc(x*X_STEPS_PER_MM);
@@ -149,19 +129,19 @@ void mc_linear_motion(double x, double y, double z, float feed_rate, int invert_
   }
 
 	// Set our direction pins 
-  set_direction_pins(state.linear.direction);
+  set_direction_bits(state.linear.direction);
 
   // Calculate the microseconds we need to wait between each step to achieve the desired feed rate
   if (invert_feed_rate) {
-  	state.update_delay_us = 
-  	  (feed_rate*1000000.0)/state.linear.maximum_steps;	  
+  	state.pace = 
+  	  (feed_rate*1000000)/state.linear.maximum_steps;	  
   } else {
   	// Ask old Phytagoras how many millimeters our next move is going to take us:
   	float millimeters_of_travel = 
       sqrt(pow((X_STEPS_PER_MM*state.linear.step_count[X_AXIS]),2) + 
            pow((Y_STEPS_PER_MM*state.linear.step_count[Y_AXIS]),2) + 
            pow((Z_STEPS_PER_MM*state.linear.step_count[Z_AXIS]),2));
-  	state.update_delay_us = 
+  	state.pace = 
   	  ((millimeters_of_travel * ONE_MINUTE_OF_MICROSECONDS) / feed_rate) / state.linear.maximum_steps;	  
   }
 }
@@ -190,63 +170,132 @@ void perform_linear_motion()
 	if (step[X_AXIS] | step[Y_AXIS] | step[Z_AXIS]) {
     step_steppers(step);
 
-		// If we trip any limit switch while moving: Abort, abort!
-		if (check_limit_switches()) { 
-      limit_overrun(state.linear.direction);
-		}
-
-		_delay_us(state.update_delay_us);
 	} else {
     state.mode = MODE_AT_REST;
 	}
 }
 
+void mc_arc(double theta, double angular_travel, double radius, uint32_t *target)
+{
+  state.mode = MODE_ARC;
+  // Calculate the initial position and target position in the local coordinate system of the circle
+  state.arc.circle_x = round(sin(theta)*radius); 
+  state.arc.circle_y = round(cos(theta)*radius);
+  state.arc.target_x = trunc(sin(theta+angular_travel)*(radius-0.5));
+  state.arc.target_y = trunc(cos(theta+angular_travel)*(radius-0.5));
+  // Determine angular direction (+1 = clockwise, -1 = counterclockwise)
+  state.arc.angular_direction = sign(angular_travel);
+  // The "error" factor is kept up to date so that it is always == (x**2+y**2-radius**2). When error 
+  // <0 we are inside the circle, when it is >0 we are outside of the circle, and when it is 0 we 
+  // are exactly on top of the circle.
+  state.arc.error = round(pow(state.arc.circle_x,2) + pow(state.arc.circle_y,2) - pow(radius,2));
+  // Because the error-value moves in steps of (+/-)2x+1 and (+/-)2y+1 we save a couple of multiplications
+  // by keeping track of the doubles of the circle coordinates at all times.
+  state.arc.x2 = 2*state.arc.circle_x;
+  state.arc.y2 = 2*state.arc.circle_y; 
+}
+
+void step_arc_along_x(dx,dy) 
+{
+  uint32_t diagonal_error;
+  state.arc.circle_x+=dx;
+  state.arc.error += 1+state.arc.x2*dx;
+  state.arc.x2 += 2*dx;
+  diagonal_error = state.arc.error + 1 + state.arc.y2*dy;
+  if(abs(state.arc.error) < abs(diagonal_error)) {
+    state.arc.circle_y += dy;
+    state.arc.y2 += 2*dy;
+    state.arc.error = diagonal_error;
+  };
+}
+
+void step_arc_along_y(dx,dy) 
+{  
+  uint32_t diagonal_error;
+  state.arc.circle_y+=dy; 
+  state.arc.error += 1+state.arc.y2*dy; 
+  state.arc.y2 += 2*dy; 
+  diagonal_error = state.arc.error + 1 + state.arc.x2*dx; 
+  if(abs(state.arc.error) < abs(diagonal_error)) { 
+    state.arc.circle_x += dx; 
+    state.arc.x2 += 2*dx; 
+    state.arc.error = diagonal_error; 
+  }
+}
+
+/*
+ Quandrants of the circle
+       \ 7|0 /
+        \ | / 
+      6  \|/  1    y+
+ ---------|-----------
+      5  /|\  2    y-
+        / | \  
+   x-  / 4|3 \ x+           */
+
+int quadrant(uint32_t x,uint32_t y)
+{
+  // determine if the coordinate is in the quadrants 0,3,4 or 7
+  register int quad0347 = abs(x)<abs(y);
+  
+  if (x<0) { // quad 4567
+    if (y<0) { // quad 45
+      return(quad0347 ? 4 : 5);
+    } else { // quad 67
+      return(quad0347 ? 7 : 6);
+    }
+  } else {
+    if (y<0) { // quad 23
+      return(quad0347 ? 3 : 2);
+    } else { // quad 01
+      return(quad0347 ? 0 : 1);
+    }
+  }  
+}
+
+void perform_arc()
+{
+  int q = quadrant(state.arc.circle_x, state.arc.circle_y);
+  
+  if (state.arc.angular_direction) {
+    switch (q) {
+      case 0: while(state.arc.circle_x>state.arc.circle_y) { step_arc_along_x(1,-1); }
+      case 1: while(state.arc.circle_y>0) { step_arc_along_y(1,-1); }
+      case 2: while(state.arc.circle_y>-state.arc.circle_x) { step_arc_along_y(-1,-1); }
+      case 3: while(state.arc.circle_x>0) { step_arc_along_x(-1,-1); }
+      case 4: while(state.arc.circle_y<state.arc.circle_x) { step_arc_along_x(-1,1); }
+      case 5: while(state.arc.circle_y<0) { step_arc_along_y(-1,1); }
+      case 6: while(state.arc.circle_y<-state.arc.circle_x) { step_arc_along_y(1,1); }
+      case 7: while(state.arc.circle_x<0) { step_arc_along_x(1,1); }
+    }
+  } else {
+    switch (q) {
+      case 7: while(state.arc.circle_y>-state.arc.circle_x) { step_arc_along_x(-1,-1); }
+      case 6: while(state.arc.circle_y>0)  { step_arc_along_y(-1,-1); }
+      case 5: while(state.arc.circle_y>state.arc.circle_x)  { step_arc_along_y(1,-1); }
+      case 4: while(state.arc.circle_x<0)  { step_arc_along_x(1,-1); }
+      case 3: while(state.arc.circle_y<-state.arc.circle_x) { step_arc_along_x(1,1); }      
+      case 2: while(state.arc.circle_y<0)  { step_arc_along_y(1,1); }      
+      case 1: while(state.arc.circle_y<state.arc.circle_x)  { step_arc_along_y(-1,1); }
+      case 0: while(state.arc.circle_x>0)  { step_arc_along_x(-1,1); }
+    }    
+  }
+}
+
 void mc_go_home()
 {
   state.mode = MODE_HOME;
-  memset(state.home.direction, -1, sizeof(state.home.direction)); // direction = [-1,-1,-1]
-  set_direction_pins(state.home.direction);
-  clear_vector(state.home.away);
 }
 
 void perform_go_home() 
 {
-  int axis;
-  if(state.home.phase == PHASE_HOME_RETURN) {
-    // We are running all axes in reverse until all limit switches are tripped
-    // Check all limit switches:
-    for(axis=X_AXIS; axis <= Z_AXIS; axis++) {
-      state.home.away[axis] |= check_limit_switch(axis);
-    }
-    // Step steppers. First retract along Z-axis. Then X and Y.
-    if(state.home.away[Z_AXIS]) {
-      step_axis(Z_AXIS);
-    } else {
-      // Check if all axes are home
-      if(!(state.home.away[X_AXIS] || state.home.away[Y_AXIS])) {
-        // All axes are home, prepare next phase: to nudge the tool carefully out of the limit switches
-        memset(state.home.direction, 1, sizeof(state.home.direction)); // direction = [1,1,1]
-        set_direction_pins(state.home.direction);
-        state.home.phase == PHASE_HOME_NUDGE;
-        return;
-      }
-      step_steppers(state.home.away);
-    }
-  } else {    
-    for(axis=X_AXIS; axis <= Z_AXIS; axis++) {
-      if(check_limit_switch(axis)) {
-        step_axis(axis);
-        return;
-      }
-    }
-    // When this code is reached it means all axes are free of their limit-switches. Complete the cycle and rest:
-    clear_vector(state.position); // By definition this is location [0, 0, 0]
-    state.mode = MODE_AT_REST;
-  }
+  st_go_home();
+  clear_vector(state.position); // By definition this is location [0, 0, 0]
+  state.mode = MODE_AT_REST;
 }
 
 void mc_execute() {
-  enable_steppers();
+  st_set_pace(state.pace);
   while(state.mode) {
     switch(state.mode) {
       case MODE_AT_REST: break;
@@ -254,13 +303,7 @@ void mc_execute() {
       case MODE_LINEAR: perform_linear_motion();
       case MODE_HOME: perform_go_home();
     }
-    _delay_us(state.update_delay_us);
   }
-  disable_steppers();
-}
-
-void mc_wait() {  
-  return; // No concurrency support yet. So waiting for all to pass is moot.
 }
 
 int mc_status() 
@@ -268,49 +311,22 @@ int mc_status()
   return(state.mode);
 }
 
-int check_limit_switches()
-{
-  // Dual read as crude debounce
-  return((LIMIT_PORT & LIMIT_MASK) | (LIMIT_PORT & LIMIT_MASK));
-}
-
-int check_limit_switch(int axis)
-{
-  uint8_t mask = 0;
-  switch (axis) {
-    case X_AXIS: mask = 1<<X_LIMIT_BIT; break;
-    case Y_AXIS: mask = 1<<Y_LIMIT_BIT; break;
-    case Z_AXIS: mask = 1<<Z_LIMIT_BIT; break;
-  }
-  return((LIMIT_PORT&mask) || (LIMIT_PORT&mask));    
-}
-
-void enable_steppers()
-{
-  STEPPERS_ENABLE_PORT |= 1<<STEPPERS_ENABLE_BIT;
-}
-
-void disable_steppers()
-{
-  STEPPERS_ENABLE_PORT &= ~(1<<STEPPERS_ENABLE_BIT);
-}
 
 // Set the direction pins for the stepper motors according to the provided vector. 
 // direction is an array of three 8 bit integers representing the direction of 
 // each motor. The values should be -1 (reverse), 0 or 1 (forward).
-void set_direction_pins(int8_t *direction) 
+void set_direction_bits(int8_t *direction) 
 {
   /* Sorry about this convoluted code! It uses the fact that bit 7 of each direction
      int is set when the direction == -1, but is 0 when direction is forward. This
      way we can generate the whole direction bit-mask without doing any comparisions
      or branching. Fast and compact, yet practically unreadable. Sorry sorry sorry.
   */
-  uint8_t forward_bits = ~(
+  direction_bits = ~(
     ((direction[X_AXIS]&128)>>(7-X_DIRECTION_BIT)) |
     ((direction[Y_AXIS]&128)>>(7-Y_DIRECTION_BIT)) |
     ((direction[Z_AXIS]&128)>>(7-Z_DIRECTION_BIT))
   );
-  DIRECTION_PORT = DIRECTION_PORT & ~(DIRECTION_MASK) | forward_bits;
 }
 
 // Step enabled steppers. Enabled should be an array of three bytes. Each byte represent one
@@ -318,21 +334,15 @@ void set_direction_pins(int8_t *direction)
 // 1, and the rest to 0. 
 inline void step_steppers(uint8_t *enabled) 
 {
-  STEP_PORT |= enabled[X_AXIS]<<X_STEP_BIT | enabled[Y_AXIS]<<Y_STEP_BIT | enabled[Z_AXIS]<<Z_STEP_BIT;
-  _delay_us(5);
-  STEP_PORT &= ~STEP_MASK;
+  st_buffer_step(direction_bits | enabled[X_AXIS]<<X_STEP_BIT | enabled[Y_AXIS]<<Y_STEP_BIT | enabled[Z_AXIS]<<Z_STEP_BIT);
 }
 
 // Step only one motor
 inline void step_axis(uint8_t axis) 
 {
-  uint8_t mask = 0;
   switch (axis) {
-    case X_AXIS: mask = 1<<X_STEP_BIT; break;
-    case Y_AXIS: mask = 1<<Y_STEP_BIT; break;
-    case Z_AXIS: mask = 1<<Z_STEP_BIT; break;
+    case X_AXIS: st_buffer_step(direction_bits | (1<<X_STEP_BIT)); break;
+    case Y_AXIS: st_buffer_step(direction_bits | (1<<Y_STEP_BIT)); break;
+    case Z_AXIS: st_buffer_step(direction_bits | (1<<Z_STEP_BIT)); break;
   }
-  STEP_PORT &= mask;
-  _delay_us(5);
-  STEP_PORT &= ~STEP_MASK;  
 }

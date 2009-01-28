@@ -1,3 +1,4 @@
+* Eliminate need for circle_x and circle_y in step_arc_along…
 * Use timer interrupts to drive steppers
 * Tool table
 * Tool length offsets
