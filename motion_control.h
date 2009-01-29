@@ -32,6 +32,13 @@ void mc_init();
 // unless invert_feed_rate is true. Then the feed_rate states the number of seconds for the whole movement.
 void mc_linear_motion(double x, double y, double z, float feed_rate, int invert_feed_rate);
 
+// Prepare an arc. theta == start angle, angular_travel == number of radians to go along the arc,
+// positive angular_travel means clockwise, negative means counterclockwise. Radius == the radius of the
+// circle in millimeters. axis_1 and axis_2 selects the plane in tool space. 
+// Known issue: This method pretends that all axes uses the same steps/mm as the X axis. Which might
+// not be the case ... (To be continued)
+void mc_arc(double theta, double angular_travel, double radius, int axis_1, int axis_2);
+
 // Prepare linear motion relative to the current position.
 void mc_dwell(uint32_t milliseconds);
 

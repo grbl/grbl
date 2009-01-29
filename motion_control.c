@@ -35,18 +35,18 @@
 #include "nuts_bolts.h"
 #include "stepper.h"
 
-#define MODE_AT_REST 0
-#define MODE_LINEAR 1
-#define MODE_ARC 2
-#define MODE_DWELL 3
-#define MODE_HOME 4
+#define MC_MODE_AT_REST 0
+#define MC_MODE_LINEAR 1
+#define MC_MODE_ARC 2
+#define MC_MODE_DWELL 3
+#define MC_MODE_HOME 4
 
 #define PHASE_HOME_RETURN 0
 #define PHASE_HOME_NUDGE 1
 
 #define ONE_MINUTE_OF_MICROSECONDS 60000000
 
-// Parameters when mode is MODE_ARC
+// Parameters when mode is MC_MODE_ARC
 struct LinearMotionParameters {
   int8_t direction[3];  // The direction of travel along each axis (-1, 0 or 1)
   uint16_t feed_rate;
@@ -58,13 +58,15 @@ struct LinearMotionParameters {
 
 struct ArcMotionParameters {
   int8_t angular_direction; // 1 = clockwise, -1 = anticlockwise
-  uint32_t circle_x, circle_y, target_x, target_y; // current position and target position in the 
-                                                   // local coordinate system of the circle where [0,0] is the 
-                                                   // center of the circle.
-  int32_t error, x2, y2;                           // error is always == (circle_x**2 + circle_y**2 - radius**2), 
+  uint32_t x, y, target_x, target_y;               // current position and target position in the 
+                                                   // local coordinate system of the arc where [0,0] is the 
+                                                   // center of the arc.
+  int target_direction_x, target_direction_y;      // sign(target_x)*angular_direction precalculated for speed                                                 
+  int32_t error, x2, y2;                           // error is always == (x**2 + y**2 - radius**2), 
                                                    // x2 is always 2*x, y2 is always 2*y
-  uint8_t axis_x, axis_y;                           // maps the circle axes to stepper axes
-  int32_t target[3];                                // The target position in absolute steps
+  uint8_t axis_x, axis_y;                          // maps the arc axes to stepper axes
+  int32_t target[3];                               // The target position in absolute steps
+  int8_t plane_steppers[3];                        // A vector with the steppers of axis_x and axis_y set to 1, the remaining 0
 };
 
 /* The whole state of the motion-control-system in one struct. Makes the code a little bit hard to 
@@ -76,16 +78,16 @@ struct MotionControlState {
   int32_t position[3];    // The current position of the tool in absolute steps
   int32_t pace;  // Microseconds between each update in the current mode
   union {
-    struct LinearMotionParameters linear; // variables used in MODE_LINEAR
-    struct ArcMotionParameters arc;       // variables used in MODE_ARC
-    uint32_t dwell_milliseconds;          // variable used in MODE_DWELL
+    struct LinearMotionParameters linear; // variables used in MC_MODE_LINEAR
+    struct ArcMotionParameters arc;       // variables used in MC_MODE_ARC
+    uint32_t dwell_milliseconds;          // variable used in MC_MODE_DWELL
   };
 };
 struct MotionControlState state;
 
 uint8_t direction_bits; // The direction bits to be used with any upcoming step-instruction
 
-void set_direction_bits(int8_t *direction);
+void set_stepper_directions(int8_t *direction);
 inline void step_steppers(uint8_t *enabled);
 inline void step_axis(uint8_t axis);
 
@@ -97,15 +99,14 @@ void mc_init()
 
 void mc_dwell(uint32_t milliseconds) 
 {
-  st_synchronize();
-  state.mode = MODE_DWELL;
+  state.mode = MC_MODE_DWELL;
   state.dwell_milliseconds = milliseconds;
   state.pace = 1000;
 }
 
 void mc_linear_motion(double x, double y, double z, float feed_rate, int invert_feed_rate)
 {
-  state.mode = MODE_LINEAR;
+  state.mode = MC_MODE_LINEAR;
   
 	state.linear.target[X_AXIS] = trunc(x*X_STEPS_PER_MM);
 	state.linear.target[Y_AXIS] = trunc(y*Y_STEPS_PER_MM);
@@ -128,7 +129,7 @@ void mc_linear_motion(double x, double y, double z, float feed_rate, int invert_
   }
 
 	// Set our direction pins 
-  set_direction_bits(state.linear.direction);
+  set_stepper_directions(state.linear.direction);
 
   // Calculate the microseconds we need to wait between each step to achieve the desired feed rate
   if (invert_feed_rate) {
@@ -170,60 +171,90 @@ void perform_linear_motion()
     step_steppers(step);
 
 	} else {
-    state.mode = MODE_AT_REST;
+    state.mode = MC_MODE_AT_REST;
 	}
 }
 
-void mc_arc(double theta, double angular_travel, double radius, uint32_t *target)
-{
-  state.mode = MODE_ARC;
-  // Calculate the initial position and target position in the local coordinate system of the circle
-  state.arc.circle_x = round(sin(theta)*radius); 
-  state.arc.circle_y = round(cos(theta)*radius);
-  state.arc.target_x = trunc(sin(theta+angular_travel)*(radius-0.5));
-  state.arc.target_y = trunc(cos(theta+angular_travel)*(radius-0.5));
+// Prepare an arc. theta == start angle, angular_travel == number of radians to go along the arc,
+// positive angular_travel means clockwise, negative means counterclockwise. Radius == the radius of the
+// circle in millimeters. axis_1 and axis_2 selects the plane in tool space. 
+void mc_arc(double theta, double angular_travel, double radius, int axis_1, int axis_2)
+{  
+  state.mode = MC_MODE_ARC;
   // Determine angular direction (+1 = clockwise, -1 = counterclockwise)
   state.arc.angular_direction = sign(angular_travel);
+  // Calculate the initial position and target position in the local coordinate system of the arc
+  state.arc.x = round(sin(theta)*radius*X_STEPS_PER_MM); 
+  state.arc.y = round(cos(theta)*radius*X_STEPS_PER_MM);
+  state.arc.target_x = trunc(sin(theta+angular_travel)*(radius*X_STEPS_PER_MM-0.5));
+  state.arc.target_y = trunc(cos(theta+angular_travel)*(radius*X_STEPS_PER_MM-0.5));
+  // Precalculate these values to optimize target detection
+  state.arc.target_direction_x = sign(state.arc.target_x)*state.arc.angular_direction;
+  state.arc.target_direction_y = sign(state.arc.target_y)*state.arc.angular_direction;
   // The "error" factor is kept up to date so that it is always == (x**2+y**2-radius**2). When error 
-  // <0 we are inside the circle, when it is >0 we are outside of the circle, and when it is 0 we 
-  // are exactly on top of the circle.
-  state.arc.error = round(pow(state.arc.circle_x,2) + pow(state.arc.circle_y,2) - pow(radius,2));
+  // <0 we are inside the arc, when it is >0 we are outside of the arc, and when it is 0 we 
+  // are exactly on top of the arc.
+  state.arc.error = round(pow(state.arc.x,2) + pow(state.arc.y,2) - pow(radius,2));
   // Because the error-value moves in steps of (+/-)2x+1 and (+/-)2y+1 we save a couple of multiplications
-  // by keeping track of the doubles of the circle coordinates at all times.
-  state.arc.x2 = 2*state.arc.circle_x;
-  state.arc.y2 = 2*state.arc.circle_y; 
+  // by keeping track of the doubles of the arc coordinates at all times.
+  state.arc.x2 = 2*state.arc.x;
+  state.arc.y2 = 2*state.arc.y; 
+  
+  // Set up a vector with the steppers we are going to use tracing the plane of this arc
+  clear_vector(state.arc.plane_steppers);
+  state.arc.plane_steppers[axis_1] = 1;
+  state.arc.plane_steppers[axis_2] = 1;
+  // And map the local coordinate system of the arc onto the tool axes of the selected plane
+  state.arc.axis_x = axis_1;
+  state.arc.axis_y = axis_2;
 }
 
-void step_arc_along_x(dx,dy) 
+void step_arc_along_x(int8_t dx, int8_t dy) 
 {
   uint32_t diagonal_error;
-  state.arc.circle_x+=dx;
+  state.arc.x+=dx;
   state.arc.error += 1+state.arc.x2*dx;
   state.arc.x2 += 2*dx;
   diagonal_error = state.arc.error + 1 + state.arc.y2*dy;
   if(abs(state.arc.error) < abs(diagonal_error)) {
-    state.arc.circle_y += dy;
+    state.arc.y += dy;
     state.arc.y2 += 2*dy;
     state.arc.error = diagonal_error;
-  };
+    step_steppers(state.arc.plane_steppers); // step diagonal
+  } else {
+    step_axis(state.arc.axis_x); // step straight
+  }
 }
 
-void step_arc_along_y(dx,dy) 
+void step_arc_along_y(int8_t dx, int8_t dy) 
 {  
   uint32_t diagonal_error;
-  state.arc.circle_y+=dy; 
+  state.arc.y+=dy; 
   state.arc.error += 1+state.arc.y2*dy; 
   state.arc.y2 += 2*dy; 
   diagonal_error = state.arc.error + 1 + state.arc.x2*dx; 
   if(abs(state.arc.error) < abs(diagonal_error)) { 
-    state.arc.circle_x += dx; 
+    state.arc.x += dx; 
     state.arc.x2 += 2*dx; 
     state.arc.error = diagonal_error; 
+    step_steppers(state.arc.plane_steppers); // step diagonal
+  } else {
+    step_axis(state.arc.axis_y); // step straight
   }
 }
 
+// Map dx and dy which are local to the arc being generated and map them on to the 
+// selected axes for the current arc.
+void map_local_arc_directions_to_stepper_directions(int8_t dx, int8_t dy)
+{
+  int direction[3];
+  direction[state.arc.axis_x] = dx;
+  direction[state.arc.axis_y] = dy;
+  set_stepper_directions(direction);
+}
+
 /*
- Quandrants of the circle
+ Quandrants of the arc
        \ 7|0 /
         \ | / 
       6  \|/  1    y+
@@ -232,6 +263,7 @@ void step_arc_along_y(dx,dy)
         / | \  
    x-  / 4|3 \ x+           */
 
+// Determine within which quadrant of the circle the provided coordinate falls
 int quadrant(uint32_t x,uint32_t y)
 {
   // determine if the coordinate is in the quadrants 0,3,4 or 7
@@ -252,55 +284,108 @@ int quadrant(uint32_t x,uint32_t y)
   }  
 }
 
+
+int arc_at_target()
+{  
+  return((state.arc.x * state.arc.target_direction_y >= 
+          state.arc.target_x * state.arc.target_direction_y) && 
+         (state.arc.y * state.arc.target_direction_x <= 
+          state.arc.target_y * state.arc.target_direction_x)); 
+}
+
+
+// Will trace the configured arc until the target is reached
+void trace_arc()
+{
+  int q = quadrant(state.arc.x, state.arc.y);
+  while(!arc_at_target())
+  {
+    if (state.arc.angular_direction) {
+      switch (q) {
+        case 0: 
+        map_local_arc_directions_to_stepper_directions(1,-1);
+        while((!arc_at_target()) && state.arc.x>state.arc.y) { step_arc_along_x(1,-1); }
+        case 1: 
+        map_local_arc_directions_to_stepper_directions(1,-1);
+        while((!arc_at_target()) && state.arc.y>0) { step_arc_along_y(1,-1); }
+        case 2: 
+        map_local_arc_directions_to_stepper_directions(-1,-1);
+        while((!arc_at_target()) && state.arc.y>-state.arc.x) { step_arc_along_y(-1,-1); }
+        case 3: 
+        map_local_arc_directions_to_stepper_directions(-1,-1);
+        while((!arc_at_target()) && state.arc.x>0) { step_arc_along_x(-1,-1); }
+        case 4: 
+        map_local_arc_directions_to_stepper_directions(-1,1);
+        while((!arc_at_target()) && state.arc.y<state.arc.x) { step_arc_along_x(-1,1); }
+        case 5: 
+        map_local_arc_directions_to_stepper_directions(-1,1);
+        while((!arc_at_target()) && state.arc.y<0) { step_arc_along_y(-1,1); }
+        case 6: 
+        map_local_arc_directions_to_stepper_directions(1,-1);
+        while((!arc_at_target()) && state.arc.y<-state.arc.x) { step_arc_along_y(1,1); }
+        case 7: 
+        map_local_arc_directions_to_stepper_directions(1,1);
+        while((!arc_at_target()) && state.arc.x<0) { step_arc_along_x(1,1); }
+      }
+    } else {
+      switch (q) {
+        case 7:
+        map_local_arc_directions_to_stepper_directions(-1,-1);
+        while((!arc_at_target()) && state.arc.y>-state.arc.x) { step_arc_along_x(-1,-1); }
+        case 6:
+        map_local_arc_directions_to_stepper_directions(-1,-1);
+        while((!arc_at_target()) && state.arc.y>0)  { step_arc_along_y(-1,-1); }
+        case 5:
+        map_local_arc_directions_to_stepper_directions(1,-1);
+        while((!arc_at_target()) && state.arc.y>state.arc.x)  { step_arc_along_y(1,-1); }
+        case 4:
+        map_local_arc_directions_to_stepper_directions(1,-1);
+        while((!arc_at_target()) && state.arc.x<0)  { step_arc_along_x(1,-1); }
+        case 3:
+        map_local_arc_directions_to_stepper_directions(1,1);
+        while((!arc_at_target()) && state.arc.y<-state.arc.x) { step_arc_along_x(1,1); }      
+        case 2:
+        map_local_arc_directions_to_stepper_directions(1,1);
+        while((!arc_at_target()) && state.arc.y<0)  { step_arc_along_y(1,1); }      
+        case 1:
+        map_local_arc_directions_to_stepper_directions(-1,1);
+        while((!arc_at_target()) && state.arc.y<state.arc.x)  { step_arc_along_y(-1,1); }
+        case 0:
+        map_local_arc_directions_to_stepper_directions(-1,1);
+        while((!arc_at_target()) && state.arc.x>0)  { step_arc_along_x(-1,1); }
+      }    
+    }
+  }
+}
+
 void perform_arc()
 {
-  int q = quadrant(state.arc.circle_x, state.arc.circle_y);
-  
-  if (state.arc.angular_direction) {
-    switch (q) {
-      case 0: while(state.arc.circle_x>state.arc.circle_y) { step_arc_along_x(1,-1); }
-      case 1: while(state.arc.circle_y>0) { step_arc_along_y(1,-1); }
-      case 2: while(state.arc.circle_y>-state.arc.circle_x) { step_arc_along_y(-1,-1); }
-      case 3: while(state.arc.circle_x>0) { step_arc_along_x(-1,-1); }
-      case 4: while(state.arc.circle_y<state.arc.circle_x) { step_arc_along_x(-1,1); }
-      case 5: while(state.arc.circle_y<0) { step_arc_along_y(-1,1); }
-      case 6: while(state.arc.circle_y<-state.arc.circle_x) { step_arc_along_y(1,1); }
-      case 7: while(state.arc.circle_x<0) { step_arc_along_x(1,1); }
-    }
-  } else {
-    switch (q) {
-      case 7: while(state.arc.circle_y>-state.arc.circle_x) { step_arc_along_x(-1,-1); }
-      case 6: while(state.arc.circle_y>0)  { step_arc_along_y(-1,-1); }
-      case 5: while(state.arc.circle_y>state.arc.circle_x)  { step_arc_along_y(1,-1); }
-      case 4: while(state.arc.circle_x<0)  { step_arc_along_x(1,-1); }
-      case 3: while(state.arc.circle_y<-state.arc.circle_x) { step_arc_along_x(1,1); }      
-      case 2: while(state.arc.circle_y<0)  { step_arc_along_y(1,1); }      
-      case 1: while(state.arc.circle_y<state.arc.circle_x)  { step_arc_along_y(-1,1); }
-      case 0: while(state.arc.circle_x>0)  { step_arc_along_x(-1,1); }
-    }    
-  }
+  trace_arc();
+  state.mode = MC_MODE_AT_REST;
 }
 
 void mc_go_home()
 {
-  state.mode = MODE_HOME;
+  state.mode = MC_MODE_HOME;
 }
 
 void perform_go_home() 
 {
   st_go_home();
+  st_synchronize();
   clear_vector(state.position); // By definition this is location [0, 0, 0]
-  state.mode = MODE_AT_REST;
+  state.mode = MC_MODE_AT_REST;
 }
 
 void mc_execute() {
   st_set_pace(state.pace);
   while(state.mode) {
     switch(state.mode) {
-      case MODE_AT_REST: break;
-      case MODE_DWELL: _delay_ms(state.dwell_milliseconds); state.mode = MODE_AT_REST; break;
-      case MODE_LINEAR: perform_linear_motion();
-      case MODE_HOME: perform_go_home();
+      case MC_MODE_AT_REST: break;
+      case MC_MODE_DWELL: st_synchronize(); _delay_ms(state.dwell_milliseconds); state.mode = MC_MODE_AT_REST; break;
+      case MC_MODE_LINEAR: perform_linear_motion();
+      case MC_MODE_ARC: perform_arc();
+      case MC_MODE_HOME: perform_go_home();
     }
   }
 }
@@ -314,7 +399,7 @@ int mc_status()
 // Set the direction pins for the stepper motors according to the provided vector. 
 // direction is an array of three 8 bit integers representing the direction of 
 // each motor. The values should be -1 (reverse), 0 or 1 (forward).
-void set_direction_bits(int8_t *direction) 
+void set_stepper_directions(int8_t *direction) 
 {
   /* Sorry about this convoluted code! It uses the fact that bit 7 of each direction
      int is set when the direction == -1, but is 0 when direction is forward. This
