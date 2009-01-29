@@ -128,21 +128,21 @@ SIGNAL(SIG_UART_RECV)
 	}
 }
 
-void printMode(int mode)
-{
-	// do nothing, we only support serial printing, not lcd.
-}
+// void printMode(int mode)
+// {
+//  // do nothing, we only support serial printing, not lcd.
+// }
 
 void printByte(unsigned char c)
 {
 	serialWrite(c);
 }
 
-void printNewline()
-{
-	printByte('\n');
-}
-
+// void printNewline()
+// {
+//  printByte('\n');
+// }
+// 
 void printString(const char *s)
 {
 	while (*s)
@@ -180,20 +180,20 @@ void printInteger(long n)
 	printIntegerInBase(n, 10);
 }
 
-void printHex(unsigned long n)
-{
-	printIntegerInBase(n, 16);
-}
-
-void printOctal(unsigned long n)
-{
-	printIntegerInBase(n, 8);
-}
-
-void printBinary(unsigned long n)
-{
-	printIntegerInBase(n, 2);
-}
+// void printHex(unsigned long n)
+// {
+//  printIntegerInBase(n, 16);
+// }
+// 
+// void printOctal(unsigned long n)
+// {
+//  printIntegerInBase(n, 8);
+// }
+// 
+// void printBinary(unsigned long n)
+// {
+//  printIntegerInBase(n, 2);
+// }
 
 /* Including print() adds approximately 1500 bytes to the binary size,
  * so we replace it with the smaller and less-confusing printString(),

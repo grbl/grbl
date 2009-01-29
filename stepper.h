@@ -24,10 +24,10 @@
 #include <avr/io.h>
 #include <avr/sleep.h>
 
-#define STEPPER_STATE_STOPPED 0
-#define STEPPER_STATE_RUNNING 1
-#define STEPPER_STATE_LIMIT_OVERRUN 2
-#define STEPPER_STATE_HOMING 3
+#define STEPPER_MODE_STOPPED 0
+#define STEPPER_MODE_RUNNING 1
+#define STEPPER_MODE_LIMIT_OVERRUN 2
+#define STEPPER_MODE_HOMING 3
 
 // Initialize and start the stepper motor subsystem
 void st_init();

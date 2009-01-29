@@ -1,3 +1,6 @@
+* Implement homing cycle in stepper.c
+* Implement limit switch support in stepper.c (use port-triggered interrupts?)
+* How to implement st_set_pace? Consider synchronizing when pace is changed
 * Eliminate need for circle_x and circle_y in step_arc_along…
 * Use timer interrupts to drive steppers
 * Tool table

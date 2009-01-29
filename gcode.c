@@ -30,12 +30,12 @@
   - Variables
   - Multiple home locations
   - Probing
-  - Spindle direction  
   - Override control
 */
 
 /* 
    Omitted for the time being:
+ - Spindle direction  
    
    group 0 = {G10, G28, G30, G53, G92, G92.1, G92.2, G92.3} (Non modal G-codes)
    group 5 = {G93, G94} feed rate mode
@@ -126,7 +126,7 @@ uint8_t gc_execute_line(char *line) {
   double unit_converted_value;
   double inverse_feed_rate;
   
-  uint8_t absolute_mode = 0;       /* 0 = relative motion, 1 = absolute motion {G90, G91} */
+  uint8_t absolute_mode;       /* 0 = relative motion, 1 = absolute motion {G90, G91} */
   uint8_t next_action = NEXT_ACTION_DEFAULT;         /* One of the NEXT_ACTION_-constants */
   
   double target[3], offset[3];

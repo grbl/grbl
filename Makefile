@@ -39,7 +39,7 @@ AVRDUDE = avrdude $(PROGRAMMER) -p $(DEVICE) -B 10
 COMPILE = avr-gcc -Wall -Os -DF_CPU=$(CLOCK) -mmcu=$(DEVICE) -I. 
 
 # symbolic targets:
-all:	main.hex
+all:	grbl.hex
 
 .c.o:
 	$(COMPILE) -c $< -o $@ 
@@ -55,7 +55,7 @@ all:	main.hex
 	$(COMPILE) -S $< -o $@
 
 flash:	all
-	$(AVRDUDE) -U flash:w:main.hex:i
+	$(AVRDUDE) -U flash:w:grbl.hex:i
 
 fuse:
 	$(AVRDUDE) $(FUSES)
@@ -65,19 +65,19 @@ install: flash fuse
 
 # if you use a bootloader, change the command below appropriately:
 load: all
-	bootloadHID main.hex
+	bootloadHID grbl.hex
 
 clean:
-	rm -f main.hex main.elf $(OBJECTS)
+	rm -f grbl.hex main.elf $(OBJECTS)
 
 # file targets:
 main.elf: $(OBJECTS)
 	$(COMPILE) -o main.elf $(OBJECTS) -lm
 
-main.hex: main.elf
-	rm -f main.hex
-	avr-objcopy -j .text -j .data -O ihex main.elf main.hex
-	avr-size main.hex *.o
+grbl.hex: main.elf
+	rm -f grbl.hex
+	avr-objcopy -j .text -j .data -O ihex main.elf grbl.hex
+	avr-size grbl.hex *.o
 # If you have an EEPROM section, you must also create a hex file for the
 # EEPROM and add it to the "flash" target.
 

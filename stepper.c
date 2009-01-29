@@ -18,6 +18,9 @@
   along with Grbl.  If not, see <http://www.gnu.org/licenses/>.
 */
 
+/* The timer calculations of this module informed by the 'RepRap cartesian firmware' by Zack Smith
+   and Philipp Tiefenbacher. The circle buffer implementation by the wiring_serial library by David A. Mellis */
+
 #include "stepper.h"
 #include "config.h"
 #include "nuts_bolts.h"
@@ -30,7 +33,7 @@ volatile uint8_t step_buffer[STEP_BUFFER_SIZE]; // A buffer for step instruction
 volatile int step_buffer_head = 0;
 volatile int step_buffer_tail = 0;
 
-uint8_t state = STEPPER_STATE_STOPPED;
+uint8_t stepper_mode = STEPPER_MODE_STOPPED;
 
 // This timer interrupt is executed at the pace set with set_pace. It pops one instruction from
 // the step_buffer, executes it. Then it starts timer2 in order to reset the motor port after
@@ -77,7 +80,7 @@ void st_init()
 	
 	// Configure Timer 2
   TCCR2A = 0; // Normal operation
-  TCCT2B = 1<<CS20; // Full speed, no prescaler
+  TCCR2B = 1<<CS20; // Full speed, no prescaler
   TIMSK2 = 0; // All interrupts disabled
   
 	// start off with a slow pace
@@ -100,7 +103,7 @@ void st_buffer_step(uint8_t motor_port_bits)
 // Block until all buffered steps are executed
 void st_synchronize()
 {
-  if (state == STEPPER_MODE_RUNNING) {
+  if (stepper_mode == STEPPER_MODE_RUNNING) {
     while(step_buffer_tail != step_buffer_head) { sleep_mode(); }    
   } else {
     st_flush();
@@ -119,7 +122,7 @@ void st_start()
   // Enable timer interrupt
 	TIMSK1 |= (1<<OCIE1A);
   STEPPERS_ENABLE_PORT |= 1<<STEPPERS_ENABLE_BIT;
-  state = STEPPER_STATE_RUNNING;
+  stepper_mode = STEPPER_MODE_RUNNING;
 }
 
 // Execute all buffered steps, then stop the stepper subsystem
@@ -128,7 +131,7 @@ inline void st_stop()
   st_synchronize();
 	TIMSK1 &= ~(1<<OCIE1A);
   STEPPERS_ENABLE_PORT &= ~(1<<STEPPERS_ENABLE_BIT);
-  state = STEPPER_STATE_STOPPED;
+  stepper_mode = STEPPER_MODE_STOPPED;
 }
 
 void st_set_pace(uint32_t microseconds)
@@ -181,25 +184,25 @@ int check_limit_switch(int axis)
 // void perform_go_home() 
 // {
 //   int axis;
-//   if(state.home.phase == PHASE_HOME_RETURN) {
+//   if(stepper_mode.home.phase == PHASE_HOME_RETURN) {
 //     // We are running all axes in reverse until all limit switches are tripped
 //     // Check all limit switches:
 //     for(axis=X_AXIS; axis <= Z_AXIS; axis++) {
-//       state.home.away[axis] |= check_limit_switch(axis);
+//       stepper_mode.home.away[axis] |= check_limit_switch(axis);
 //     }
 //     // Step steppers. First retract along Z-axis. Then X and Y.
-//     if(state.home.away[Z_AXIS]) {
+//     if(stepper_mode.home.away[Z_AXIS]) {
 //       step_axis(Z_AXIS);
 //     } else {
 //       // Check if all axes are home
-//       if(!(state.home.away[X_AXIS] || state.home.away[Y_AXIS])) {
+//       if(!(stepper_mode.home.away[X_AXIS] || stepper_mode.home.away[Y_AXIS])) {
 //         // All axes are home, prepare next phase: to nudge the tool carefully out of the limit switches
-//         memset(state.home.direction, 1, sizeof(state.home.direction)); // direction = [1,1,1]
-//         set_direction_bits(state.home.direction);
-//         state.home.phase == PHASE_HOME_NUDGE;
+//         memset(stepper_mode.home.direction, 1, sizeof(stepper_mode.home.direction)); // direction = [1,1,1]
+//         set_direction_bits(stepper_mode.home.direction);
+//         stepper_mode.home.phase == PHASE_HOME_NUDGE;
 //         return;
 //       }
-//       step_steppers(state.home.away);
+//       step_steppers(stepper_mode.home.away);
 //     }
 //   } else {    
 //     for(axis=X_AXIS; axis <= Z_AXIS; axis++) {
@@ -209,8 +212,8 @@ int check_limit_switch(int axis)
 //       }
 //     }
 //     // When this code is reached it means all axes are free of their limit-switches. Complete the cycle and rest:
-//     clear_vector(state.position); // By definition this is location [0, 0, 0]
-//     state.mode = MODE_AT_REST;
+//     clear_vector(stepper_mode.position); // By definition this is location [0, 0, 0]
+//     stepper_mode.mode = MODE_AT_REST;
 //   }
 // }
 

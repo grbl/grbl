@@ -40,15 +40,14 @@ void print_result() {
   int inches_mode;
   uint8_t status_code;
   uint32_t line_number;
+  int i; // loop variable
   gc_get_status(position, &status_code, &inches_mode, &line_number);
-  printByte('[');  
-  printInteger(trunc(position[X_AXIS]*100));
-  printByte(',');
-  printInteger(trunc(position[Y_AXIS]*100));
-  printByte(',');
-  printInteger(trunc(position[Z_AXIS]*100));
+  printString("[ ");  
+  for(i=X_AXIS; i<=Z_AXIS; i++) {
+    printInteger(trunc(position[i]*100));
+    printByte(' ');
+  }
   printByte(']');
-  printByte(' ');
   printByte('@');
   printInteger(line_number);
   printByte(':');

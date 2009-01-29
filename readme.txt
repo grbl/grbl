@@ -2,7 +2,9 @@ Grbl - An embedded rs274/ngc (g-code) interpreter, CNC controller, readout and e
 Inspired by the Arduino GCode Interpreter by Mike Ellery
 
 Status:
-* Linear interpolation machine control complete (No arcs yet)
+* Linear interpolation machine control complete (Arc support in embryonic state)
+* Buffered, non blocking, asynchronous stepping so the rest of the system is free to generate new steps and parse 
+  g-code while the steppers are still steppin' 
 * GCode interpreter complete
 * Basic serial protocol complete
 * As of yet completely untested in a real environemnt. Still waiting for my micRo kit from Lumenlab.com
@@ -18,7 +20,7 @@ Goals:
 
 Limitations:
 * Limited GCode-support. Focus on the kind of GCode produced by CAM tools. Leave human GCoders frustrated.
-* No rotation axes, only x,y and z.
+* No rotation axes, only x, y and z.
 
 
 
