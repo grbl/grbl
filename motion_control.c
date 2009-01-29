@@ -35,11 +35,6 @@
 #include "nuts_bolts.h"
 #include "stepper.h"
 
-// position represents the current position of the head measured in steps
-// target is the target for the current linear motion
-// step_count contains the absolute values of the steps to travel along each axis
-// direction is the sign of the motion for each axis (-1: reverse, 0: standby, 1: forward)
-
 #define MODE_AT_REST 0
 #define MODE_LINEAR 1
 #define MODE_ARC 2
@@ -90,8 +85,6 @@ struct MotionControlState state;
 
 uint8_t direction_bits; // The direction bits to be used with any upcoming step-instruction
 
-void enable_steppers();
-void disable_steppers();
 void set_direction_bits(int8_t *direction);
 inline void step_steppers(uint8_t *enabled);
 inline void step_axis(uint8_t axis);
