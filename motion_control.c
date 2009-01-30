@@ -204,17 +204,12 @@ void mc_arc(double theta, double angular_travel, double radius, int axis_1, int 
     ONE_MINUTE_OF_MICROSECONDS / (feed_rate * X_STEPS_PER_MM);
 }
 
-// Reset mode if arc has reached target
-inline void check_arc_target()
-{   
-  if ((state.arc.x * state.arc.target_direction_y >= 
-          state.arc.target_x * state.arc.target_direction_y) && 
-         (state.arc.y * state.arc.target_direction_x <= 
-          state.arc.target_y * state.arc.target_direction_x))
-  {
-    state.mode = MC_MODE_AT_REST;
-  }
-}
+#define check_arc_target \
+  if ((state.arc.x * state.arc.target_direction_y >= \
+          state.arc.target_x * state.arc.target_direction_y) && \
+         (state.arc.y * state.arc.target_direction_x <= \
+          state.arc.target_y * state.arc.target_direction_x)) \
+  { state.mode = MC_MODE_AT_REST; }
 
 // Internal method used by execute_arc to trace horizontally in the general direction provided by dx and dy
 void step_arc_along_x(int8_t dx, int8_t dy) 
@@ -232,7 +227,7 @@ void step_arc_along_x(int8_t dx, int8_t dy)
   } else {
     step_axis(state.arc.axis_x); // step straight
   }
-  check_arc_target();
+  check_arc_target;
 }
 
 // Internal method used by execute_arc to trace vertically in the general direction provided by dx and dy
@@ -251,7 +246,7 @@ void step_arc_along_y(int8_t dx, int8_t dy)
   } else {
     step_axis(state.arc.axis_y); // step straight
   }
-  check_arc_target();
+  check_arc_target;
 }
 
 // Take dx and dy which are local to the arc being generated and map them on to the 
