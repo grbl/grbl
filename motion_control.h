@@ -23,7 +23,11 @@
 
 #include <avr/io.h>
 
-/* All coordinates are in step-counts. */
+#define MC_MODE_AT_REST 0
+#define MC_MODE_LINEAR 1
+#define MC_MODE_ARC 2
+#define MC_MODE_DWELL 3
+#define MC_MODE_HOME 4
 
 // Initializes the motion_control subsystem resources
 void mc_init();
@@ -37,7 +41,7 @@ void mc_linear_motion(double x, double y, double z, float feed_rate, int invert_
 // circle in millimeters. axis_1 and axis_2 selects the plane in tool space. 
 // Known issue: This method pretends that all axes uses the same steps/mm as the X axis. Which might
 // not be the case ... (To be continued)
-void mc_arc(double theta, double angular_travel, double radius, int axis_1, int axis_2);
+void mc_arc(double theta, double angular_travel, double radius, int axis_1, int axis_2, double feed_rate);
 
 // Prepare linear motion relative to the current position.
 void mc_dwell(uint32_t milliseconds);
@@ -45,8 +49,13 @@ void mc_dwell(uint32_t milliseconds);
 // Prepare to send the tool position home
 void mc_go_home();
 
-// Start the prepared operation.
+// Start the prepared operation. In the current implementation this will block for most of the task at hand.
+// In future implementations it might not block at all. If you want to make sure the system has reached 
+// quiescence call mc_wait()
 void mc_execute();
+
+// Wait until all operations complete
+void mc_wait();
 
 // Check motion control status. result == 0: the system is idle. result > 0: the system is busy,
 // result < 0: the system is in an error state.
