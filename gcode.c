@@ -35,15 +35,11 @@
 
 /* 
    Omitted for the time being:
- - Spindle direction  
-   
    group 0 = {G10, G28, G30, G53, G92, G92.1, G92.2, G92.3} (Non modal G-codes)
-   group 5 = {G93, G94} feed rate mode
-   group 12 = {G54, G55, G56, G57, G58, G59, G59.1, G59.2, G59.3} coordinate system selection
-   group 13 = {G61, G61.1, G64} path control mode
-   group 4 = {M0, M1, M2, M30, M60} stopping
    group 8 = {M7, M8, M9} coolant (special case: M7 and M8 may be active at the same time)
    group 9 = {M48, M49} enable/disable feed and speed override switches
+   group 12 = {G54, G55, G56, G57, G58, G59, G59.1, G59.2, G59.3} coordinate system selection
+   group 13 = {G61, G61.1, G64} path control mode
 */
 
 #include "gcode.h"

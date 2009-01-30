@@ -397,9 +397,9 @@ void set_stepper_directions(int8_t *direction)
      or branching. Fast and compact, yet practically unreadable. Sorry sorry sorry.
   */
   direction_bits = ~(
-    ((direction[X_AXIS]&128)>>(7-X_DIRECTION_BIT)) |
-    ((direction[Y_AXIS]&128)>>(7-Y_DIRECTION_BIT)) |
-    ((direction[Z_AXIS]&128)>>(7-Z_DIRECTION_BIT))
+    ((direction[X_AXIS]&0x80)>>(7-X_DIRECTION_BIT)) |
+    ((direction[Y_AXIS]&0x80)>>(7-Y_DIRECTION_BIT)) |
+    ((direction[Z_AXIS]&0x80)>>(7-Z_DIRECTION_BIT))
   );
 }
 
