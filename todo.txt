@@ -3,11 +3,10 @@
 * How to implement st_set_pace? Consider synchronizing when pace is changed
 * How on earth am I going to deal with arcs in setups that have different steps/mm on each axis? Must 
   support elipses?! Oh no.
-* Eliminate need for circle_x and circle_y in step_arc_along…
-* Use timer interrupts to drive steppers
+* Support helical interpolation
+* Eliminate need for circle_x and circle_y in step_arc_along_
 * Tool table
 * Tool length offsets
 * Tool change M6
-* Coolant control
 * Path Control Modes
 * Spindle speed support
