@@ -83,6 +83,8 @@ void st_init()
   TCCR2B = 1<<CS20; // Full speed, no prescaler
   TIMSK2 = 0; // All interrupts disabled
   
+  sei();
+  
 	// start off with a slow pace
   st_set_pace(1000000);
   st_start();
@@ -113,7 +115,9 @@ void st_synchronize()
 // Cancel all pending steps
 void st_flush()
 {
+  cli();
   step_buffer_tail = step_buffer_head;
+  sei();
 }
 
 // Start the stepper subsystem
@@ -155,6 +159,7 @@ void st_set_pace(uint32_t microseconds)
 		ceiling = (ticks >> 10);
     prescaler = 4; // prescaler: 1024
 	} else {
+	  // Okay, that was slower than we actually go. Just set the slowest speed
 		ceiling = 0xffff;
     prescaler = 4;
 	}
