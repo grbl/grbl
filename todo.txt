@@ -1,3 +1,4 @@
+* Generalize feed rate code and support inverse feed rate for arcs
 * Implement homing cycle in stepper.c
 * Implement limit switch support in stepper.c (use port-triggered interrupts?)
 * How to implement st_set_pace? Consider synchronizing when pace is changed

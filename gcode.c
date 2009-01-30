@@ -50,6 +50,7 @@
 #include "config.h"
 #include "motion_control.h"
 #include "spindle_control.h"
+#include "geometry.h"
 
 #define NEXT_ACTION_DEFAULT 0
 #define NEXT_ACTION_DWELL 1
@@ -60,10 +61,6 @@
 #define MOTION_MODE_CW_ARC 2  // G2
 #define MOTION_MODE_CCW_ARC 3  // G3
 #define MOTION_MODE_CANCEL 4 // G80
-
-#define PLANE_XY 0; // G17
-#define PLANE_XZ 1; // G18
-#define PLANE_YZ 2; // G19
 
 #define PATH_CONTROL_MODE_EXACT_PATH 0
 #define PATH_CONTROL_MODE_EXACT_STOP 1
@@ -84,21 +81,22 @@ struct ParserState {
 
   uint8_t motion_mode:3;         /* {G0, G1, G2, G3, G38.2, G80, G81, G82, G83, G84, G85, G86, G87, G88, G89} */
   uint8_t inverse_feed_rate_mode:1; /* G93, G94 */
-  uint8_t plane:2;               /* {G17, G18, G19} */
   uint8_t inches_mode:1;         /* 0 = millimeter mode, 1 = inches mode {G20, G21} */
   uint8_t program_flow:2;
   int spindle_direction:2;
   double feed_rate;              /* Millimeters/second */
-  double logical_position[3];    /* Where the interpreter considers the tool to be at this point in the code */
+  double position[3];    /* Where the interpreter considers the tool to be at this point in the code */
   uint8_t tool;
   int16_t spindle_speed;         /* RPM/100 */
+  uint8_t plane_axis_0, plane_axis_1; // The axes of the selected plane
+  
 };
 struct ParserState state;
 
 #define FAIL(status) state.status_code = status;
 
 int read_double(char *line, //!< string: line of RS274/NGC code being processed
-                     int *counter,       //!< pointer to a counter for logical_position on the line 
+                     int *counter,       //!< pointer to a counter for position on the line 
                      double *double_ptr); //!< pointer to double to be read                  
 
 int next_statement(char *letter, double *double_ptr, char *line, int *counter);
@@ -113,6 +111,12 @@ inline float to_millimeters(double value) {
   return(state.inches_mode ? value * INCHES_PER_MM : value);
 }
 
+void select_plane(uint8_t axis_0, uint8_t axis_1) 
+{
+  state.plane_axis_0 = axis_0;
+  state.plane_axis_1 = axis_1;
+}
+
 // Executes one line of 0-terminated G-Code. The line is assumed to contain only uppercase
 // characters and signed floats (no whitespace).
 uint8_t gc_execute_line(char *line) {
@@ -121,6 +125,7 @@ uint8_t gc_execute_line(char *line) {
   double value;
   double unit_converted_value;
   double inverse_feed_rate;
+  int radius_mode;
   
   uint8_t absolute_mode;       /* 0 = relative motion, 1 = absolute motion {G90, G91} */
   uint8_t next_action = NEXT_ACTION_DEFAULT;         /* One of the NEXT_ACTION_-constants */
@@ -149,9 +154,9 @@ uint8_t gc_execute_line(char *line) {
         case 2: state.motion_mode = MOTION_MODE_CW_ARC; break;
         case 3: state.motion_mode = MOTION_MODE_CCW_ARC; break;
         case 4: next_action = NEXT_ACTION_DWELL; break;
-        case 17: state.plane = PLANE_XY; break;
-        case 18: state.plane = PLANE_XZ; break;
-        case 19: state.plane = PLANE_YZ; break;
+        case 17: select_plane(X_AXIS, Y_AXIS); break;
+        case 18: select_plane(X_AXIS, Z_AXIS); break;
+        case 19: select_plane(Y_AXIS, Z_AXIS); break;
         case 20: state.inches_mode = true; break;
         case 21: state.inches_mode = false; break;
         case 28: case 30: next_action = NEXT_ACTION_GO_HOME; break;
@@ -197,14 +202,14 @@ uint8_t gc_execute_line(char *line) {
       break;
       case 'I': case 'J': case 'K': offset[letter-'I'] = unit_converted_value; break;
       case 'P': p = value; break;
-      case 'R': r = unit_converted_value; break;
+      case 'R': r = unit_converted_value; radius_mode = true; break;
       case 'S': state.spindle_speed = value; break;
       case 'X': case 'Y': case 'Z':
       axis = letter - 'X';
       if (absolute_mode) {
         target[axis] = unit_converted_value;
       } else {
-        target[axis] = state.logical_position[axis]+unit_converted_value;
+        target[axis] = state.position[axis]+unit_converted_value;
       };
       break;
     }
@@ -235,17 +240,36 @@ uint8_t gc_execute_line(char *line) {
       }
       break;
       case MOTION_MODE_CW_ARC: case MOTION_MODE_CCW_ARC:
-      // to be implemented
+      if (radius_mode) {
+        // To be implemented
+      } else { // ijk-mode
+        // calculate the theta (angle) of the current point
+        double theta_start = theta(-offset[state.plane_axis_0], -offset[state.plane_axis_1]);
+        // calculate the theta (angle) of the target point
+        double theta_end = theta(target[state.plane_axis_0] - offset[state.plane_axis_0] - state.position[state.plane_axis_0], 
+          target[state.plane_axis_1] - offset[state.plane_axis_1] - state.position[state.plane_axis_1]);
+        // ensure that the difference is positive so that we have clockwise travel
+        if (theta_end < theta_start) { theta_end += 2*M_PI; }
+        double angular_travel = fabs(theta_end-theta_start);
+        // Invert angular motion if we want a counter clockwise arc
+        if (next_action == MOTION_MODE_CCW_ARC) {
+          angular_travel = angular_travel-2*M_PI;
+        }
+        // Find the radius
+        double radius = hypot(offset[state.plane_axis_0], offset[state.plane_axis_1]);
+        // Prepare the arc
+        mc_arc(theta_start, angular_travel, radius, state.plane_axis_0, state.plane_axis_1, state.feed_rate);        
+      }
       break;      
     }    
   }
   
   mc_execute();
   
-  // As far as the parser is concerned, the logical_position is now == target. In reality the
+  // As far as the parser is concerned, the position is now == target. In reality the
   // motion control system might still be processing the action and the real tool position
   // in any intermediate location.
-  memcpy(state.logical_position, target, sizeof(state.logical_position));
+  memcpy(state.position, target, sizeof(state.position));
   
   return(state.status_code);
 }
@@ -255,10 +279,10 @@ void gc_get_status(double *position, uint8_t *status_code, int *inches_mode, uin
   int axis;
   if (state.inches_mode) {
     for(axis = X_AXIS; axis <= Z_AXIS; axis++) {
-      position[axis] = state.logical_position[axis]*INCHES_PER_MM;
+      position[axis] = state.position[axis]*INCHES_PER_MM;
     }
   } else {
-    memcpy(position, state.logical_position, sizeof(position));    
+    memcpy(position, state.position, sizeof(position));    
   }
   *status_code = state.status_code;
   *inches_mode = state.inches_mode;
