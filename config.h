@@ -68,4 +68,7 @@
 
 #define BAUD_RATE 14400
 
+// Unrolling the arc code is faster, but costs about 830 bytes of extra code space.
+// #define UNROLLED_ARC_LOOP
+
 #endif

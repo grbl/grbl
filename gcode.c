@@ -241,25 +241,100 @@ uint8_t gc_execute_line(char *line) {
       break;
       case MOTION_MODE_CW_ARC: case MOTION_MODE_CCW_ARC:
       if (radius_mode) {
-        // To be implemented
-      } else { // ijk-mode
-        // calculate the theta (angle) of the current point
-        double theta_start = theta(-offset[state.plane_axis_0], -offset[state.plane_axis_1]);
-        // calculate the theta (angle) of the target point
-        double theta_end = theta(target[state.plane_axis_0] - offset[state.plane_axis_0] - state.position[state.plane_axis_0], 
-          target[state.plane_axis_1] - offset[state.plane_axis_1] - state.position[state.plane_axis_1]);
-        // ensure that the difference is positive so that we have clockwise travel
-        if (theta_end < theta_start) { theta_end += 2*M_PI; }
-        double angular_travel = fabs(theta_end-theta_start);
-        // Invert angular motion if we want a counter clockwise arc
-        if (next_action == MOTION_MODE_CCW_ARC) {
-          angular_travel = angular_travel-2*M_PI;
-        }
-        // Find the radius
-        double radius = hypot(offset[state.plane_axis_0], offset[state.plane_axis_1]);
-        // Prepare the arc
-        mc_arc(theta_start, angular_travel, radius, state.plane_axis_0, state.plane_axis_1, state.feed_rate);        
+        /* 
+          We need to calculate the center of the circle that has the designated radius and passes
+          through both the current position and the target position. This method calculates the following
+          set of equations where [x,y] is the vector from current to target position, d == distance of 
+          that vector, h == hypotenuse of the triangle formed by the radius of the circle, the distance to
+          the center of the travel vector. This is the distance from the center of the travel vector
+          to the center of our circle. A perpendicular to the travel vector is scaled to the length of
+          h and added to the center of the travel vector to form the new point [i,j] which will be 
+          the center of our circle.
+          
+          d^2 == x^2 + y^2
+          h^2 == r^2 + (d/2)^2
+          i == x/2 - y/d*h
+          j == y/2 + x/d*h
+          
+                                                               O <- [i,j]
+                                                            -  |
+                                                  r      -     |
+                                                      -        |
+                                                   -           | h
+                                                -              |
+                                  [0,0] ->  C -----------------+--------------- T  <- [x,y]
+                                            | <------ d/2 ---->|
+                    
+          C - Current position
+          T - Target position
+          O - center of circle that pass through both C and T
+          d - distance from C to T
+          r - designated radius
+          h - distance from center of CT to O
+          
+          Expanding the equations:
+          
+          h = sqrt(4 r^2 + x^2 + y^2)/2
+          d = sqrt(x^2 + y^2)
+          i = x/2 - (h * y)/d
+          j = y/2 + (h * x)/d
+          
+          Which can be written:
+          
+          i = (x - (y * sqrt(4 * r^2 + x^2 + y^2))/sqrt(x^2 + y^2))/2
+          j = (y + (x * sqrt(4 * r^2 + x^2 + y^2))/sqrt(x^2 + y^2))/2
+          
+          Which can be optimized to:
+
+          h_x2_div_d = sqrt(4 * r^2 + x^2 + y^2)/sqrt(x^2 + y^2)
+          i = (x - (y * h_x2_div_d))/2
+          j = (y + (x * h_x2_div_d))/2
+          
+        */
+        
+        // Calculate the change in position along each selected axis
+        double x = target[state.plane_axis_0]-state.position[state.plane_axis_0];
+        double y = target[state.plane_axis_1]-state.position[state.plane_axis_1];
+        clear_vector(&offset);
+        double h_x2_div_d = sqrt(4*r*r + x*x + y*y)/hypot(x,y); // == h * 2 / d
+        // The anti-clockwise circle lies to the right of the target direction. When offset is positive,
+        // the left hand circle will be generated - when it is negative the right hand circle is generated.
+        if (state.motion_mode == MOTION_MODE_CCW_ARC) { h_x2_div_d = -h_x2_div_d; }
+        offset[state.plane_axis_0] = (x-(y*h_x2_div_d))/2;
+        offset[state.plane_axis_1] = (y+(x*h_x2_div_d))/2;
+      } 
+      
+      /*
+         This segment sets up an clockwise or counterclockwise arc from the current position to the target position around 
+         the center designated by the offset vector. All theta-values measured in radians of deviance from the positive 
+         y-axis. 
+
+                            | <- theta == 0
+                          * * *                
+                        *       *                                               
+                      *           *                                             
+                      *     O ----T   <- theta == theta_end (e.g. 90 degrees: theta == PI/2)                                          
+                      *   /                                                     
+                        C   <- theta == theta_start (e.g. -145 degrees: theta == -PI*(3/4))
+
+      */
+            
+      // calculate the theta (angle) of the current point
+      double theta_start = theta(-offset[state.plane_axis_0], -offset[state.plane_axis_1]);
+      // calculate the theta (angle) of the target point
+      double theta_end = theta(target[state.plane_axis_0] - offset[state.plane_axis_0] - state.position[state.plane_axis_0], 
+        target[state.plane_axis_1] - offset[state.plane_axis_1] - state.position[state.plane_axis_1]);
+      // ensure that the difference is positive so that we have clockwise travel
+      if (theta_end < theta_start) { theta_end += 2*M_PI; }
+      double angular_travel = theta_end-theta_start;
+      // Invert angular motion if the g-code wanted a counterclockwise arc
+      if (state.motion_mode == MOTION_MODE_CCW_ARC) {
+        angular_travel = angular_travel-2*M_PI;
       }
+      // Find the radius
+      double radius = hypot(offset[state.plane_axis_0], offset[state.plane_axis_1]);
+      // Prepare the arc
+      mc_arc(theta_start, angular_travel, radius, state.plane_axis_0, state.plane_axis_1, state.feed_rate);        
       break;      
     }    
   }

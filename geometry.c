@@ -36,7 +36,3 @@ double theta(double x, double y)
   }
 }
 
-double hypot(double x, double y)
-{
-  sqrt(x*x + y*y);
-}

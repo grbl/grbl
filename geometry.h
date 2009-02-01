@@ -24,7 +24,4 @@
 // Find the angle from the positive y axis to the given point with respect to origo.
 double theta(double x, double y);
 
-// Find the distance from origo to point [x,y]
-double hypot(double x, double y);
-
 #endif
