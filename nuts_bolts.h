@@ -30,7 +30,7 @@
 #define true 1
 
 // Decide the sign of a value
-#define sign(a) (a>0 ? 1 : ((a<0) ? -1 : 0))
+#define signof(a) ((a>0) ? 1 : ((a<0) ? -1 : 0))
 
 #define clear_vector(a) memset(a, 0, sizeof(a))
 

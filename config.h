@@ -23,40 +23,36 @@
 
 #define VERSION "0.1"
 
-#define X_STEPS_PER_MM 100.0
-#define Y_STEPS_PER_MM 100.0
-#define Z_STEPS_PER_MM 100.0
+#define X_STEPS_PER_MM 5.0
+#define Y_STEPS_PER_MM 5.0
+#define Z_STEPS_PER_MM 5.0
 
 #define INCHES_PER_MM 25.4
 #define X_STEPS_PER_INCH X_STEPS_PER_MM*INCHES_PER_MM
 #define Y_STEPS_PER_INCH Y_STEPS_PER_MM*INCHES_PER_MM
 #define Z_STEPS_PER_INCH Z_STEPS_PER_MM*INCHES_PER_MM
 
-#define RAPID_FEEDRATE 1270.0 // in millimeters per minute
+#define RAPID_FEEDRATE 100.0 // in millimeters per minute
 #define DEFAULT_FEEDRATE 635.0
 
 #define STEPPERS_ENABLE_DDR     DDRB
 #define STEPPERS_ENABLE_PORT    PORTB
 #define STEPPERS_ENABLE_BIT         6
 
-#define MOTORS_DDR       DDRB
-#define MOTORS_PORT      PORTB 
+#define STEPPING_DDR       DDRB
+#define STEPPING_PORT      PORTB 
 #define X_STEP_BIT           0
-#define Y_STEP_BIT           2
-#define Z_STEP_BIT           4
-#define X_DIRECTION_BIT            1
-#define Y_DIRECTION_BIT            3
+#define Y_STEP_BIT           1
+#define Z_STEP_BIT           2
+#define X_DIRECTION_BIT            3
+#define Y_DIRECTION_BIT            4
 #define Z_DIRECTION_BIT            5
-#define STEP_MASK (1<<X_STEP_BIT)|(1<<Y_STEP_BIT)|(1<<Z_STEP_BIT)
-#define DIRECTION_MASK (1<<X_DIRECTION_BIT)|(1<<Y_DIRECTION_BIT)|(1<<Z_DIRECTION_BIT)
-#define MOTORS_MASK STEP_MASK | DIRECTION_MASK
 
 #define LIMIT_DDR      DDRC
 #define LIMIT_PORT     PORTC 
 #define X_LIMIT_BIT          0
 #define Y_LIMIT_BIT          1
 #define Z_LIMIT_BIT          2
-#define LIMIT_MASK (1<<X_LIMIT_BIT)|(1<<Y_LIMIT_BIT)|(1<<Z_LIMIT_BIT)
 
 #define SPINDLE_ENABLE_DDR DDRC
 #define SPINDLE_ENABLE_PORT PORTC
@@ -66,9 +62,14 @@
 #define SPINDLE_DIRECTION_PORT PORTC
 #define SPINDLE_DIRECTION_BIT 4
 
-#define BAUD_RATE 14400
+#define BAUD_RATE 19200
 
-// Unrolling the arc code is faster, but costs about 830 bytes of extra code space.
+// Unrolling the arc code is faster, but consumes about 830 extra bytes of code space.
 // #define UNROLLED_ARC_LOOP
+
+#define STEP_MASK (1<<X_STEP_BIT)|(1<<Y_STEP_BIT)|(1<<Z_STEP_BIT)
+#define DIRECTION_MASK (1<<X_DIRECTION_BIT)|(1<<Y_DIRECTION_BIT)|(1<<Z_DIRECTION_BIT)
+#define STEPPING_MASK STEP_MASK | DIRECTION_MASK
+#define LIMIT_MASK (1<<X_LIMIT_BIT)|(1<<Y_LIMIT_BIT)|(1<<Z_LIMIT_BIT)
 
 #endif

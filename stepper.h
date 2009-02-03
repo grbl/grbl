@@ -53,4 +53,7 @@ inline void st_stop();
 // Execute the homing cycle
 void st_go_home();
 
+// Echo steps to serial port? (true/false)
+void st_set_echo(int value);
+
 #endif

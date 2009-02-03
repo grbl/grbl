@@ -11,6 +11,8 @@ def calc_theta(x,y)
   end
 end
 
-(-180..180).each do |deg|
-  pp [deg, calc_theta(sin(1.0*deg/180*PI), cos(1.0*deg/180*PI))/PI*180]
-end
+pp calc_theta(5,0)/PI*180;
+
+# (-180..180).each do |deg|
+#   pp [deg, calc_theta(sin(1.0*deg/180*PI), cos(1.0*deg/180*PI))/PI*180]
+# end

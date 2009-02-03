@@ -20,7 +20,10 @@
 #ifndef serial_h
 #define serial_h
 
-#define PROMPT ">>>"
+// A string to let the client know we are ready for a new command
+#define PROMPT "\r\n>>>"
+// A character to acknowledge that the execution has started
+#define EXECUTION_MARKER '~'
 
 void sp_init();
 void sp_process();

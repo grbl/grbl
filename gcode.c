@@ -51,6 +51,9 @@
 #include "motion_control.h"
 #include "spindle_control.h"
 #include "geometry.h"
+#include "errno.h"
+
+#include "wiring_serial.h"
 
 #define NEXT_ACTION_DEFAULT 0
 #define NEXT_ACTION_DWELL 1
@@ -82,6 +85,7 @@ struct ParserState {
   uint8_t motion_mode:3;         /* {G0, G1, G2, G3, G38.2, G80, G81, G82, G83, G84, G85, G86, G87, G88, G89} */
   uint8_t inverse_feed_rate_mode:1; /* G93, G94 */
   uint8_t inches_mode:1;         /* 0 = millimeter mode, 1 = inches mode {G20, G21} */
+  uint8_t absolute_mode:1;       /* 0 = relative motion, 1 = absolute motion {G90, G91} */
   uint8_t program_flow:2;
   int spindle_direction:2;
   double feed_rate;              /* Millimeters/second */
@@ -91,9 +95,9 @@ struct ParserState {
   uint8_t plane_axis_0, plane_axis_1; // The axes of the selected plane
   
 };
-struct ParserState state;
+struct ParserState gc;
 
-#define FAIL(status) state.status_code = status;
+#define FAIL(status) gc.status_code = status;
 
 int read_double(char *line, //!< string: line of RS274/NGC code being processed
                      int *counter,       //!< pointer to a counter for position on the line 
@@ -103,44 +107,48 @@ int next_statement(char *letter, double *double_ptr, char *line, int *counter);
 
 
 void gc_init() {
-  memset(&state, 0, sizeof(state));
-  state.feed_rate = DEFAULT_FEEDRATE;
+  memset(&gc, 0, sizeof(gc));
+  gc.feed_rate = DEFAULT_FEEDRATE;
+  gc.plane_axis_0 = X_AXIS; gc.plane_axis_1 = Y_AXIS;
 }
 
 inline float to_millimeters(double value) {
-  return(state.inches_mode ? value * INCHES_PER_MM : value);
+  return(gc.inches_mode ? value * INCHES_PER_MM : value);
 }
 
 void select_plane(uint8_t axis_0, uint8_t axis_1) 
 {
-  state.plane_axis_0 = axis_0;
-  state.plane_axis_1 = axis_1;
+  gc.plane_axis_0 = axis_0;
+  gc.plane_axis_1 = axis_1;
 }
 
 // Executes one line of 0-terminated G-Code. The line is assumed to contain only uppercase
 // characters and signed floats (no whitespace).
 uint8_t gc_execute_line(char *line) {
-  int counter;  
+  int counter = 0;  
   char letter;
   double value;
   double unit_converted_value;
-  double inverse_feed_rate;
-  int radius_mode;
+  double inverse_feed_rate = -1; // negative inverse_feed_rate means no inverse_feed_rate specified
+  int radius_mode = false;
   
-  uint8_t absolute_mode;       /* 0 = relative motion, 1 = absolute motion {G90, G91} */
+  uint8_t absolute_override = false;       /* 1 = absolute motion for this block only {G53} */
   uint8_t next_action = NEXT_ACTION_DEFAULT;         /* One of the NEXT_ACTION_-constants */
   
-  double target[3], offset[3];
+  double target[3], offset[3];  
   
-  double p, r;
-  int int_value, axis;
+  double p = 0, r = 0;
+  int int_value;
 
-  state.line_number++;
-  state.status_code = GCSTATUS_OK;
+  clear_vector(target);
+  clear_vector(offset);
+
+  gc.line_number++;
+  gc.status_code = GCSTATUS_OK;
   
   /* First: parse all statements */
   
-  if (line[0] == '(') { return(state.status_code); }
+  if (line[0] == '(') { return(gc.status_code); }
   if (line[0] == '/') { counter++; } // ignore block delete
   
   // Pass 1: Commands
@@ -149,75 +157,81 @@ uint8_t gc_execute_line(char *line) {
     switch(letter) {
       case 'G':
       switch(int_value) {
-        case 0: state.motion_mode = MOTION_MODE_RAPID_LINEAR; break;
-        case 1: state.motion_mode = MOTION_MODE_LINEAR; break;
-        case 2: state.motion_mode = MOTION_MODE_CW_ARC; break;
-        case 3: state.motion_mode = MOTION_MODE_CCW_ARC; break;
+        case 0: gc.motion_mode = MOTION_MODE_RAPID_LINEAR; break;
+        case 1: gc.motion_mode = MOTION_MODE_LINEAR; break;
+        case 2: gc.motion_mode = MOTION_MODE_CW_ARC; break;
+        case 3: gc.motion_mode = MOTION_MODE_CCW_ARC; break;
         case 4: next_action = NEXT_ACTION_DWELL; break;
         case 17: select_plane(X_AXIS, Y_AXIS); break;
         case 18: select_plane(X_AXIS, Z_AXIS); break;
         case 19: select_plane(Y_AXIS, Z_AXIS); break;
-        case 20: state.inches_mode = true; break;
-        case 21: state.inches_mode = false; break;
+        case 20: gc.inches_mode = true; break;
+        case 21: gc.inches_mode = false; break;
         case 28: case 30: next_action = NEXT_ACTION_GO_HOME; break;
-        case 53: absolute_mode = 1; break;
-        case 80: state.motion_mode = MOTION_MODE_CANCEL; break;
-        case 93: state.inverse_feed_rate_mode = true; break;
-        case 94: state.inverse_feed_rate_mode = false; break;
+        case 53: absolute_override = true; break;
+        case 80: gc.motion_mode = MOTION_MODE_CANCEL; break;
+        case 90: gc.absolute_mode = true; break;
+        case 91: gc.absolute_mode = false; break;
+        case 93: gc.inverse_feed_rate_mode = true; break;
+        case 94: gc.inverse_feed_rate_mode = false; break;
         default: FAIL(GCSTATUS_UNSUPPORTED_STATEMENT);
       }
       break;
       
       case 'M':
       switch(int_value) {
-        case 0: case 1: state.program_flow = PROGRAM_FLOW_PAUSED; break;
-        case 2: state.program_flow = PROGRAM_FLOW_COMPLETED; break;
-        case 3: state.spindle_direction = 1; break;
-        case 4: state.spindle_direction = -1; break;
-        case 5: state.spindle_direction = 0; break;
+        case 0: case 1: gc.program_flow = PROGRAM_FLOW_PAUSED; break;
+        case 2: gc.program_flow = PROGRAM_FLOW_COMPLETED; break;
+        case 3: gc.spindle_direction = 1; break;
+        case 4: gc.spindle_direction = -1; break;
+        case 5: gc.spindle_direction = 0; break;
         default: FAIL(GCSTATUS_UNSUPPORTED_STATEMENT);
       }            
       break;
-      case 'T': state.tool = trunc(value); break;
+      case 'T': gc.tool = trunc(value); break;
     }
-    if(state.status_code) { break; }
+    if(gc.status_code) { break; }
   }
   
   // If there were any errors parsing this line, we will return right away with the bad news
-  if (state.status_code) { return(state.status_code); }
+  if (gc.status_code) { return(gc.status_code); }
 
   // Pass 2: Parameters
   counter = 0;
   clear_vector(offset);
+  memcpy(target, gc.position, sizeof(target)); // target = gc.position
+
   while(next_statement(&letter, &value, line, &counter)) {
     int_value = trunc(value);
     unit_converted_value = to_millimeters(value);
     switch(letter) {
       case 'F': 
-      if (state.inverse_feed_rate_mode) {
+      if (gc.inverse_feed_rate_mode) {
         inverse_feed_rate = unit_converted_value; // seconds per motion for this motion only
       } else {
-        state.feed_rate = unit_converted_value; // millimeters pr second
+        gc.feed_rate = unit_converted_value; // millimeters pr second
       }
       break;
       case 'I': case 'J': case 'K': offset[letter-'I'] = unit_converted_value; break;
       case 'P': p = value; break;
       case 'R': r = unit_converted_value; radius_mode = true; break;
-      case 'S': state.spindle_speed = value; break;
+      case 'S': gc.spindle_speed = value; break;
       case 'X': case 'Y': case 'Z':
-      axis = letter - 'X';
-      if (absolute_mode) {
-        target[axis] = unit_converted_value;
+      if (gc.absolute_mode || absolute_override) {
+        target[letter - 'X'] = unit_converted_value;
       } else {
-        target[axis] = state.position[axis]+unit_converted_value;
-      };
+        target[letter - 'X'] += unit_converted_value;
+      }
       break;
     }
   }
   
+  // If there were any errors parsing this line, we will return right away with the bad news
+  if (gc.status_code) { return(gc.status_code); }
+    
   // Update spindle state
-  if (state.spindle_direction) {
-    spindle_run(state.spindle_direction, state.spindle_speed);
+  if (gc.spindle_direction) {
+    spindle_run(gc.spindle_direction, gc.spindle_speed);
   } else {
     spindle_stop();
   }
@@ -227,7 +241,7 @@ uint8_t gc_execute_line(char *line) {
     case NEXT_ACTION_GO_HOME: mc_go_home(); break;
     case NEXT_ACTION_DWELL: mc_dwell(trunc(p*1000)); break;
     case NEXT_ACTION_DEFAULT: 
-    switch (state.motion_mode) {
+    switch (gc.motion_mode) {
       case MOTION_MODE_CANCEL: break;
       case MOTION_MODE_RAPID_LINEAR: case MOTION_MODE_LINEAR:
       if (inverse_feed_rate) {
@@ -235,7 +249,7 @@ uint8_t gc_execute_line(char *line) {
           inverse_feed_rate, true);
       } else {
         mc_linear_motion(target[X_AXIS], target[Y_AXIS], target[Z_AXIS], 
-          (state.motion_mode == MOTION_MODE_LINEAR) ? state.feed_rate : RAPID_FEEDRATE,
+          (gc.motion_mode == MOTION_MODE_LINEAR) ? gc.feed_rate : RAPID_FEEDRATE,
           false);
       }
       break;
@@ -244,15 +258,14 @@ uint8_t gc_execute_line(char *line) {
         /* 
           We need to calculate the center of the circle that has the designated radius and passes
           through both the current position and the target position. This method calculates the following
-          set of equations where [x,y] is the vector from current to target position, d == distance of 
+          set of equations where [x,y] is the vector from current to target position, d == magnitude of 
           that vector, h == hypotenuse of the triangle formed by the radius of the circle, the distance to
-          the center of the travel vector. This is the distance from the center of the travel vector
-          to the center of our circle. A perpendicular to the travel vector is scaled to the length of
-          h and added to the center of the travel vector to form the new point [i,j] which will be 
-          the center of our circle.
+          the center of the travel vector. A vector perpendicular to the travel vector [-y,x] is scaled to the 
+          length of h [-y/d*h, x/d*h] and added to the center of the travel vector [x/2,y/2] to form the new point 
+          [i,j] at [x/2-y/d*h, y/2+x/d*h] which will be the center of our arc.
           
           d^2 == x^2 + y^2
-          h^2 == r^2 + (d/2)^2
+          h^2 == r^2 - (d/2)^2
           i == x/2 - y/d*h
           j == y/2 + x/d*h
           
@@ -273,35 +286,60 @@ uint8_t gc_execute_line(char *line) {
           h - distance from center of CT to O
           
           Expanding the equations:
-          
-          h = sqrt(4 r^2 + x^2 + y^2)/2
-          d = sqrt(x^2 + y^2)
-          i = x/2 - (h * y)/d
-          j = y/2 + (h * x)/d
-          
+
+          d -> sqrt(x^2 + y^2)
+          h -> sqrt(4 * r^2 - x^2 - y^2)/2
+          i -> (x - (y * sqrt(4 * r^2 - x^2 - y^2)) / sqrt(x^2 + y^2)) / 2 
+          j -> (y + (x * sqrt(4 * r^2 - x^2 - y^2)) / sqrt(x^2 + y^2)) / 2
+         
           Which can be written:
           
-          i = (x - (y * sqrt(4 * r^2 + x^2 + y^2))/sqrt(x^2 + y^2))/2
-          j = (y + (x * sqrt(4 * r^2 + x^2 + y^2))/sqrt(x^2 + y^2))/2
+          i -> (x - (y * sqrt(4 * r^2 - x^2 - y^2))/sqrt(x^2 + y^2))/2
+          j -> (y + (x * sqrt(4 * r^2 - x^2 - y^2))/sqrt(x^2 + y^2))/2
           
-          Which can be optimized to:
+          Which we for size and speed reasons optimize to:
 
-          h_x2_div_d = sqrt(4 * r^2 + x^2 + y^2)/sqrt(x^2 + y^2)
+          h_x2_div_d = sqrt(4 * r^2 - x^2 - y^2)/sqrt(x^2 + y^2)
           i = (x - (y * h_x2_div_d))/2
           j = (y + (x * h_x2_div_d))/2
           
         */
         
         // Calculate the change in position along each selected axis
-        double x = target[state.plane_axis_0]-state.position[state.plane_axis_0];
-        double y = target[state.plane_axis_1]-state.position[state.plane_axis_1];
+        double x = target[gc.plane_axis_0]-gc.position[gc.plane_axis_0];
+        double y = target[gc.plane_axis_1]-gc.position[gc.plane_axis_1];
         clear_vector(&offset);
-        double h_x2_div_d = sqrt(4*r*r + x*x + y*y)/hypot(x,y); // == h * 2 / d
-        // The anti-clockwise circle lies to the right of the target direction. When offset is positive,
-        // the left hand circle will be generated - when it is negative the right hand circle is generated.
-        if (state.motion_mode == MOTION_MODE_CCW_ARC) { h_x2_div_d = -h_x2_div_d; }
-        offset[state.plane_axis_0] = (x-(y*h_x2_div_d))/2;
-        offset[state.plane_axis_1] = (y+(x*h_x2_div_d))/2;
+        double h_x2_div_d = sqrt(4 * r*r - x*x - y*y)/hypot(x,y); // == h * 2 / d
+        // If r is smaller than d, the arc is now traversing the complex plane beyond the reach of any
+        // earthly CNC, and thus - for practical reasons - we will terminate promptly:
+        if(isnan(h_x2_div_d)) { FAIL(GCSTATUS_FLOATING_POINT_ERROR); return(gc.status_code); }
+
+        /* The anti-clockwise circle lies to the right of the target direction. When offset is positive,
+           the left hand circle will be generated - when it is negative the right hand circle is generated.
+           
+           
+                                                         T
+                                                         
+                                                         ^
+                                                         |
+                                                         |
+  center of arc when h_x2_div_d is positive ->  x <----- | -----> x <- center of arc when h_x2_div_d is negative
+                                                         |
+                                                         |
+                                                         
+                                                         C                                                     */
+        
+        if (gc.motion_mode == MOTION_MODE_CCW_ARC) { h_x2_div_d = -h_x2_div_d; }
+        
+        // Complete the operation by calculating the actual center of the arc
+        offset[gc.plane_axis_0] = (x-(y*h_x2_div_d))/2;
+        offset[gc.plane_axis_1] = (y+(x*h_x2_div_d))/2;
+        
+        // printByte('(');
+        // printInteger(trunc(offset[gc.plane_axis_0])); printByte(',');
+        // printInteger(trunc(offset[gc.plane_axis_1]));
+        // printByte(')');
+        
       } 
       
       /*
@@ -313,28 +351,34 @@ uint8_t gc_execute_line(char *line) {
                           * * *                
                         *       *                                               
                       *           *                                             
-                      *     O ----T   <- theta == theta_end (e.g. 90 degrees: theta == PI/2)                                          
+                      *     O ----T   <- theta_end (e.g. 90 degrees: theta_end == PI/2)                                          
                       *   /                                                     
-                        C   <- theta == theta_start (e.g. -145 degrees: theta == -PI*(3/4))
+                        C   <- theta_start (e.g. -145 degrees: theta_start == -PI*(3/4))
 
       */
             
       // calculate the theta (angle) of the current point
-      double theta_start = theta(-offset[state.plane_axis_0], -offset[state.plane_axis_1]);
+      double theta_start = theta(-offset[gc.plane_axis_0], -offset[gc.plane_axis_1]);
       // calculate the theta (angle) of the target point
-      double theta_end = theta(target[state.plane_axis_0] - offset[state.plane_axis_0] - state.position[state.plane_axis_0], 
-        target[state.plane_axis_1] - offset[state.plane_axis_1] - state.position[state.plane_axis_1]);
+      double theta_end = theta(target[gc.plane_axis_0] - offset[gc.plane_axis_0] - gc.position[gc.plane_axis_0], 
+         target[gc.plane_axis_1] - offset[gc.plane_axis_1] - gc.position[gc.plane_axis_1]);
+      // double theta_end = theta(5,0);
       // ensure that the difference is positive so that we have clockwise travel
       if (theta_end < theta_start) { theta_end += 2*M_PI; }
       double angular_travel = theta_end-theta_start;
       // Invert angular motion if the g-code wanted a counterclockwise arc
-      if (state.motion_mode == MOTION_MODE_CCW_ARC) {
+      if (gc.motion_mode == MOTION_MODE_CCW_ARC) {
         angular_travel = angular_travel-2*M_PI;
       }
       // Find the radius
-      double radius = hypot(offset[state.plane_axis_0], offset[state.plane_axis_1]);
+      double radius = hypot(offset[gc.plane_axis_0], offset[gc.plane_axis_1]);
       // Prepare the arc
-      mc_arc(theta_start, angular_travel, radius, state.plane_axis_0, state.plane_axis_1, state.feed_rate);        
+      printString("mc_arc(");
+      printInteger(trunc(theta_start/M_PI*180)); printByte(',');
+      printInteger(trunc(angular_travel/M_PI*180)); printByte(',');
+      printInteger(trunc(radius)); printByte('…');
+      printByte(')');
+      mc_arc(theta_start, angular_travel, radius, gc.plane_axis_0, gc.plane_axis_1, gc.feed_rate);        
       break;      
     }    
   }
@@ -344,40 +388,39 @@ uint8_t gc_execute_line(char *line) {
   // As far as the parser is concerned, the position is now == target. In reality the
   // motion control system might still be processing the action and the real tool position
   // in any intermediate location.
-  memcpy(state.position, target, sizeof(state.position));
-  
-  return(state.status_code);
+  memcpy(gc.position, target, sizeof(double)*3);
+  return(gc.status_code);
 }
 
 void gc_get_status(double *position, uint8_t *status_code, int *inches_mode, uint32_t *line_number) 
 {
   int axis;
-  if (state.inches_mode) {
+  if (gc.inches_mode) {
     for(axis = X_AXIS; axis <= Z_AXIS; axis++) {
-      position[axis] = state.position[axis]*INCHES_PER_MM;
+      position[axis] = gc.position[axis]*INCHES_PER_MM;
     }
   } else {
-    memcpy(position, state.position, sizeof(position));    
+    memcpy(position, gc.position, sizeof(gc.position));    
   }
-  *status_code = state.status_code;
-  *inches_mode = state.inches_mode;
-  *line_number = state.line_number;
+  *status_code = gc.status_code;
+  *inches_mode = gc.inches_mode;
+  *line_number = gc.line_number;
 }
 
 // Parses the next statement and leaves the counter on the first character following
 // the statement. Returns 1 if there was a statements, 0 if end of string was reached
 // or there was an error (check state.status_code).
 int next_statement(char *letter, double *double_ptr, char *line, int *counter) {
-  if (*line == 0) {
+  if (line[*counter] == 0) {
     return(0); // No more statements
   }
   
-  *letter = *line;
+  *letter = line[*counter];
   if((*letter < 'A') || (*letter > 'Z')) {
     FAIL(GCSTATUS_EXPECTED_COMMAND_LETTER);
     return(0);
   }
-  *counter++;
+  (*counter)++;
   if (!read_double(line, counter, double_ptr)) {
     return(0);
   };
@@ -400,4 +443,3 @@ int read_double(char *line, //!< string: line of RS274/NGC code being processed
   *counter = end - line;
   return(1);
 }
-

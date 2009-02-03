@@ -20,7 +20,8 @@
 
 #include <math.h>
 
-// Find the angle from the positive y axis to the given point with respect to origo.
+// Find the angle in radians of deviance from the positive y axis. negative angles to the left of y-axis, 
+// positive to the right.
 double theta(double x, double y)
 {
   double theta = atan(x/fabs(y));
@@ -29,10 +30,9 @@ double theta(double x, double y)
   } else {
     if (theta>0) 
     {
-      return(theta-M_PI);
+      return(M_PI-theta);
     } else {
       return(-M_PI-theta);
     }
   }
 }
-

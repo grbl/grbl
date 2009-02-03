@@ -61,4 +61,6 @@ void mc_wait();
 // result < 0: the system is in an error state.
 int mc_status();
 
+void printCurrentPosition();
+
 #endif

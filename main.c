@@ -20,14 +20,19 @@
 
 #include <avr/io.h>
 #include <avr/sleep.h>
+#include <util/delay.h>
 #include "stepper.h"
 #include "spindle_control.h"
 #include "motion_control.h"
 #include "gcode.h"
 #include "serial_protocol.h"
 
+#include "config.h"
+#include "wiring_serial.h"
+
 int main(void)
 {
+  beginSerial(BAUD_RATE);
   st_init();
   mc_init(); // initialize motion control subsystem
   spindle_init(); // initialize spindle controller
@@ -35,7 +40,7 @@ int main(void)
   sp_init(); // initialize the serial protocol
   
   for(;;){
-    sleep_mode();
+//    sleep_mode();
     sp_process(); // process the serial protocol
   }
   return 0;   /* never reached */

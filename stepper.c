@@ -19,12 +19,15 @@
 */
 
 /* The timer calculations of this module informed by the 'RepRap cartesian firmware' by Zack Smith
-   and Philipp Tiefenbacher. The circle buffer implementation by the wiring_serial library by David A. Mellis */
+   and Philipp Tiefenbacher. The circle buffer implementation gleaned from the wiring_serial library 
+   by David A. Mellis */
 
 #include "stepper.h"
 #include "config.h"
 #include "nuts_bolts.h"
 #include <avr/interrupt.h>
+
+#include "wiring_serial.h"
 
 #define TICKS_PER_MICROSECOND F_CPU/1000000
 #define STEP_BUFFER_SIZE 100
@@ -34,37 +37,38 @@ volatile int step_buffer_head = 0;
 volatile int step_buffer_tail = 0;
 
 uint8_t stepper_mode = STEPPER_MODE_STOPPED;
+uint8_t echo_steps = true;
 
 // This timer interrupt is executed at the pace set with set_pace. It pops one instruction from
 // the step_buffer, executes it. Then it starts timer2 in order to reset the motor port after
 // five microseconds.
 SIGNAL(SIG_OUTPUT_COMPARE1A)
 {
-  if (step_buffer_head != step_buffer_tail) {
-    // Set the stepper port according to the instructions
-    MOTORS_PORT = (MOTORS_PORT & ~MOTORS_MASK) | step_buffer[step_buffer_tail];
-    // Reset and start timer 2 which will reset the motor port after 5 microsecond
-    TCNT2 = 0; // reset counter
-    OCR2A = 5*TICKS_PER_MICROSECOND; // set the time
-    TIMSK2 |= OCIE2A; // enable interrupt
-    // move the step buffer tail to the next instruction
-    step_buffer_tail = (step_buffer_tail + 1) % STEP_BUFFER_SIZE;
-	}
+    if (step_buffer_head != step_buffer_tail) {
+      // Set the stepper port according to the instructions
+      STEPPING_PORT = (STEPPING_PORT & ~STEPPING_MASK) | step_buffer[step_buffer_tail];
+      // Reset and start timer 2 which will reset the motor port after 5 microsecond
+      // TCNT2 = 0; // reset counter
+      // OCR2A = 5*TICKS_PER_MICROSECOND; // set the time
+      // TIMSK2 |= (1<<OCIE2A); // enable interrupt
+      // move the step buffer tail to the next instruction
+      step_buffer_tail = (step_buffer_tail + 1) % STEP_BUFFER_SIZE;
+  }
 }
 
 // This interrupt is set up by SIG_OUTPUT_COMPARE1A when it sets the motor port bits. It resets
 // the motor port after a short period (5us) completing one step cycle.
 SIGNAL(SIG_OUTPUT_COMPARE2A)
 {
-  MOTORS_PORT = MOTORS_PORT & ~MOTORS_MASK; // reset stepper pins
-  TIMSK2 &= ~OCIE2A; // disable this timer interrupt until next time
+  STEPPING_PORT = STEPPING_PORT & ~STEPPING_MASK; // reset stepper pins
+  TIMSK2 &= ~(1<<OCIE2A); // disable this timer interrupt until next time
 }
 
 // Initialize and start the stepper motor subsystem
 void st_init()
 {
 	// Configure directions of interface pins
-  MOTORS_DDR   |= MOTORS_MASK;
+  STEPPING_DDR   |= STEPPING_MASK;
   LIMIT_DDR &= ~(LIMIT_MASK);
   STEPPERS_ENABLE_DDR |= 1<<STEPPERS_ENABLE_BIT;
 
@@ -92,13 +96,18 @@ void st_init()
 
 void st_buffer_step(uint8_t motor_port_bits)
 {
+  if (echo_steps) {
+    printByte('!'+motor_port_bits);
+//    printIntegerInBase(motor_port_bits,2);printByte('\r');printByte('\n');
+  }
+
 	int i = (step_buffer_head + 1) % STEP_BUFFER_SIZE;
 	
 	// If the buffer is full: good! That means we are well ahead of the robot. 
 	// Nap until there is room for more steps.
 	while(step_buffer_tail == i) { sleep_mode(); }
 	
-  step_buffer[step_buffer_head] = motor_port_bits;
+//  step_buffer[step_buffer_head] = motor_port_bits;
   step_buffer_head = i;
 }
 
@@ -140,6 +149,12 @@ inline void st_stop()
 
 void st_set_pace(uint32_t microseconds)
 {
+  printString("pace = ");
+  printInteger(microseconds);
+  printString("\n\r");
+  if (microseconds <= 500) {
+    microseconds = 500;
+  }
   uint32_t ticks = microseconds*TICKS_PER_MICROSECOND;
   uint16_t ceiling;
   uint16_t prescaler;
@@ -163,6 +178,7 @@ void st_set_pace(uint32_t microseconds)
 		ceiling = 0xffff;
     prescaler = 4;
 	}
+		
 	// Set prescaler
   TCCR1B = (TCCR1B & ~(0x07<<CS10)) | ((prescaler+1)<<CS10);
   // Set ceiling
@@ -225,4 +241,9 @@ int check_limit_switch(int axis)
 void st_go_home()
 {
   // Todo: Perform the homing cycle
+}
+
+void st_set_echo(int value)
+{
+  echo_steps = value;
 }

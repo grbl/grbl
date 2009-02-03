@@ -238,7 +238,8 @@ class CircleTest
         end
         dx = y.sign*angular_direction unless y == 0
       end
-      break if x*ty.sign*angular_direction>=tx*ty.sign*angular_direction && y*tx.sign*angular_direction<=ty*tx.sign*angular_direction
+      break if x*ty.sign*angular_direction>=tx*ty.sign*angular_direction && 
+        y*tx.sign*angular_direction<=ty*tx.sign*angular_direction
     end
     plot_pixel(tx+20, -ty+20, "o")
     return {:tx => tx, :ty => ty, :x => x, :y => y}
