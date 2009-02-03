@@ -29,7 +29,7 @@
 
 #include "wiring_serial.h"
 
-#define TICKS_PER_MICROSECOND F_CPU/1000000
+#define TICKS_PER_MICROSECOND (F_CPU/1000000)
 #define STEP_BUFFER_SIZE 100
 
 volatile uint8_t step_buffer[STEP_BUFFER_SIZE]; // A buffer for step instructions
@@ -44,15 +44,17 @@ uint8_t echo_steps = true;
 // five microseconds.
 SIGNAL(SIG_OUTPUT_COMPARE1A)
 {
-    if (step_buffer_head != step_buffer_tail) {
-      // Set the stepper port according to the instructions
-      STEPPING_PORT = (STEPPING_PORT & ~STEPPING_MASK) | step_buffer[step_buffer_tail];
-      // Reset and start timer 2 which will reset the motor port after 5 microsecond
-      // TCNT2 = 0; // reset counter
-      // OCR2A = 5*TICKS_PER_MICROSECOND; // set the time
-      // TIMSK2 |= (1<<OCIE2A); // enable interrupt
-      // move the step buffer tail to the next instruction
-      step_buffer_tail = (step_buffer_tail + 1) % STEP_BUFFER_SIZE;
+  if (step_buffer_head != step_buffer_tail) {
+    // Set the direction pins a nanosecond or two before you step the steppers
+    STEPPING_PORT = (STEPPING_PORT & ~DIRECTION_MASK) | (step_buffer[step_buffer_tail] & DIRECTION_MASK);
+    // Then pulse the stepping pins
+    STEPPING_PORT = (STEPPING_PORT & ~STEP_MASK) | step_buffer[step_buffer_tail];
+    // Reset and start timer 2 which will reset the motor port after 5 microsecond
+    TCNT2 = 0; // reset counter
+    OCR2A = 5*TICKS_PER_MICROSECOND; // set the time
+    TIMSK2 |= (1<<OCIE2A); // enable interrupt
+    // move the step buffer tail to the next instruction
+    step_buffer_tail = (step_buffer_tail + 1) % STEP_BUFFER_SIZE;
   }
 }
 
@@ -60,7 +62,7 @@ SIGNAL(SIG_OUTPUT_COMPARE1A)
 // the motor port after a short period (5us) completing one step cycle.
 SIGNAL(SIG_OUTPUT_COMPARE2A)
 {
-  STEPPING_PORT = STEPPING_PORT & ~STEPPING_MASK; // reset stepper pins
+  STEPPING_PORT = STEPPING_PORT & ~STEP_MASK; // reset stepping pins (leave the direction pins)
   TIMSK2 &= ~(1<<OCIE2A); // disable this timer interrupt until next time
 }
 
@@ -90,7 +92,7 @@ void st_init()
   sei();
   
 	// start off with a slow pace
-  st_set_pace(1000000);
+  st_set_pace(20000);
   st_start();
 }
 
@@ -107,7 +109,7 @@ void st_buffer_step(uint8_t motor_port_bits)
 	// Nap until there is room for more steps.
 	while(step_buffer_tail == i) { sleep_mode(); }
 	
-//  step_buffer[step_buffer_head] = motor_port_bits;
+  step_buffer[step_buffer_head] = motor_port_bits;
   step_buffer_head = i;
 }
 
@@ -152,13 +154,10 @@ void st_set_pace(uint32_t microseconds)
   printString("pace = ");
   printInteger(microseconds);
   printString("\n\r");
-  if (microseconds <= 500) {
-    microseconds = 500;
-  }
   uint32_t ticks = microseconds*TICKS_PER_MICROSECOND;
   uint16_t ceiling;
   uint16_t prescaler;
-	if (ticks <= 65535L) {
+	if (ticks <= 0xffffL) {
 		ceiling = ticks;
     prescaler = 0; // prescaler: 0
 	} else if (ticks <= 0x7ffffL) {
@@ -178,7 +177,6 @@ void st_set_pace(uint32_t microseconds)
 		ceiling = 0xffff;
     prescaler = 4;
 	}
-		
 	// Set prescaler
   TCCR1B = (TCCR1B & ~(0x07<<CS10)) | ((prescaler+1)<<CS10);
   // Set ceiling

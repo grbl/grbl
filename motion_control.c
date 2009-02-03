@@ -323,7 +323,7 @@ void execute_go_home()
 }
 
 void mc_execute() {
-  st_set_pace(mc.pace);
+//  st_set_pace(mc.pace);
   printByte('~');
   while(mc.mode) { // Loop because one task might start another task
     switch(mc.mode) {
