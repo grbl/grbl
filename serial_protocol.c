@@ -36,6 +36,12 @@ void prompt() {
   line_counter = 0;
 }
 
+void sp_send_execution_marker()
+{
+  printByte(EXECUTION_MARKER);
+}
+
+
 void print_result() {
   double position[3];
   int inches_mode;
@@ -77,20 +83,18 @@ void sp_process()
   char c;
   while((c = serialRead()) != -1) 
   {
-    //printByte(c); // Echo
-    if(c == '\r') {
+    if(c == '\r') {  // Line is complete. Then execute!
       line[line_counter] = 0;
-      //printByte(EXECUTION_MARKER);
       gc_execute_line(line);
       line_counter = 0;
       print_result();
       prompt();
-    } else if (c == ' ' || c == '\t') {
-      // Throw away whitepace
-    } else if (c >= 'a' && c <= 'z') {
+    } else if (c == ' ' || c == '\t') { // Throw away whitepace
+    } else if (c >= 'a' && c <= 'z') { // Upcase lowercase
       line[line_counter++] = c-'a'+'A';
     } else {
       line[line_counter++] = c;
     }
   }
 }
+

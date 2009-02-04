@@ -100,7 +100,6 @@ void st_buffer_step(uint8_t motor_port_bits)
 {
   if (echo_steps) {
     printByte('!'+motor_port_bits);
-//    printIntegerInBase(motor_port_bits,2);printByte('\r');printByte('\n');
   }
 
 	int i = (step_buffer_head + 1) % STEP_BUFFER_SIZE;

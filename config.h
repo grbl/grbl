@@ -21,7 +21,7 @@
 #ifndef config_h
 #define config_h
 
-#define VERSION "0.1"
+#define VERSION "0.0"
 
 #define X_STEPS_PER_MM 5.0
 #define Y_STEPS_PER_MM 5.0
@@ -63,9 +63,6 @@
 #define SPINDLE_DIRECTION_BIT 4
 
 #define BAUD_RATE 19200
-
-// Unrolling the arc code is faster, but consumes about 830 extra bytes of code space.
-// #define UNROLLED_ARC_LOOP
 
 #define STEP_MASK (1<<X_STEP_BIT)|(1<<Y_STEP_BIT)|(1<<Z_STEP_BIT)
 #define DIRECTION_MASK (1<<X_DIRECTION_BIT)|(1<<Y_DIRECTION_BIT)|(1<<Z_DIRECTION_BIT)

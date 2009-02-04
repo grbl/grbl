@@ -34,6 +34,7 @@
 #include <stdlib.h>
 #include "nuts_bolts.h"
 #include "stepper.h"
+#include "serial_protocol.h"
 
 #include "wiring_serial.h"
 
@@ -50,7 +51,8 @@ struct LinearMotionParameters {
 };
 
 struct ArcMotionParameters {
-  int8_t angular_direction; // 1 = clockwise, -1 = anticlockwise
+  int8_t direction[3];                             // The direction of travel along each axis (-1, 0 or 1)
+  int8_t angular_direction;                        // 1 = clockwise, -1 = anticlockwise
   int32_t x, y, target_x, target_y;                // current position and target position in the 
                                                    // local coordinate system of the arc-generator where [0,0] is the 
                                                    // center of the arc.
@@ -79,7 +81,6 @@ struct MotionControlState {
   };
 };
 struct MotionControlState mc;
-
 
 void set_stepper_directions(int8_t *direction);
 inline void step_steppers(uint8_t *enabled);
@@ -118,6 +119,8 @@ void mc_linear_motion(double x, double y, double z, float feed_rate, int invert_
 // Same as mc_linear_motion but accepts target in absolute step coordinates
 void prepare_linear_motion(uint32_t x, uint32_t y, uint32_t z, float feed_rate, int invert_feed_rate)
 {
+  memset(&mc.linear, 0, sizeof(mc.arc));
+  
   mc.linear.target[X_AXIS] = x;
   mc.linear.target[Y_AXIS] = y;
   mc.linear.target[Z_AXIS] = z;
@@ -149,13 +152,15 @@ void prepare_linear_motion(uint32_t x, uint32_t y, uint32_t z, float feed_rate, 
   	mc.pace = 
   	  (feed_rate*1000000)/mc.linear.maximum_steps;	  
   } else {
-  	// Ask old Phytagoras to estimate how many steps our next move is going to take us:
-  	uint32_t steps_to_travel = 
-      ceil(sqrt(pow((X_STEPS_PER_MM*mc.linear.step_count[X_AXIS]),2) + 
-                pow((Y_STEPS_PER_MM*mc.linear.step_count[Y_AXIS]),2) + 
-                pow((Z_STEPS_PER_MM*mc.linear.step_count[Z_AXIS]),2)));
+  	// Ask old Phytagoras to estimate how many mm our next move is going to take us:
+  	double millimeters_to_travel = 
+      ceil(sqrt(pow((mc.linear.step_count[X_AXIS]),2) + 
+                pow((mc.linear.step_count[Y_AXIS]),2) + 
+                pow((mc.linear.step_count[Z_AXIS]),2)));
+    // Calculate the microseconds between steps that we should wait in order to travel the 
+    // designated amount of millimeters in the amount of steps we are going to generate
   	mc.pace = 
-  	  ((steps_to_travel * ONE_MINUTE_OF_MICROSECONDS) / feed_rate) / mc.linear.maximum_steps;	  
+  	  round(((millimeters_to_travel * ONE_MINUTE_OF_MICROSECONDS) / feed_rate) / mc.linear.maximum_steps);	  
   }
 }
 
@@ -194,6 +199,7 @@ void execute_linear_motion()
 // ISSUE: The arc interpolator assumes all axes have the same steps/mm as the X axis.
 void mc_arc(double theta, double angular_travel, double radius, int axis_1, int axis_2, double feed_rate)
 {  
+  memset(&mc.arc, 0, sizeof(mc.arc));
   uint32_t radius_steps = round(radius*X_STEPS_PER_MM);
   mc.mode = MC_MODE_ARC;
   // Determine angular direction (+1 = clockwise, -1 = counterclockwise)
@@ -216,15 +222,20 @@ void mc_arc(double theta, double angular_travel, double radius, int axis_1, int 
   mc.arc.y2 = 2*mc.arc.y; 
   
   // Set up a vector with the steppers we are going to use tracing the plane of this arc
-  clear_vector(mc.arc.plane_steppers);
   mc.arc.plane_steppers[axis_1] = 1;
   mc.arc.plane_steppers[axis_2] = 1;
   // And map the local coordinate system of the arc onto the tool axes of the selected plane
   mc.arc.axis_x = axis_1;
   mc.arc.axis_y = axis_2;
-  // mm/second -> microseconds/step. Assumes all axes have the same steps/mm as the x axis
-  mc.pace = 
-    ONE_MINUTE_OF_MICROSECONDS / (feed_rate * X_STEPS_PER_MM);
+  // The amount of steppings performed while tracing a full circle is equal to the sum of sides in a 
+  // square inscribed in the circle. We use this to estimate the amount of steps as if this arc was a full circle:
+  uint32_t steps_in_full_circle = round(radius_steps * 4 * (1/sqrt(2)));
+  // We then calculate the millimeters of travel along the circumference of that same full circle
+  double millimeters_circumference = 2*radius*M_PI;
+  // Then we calculate the microseconds between each step as if we will trace the full circle.
+  // It doesn't matter what fraction of the circle we are actuallyt going to trace. The pace is the same.
+	mc.pace = 
+	  round(((millimeters_circumference * ONE_MINUTE_OF_MICROSECONDS) / feed_rate) / steps_in_full_circle);	  
   mc.arc.incomplete = true;
 }
 
@@ -279,7 +290,6 @@ void execute_arc()
   uint32_t start_x = mc.arc.x;
   uint32_t start_y = mc.arc.y;
   int dx, dy; // Trace directions
-  int8_t direction[3];
 
   // mc.mode is set to 0 (MC_MODE_AT_REST) when target is reached
   while(mc.arc.incomplete)
@@ -289,9 +299,9 @@ void execute_arc()
 
     // Take dx and dy which are local to the arc being generated and map them on to the 
     // selected tool-space-axes for the current arc.
-    direction[mc.arc.axis_x] = dx;
-    direction[mc.arc.axis_y] = dy;
-    set_stepper_directions(direction);
+    mc.arc.direction[mc.arc.axis_x] = dx;
+    mc.arc.direction[mc.arc.axis_y] = dy;
+    set_stepper_directions(mc.arc.direction);
 
     if (abs(mc.arc.x)<abs(mc.arc.y)) {
       step_arc_along_x(dx,dy);    
@@ -303,9 +313,7 @@ void execute_arc()
   // Update the tool position to the new actual position
   mc.position[mc.arc.axis_x] += mc.arc.x-start_x;
   mc.position[mc.arc.axis_y] += mc.arc.y-start_y;
-  // Because of rounding errors we might be off by a step or two. Adjust for this
-    // To be implemented
-  //void prepare_linear_motion(uint32_t x, uint32_t y, uint32_t z, float feed_rate, int invert_feed_rate)
+  // Todo: Because of rounding errors we might still be off by a step or two. 
   mc.mode = MC_MODE_AT_REST;  
 }
 
@@ -323,8 +331,8 @@ void execute_go_home()
 }
 
 void mc_execute() {
-//  st_set_pace(mc.pace);
-  printByte('~');
+  st_set_pace(mc.pace);
+  sp_send_execution_marker();
   while(mc.mode) { // Loop because one task might start another task
     switch(mc.mode) {
       case MC_MODE_AT_REST: break;
