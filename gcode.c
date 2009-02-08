@@ -77,18 +77,16 @@
 #define SPINDLE_DIRECTION_CW 0
 #define SPINDLE_DIRECTION_CCW 1
 
-// Using packed bit fields saves a "lot" of invaluable SRAM, but bumps the compiled size of this unit
-// by 100 bytes. If we get tight on code space, consider using byte aligned values again.
 struct ParserState {
   uint32_t line_number;
-  uint8_t status_code:5;
+  uint8_t status_code;
 
-  uint8_t motion_mode:3;         /* {G0, G1, G2, G3, G38.2, G80, G81, G82, G83, G84, G85, G86, G87, G88, G89} */
-  uint8_t inverse_feed_rate_mode:1; /* G93, G94 */
-  uint8_t inches_mode:1;         /* 0 = millimeter mode, 1 = inches mode {G20, G21} */
-  uint8_t absolute_mode:1;       /* 0 = relative motion, 1 = absolute motion {G90, G91} */
-  uint8_t program_flow:2;
-  int spindle_direction:2;
+  uint8_t motion_mode;         /* {G0, G1, G2, G3, G38.2, G80, G81, G82, G83, G84, G85, G86, G87, G88, G89} */
+  uint8_t inverse_feed_rate_mode; /* G93, G94 */
+  uint8_t inches_mode;         /* 0 = millimeter mode, 1 = inches mode {G20, G21} */
+  uint8_t absolute_mode;       /* 0 = relative motion, 1 = absolute motion {G90, G91} */
+  uint8_t program_flow;
+  int spindle_direction;
   double feed_rate;              /* Millimeters/second */
   double position[3];    /* Where the interpreter considers the tool to be at this point in the code */
   uint8_t tool;
