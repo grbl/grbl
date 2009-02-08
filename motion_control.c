@@ -34,13 +34,10 @@
 #include <stdlib.h>
 #include "nuts_bolts.h"
 #include "stepper.h"
-#include "serial_protocol.h"
-
-#include "wiring_serial.h"
 
 #define ONE_MINUTE_OF_MICROSECONDS 60000000.0
 
-int8_t mode;            // The current operation mode
+volatile int8_t mode;   // The current operation mode
 int32_t position[3];    // The current position of the tool in absolute steps
 uint8_t direction_bits; // The direction bits to be used with any upcoming step-instruction
 
@@ -51,7 +48,7 @@ void prepare_linear_motion(uint32_t x, uint32_t y, uint32_t z, float feed_rate, 
 
 void mc_init()
 {
-  mode = 0;
+  mode = MC_MODE_AT_REST;
   clear_vector(position);
 }
 
@@ -63,7 +60,7 @@ void mc_dwell(uint32_t milliseconds)
   mode = MC_MODE_AT_REST; 
 }
 
-// Prepare for linear motion in absolute millimeter coordinates. Feed rate given in millimeters/second
+// Execute linear motion in absolute millimeter coordinates. Feed rate given in millimeters/second
 // unless invert_feed_rate is true. Then the feed_rate states the number of seconds for the whole movement.
 void mc_line(double x, double y, double z, float feed_rate, int invert_feed_rate)
 {
@@ -76,12 +73,12 @@ void mc_line(double x, double y, double z, float feed_rate, int invert_feed_rate
     counter[3],      // A counter used in the bresenham algorithm for line plotting
     maximum_steps;   // The larges absolute step-count of any axis
   
+  
+  // Setup
+
   target[X_AXIS] = x*X_STEPS_PER_MM;
   target[Y_AXIS] = y*Y_STEPS_PER_MM;
   target[Z_AXIS] = z*Z_STEPS_PER_MM;
-  
-  mode = MC_MODE_LINEAR;
-
   // Determine direction and travel magnitude for each axis
   for(axis = X_AXIS; axis <= Z_AXIS; axis++) {
   	step_count[axis] = abs(target[axis] - position[axis]);
@@ -91,11 +88,7 @@ void mc_line(double x, double y, double z, float feed_rate, int invert_feed_rate
 	maximum_steps = max(step_count[Z_AXIS], 
 	  max(step_count[X_AXIS], step_count[Y_AXIS]));
   // Nothing to do?
-	if (maximum_steps == 0) 
-	{ 
-    mode = MC_MODE_AT_REST;
-    return; 
-	}
+	if (maximum_steps == 0) { return; }
 	// Set up a neat counter for each axis
   for(axis = X_AXIS; axis <= Z_AXIS; axis++) {
     counter[axis] = -maximum_steps/2;
@@ -118,6 +111,8 @@ void mc_line(double x, double y, double z, float feed_rate, int invert_feed_rate
   
   // Execution
 
+  mode = MC_MODE_LINEAR;
+  
   while(mode) {
   	// Trace the line
     step_bits = 0;
@@ -142,7 +137,7 @@ void mc_line(double x, double y, double z, float feed_rate, int invert_feed_rate
 }
 
 
-// Prepare an arc. theta == start angle, angular_travel == number of radians to go along the arc,
+// Execute an arc. theta == start angle, angular_travel == number of radians to go along the arc,
 // positive angular_travel means clockwise, negative means counterclockwise. Radius == the radius of the
 // circle in millimeters. axis_1 and axis_2 selects the plane in tool space. 
 // ISSUE: The arc interpolator assumes all axes have the same steps/mm as the X axis.
@@ -160,14 +155,15 @@ void mc_arc(double theta, double angular_travel, double radius, int axis_1, int 
   int32_t error, x2, y2;                           // error is always == (x**2 + y**2 - radius**2), 
                                                    // x2 is always 2*x, y2 is always 2*y
   uint8_t axis_x, axis_y;                          // maps the arc axes to stepper axes
-  int8_t diagonal_bits;                        // A bitmask with the stepper bits for both selected axes set
+  int8_t diagonal_bits;                            // A bitmask with the stepper bits for both selected axes set
   int incomplete;                                  // True if the arc has not reached its target yet
   
   int dx, dy; // Trace directions
 
+  // Setup
+  
   uint32_t radius_steps = round(radius*X_STEPS_PER_MM);
 	if(radius_steps == 0) { return; }
-  mode = MC_MODE_ARC;
   // Determine angular direction (+1 = clockwise, -1 = counterclockwise)
   angular_direction = signof(angular_travel);
   // Calculate the initial position and target position in the local coordinate system of the arc
@@ -192,69 +188,63 @@ void mc_arc(double theta, double angular_travel, double radius, int axis_1, int 
   // And map the local coordinate system of the arc onto the tool axes of the selected plane
   axis_x = axis_1;
   axis_y = axis_2;
-  // The amount of steppings performed while tracing a full circle is equal to the sum of sides in a 
-  // square inscribed in the circle. We use this to estimate the amount of steps as if this arc was a full circle:
+  // The amount of steppings performed while tracing a half circle is equal to the sum of sides in a 
+  // square inscribed in the circle. We use this to estimate the amount of steps as if this arc was a half circle:
   uint32_t steps_in_half_circle = round(radius_steps * 4 * (1/sqrt(2)));
-  // We then calculate the millimeters of travel along the circumference of that same full circle
+  // We then calculate the millimeters of travel along the circumference of that same half circle
   double millimeters_half_circumference = radius*M_PI;
   // Then we calculate the microseconds between each step as if we will trace the full circle.
-  // It doesn't matter what fraction of the circle we are actuallyt going to trace. The pace is the same.
-  st_buffer_pace(((millimeters_half_circumference * ONE_MINUTE_OF_MICROSECONDS) / feed_rate) / steps_in_half_circle);
-    
-  incomplete = true;
+  // It doesn't matter what fraction of the circle we are actually going to trace. The pace is the same.
+  st_buffer_pace(((millimeters_half_circumference * ONE_MINUTE_OF_MICROSECONDS) / feed_rate) / steps_in_half_circle);    
 
   // Execution
+
+  mode = MC_MODE_ARC;
   
+  incomplete = true;
   while(incomplete)
   {
     dx = (y!=0) ?  signof(y) * angular_direction : -signof(x);
     dy = (x!=0) ? -signof(x) * angular_direction : -signof(y);
-
     // Take dx and dy which are local to the arc being generated and map them on to the 
     // selected tool-space-axes for the current arc.
     direction[axis_x] = dx;
     direction[axis_y] = dy;
     set_stepper_directions(direction);
-
+    // Check which axis will be "major" for this stepping
     if (abs(x)<abs(y)) {
-      // Step arc horizontally
-      x+=dx;
+      // Step arc horizontally      
       error += 1+x2*dx;
-      x2 += 2*dx;
+      x+=dx; x2 += 2*dx;
       diagonal_error = error + 1 + y2*dy;
       if(abs(error) >= abs(diagonal_error)) {
-        y += dy;
-        y2 += 2*dy;
+        y += dy; y2 += 2*dy;
         error = diagonal_error;
         step_steppers(diagonal_bits); // step diagonal
       } else {
         step_axis(axis_x); // step straight
       }
     } else {      
-      // Step arc vertically
-      y+=dy; 
+      // Step arc vertically      
       error += 1+y2*dy; 
-      y2 += 2*dy; 
+      y+=dy; y2 += 2*dy; 
       diagonal_error = error + 1 + x2*dx; 
       if(abs(error) >= abs(diagonal_error)) { 
-        x += dx; 
-        x2 += 2*dx; 
+        x += dx; x2 += 2*dx; 
         error = diagonal_error; 
         step_steppers(diagonal_bits); // step diagonal
       } else {
         step_axis(axis_y); // step straight
       }
-    }
-    
-    // Check if target has been reached
+    }    
+    // Check if target has been reached. Todo: Simplify/optimize/clarify
     if ((x * target_direction_y >= 
             target_x * target_direction_y) && 
            (y * target_direction_x <= 
             target_y * target_direction_x)) 
     { if ((signof(x) == signof(target_x)) && (signof(y) == signof(target_y))) 
       { incomplete = false; } }    
-  }
-  
+  }  
   // Update the tool position to the new actual position
   position[axis_x] += x-start_x;
   position[axis_y] += y-start_y;
@@ -275,7 +265,7 @@ int mc_status()
   return(mode);
 }
 
-// Set the direction pins for the stepper motors according to the provided vector. 
+// Set the direction bits for the stepper motors according to the provided vector. 
 // direction is an array of three 8 bit integers representing the direction of 
 // each motor. The values should be -1 (reverse), 0 or 1 (forward).
 void set_stepper_directions(int8_t *direction) 
@@ -302,16 +292,5 @@ inline void step_steppers(uint8_t bits)
 // Step only one motor
 inline void step_axis(uint8_t axis) 
 {
-  switch (axis) {
-    case X_AXIS: st_buffer_step(direction_bits | (1<<X_STEP_BIT)); break;
-    case Y_AXIS: st_buffer_step(direction_bits | (1<<Y_STEP_BIT)); break;
-    case Z_AXIS: st_buffer_step(direction_bits | (1<<Z_STEP_BIT)); break;
-  }
+  st_buffer_step(direction_bits | st_bit_for_stepper(axis));
 }
-
-// Wait until all operations are completed
-void mc_wait()
-{
-  st_synchronize();
-}
-

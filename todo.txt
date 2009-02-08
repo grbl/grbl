@@ -1,13 +1,12 @@
+* Support helical interpolation
 * Optimize arc target detection code utilizing the primary axis of travel
-* Use bitmasks, not vectors to build steps in motion_control
-* Arcs might be a step or two off because of FP gotchas. Must add a little nudge in the end there
-* Generalize feed rate code and support inverse feed rate for arcs
+* Arcs might be a step or two off because of FP gotchas. Must add a little nudge in the end there?
+* Support inverse feed rate for arcs
 * Implement homing cycle in stepper.c
 * Implement limit switch support in stepper.c (use port-triggered interrupts?)
 * How on earth am I going to deal with arcs in setups that have different steps/mm on each axis? Must 
   support elipses?! Oh no.
-* Support helical interpolation
-* Eliminate need for circle_x and circle_y in step_arc_along_
+* Eliminate need for x and y in step_arc_along_
 * Tool table
 * Tool length offsets
 * Tool change M6

@@ -54,8 +54,6 @@
 #include "errno.h"
 #include "serial_protocol.h"
 
-#include "wiring_serial.h"
-
 #define NEXT_ACTION_DEFAULT 0
 #define NEXT_ACTION_DWELL 1
 #define NEXT_ACTION_GO_HOME 2
@@ -195,11 +193,11 @@ uint8_t gc_execute_line(char *line) {
   // If there were any errors parsing this line, we will return right away with the bad news
   if (gc.status_code) { return(gc.status_code); }
 
-  // Pass 2: Parameters
   counter = 0;
   clear_vector(offset);
   memcpy(target, gc.position, sizeof(target)); // target = gc.position
 
+  // Pass 2: Parameters
   while(next_statement(&letter, &value, line, &counter)) {
     int_value = trunc(value);
     unit_converted_value = to_millimeters(value);
@@ -313,7 +311,6 @@ uint8_t gc_execute_line(char *line) {
         // If r is smaller than d, the arc is now traversing the complex plane beyond the reach of any
         // real CNC, and thus - for practical reasons - we will terminate promptly:
         if(isnan(h_x2_div_d)) { FAIL(GCSTATUS_FLOATING_POINT_ERROR); return(gc.status_code); }
-
         // Invert the sign of h_x2_div_d if the circle is counter clockwise (see sketch below)
         if (gc.motion_mode == MOTION_MODE_CCW_ARC) { h_x2_div_d = -h_x2_div_d; }
         
@@ -336,10 +333,9 @@ uint8_t gc_execute_line(char *line) {
 
         // Negative R is g-code-alese for "I want a circle with more than 180 degrees of travel" (go figure!), 
         // even though it is advised against ever generating such circles in a single line of g-code. By 
-        // inverting the sign of h_x2_div_d the center of the circles is placed on the opposide side of the line of
+        // inverting the sign of h_x2_div_d the center of the circles is placed on the opposite side of the line of
         // travel and thus we get the unadvisably long circles as prescribed.
-        if (r < 0) { h_x2_div_d = -h_x2_div_d; }
-        
+        if (r < 0) { h_x2_div_d = -h_x2_div_d; }        
         // Complete the operation by calculating the actual center of the arc
         offset[gc.plane_axis_0] = (x-(y*h_x2_div_d))/2;
         offset[gc.plane_axis_1] = (y+(x*h_x2_div_d))/2;
@@ -375,12 +371,7 @@ uint8_t gc_execute_line(char *line) {
       }
       // Find the radius
       double radius = hypot(offset[gc.plane_axis_0], offset[gc.plane_axis_1]);
-      // Prepare the arc
-      // printString("mc_arc(");
-      // printInteger(trunc(theta_start/M_PI*180)); printByte(',');
-      // printInteger(trunc(angular_travel/M_PI*180)); printByte(',');
-      // printInteger(trunc(radius));
-      // printByte(')');
+      // Trace the arc
       mc_arc(theta_start, angular_travel, radius, gc.plane_axis_0, gc.plane_axis_1, gc.feed_rate);        
       break;
     }    

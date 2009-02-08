@@ -54,13 +54,8 @@ void mc_go_home();
 // quiescence call mc_wait()
 void mc_execute();
 
-// Wait until all operations complete
-void mc_wait();
-
 // Check motion control status. result == 0: the system is idle. result > 0: the system is busy,
 // result < 0: the system is in an error state.
 int mc_status();
-
-void printCurrentPosition();
 
 #endif

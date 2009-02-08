@@ -32,6 +32,9 @@
 #define TICKS_PER_MICROSECOND (F_CPU/1000000)
 #define STEP_BUFFER_SIZE 100
 
+// A marker used to notify the stepper handler of a pace change
+#define PACE_CHANGE_MARKER 0xff
+
 volatile uint8_t step_buffer[STEP_BUFFER_SIZE]; // A buffer for step instructions
 volatile int step_buffer_head = 0;
 volatile int step_buffer_tail = 0;
@@ -43,25 +46,26 @@ uint8_t echo_steps = true;
 
 void config_pace_timer(uint32_t microseconds);
 
-// This timer interrupt is executed at the pace set with set_pace. It pops one instruction from
+// This timer interrupt is executed at the pace set with st_buffer_pace. It pops one instruction from
 // the step_buffer, executes it. Then it starts timer2 in order to reset the motor port after
 // five microseconds.
 SIGNAL(SIG_OUTPUT_COMPARE1A)
 {
   if (step_buffer_head != step_buffer_tail) {
-    if(step_buffer[step_buffer_tail] == 0xff) {
-      // If this is not a step-instruction, but a pace-marker: change pace
+    uint8_t popped = step_buffer[step_buffer_tail]; 
+    if(popped == PACE_CHANGE_MARKER) {
+      // This is not a step-instruction, but a pace-change-marker: change pace
       config_pace_timer(next_pace);
       next_pace = 0;
     } else {
       // Set the direction pins a nanosecond or two before you step the steppers
-      STEPPING_PORT = (STEPPING_PORT & ~DIRECTION_MASK) | (step_buffer[step_buffer_tail] & DIRECTION_MASK);
+      STEPPING_PORT = (STEPPING_PORT & ~DIRECTION_MASK) | (popped & DIRECTION_MASK);
       // Then pulse the stepping pins
-      STEPPING_PORT = (STEPPING_PORT & ~STEP_MASK) | step_buffer[step_buffer_tail];
+      STEPPING_PORT = (STEPPING_PORT & ~STEP_MASK) | popped;
       // Reset and start timer 2 which will reset the motor port after 5 microsecond
-      TCNT2 = 0; // reset counter
-      OCR2A = 5*TICKS_PER_MICROSECOND; // set the time
-      TIMSK2 |= (1<<OCIE2A); // enable interrupt
+      TCNT2 = 0;                       // reset counter
+      OCR2A = 5*TICKS_PER_MICROSECOND; // set the trigger time
+      TIMSK2 |= (1<<OCIE2A);           // enable interrupt
     }
     // move the step buffer tail to the next instruction
     step_buffer_tail = (step_buffer_tail + 1) % STEP_BUFFER_SIZE;
@@ -101,7 +105,7 @@ void st_init()
   
   sei();
   
-	// start off with a slow pace
+	// start off with a mellow pace
   config_pace_timer(20000);
   st_start();
 }
@@ -163,12 +167,12 @@ void st_buffer_pace(uint32_t microseconds)
 {
   // Do nothing if the pace in unchanged
   if (current_pace == microseconds) { return; }
-  // If the one-element pace buffer is full, flush step buffer
-  if (next_pace != 0) {
-    st_synchronize();
+  // If the single-element pace "buffer" is full, sleep until it is popped
+  while (next_pace != 0) {
+    sleep_mode();
   }  
   next_pace = microseconds;
-  st_buffer_step(0xff);
+  st_buffer_step(PACE_CHANGE_MARKER); // Place a pace-change marker in the step-buffer
 }
 
 uint8_t st_bit_for_stepper(int axis) {
