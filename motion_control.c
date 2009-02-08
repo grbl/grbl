@@ -38,7 +38,7 @@
 
 #include "wiring_serial.h"
 
-#define ONE_MINUTE_OF_MICROSECONDS 60000000
+#define ONE_MINUTE_OF_MICROSECONDS 60000000.0
 
 // Parameters when mode is MC_MODE_ARC
 struct LinearMotionParameters {
@@ -87,16 +87,6 @@ inline void step_steppers(uint8_t *enabled);
 inline void step_axis(uint8_t axis);
 void prepare_linear_motion(uint32_t x, uint32_t y, uint32_t z, float feed_rate, int invert_feed_rate);
 
-// void printCurrentPosition() {
-//   int axis;
-//   printString("[ ");  
-//   for(axis=X_AXIS; axis<=Z_AXIS; axis++) {
-//     printInteger(trunc(mc.position[axis]*100));
-//     printByte(' ');
-//   }
-//   printString("]\n\r");  
-// }
-// 
 void mc_init()
 {
 	// Initialize state variables
@@ -135,6 +125,7 @@ void prepare_linear_motion(uint32_t x, uint32_t y, uint32_t z, float feed_rate, 
   // Find the magnitude of the axis with the longest travel
 	mc.linear.maximum_steps = max(mc.linear.step_count[Z_AXIS], 
 	  max(mc.linear.step_count[X_AXIS], mc.linear.step_count[Y_AXIS]));
+	if(mc.linear.maximum_steps == 0) { return; }
   // Nothing to do?
 	if ((mc.linear.maximum_steps) == 0) 
 	{ 
@@ -154,13 +145,13 @@ void prepare_linear_motion(uint32_t x, uint32_t y, uint32_t z, float feed_rate, 
   } else {
   	// Ask old Phytagoras to estimate how many mm our next move is going to take us:
   	double millimeters_to_travel = 
-      ceil(sqrt(pow((mc.linear.step_count[X_AXIS]),2) + 
-                pow((mc.linear.step_count[Y_AXIS]),2) + 
-                pow((mc.linear.step_count[Z_AXIS]),2)));
+      sqrt(pow(X_STEPS_PER_MM*mc.linear.step_count[X_AXIS],2) + 
+          pow(Y_STEPS_PER_MM*mc.linear.step_count[Y_AXIS],2) + 
+          pow(Z_STEPS_PER_MM*mc.linear.step_count[Z_AXIS],2));
     // Calculate the microseconds between steps that we should wait in order to travel the 
     // designated amount of millimeters in the amount of steps we are going to generate
   	mc.pace = 
-  	  round(((millimeters_to_travel * ONE_MINUTE_OF_MICROSECONDS) / feed_rate) / mc.linear.maximum_steps);	  
+      ((millimeters_to_travel * ONE_MINUTE_OF_MICROSECONDS) / feed_rate) / mc.linear.maximum_steps;	
   }
 }
 
@@ -201,6 +192,7 @@ void mc_arc(double theta, double angular_travel, double radius, int axis_1, int 
 {  
   memset(&mc.arc, 0, sizeof(mc.arc));
   uint32_t radius_steps = round(radius*X_STEPS_PER_MM);
+	if(radius_steps == 0) { return; }
   mc.mode = MC_MODE_ARC;
   // Determine angular direction (+1 = clockwise, -1 = counterclockwise)
   mc.arc.angular_direction = signof(angular_travel);
@@ -229,13 +221,13 @@ void mc_arc(double theta, double angular_travel, double radius, int axis_1, int 
   mc.arc.axis_y = axis_2;
   // The amount of steppings performed while tracing a full circle is equal to the sum of sides in a 
   // square inscribed in the circle. We use this to estimate the amount of steps as if this arc was a full circle:
-  uint32_t steps_in_full_circle = round(radius_steps * 4 * (1/sqrt(2)));
+  uint32_t steps_in_half_circle = round(radius_steps * 4 * (1/sqrt(2)));
   // We then calculate the millimeters of travel along the circumference of that same full circle
-  double millimeters_circumference = 2*radius*M_PI;
+  double millimeters_half_circumference = radius*M_PI;
   // Then we calculate the microseconds between each step as if we will trace the full circle.
   // It doesn't matter what fraction of the circle we are actuallyt going to trace. The pace is the same.
 	mc.pace = 
-	  round(((millimeters_circumference * ONE_MINUTE_OF_MICROSECONDS) / feed_rate) / steps_in_full_circle);	  
+    ((millimeters_half_circumference * ONE_MINUTE_OF_MICROSECONDS) / feed_rate) / steps_in_half_circle;	
   mc.arc.incomplete = true;
 }
 
@@ -244,7 +236,8 @@ void mc_arc(double theta, double angular_travel, double radius, int axis_1, int 
           mc.arc.target_x * mc.arc.target_direction_y) && \
          (mc.arc.y * mc.arc.target_direction_x <= \
           mc.arc.target_y * mc.arc.target_direction_x)) \
-  { mc.arc.incomplete = false; }
+  { if ((signof(mc.arc.x) == signof(mc.arc.target_x)) && (signof(mc.arc.y) == signof(mc.arc.target_y))) \
+    { mc.arc.incomplete = false; } }
 
 // Internal method used by execute_arc to trace horizontally in the general direction provided by dx and dy
 void step_arc_along_x(int8_t dx, int8_t dy) 

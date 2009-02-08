@@ -83,7 +83,7 @@ void sp_process()
   char c;
   while((c = serialRead()) != -1) 
   {
-    if(c == '\r') {  // Line is complete. Then execute!
+    if((c < 32)) {  // Line is complete. Then execute!
       line[line_counter] = 0;
       gc_execute_line(line);
       line_counter = 0;

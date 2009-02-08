@@ -244,7 +244,7 @@ uint8_t gc_execute_line(char *line) {
     switch (gc.motion_mode) {
       case MOTION_MODE_CANCEL: break;
       case MOTION_MODE_RAPID_LINEAR: case MOTION_MODE_LINEAR:
-      if (inverse_feed_rate) {
+      if (gc.inverse_feed_rate_mode) {
         mc_linear_motion(target[X_AXIS], target[Y_AXIS], target[Z_AXIS], 
           inverse_feed_rate, true);
       } else {
@@ -309,37 +309,40 @@ uint8_t gc_execute_line(char *line) {
         double x = target[gc.plane_axis_0]-gc.position[gc.plane_axis_0];
         double y = target[gc.plane_axis_1]-gc.position[gc.plane_axis_1];
         clear_vector(&offset);
-        double h_x2_div_d = sqrt(4 * r*r - x*x - y*y)/hypot(x,y); // == h * 2 / d
+        double h_x2_div_d = -sqrt(4 * r*r - x*x - y*y)/hypot(x,y); // == -(h * 2 / d)
         // If r is smaller than d, the arc is now traversing the complex plane beyond the reach of any
-        // earthly CNC, and thus - for practical reasons - we will terminate promptly:
+        // real CNC, and thus - for practical reasons - we will terminate promptly:
         if(isnan(h_x2_div_d)) { FAIL(GCSTATUS_FLOATING_POINT_ERROR); return(gc.status_code); }
 
-        /* The anti-clockwise circle lies to the right of the target direction. When offset is positive,
+        // Invert the sign of h_x2_div_d if the circle is counter clockwise (see sketch below)
+        if (gc.motion_mode == MOTION_MODE_CCW_ARC) { h_x2_div_d = -h_x2_div_d; }
+        
+        /* The counter clockwise circle lies to the left of the target direction. When offset is positive,
            the left hand circle will be generated - when it is negative the right hand circle is generated.
            
            
-                                                         T
+                                                         T  <-- Target position
                                                          
-                                                         ^
-                                                         |
-                                                         |
+                                                         ^ 
+              Clockwise circles with this center         |          Clockwise circles with this center will have
+              will have > 180 deg of angular travel      |          < 180 deg of angular travel, which is a good thing!
+                                               \         |          /   
   center of arc when h_x2_div_d is positive ->  x <----- | -----> x <- center of arc when h_x2_div_d is negative
                                                          |
                                                          |
                                                          
-                                                         C                                                     */
-        
-        if (gc.motion_mode == MOTION_MODE_CCW_ARC) { h_x2_div_d = -h_x2_div_d; }
+                                                         C  <-- Current position                                 */
+                
+
+        // Negative R is g-code-alese for "I want a circle with more than 180 degrees of travel" (go figure!), 
+        // even though it is advised against ever generating such circles in a single line of g-code. By 
+        // inverting the sign of h_x2_div_d the center of the circles is placed on the opposide side of the line of
+        // travel and thus we get the unadvisably long circles as prescribed.
+        if (r < 0) { h_x2_div_d = -h_x2_div_d; }
         
         // Complete the operation by calculating the actual center of the arc
         offset[gc.plane_axis_0] = (x-(y*h_x2_div_d))/2;
         offset[gc.plane_axis_1] = (y+(x*h_x2_div_d))/2;
-        
-        // printByte('(');
-        // printInteger(trunc(offset[gc.plane_axis_0])); printByte(',');
-        // printInteger(trunc(offset[gc.plane_axis_1]));
-        // printByte(')');
-        
       } 
       
       /*
@@ -376,7 +379,7 @@ uint8_t gc_execute_line(char *line) {
       printString("mc_arc(");
       printInteger(trunc(theta_start/M_PI*180)); printByte(',');
       printInteger(trunc(angular_travel/M_PI*180)); printByte(',');
-      printInteger(trunc(radius)); printByte('…');
+      printInteger(trunc(radius));
       printByte(')');
       mc_arc(theta_start, angular_travel, radius, gc.plane_axis_0, gc.plane_axis_1, gc.feed_rate);        
       break;      

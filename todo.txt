@@ -1,3 +1,4 @@
+* Optimize arc target detection code utilizing the primary axis of travel
 * Use bitmasks, not vectors to build steps in motion_control
 * Arcs might be a step or two off because of FP gotchas. Must add a little nudge in the end there
 * Generalize feed rate code and support inverse feed rate for arcs
