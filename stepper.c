@@ -108,7 +108,8 @@ void st_init()
 
 void st_buffer_step(uint8_t motor_port_bits)
 {
-  if (echo_steps) {
+  if (echo_steps && !(motor_port_bits&0x80)) {
+    // Echo steps. If bit 7 is set, the message is internal to Grbl and should not be echoed
     printByte('!'+motor_port_bits);
   }
 
@@ -168,6 +169,15 @@ void st_buffer_pace(uint32_t microseconds)
   }  
   next_pace = microseconds;
   st_buffer_step(0xff);
+}
+
+uint8_t st_bit_for_stepper(int axis) {
+  switch(axis) {
+    case X_AXIS: return(1<<X_STEP_BIT);
+    case Y_AXIS: return(1<<Y_STEP_BIT);
+    case Z_AXIS: return(1<<Z_STEP_BIT);
+  }
+  return(0);
 }
 
 void config_pace_timer(uint32_t microseconds)

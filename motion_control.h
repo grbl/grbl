@@ -34,7 +34,7 @@ void mc_init();
 
 // Prepare for linear motion in absolute millimeter coordinates. Feed rate given in millimeters/second
 // unless invert_feed_rate is true. Then the feed_rate states the number of seconds for the whole movement.
-void mc_linear_motion(double x, double y, double z, float feed_rate, int invert_feed_rate);
+void mc_line(double x, double y, double z, float feed_rate, int invert_feed_rate);
 
 // Prepare an arc. theta == start angle, angular_travel == number of radians to go along the arc,
 // positive angular_travel means clockwise, negative means counterclockwise. Radius == the radius of the

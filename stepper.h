@@ -32,8 +32,11 @@
 // Initialize and start the stepper motor subsystem
 void st_init();
 
-// Set the rate steps are taken from the buffer and executed
-void st_set_pace(uint32_t microseconds);
+// Returns a bitmask with the stepper bit for the given axis set
+uint8_t st_bit_for_stepper(int axis);
+
+// Buffer a change in the rate steps are taken from the buffer and executed
+void st_buffer_pace(uint32_t microseconds);
 
 // Buffer a new instruction for the steppers
 void st_buffer_step(uint8_t motor_port_bits);

@@ -52,6 +52,7 @@
 #include "spindle_control.h"
 #include "geometry.h"
 #include "errno.h"
+#include "serial_protocol.h"
 
 #include "wiring_serial.h"
 
@@ -126,7 +127,6 @@ void select_plane(uint8_t axis_0, uint8_t axis_1)
 // characters and signed floats (no whitespace).
 uint8_t gc_execute_line(char *line) {
   int counter = 0;  
-  int requires_nudge = false;
   char letter;
   double value;
   double unit_converted_value;
@@ -238,6 +238,7 @@ uint8_t gc_execute_line(char *line) {
   }
   
   // Perform any physical actions
+  sp_send_execution_marker();
   switch (next_action) {
     case NEXT_ACTION_GO_HOME: mc_go_home(); break;
     case NEXT_ACTION_DWELL: mc_dwell(trunc(p*1000)); break;
@@ -246,10 +247,10 @@ uint8_t gc_execute_line(char *line) {
       case MOTION_MODE_CANCEL: break;
       case MOTION_MODE_RAPID_LINEAR: case MOTION_MODE_LINEAR:
       if (gc.inverse_feed_rate_mode) {
-        mc_linear_motion(target[X_AXIS], target[Y_AXIS], target[Z_AXIS], 
+        mc_line(target[X_AXIS], target[Y_AXIS], target[Z_AXIS], 
           inverse_feed_rate, true);
       } else {
-        mc_linear_motion(target[X_AXIS], target[Y_AXIS], target[Z_AXIS], 
+        mc_line(target[X_AXIS], target[Y_AXIS], target[Z_AXIS], 
           (gc.motion_mode == MOTION_MODE_LINEAR) ? gc.feed_rate : RAPID_FEEDRATE,
           false);
       }
@@ -383,17 +384,8 @@ uint8_t gc_execute_line(char *line) {
       // printInteger(trunc(radius));
       // printByte(')');
       mc_arc(theta_start, angular_travel, radius, gc.plane_axis_0, gc.plane_axis_1, gc.feed_rate);        
-      // Rounding errors means the arcing might not land us exactly where we wanted. Thats why this
-      // operation must be finalized with a linear nudge to the exact target spot.
-      requires_nudge = true;
       break;
     }    
-  }
-  
-  mc_execute();
-  if (requires_nudge) {
-    mc_linear_motion(target[X_AXIS], target[Y_AXIS], target[Z_AXIS], gc.feed_rate, false);
-    mc_execute();
   }
   
   // As far as the parser is concerned, the position is now == target. In reality the
