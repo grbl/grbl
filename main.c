@@ -40,7 +40,7 @@ int main(void)
   sp_init(); // initialize the serial protocol
   
   for(;;){
-//    sleep_mode();
+    sleep_mode();
     sp_process(); // process the serial protocol
   }
   return 0;   /* never reached */

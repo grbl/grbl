@@ -126,6 +126,7 @@ void select_plane(uint8_t axis_0, uint8_t axis_1)
 // characters and signed floats (no whitespace).
 uint8_t gc_execute_line(char *line) {
   int counter = 0;  
+  int requires_nudge = false;
   char letter;
   double value;
   double unit_converted_value;
@@ -376,17 +377,24 @@ uint8_t gc_execute_line(char *line) {
       // Find the radius
       double radius = hypot(offset[gc.plane_axis_0], offset[gc.plane_axis_1]);
       // Prepare the arc
-      printString("mc_arc(");
-      printInteger(trunc(theta_start/M_PI*180)); printByte(',');
-      printInteger(trunc(angular_travel/M_PI*180)); printByte(',');
-      printInteger(trunc(radius));
-      printByte(')');
+      // printString("mc_arc(");
+      // printInteger(trunc(theta_start/M_PI*180)); printByte(',');
+      // printInteger(trunc(angular_travel/M_PI*180)); printByte(',');
+      // printInteger(trunc(radius));
+      // printByte(')');
       mc_arc(theta_start, angular_travel, radius, gc.plane_axis_0, gc.plane_axis_1, gc.feed_rate);        
-      break;      
+      // Rounding errors means the arcing might not land us exactly where we wanted. Thats why this
+      // operation must be finalized with a linear nudge to the exact target spot.
+      requires_nudge = true;
+      break;
     }    
   }
   
   mc_execute();
+  if (requires_nudge) {
+    mc_linear_motion(target[X_AXIS], target[Y_AXIS], target[Z_AXIS], gc.feed_rate, false);
+    mc_execute();
+  }
   
   // As far as the parser is concerned, the position is now == target. In reality the
   // motion control system might still be processing the action and the real tool position

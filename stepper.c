@@ -35,9 +35,13 @@
 volatile uint8_t step_buffer[STEP_BUFFER_SIZE]; // A buffer for step instructions
 volatile int step_buffer_head = 0;
 volatile int step_buffer_tail = 0;
+volatile uint32_t current_pace;
+volatile uint32_t next_pace = 0;
 
 uint8_t stepper_mode = STEPPER_MODE_STOPPED;
 uint8_t echo_steps = true;
+
+void config_pace_timer(uint32_t microseconds);
 
 // This timer interrupt is executed at the pace set with set_pace. It pops one instruction from
 // the step_buffer, executes it. Then it starts timer2 in order to reset the motor port after
@@ -45,14 +49,20 @@ uint8_t echo_steps = true;
 SIGNAL(SIG_OUTPUT_COMPARE1A)
 {
   if (step_buffer_head != step_buffer_tail) {
-    // Set the direction pins a nanosecond or two before you step the steppers
-    STEPPING_PORT = (STEPPING_PORT & ~DIRECTION_MASK) | (step_buffer[step_buffer_tail] & DIRECTION_MASK);
-    // Then pulse the stepping pins
-    STEPPING_PORT = (STEPPING_PORT & ~STEP_MASK) | step_buffer[step_buffer_tail];
-    // Reset and start timer 2 which will reset the motor port after 5 microsecond
-    TCNT2 = 0; // reset counter
-    OCR2A = 5*TICKS_PER_MICROSECOND; // set the time
-    TIMSK2 |= (1<<OCIE2A); // enable interrupt
+    if(step_buffer[step_buffer_tail] == 0xff) {
+      // If this is not a step-instruction, but a pace-marker: change pace
+      config_pace_timer(next_pace);
+      next_pace = 0;
+    } else {
+      // Set the direction pins a nanosecond or two before you step the steppers
+      STEPPING_PORT = (STEPPING_PORT & ~DIRECTION_MASK) | (step_buffer[step_buffer_tail] & DIRECTION_MASK);
+      // Then pulse the stepping pins
+      STEPPING_PORT = (STEPPING_PORT & ~STEP_MASK) | step_buffer[step_buffer_tail];
+      // Reset and start timer 2 which will reset the motor port after 5 microsecond
+      TCNT2 = 0; // reset counter
+      OCR2A = 5*TICKS_PER_MICROSECOND; // set the time
+      TIMSK2 |= (1<<OCIE2A); // enable interrupt
+    }
     // move the step buffer tail to the next instruction
     step_buffer_tail = (step_buffer_tail + 1) % STEP_BUFFER_SIZE;
   }
@@ -92,7 +102,7 @@ void st_init()
   sei();
   
 	// start off with a slow pace
-  st_set_pace(20000);
+  config_pace_timer(20000);
   st_start();
 }
 
@@ -148,11 +158,20 @@ inline void st_stop()
   stepper_mode = STEPPER_MODE_STOPPED;
 }
 
-void st_set_pace(uint32_t microseconds)
+void st_buffer_pace(uint32_t microseconds)
 {
-  printString("pace = ");
-  printInteger(microseconds);
-  printString("\n\r");
+  // Do nothing if the pace in unchanged
+  if (current_pace == microseconds) { return; }
+  // If the one-element pace buffer is full, flush step buffer
+  if (next_pace != 0) {
+    st_synchronize();
+  }  
+  next_pace = microseconds;
+  st_buffer_step(0xff);
+}
+
+void config_pace_timer(uint32_t microseconds)
+{
   uint32_t ticks = microseconds*TICKS_PER_MICROSECOND;
   uint16_t ceiling;
   uint16_t prescaler;
@@ -180,6 +199,7 @@ void st_set_pace(uint32_t microseconds)
   TCCR1B = (TCCR1B & ~(0x07<<CS10)) | ((prescaler+1)<<CS10);
   // Set ceiling
   OCR1A = ceiling;
+  current_pace = microseconds;
 }
 
 int check_limit_switches()

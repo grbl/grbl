@@ -60,7 +60,6 @@ struct ArcMotionParameters {
   int32_t error, x2, y2;                           // error is always == (x**2 + y**2 - radius**2), 
                                                    // x2 is always 2*x, y2 is always 2*y
   uint8_t axis_x, axis_y;                          // maps the arc axes to stepper axes
-  int32_t target[3];                               // The target position in absolute steps
   int8_t plane_steppers[3];                        // A vector with the steppers of axis_x and axis_y set to 1, the remaining 0
   int incomplete;                                  // True if the arc has not reached its target yet
 };
@@ -103,17 +102,11 @@ void mc_dwell(uint32_t milliseconds)
 // unless invert_feed_rate is true. Then the feed_rate states the number of seconds for the whole movement.
 void mc_linear_motion(double x, double y, double z, float feed_rate, int invert_feed_rate)
 {
-  prepare_linear_motion(trunc(x*X_STEPS_PER_MM), trunc(y*Y_STEPS_PER_MM), trunc(z*Z_STEPS_PER_MM), feed_rate, invert_feed_rate);
-}
-
-// Same as mc_linear_motion but accepts target in absolute step coordinates
-void prepare_linear_motion(uint32_t x, uint32_t y, uint32_t z, float feed_rate, int invert_feed_rate)
-{
   memset(&mc.linear, 0, sizeof(mc.arc));
   
-  mc.linear.target[X_AXIS] = x;
-  mc.linear.target[Y_AXIS] = y;
-  mc.linear.target[Z_AXIS] = z;
+  mc.linear.target[X_AXIS] = x*X_STEPS_PER_MM;
+  mc.linear.target[Y_AXIS] = y*Y_STEPS_PER_MM;
+  mc.linear.target[Z_AXIS] = z*Z_STEPS_PER_MM;
   
   mc.mode = MC_MODE_LINEAR;
   uint8_t axis; // loop variable
@@ -125,9 +118,8 @@ void prepare_linear_motion(uint32_t x, uint32_t y, uint32_t z, float feed_rate, 
   // Find the magnitude of the axis with the longest travel
 	mc.linear.maximum_steps = max(mc.linear.step_count[Z_AXIS], 
 	  max(mc.linear.step_count[X_AXIS], mc.linear.step_count[Y_AXIS]));
-	if(mc.linear.maximum_steps == 0) { return; }
   // Nothing to do?
-	if ((mc.linear.maximum_steps) == 0) 
+	if (mc.linear.maximum_steps == 0) 
 	{ 
     mc.mode = MC_MODE_AT_REST;
     return; 
@@ -306,8 +298,7 @@ void execute_arc()
   // Update the tool position to the new actual position
   mc.position[mc.arc.axis_x] += mc.arc.x-start_x;
   mc.position[mc.arc.axis_y] += mc.arc.y-start_y;
-  // Todo: Because of rounding errors we might still be off by a step or two. 
-  mc.mode = MC_MODE_AT_REST;  
+  mc.mode = MC_MODE_AT_REST;
 }
 
 void mc_go_home()
@@ -324,15 +315,17 @@ void execute_go_home()
 }
 
 void mc_execute() {
-  st_set_pace(mc.pace);
-  sp_send_execution_marker();
-  while(mc.mode) { // Loop because one task might start another task
-    switch(mc.mode) {
-      case MC_MODE_AT_REST: break;
-      case MC_MODE_DWELL: st_synchronize(); _delay_ms(mc.dwell_milliseconds); mc.mode = MC_MODE_AT_REST; break;
-      case MC_MODE_LINEAR: execute_linear_motion(); break;
-      case MC_MODE_ARC: execute_arc(); break;
-      case MC_MODE_HOME: execute_go_home(); break;
+  if (mc.mode != MC_MODE_AT_REST) {
+    st_buffer_pace(mc.pace);
+    sp_send_execution_marker();
+    while(mc.mode) { // Loop because one task might start another task
+      switch(mc.mode) {
+        case MC_MODE_AT_REST: break;
+        case MC_MODE_DWELL: st_synchronize(); _delay_ms(mc.dwell_milliseconds); mc.mode = MC_MODE_AT_REST; break;
+        case MC_MODE_LINEAR: execute_linear_motion(); break;
+        case MC_MODE_ARC: execute_arc(); break;
+        case MC_MODE_HOME: execute_go_home(); break;
+      }
     }
   }
 }
