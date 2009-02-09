@@ -240,7 +240,7 @@ void mc_arc(double theta, double angular_travel, double radius, int axis_1, int 
   
   // The amount of steppings performed while tracing a half circle is equal to the sum of sides in a 
   // square inscribed in the circle. We use this to estimate the amount of steps as if this arc was a half circle:
-  uint32_t steps_in_half_circle = round((4*radius_steps)/sqrt(2)));
+  uint32_t steps_in_half_circle = round((4*radius_steps)/sqrt(2));
   // We then calculate the millimeters of travel along the circumference of that same half circle
   double millimeters_half_circumference = radius*M_PI;
   // Then we calculate the microseconds between each step as if we will trace the full circle.
