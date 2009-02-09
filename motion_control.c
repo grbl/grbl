@@ -34,6 +34,9 @@
 #include <stdlib.h>
 #include "nuts_bolts.h"
 #include "stepper.h"
+#include "geometry.h"
+
+#include "wiring_serial.h"
 
 #define ONE_MINUTE_OF_MICROSECONDS 60000000.0
 
@@ -74,7 +77,7 @@ void mc_line(double x, double y, double z, float feed_rate, int invert_feed_rate
     maximum_steps;   // The larges absolute step-count of any axis
   
   
-  // Setup
+  // Setup ---------------------------------------------------------------------------------------------------
 
   target[X_AXIS] = x*X_STEPS_PER_MM;
   target[Y_AXIS] = y*Y_STEPS_PER_MM;
@@ -109,7 +112,7 @@ void mc_line(double x, double y, double z, float feed_rate, int invert_feed_rate
   	st_buffer_pace(((millimeters_to_travel * ONE_MINUTE_OF_MICROSECONDS) / feed_rate) / maximum_steps);	
   }
   
-  // Execution
+  // Execution -----------------------------------------------------------------------------------------------
 
   mode = MC_MODE_LINEAR;
   
@@ -152,8 +155,7 @@ void mc_arc(double theta, double angular_travel, double radius, int axis_1, int 
                                                    // local coordinate system of the arc-generator where [0,0] is the 
                                                    // center of the arc.
   int target_direction_x, target_direction_y;      // signof(target_x)*angular_direction precalculated for speed                                                 
-  int32_t error, x2, y2;                           // error is always == (x**2 + y**2 - radius**2), 
-                                                   // x2 is always 2*x, y2 is always 2*y
+  int32_t error;                                   // error is always == (x**2 + y**2 - radius**2),                                                    
   uint8_t axis_x, axis_y;                          // maps the arc axes to stepper axes
   int8_t diagonal_bits;                            // A bitmask with the stepper bits for both selected axes set
   int incomplete;                                  // True if the arc has not reached its target yet
@@ -164,6 +166,9 @@ void mc_arc(double theta, double angular_travel, double radius, int axis_1, int 
   
   uint32_t radius_steps = round(radius*X_STEPS_PER_MM);
 	if(radius_steps == 0) { return; }
+
+  // Setup arc interpolation --------------------------------------------------------------------------------
+
   // Determine angular direction (+1 = clockwise, -1 = counterclockwise)
   angular_direction = signof(angular_travel);
   // Calculate the initial position and target position in the local coordinate system of the arc
@@ -178,26 +183,71 @@ void mc_arc(double theta, double angular_travel, double radius, int axis_1, int 
   // <0 we are inside the arc, when it is >0 we are outside of the arc, and when it is 0 we 
   // are exactly on top of the arc.
   error = x*x + y*y - radius_steps*radius_steps;
-  // Because the error-value moves in steps of (+/-)2x+1 and (+/-)2y+1 we save a couple of multiplications
-  // by keeping track of the doubles of the arc coordinates at all times.
-  x2 = 2*x;
-  y2 = 2*y;   
   // Set up a vector with the steppers we are going to use tracing the plane of this arc
   diagonal_bits = st_bit_for_stepper(axis_1);
   diagonal_bits |= st_bit_for_stepper(axis_2);
   // And map the local coordinate system of the arc onto the tool axes of the selected plane
   axis_x = axis_1;
   axis_y = axis_2;
+  
+  // Estimate length of arc in steps -------------------------------------------------------------------------
+  
+  /*  
+    To support helical motion we need to know in advance how many steppings the arc will need. 
+    The calculations are based on the fact that we trace the circle by offsetting a square. The circle has
+    four "sides" or quadrants. For each quadrant we step mainly in one axis. The amount steps for one quarter of the 
+    circle (e.g. along the x axis with positive y) is equal to one side of a square inscribed in the circle we
+    are tracing.
+
+    Quadrants of the circle
+    
+    +---- 0 ----+    0 - y is always positive and |x| < |y|
+    |           |    1 - x is always positive and |x| > |y|
+    |           |    2 - y is always negative and |x| < |y|
+    3     +     1    3 - x is always negative and |x| > |y|
+    |           |
+    |           |    length of one side: 2*radius/sqrt(2)
+    +---- 2 ----+                    
+  */
+
+  int start_quadrant = quadrant_of_the_circle(start_x, start_y);
+  int target_quadrant = quadrant_of_the_circle(target_x, target_y);
+  uint32_t steps_to_travel=0;
+  // Is the start and target point in the same quadrant?
+  if (start_quadrant == target_quadrant && (abs(angular_travel) <= (M_PI/2))) { 
+    if(quadrant_horizontal(start_quadrant)) { // a horizontal quadrant where x will be the primary direction
+      steps_to_travel = abs(target_x-start_x);
+    } else { // a vertical quadrant where y will be the primary direction
+      steps_to_travel = abs(target_y-start_y);
+    }
+  } else { // the start and target points are in different quadrants
+    // Lets estimate the amount of steps along one full quadrant
+    uint32_t steps_in_half_quadrant = ceil(radius_steps/sqrt(2));
+    // Add the steps in the first partial quadrant
+    steps_to_travel += steps_in_partial_quadrant(start_x, start_y, 
+      start_quadrant, angular_direction, steps_in_half_quadrant);
+    // Count the number of full quadrants between the start and end quadrants
+    uint8_t full_quadrants_traveled = full_quadrants_between(start_quadrant, target_quadrant, angular_direction);
+    // Add steps for the full quadrants plus some stray steps for "corners"
+    steps_to_travel += full_quadrants_traveled*(steps_in_half_quadrant*2+1);
+    // Add the steps in the final partial quadrant. By inverting the angular direction we get the correct number for
+    // the target quadrant which steps through the opposite part of the quadrant with respect to the start quadrant.
+    steps_to_travel += steps_in_partial_quadrant(target_x, target_y, 
+      target_quadrant, -angular_direction, steps_in_half_quadrant);
+  }
+  
+  // Calculate feed rate -------------------------------------------------------------------------------------
+  
   // The amount of steppings performed while tracing a half circle is equal to the sum of sides in a 
   // square inscribed in the circle. We use this to estimate the amount of steps as if this arc was a half circle:
-  uint32_t steps_in_half_circle = round(radius_steps * 4 * (1/sqrt(2)));
+  uint32_t steps_in_half_circle = round((4*radius_steps)/sqrt(2)));
   // We then calculate the millimeters of travel along the circumference of that same half circle
   double millimeters_half_circumference = radius*M_PI;
   // Then we calculate the microseconds between each step as if we will trace the full circle.
   // It doesn't matter what fraction of the circle we are actually going to trace. The pace is the same.
   st_buffer_pace(((millimeters_half_circumference * ONE_MINUTE_OF_MICROSECONDS) / feed_rate) / steps_in_half_circle);    
 
-  // Execution
+  // Execution -----------------------------------------------------------------------------------------------
 
   mode = MC_MODE_ARC;
   
@@ -214,11 +264,11 @@ void mc_arc(double theta, double angular_travel, double radius, int axis_1, int 
     // Check which axis will be "major" for this stepping
     if (abs(x)<abs(y)) {
       // Step arc horizontally      
-      error += 1+x2*dx;
-      x+=dx; x2 += 2*dx;
-      diagonal_error = error + 1 + y2*dy;
+      error += 1 + 2*x * dx;
+      x+=dx;
+      diagonal_error = error + 1 + 2*y*dy;
       if(abs(error) >= abs(diagonal_error)) {
-        y += dy; y2 += 2*dy;
+        y += dy;
         error = diagonal_error;
         step_steppers(diagonal_bits); // step diagonal
       } else {
@@ -226,11 +276,11 @@ void mc_arc(double theta, double angular_travel, double radius, int axis_1, int 
       }
     } else {      
       // Step arc vertically      
-      error += 1+y2*dy; 
-      y+=dy; y2 += 2*dy; 
-      diagonal_error = error + 1 + x2*dx; 
+      error += 1 + 2*y * dy; 
+      y+=dy;
+      diagonal_error = error + 1 + 2*x * dx; 
       if(abs(error) >= abs(diagonal_error)) { 
-        x += dx; x2 += 2*dx; 
+        x += dx; 
         error = diagonal_error; 
         step_steppers(diagonal_bits); // step diagonal
       } else {
@@ -267,7 +317,7 @@ int mc_status()
 
 // Set the direction bits for the stepper motors according to the provided vector. 
 // direction is an array of three 8 bit integers representing the direction of 
-// each motor. The values should be -1 (reverse), 0 or 1 (forward).
+// each motor. The values should be negative (reverse), 0 or positive (forward).
 void set_stepper_directions(int8_t *direction) 
 {
   /* Sorry about this convoluted code! It uses the fact that bit 7 of each direction

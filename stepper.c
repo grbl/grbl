@@ -112,19 +112,20 @@ void st_init()
 
 void st_buffer_step(uint8_t motor_port_bits)
 {
-  if (echo_steps && !(motor_port_bits&0x80)) {
-    // Echo steps. If bit 7 is set, the message is internal to Grbl and should not be echoed
+  // Buffer nothing unless stepping subsystem is running
+  if (stepper_mode != STEPPER_MODE_RUNNING) { return; }
+  // Echo steps. If bit 7 is set, the message is internal to Grbl and should not be echoed
+  if (echo_steps && !(motor_port_bits&0x80)) {    
     printByte('!'+motor_port_bits);
   }
-
-	int i = (step_buffer_head + 1) % STEP_BUFFER_SIZE;
-	
+  // Calculate the buffer head after we push this byte
+	int next_buffer_head = (step_buffer_head + 1) % STEP_BUFFER_SIZE;	
 	// If the buffer is full: good! That means we are well ahead of the robot. 
 	// Nap until there is room for more steps.
-	while(step_buffer_tail == i) { sleep_mode(); }
-	
+	while(step_buffer_tail == next_buffer_head) { sleep_mode(); }	
+	// Push byte
   step_buffer[step_buffer_head] = motor_port_bits;
-  step_buffer_head = i;
+  step_buffer_head = next_buffer_head;
 }
 
 // Block until all buffered steps are executed
@@ -163,18 +164,24 @@ inline void st_stop()
   stepper_mode = STEPPER_MODE_STOPPED;
 }
 
+// Buffer a pace change. Pace is the rate with which steps are executed. It is measured in microseconds from step to step. 
+// It is continually adjusted to achieve constant actual feed rate. Unless pace-changes was buffered along with the steps 
+// they govern they might change at slightly wrong moments in time as the pace would change while the stepper buffer was
+// still churning out the previous movement.
 void st_buffer_pace(uint32_t microseconds)
 {
-  // Do nothing if the pace in unchanged
-  if (current_pace == microseconds) { return; }
+  // Do nothing if the pace in unchanged or the stepping subsytem is not running
+  if ((current_pace == microseconds) || (stepper_mode != STEPPER_MODE_RUNNING)) { return; }
   // If the single-element pace "buffer" is full, sleep until it is popped
   while (next_pace != 0) {
     sleep_mode();
   }  
+  // Buffer the pace change
   next_pace = microseconds;
   st_buffer_step(PACE_CHANGE_MARKER); // Place a pace-change marker in the step-buffer
 }
 
+// Returns a bitmask with the stepper bit for the given axis set
 uint8_t st_bit_for_stepper(int axis) {
   switch(axis) {
     case X_AXIS: return(1<<X_STEP_BIT);
@@ -184,6 +191,7 @@ uint8_t st_bit_for_stepper(int axis) {
   return(0);
 }
 
+// Configures the prescaler and ceiling of timer 1 to produce the given pace as accurately as possible.
 void config_pace_timer(uint32_t microseconds)
 {
   uint32_t ticks = microseconds*TICKS_PER_MICROSECOND;
