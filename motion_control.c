@@ -63,8 +63,21 @@ void mc_dwell(uint32_t milliseconds)
   mode = MC_MODE_AT_REST; 
 }
 
+// Calculate the microseconds between steps that we should wait in order to travel the 
+// designated amount of millimeters in the amount of steps we are going to generate
+void set_step_pace(double feed_rate, double millimeters_of_travel, uint32_t steps, int invert) {
+  int32_t pace;
+  if (invert) {
+    pace = round(ONE_MINUTE_OF_MICROSECONDS/feed_rate/steps);
+  } else {
+  	pace = round(((millimeters_of_travel * ONE_MINUTE_OF_MICROSECONDS) / feed_rate) / steps);
+  }
+  st_buffer_pace(pace);
+}
+
 // Execute linear motion in absolute millimeter coordinates. Feed rate given in millimeters/second
-// unless invert_feed_rate is true. Then the feed_rate states the number of seconds for the whole movement.
+// unless invert_feed_rate is true. Then the feed_rate means that the motion should be completed in
+// 1/feed_rate minutes.
 void mc_line(double x, double y, double z, float feed_rate, int invert_feed_rate)
 {
 	// Flags to keep track of which axes to step
@@ -74,14 +87,13 @@ void mc_line(double x, double y, double z, float feed_rate, int invert_feed_rate
   int32_t target[3], // The target position in absolute steps
     step_count[3],   // Absolute steps of travel along each axis
     counter[3],      // A counter used in the bresenham algorithm for line plotting
-    maximum_steps;   // The larges absolute step-count of any axis
-  
+    maximum_steps;   // The larges absolute step-count of any axis  
   
   // Setup ---------------------------------------------------------------------------------------------------
 
   target[X_AXIS] = x*X_STEPS_PER_MM;
   target[Y_AXIS] = y*Y_STEPS_PER_MM;
-  target[Z_AXIS] = z*Z_STEPS_PER_MM;
+  target[Z_AXIS] = z*Z_STEPS_PER_MM;  
   // Determine direction and travel magnitude for each axis
   for(axis = X_AXIS; axis <= Z_AXIS; axis++) {
   	step_count[axis] = abs(target[axis] - position[axis]);
@@ -98,25 +110,20 @@ void mc_line(double x, double y, double z, float feed_rate, int invert_feed_rate
   }
 	// Set our direction pins 
   set_stepper_directions(direction);
-  // Calculate the microseconds we need to wait between each step to achieve the desired feed rate
-  if (invert_feed_rate) {
-  	st_buffer_pace((feed_rate*1000000)/maximum_steps);	  
-  } else {
-  	// Ask old Phytagoras to estimate how many mm our next move is going to take us:
-  	double millimeters_to_travel = 
-      sqrt(pow(X_STEPS_PER_MM*step_count[X_AXIS],2) + 
-          pow(Y_STEPS_PER_MM*step_count[Y_AXIS],2) + 
-          pow(Z_STEPS_PER_MM*step_count[Z_AXIS],2));
-    // Calculate the microseconds between steps that we should wait in order to travel the 
-    // designated amount of millimeters in the amount of steps we are going to generate
-  	st_buffer_pace(((millimeters_to_travel * ONE_MINUTE_OF_MICROSECONDS) / feed_rate) / maximum_steps);	
-  }
+
+	// Ask old Phytagoras to estimate how many mm our next move is going to take us
+	double millimeters_of_travel = 
+    sqrt(pow(X_STEPS_PER_MM*step_count[X_AXIS],2) + 
+        pow(Y_STEPS_PER_MM*step_count[Y_AXIS],2) + 
+        pow(Z_STEPS_PER_MM*step_count[Z_AXIS],2));
+  // And set the step pace
+  set_step_pace(feed_rate, millimeters_of_travel, maximum_steps, invert_feed_rate);
   
   // Execution -----------------------------------------------------------------------------------------------
 
   mode = MC_MODE_LINEAR;
   
-  while(mode) {
+  do {
   	// Trace the line
     step_bits = 0;
     for(axis = X_AXIS; axis <= Z_AXIS; axis++) {
@@ -131,23 +138,23 @@ void mc_line(double x, double y, double z, float feed_rate, int invert_feed_rate
   			}
   		}
   	}
-  	if (step_bits) {
-      step_steppers(step_bits);
-  	} else {
-      mode = MC_MODE_AT_REST;
-  	}
-  }
+    if(step_bits) { step_steppers(step_bits); }
+  } while (step_bits);
+  mode = MC_MODE_AT_REST;
 }
 
 
 // Execute an arc. theta == start angle, angular_travel == number of radians to go along the arc,
 // positive angular_travel means clockwise, negative means counterclockwise. Radius == the radius of the
-// circle in millimeters. axis_1 and axis_2 selects the plane in tool space. 
+// circle in millimeters. axis_1 and axis_2 selects the circle plane in tool space. Stick the remaining
+// axis in axis_l which will be the axis for linear travel if you are tracing a helical motion.
 // ISSUE: The arc interpolator assumes all axes have the same steps/mm as the X axis.
-void mc_arc(double theta, double angular_travel, double radius, int axis_1, int axis_2, double feed_rate)
+void mc_arc(double theta, double angular_travel, double radius, double linear_travel, int axis_1, int axis_2, 
+  int axis_linear, double feed_rate, int invert_feed_rate)
 {  
-  uint32_t start_x, start_y;
-  uint32_t diagonal_error;
+  uint32_t start_x, start_y;                       // The start position in the coordinate system local to the circle
+  uint32_t diagonal_error;                         // A variable to keep track of varations in the error-value during
+                                                   // the tracing of the arc
 
   int8_t direction[3];                             // The direction of travel along each axis (-1, 0 or 1)
   int8_t angular_direction;                        // 1 = clockwise, -1 = anticlockwise
@@ -156,19 +163,13 @@ void mc_arc(double theta, double angular_travel, double radius, int axis_1, int 
                                                    // center of the arc.
   int target_direction_x, target_direction_y;      // signof(target_x)*angular_direction precalculated for speed                                                 
   int32_t error;                                   // error is always == (x**2 + y**2 - radius**2),                                                    
-  uint8_t axis_x, axis_y;                          // maps the arc axes to stepper axes
-  int8_t diagonal_bits;                            // A bitmask with the stepper bits for both selected axes set
-  int incomplete;                                  // True if the arc has not reached its target yet
-  
-  int dx, dy; // Trace directions
 
-  // Setup
-  
-  uint32_t radius_steps = round(radius*X_STEPS_PER_MM);
-	if(radius_steps == 0) { return; }
+  int dx, dy; // Trace directions
 
   // Setup arc interpolation --------------------------------------------------------------------------------
 
+  uint32_t radius_steps = round(radius*X_STEPS_PER_MM);
+	if(radius_steps == 0) { return; }
   // Determine angular direction (+1 = clockwise, -1 = counterclockwise)
   angular_direction = signof(angular_travel);
   // Calculate the initial position and target position in the local coordinate system of the arc
@@ -183,12 +184,6 @@ void mc_arc(double theta, double angular_travel, double radius, int axis_1, int 
   // <0 we are inside the arc, when it is >0 we are outside of the arc, and when it is 0 we 
   // are exactly on top of the arc.
   error = x*x + y*y - radius_steps*radius_steps;
-  // Set up a vector with the steppers we are going to use tracing the plane of this arc
-  diagonal_bits = st_bit_for_stepper(axis_1);
-  diagonal_bits |= st_bit_for_stepper(axis_2);
-  // And map the local coordinate system of the arc onto the tool axes of the selected plane
-  axis_x = axis_1;
-  axis_y = axis_2;
   
   // Estimate length of arc in steps -------------------------------------------------------------------------
   
@@ -210,95 +205,126 @@ void mc_arc(double theta, double angular_travel, double radius, int axis_1, int 
     +---- 2 ----+                    
   */
 
+  // Find the quadrants of the starting point and the target
   int start_quadrant = quadrant_of_the_circle(start_x, start_y);
   int target_quadrant = quadrant_of_the_circle(target_x, target_y);
-  uint32_t steps_to_travel=0;
-  // Is the start and target point in the same quadrant?
+  uint32_t arc_steps=0;
+  // Will this whole arc take place within the same quadrant?
   if (start_quadrant == target_quadrant && (abs(angular_travel) <= (M_PI/2))) { 
     if(quadrant_horizontal(start_quadrant)) { // a horizontal quadrant where x will be the primary direction
-      steps_to_travel = abs(target_x-start_x);
+      arc_steps = abs(target_x-start_x);
     } else { // a vertical quadrant where y will be the primary direction
-      steps_to_travel = abs(target_y-start_y);
+      arc_steps = abs(target_y-start_y);
     }
   } else { // the start and target points are in different quadrants
-    // Lets estimate the amount of steps along one full quadrant
+    // Lets estimate the amount of steps along half a quadrant
     uint32_t steps_in_half_quadrant = ceil(radius_steps/sqrt(2));
     // Add the steps in the first partial quadrant
-    steps_to_travel += steps_in_partial_quadrant(start_x, start_y, 
+    arc_steps += steps_in_partial_quadrant(start_x, start_y, 
       start_quadrant, angular_direction, steps_in_half_quadrant);
     // Count the number of full quadrants between the start and end quadrants
     uint8_t full_quadrants_traveled = full_quadrants_between(start_quadrant, target_quadrant, angular_direction);
     // Add steps for the full quadrants plus some stray steps for "corners"
-    steps_to_travel += full_quadrants_traveled*(steps_in_half_quadrant*2+1);
+    arc_steps += full_quadrants_traveled*(steps_in_half_quadrant*2+1);
     // Add the steps in the final partial quadrant. By inverting the angular direction we get the correct number for
     // the target quadrant which steps through the opposite part of the quadrant with respect to the start quadrant.
-    steps_to_travel += steps_in_partial_quadrant(target_x, target_y, 
+    arc_steps += steps_in_partial_quadrant(target_x, target_y, 
       target_quadrant, -angular_direction, steps_in_half_quadrant);
   }
   
+  // Set up the linear interpolation of the "depth" axis -----------------------------------------------------
+  
+  int32_t linear_steps = abs(st_millimeters_to_steps(linear_travel, axis_linear));
+  int linear_direction = signof(linear_travel);
+  // The number of steppings needed to trace this motion is equal to the motion that require the maximum 
+  // amount of steps: the arc or the line:
+  int32_t maximum_steps = max(linear_steps, arc_steps);
+  // Initialize the counters to do linear bresenham
+  int32_t linear_counter = -maximum_steps/2;
+  int32_t arc_counter = -maximum_steps/2;
+
   // Calculate feed rate -------------------------------------------------------------------------------------
   
-  // The amount of steppings performed while tracing a half circle is equal to the sum of sides in a 
-  // square inscribed in the circle. We use this to estimate the amount of steps as if this arc was a half circle:
-  uint32_t steps_in_half_circle = round((4*radius_steps)/sqrt(2));
-  // We then calculate the millimeters of travel along the circumference of that same half circle
-  double millimeters_half_circumference = radius*M_PI;
+  // We then calculate the millimeters of helical travel
+  double millimeters_of_travel = sqrt(pow(angular_travel*radius,2)+pow(abs(linear_travel),2));
   // Then we calculate the microseconds between each step as if we will trace the full circle.
   // It doesn't matter what fraction of the circle we are actually going to trace. The pace is the same.
-  st_buffer_pace(((millimeters_half_circumference * ONE_MINUTE_OF_MICROSECONDS) / feed_rate) / steps_in_half_circle);    
+  set_step_pace(feed_rate, millimeters_of_travel, maximum_steps, invert_feed_rate);
 
   // Execution -----------------------------------------------------------------------------------------------
 
   mode = MC_MODE_ARC;
+  direction[axis_linear] = linear_direction;
+  uint8_t axis_1_bit = st_bit_for_stepper(axis_1);
+  uint8_t axis_2_bit = st_bit_for_stepper(axis_2);
+  uint8_t axis_linear_bit = st_bit_for_stepper(axis_linear);
+  uint8_t diagonal_bits = (axis_1_bit | axis_2_bit);
   
-  incomplete = true;
-  while(incomplete)
+  uint8_t step_bits;
+  
+  while(mode)
   {
-    dx = (y!=0) ?  signof(y) * angular_direction : -signof(x);
-    dy = (x!=0) ? -signof(x) * angular_direction : -signof(y);
-    // Take dx and dy which are local to the arc being generated and map them on to the 
-    // selected tool-space-axes for the current arc.
-    direction[axis_x] = dx;
-    direction[axis_y] = dy;
-    set_stepper_directions(direction);
-    // Check which axis will be "major" for this stepping
-    if (abs(x)<abs(y)) {
-      // Step arc horizontally      
-      error += 1 + 2*x * dx;
-      x+=dx;
-      diagonal_error = error + 1 + 2*y*dy;
-      if(abs(error) >= abs(diagonal_error)) {
-        y += dy;
-        error = diagonal_error;
-        step_steppers(diagonal_bits); // step diagonal
-      } else {
-        step_axis(axis_x); // step straight
-      }
-    } else {      
-      // Step arc vertically      
-      error += 1 + 2*y * dy; 
-      y+=dy;
-      diagonal_error = error + 1 + 2*x * dx; 
-      if(abs(error) >= abs(diagonal_error)) { 
-        x += dx; 
-        error = diagonal_error; 
-        step_steppers(diagonal_bits); // step diagonal
-      } else {
-        step_axis(axis_y); // step straight
+    // reset step bits
+    step_bits = 0;    
+    // Do linear interpolation
+    linear_counter += linear_steps;
+    if (linear_counter > 0) {
+      linear_counter -= maximum_steps;
+      step_bits |= axis_linear_bit;
+    }    
+    // Do arc interpolation
+    arc_counter += arc_steps;
+    if (arc_counter > 0) {
+      arc_counter -= maximum_steps;
+      // Determine directions for each axis at this point in the arc
+      dx = (y!=0) ?  signof(y) * angular_direction : -signof(x);
+      dy = (x!=0) ? -signof(x) * angular_direction : -signof(y);
+      // Take dx and dy which are local to the arc being generated and map them on to the 
+      // selected tool-space-axes for the current arc.
+      direction[axis_1] = dx;
+      direction[axis_2] = dy;    
+      // Check which axis will be "major" for this stepping
+      if (abs(x)<abs(y)) {
+        // X is major: Step arc horizontally      
+        error += 1 + 2*x * dx;
+        x+=dx;
+        diagonal_error = error + 1 + 2*y*dy;
+        if(abs(error) >= abs(diagonal_error)) {
+          y += dy;
+          error = diagonal_error;
+          step_bits |= diagonal_bits; // step diagonal
+        } else {
+          step_bits |= axis_1_bit; // step straight
+        }
+      } else {      
+        // Y is major: Step arc vertically      
+        error += 1 + 2*y * dy; 
+        y+=dy;
+        diagonal_error = error + 1 + 2*x * dx; 
+        if(abs(error) >= abs(diagonal_error)) { 
+          x += dx; 
+          error = diagonal_error; 
+          step_bits |= diagonal_bits; // step diagonal
+        } else {
+          step_bits |= axis_2_bit; // step straight
+        }
       }
     }    
+    set_stepper_directions(direction);
+    step_steppers(step_bits);
+    
     // Check if target has been reached. Todo: Simplify/optimize/clarify
     if ((x * target_direction_y >= 
             target_x * target_direction_y) && 
            (y * target_direction_x <= 
             target_y * target_direction_x)) 
     { if ((signof(x) == signof(target_x)) && (signof(y) == signof(target_y))) 
-      { incomplete = false; } }    
+      { mode = MC_MODE_AT_REST; } }    
   }  
   // Update the tool position to the new actual position
-  position[axis_x] += x-start_x;
-  position[axis_y] += y-start_y;
-  mode = MC_MODE_AT_REST;
+  position[axis_1] += x-start_x;
+  position[axis_2] += y-start_y;
+  position[axis_2] += linear_steps*linear_direction;  
 }
 
 void mc_go_home()

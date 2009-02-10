@@ -89,7 +89,7 @@ struct ParserState {
   double position[3];    /* Where the interpreter considers the tool to be at this point in the code */
   uint8_t tool;
   int16_t spindle_speed;         /* RPM/100 */
-  uint8_t plane_axis_0, plane_axis_1; // The axes of the selected plane
+  uint8_t plane_axis_0, plane_axis_1, plane_axis_2; // The axes of the selected plane
   
 };
 struct ParserState gc;
@@ -103,21 +103,23 @@ int read_double(char *line, //!< string: line of RS274/NGC code being processed
 int next_statement(char *letter, double *double_ptr, char *line, int *counter);
 
 
+void select_plane(uint8_t axis_0, uint8_t axis_1, uint8_t axis_2) 
+{
+  gc.plane_axis_0 = axis_0;
+  gc.plane_axis_1 = axis_1;
+  gc.plane_axis_2 = axis_2;
+}
+
 void gc_init() {
   memset(&gc, 0, sizeof(gc));
   gc.feed_rate = DEFAULT_FEEDRATE;
-  gc.plane_axis_0 = X_AXIS; gc.plane_axis_1 = Y_AXIS;
+  select_plane(X_AXIS, Y_AXIS, Z_AXIS);
 }
 
 inline float to_millimeters(double value) {
   return(gc.inches_mode ? value * INCHES_PER_MM : value);
 }
 
-void select_plane(uint8_t axis_0, uint8_t axis_1) 
-{
-  gc.plane_axis_0 = axis_0;
-  gc.plane_axis_1 = axis_1;
-}
 
 // Executes one line of 0-terminated G-Code. The line is assumed to contain only uppercase
 // characters and signed floats (no whitespace).
@@ -159,9 +161,9 @@ uint8_t gc_execute_line(char *line) {
         case 2: gc.motion_mode = MOTION_MODE_CW_ARC; break;
         case 3: gc.motion_mode = MOTION_MODE_CCW_ARC; break;
         case 4: next_action = NEXT_ACTION_DWELL; break;
-        case 17: select_plane(X_AXIS, Y_AXIS); break;
-        case 18: select_plane(X_AXIS, Z_AXIS); break;
-        case 19: select_plane(Y_AXIS, Z_AXIS); break;
+        case 17: select_plane(X_AXIS, Y_AXIS, Z_AXIS); break;
+        case 18: select_plane(X_AXIS, Z_AXIS, Y_AXIS); break;
+        case 19: select_plane(Y_AXIS, Z_AXIS, X_AXIS); break;
         case 20: gc.inches_mode = true; break;
         case 21: gc.inches_mode = false; break;
         case 28: case 30: next_action = NEXT_ACTION_GO_HOME; break;
@@ -306,6 +308,7 @@ uint8_t gc_execute_line(char *line) {
         // Calculate the change in position along each selected axis
         double x = target[gc.plane_axis_0]-gc.position[gc.plane_axis_0];
         double y = target[gc.plane_axis_1]-gc.position[gc.plane_axis_1];
+        
         clear_vector(&offset);
         double h_x2_div_d = -sqrt(4 * r*r - x*x - y*y)/hypot(x,y); // == -(h * 2 / d)
         // If r is smaller than d, the arc is now traversing the complex plane beyond the reach of any
@@ -371,8 +374,14 @@ uint8_t gc_execute_line(char *line) {
       }
       // Find the radius
       double radius = hypot(offset[gc.plane_axis_0], offset[gc.plane_axis_1]);
+      // Calculate the motion along the depth axis of the helix
+      double depth = target[gc.plane_axis_2]-gc.position[gc.plane_axis_2];
       // Trace the arc
-      mc_arc(theta_start, angular_travel, radius, gc.plane_axis_0, gc.plane_axis_1, gc.feed_rate);        
+      if (gc.inverse_feed_rate_mode) {
+        mc_arc(theta_start, angular_travel, radius, depth, gc.plane_axis_0, gc.plane_axis_1, gc.plane_axis_2, inverse_feed_rate, true);
+      } else {
+        mc_arc(theta_start, angular_travel, radius, depth, gc.plane_axis_0, gc.plane_axis_1, gc.plane_axis_2, gc.feed_rate, false);
+      }
       break;
     }    
   }

@@ -62,4 +62,7 @@ void st_go_home();
 // Echo steps to serial port? (true/false)
 void st_set_echo(int value);
 
+// Convert from millimeters to step-counts along the designated axis
+int32_t st_millimeters_to_steps(double millimeters, int axis);
+
 #endif

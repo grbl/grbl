@@ -37,6 +37,6 @@ void gc_init();
 uint8_t gc_execute_line(char *line);
 
 // get the current logical position (in current units), the current status code and the unit mode
-void gc_get_status(double *position, uint8_t *status_code, int *inches_mode, uint32_t *line_number);
+void gc_get_status(double *position_, uint8_t *status_code_, int *inches_mode_, uint32_t *line_number_);
 
 #endif

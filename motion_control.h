@@ -32,27 +32,25 @@
 // Initializes the motion_control subsystem resources
 void mc_init();
 
-// Prepare for linear motion in absolute millimeter coordinates. Feed rate given in millimeters/second
-// unless invert_feed_rate is true. Then the feed_rate states the number of seconds for the whole movement.
+// Execute linear motion in absolute millimeter coordinates. Feed rate given in millimeters/second
+// unless invert_feed_rate is true. Then the feed_rate means that the motion should be completed in
+// 1/feed_rate minutes.
 void mc_line(double x, double y, double z, float feed_rate, int invert_feed_rate);
 
 // Prepare an arc. theta == start angle, angular_travel == number of radians to go along the arc,
 // positive angular_travel means clockwise, negative means counterclockwise. Radius == the radius of the
 // circle in millimeters. axis_1 and axis_2 selects the plane in tool space. 
 // Known issue: This method pretends that all axes uses the same steps/mm as the X axis. Which might
-// not be the case ... (To be continued)
-void mc_arc(double theta, double angular_travel, double radius, int axis_1, int axis_2, double feed_rate);
+// not be the case ... (To be continued) 
+// Regarding feed rate see note on mc_line.
+void mc_arc(double theta, double angular_travel, double radius, double linear_travel, int axis_1, int axis_2, 
+  int axis_linear, double feed_rate, int invert_feed_rate);
 
-// Prepare linear motion relative to the current position.
+// Dwell for a couple of time units
 void mc_dwell(uint32_t milliseconds);
 
-// Prepare to send the tool position home
+// Send the tool home
 void mc_go_home();
-
-// Start the prepared operation. In the current implementation this will block for most of the task at hand.
-// In future implementations it might not block at all. If you want to make sure the system has reached 
-// quiescence call mc_wait()
-void mc_execute();
 
 // Check motion control status. result == 0: the system is idle. result > 0: the system is busy,
 // result < 0: the system is in an error state.

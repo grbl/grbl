@@ -24,6 +24,7 @@
 
 #include "stepper.h"
 #include "config.h"
+#include <math.h>
 #include "nuts_bolts.h"
 #include <avr/interrupt.h>
 
@@ -285,4 +286,14 @@ void st_go_home()
 void st_set_echo(int value)
 {
   echo_steps = value;
+}
+
+// Convert from millimeters to step-counts along the designated axis
+int32_t st_millimeters_to_steps(double millimeters, int axis) {
+  switch(axis) {
+    case X_AXIS: return(round(millimeters*X_STEPS_PER_MM));
+    case Y_AXIS: return(round(millimeters*Y_STEPS_PER_MM));
+    case Z_AXIS: return(round(millimeters*Z_STEPS_PER_MM));
+  }
+  return(0);
 }
