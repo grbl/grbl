@@ -244,14 +244,8 @@ uint8_t gc_execute_line(char *line) {
     switch (gc.motion_mode) {
       case MOTION_MODE_CANCEL: break;
       case MOTION_MODE_RAPID_LINEAR: case MOTION_MODE_LINEAR:
-      if (gc.inverse_feed_rate_mode) {
-        mc_line(target[X_AXIS], target[Y_AXIS], target[Z_AXIS], 
-          inverse_feed_rate, true);
-      } else {
-        mc_line(target[X_AXIS], target[Y_AXIS], target[Z_AXIS], 
-          (gc.motion_mode == MOTION_MODE_LINEAR) ? gc.feed_rate : RAPID_FEEDRATE,
-          false);
-      }
+      mc_line(target[X_AXIS], target[Y_AXIS], target[Z_AXIS], 
+        (gc.inverse_feed_rate_mode) ? inverse_feed_rate : gc.feed_rate, gc.inverse_feed_rate_mode);
       break;
       case MOTION_MODE_CW_ARC: case MOTION_MODE_CCW_ARC:
       if (radius_mode) {
@@ -377,11 +371,8 @@ uint8_t gc_execute_line(char *line) {
       // Calculate the motion along the depth axis of the helix
       double depth = target[gc.plane_axis_2]-gc.position[gc.plane_axis_2];
       // Trace the arc
-      if (gc.inverse_feed_rate_mode) {
-        mc_arc(theta_start, angular_travel, radius, depth, gc.plane_axis_0, gc.plane_axis_1, gc.plane_axis_2, inverse_feed_rate, true);
-      } else {
-        mc_arc(theta_start, angular_travel, radius, depth, gc.plane_axis_0, gc.plane_axis_1, gc.plane_axis_2, gc.feed_rate, false);
-      }
+      mc_arc(theta_start, angular_travel, radius, depth, gc.plane_axis_0, gc.plane_axis_1, gc.plane_axis_2, 
+        (gc.inverse_feed_rate_mode) ? inverse_feed_rate : gc.feed_rate, gc.inverse_feed_rate_mode);
       break;
     }    
   }
