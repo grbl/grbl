@@ -239,7 +239,8 @@ void mc_arc(double theta, double angular_travel, double radius, double linear_tr
   // The number of steppings needed to trace this motion is equal to the motion that require the maximum 
   // amount of steps: the arc or the line:
   int32_t maximum_steps = max(linear_steps, arc_steps);
-  // Initialize the counters to do linear bresenham
+  // Initialize the counters to do 2D linear bresenham as if the motion along the arc itself was a single axis 
+  // of the line, while the linear "depth" axis was the other.
   int32_t linear_counter = -maximum_steps/2;
   int32_t arc_counter = -maximum_steps/2;
 
@@ -254,7 +255,9 @@ void mc_arc(double theta, double angular_travel, double radius, double linear_tr
   // Execution -----------------------------------------------------------------------------------------------
 
   mode = MC_MODE_ARC;
+  // Set the direction of the linear or "depth" axis, cause it will never change
   direction[axis_linear] = linear_direction;
+  // Cache some stepper bit-masks to speed up the interpolation code
   uint8_t axis_1_bit = st_bit_for_stepper(axis_1);
   uint8_t axis_2_bit = st_bit_for_stepper(axis_2);
   uint8_t axis_linear_bit = st_bit_for_stepper(axis_linear);
@@ -264,18 +267,19 @@ void mc_arc(double theta, double angular_travel, double radius, double linear_tr
   
   while(mode)
   {
-    // reset step bits
+    // This loop sets the bits in the step_bits variable for each stepper it wants to step in this cycle.
     step_bits = 0;    
-    // Do linear interpolation
+    // The bresenham algorithm chooses when to travel in the depth axis and when to travel along the arc
     linear_counter += linear_steps;
     if (linear_counter > 0) {
       linear_counter -= maximum_steps;
+      // Move one step in the depth direction:
       step_bits |= axis_linear_bit;
     }    
-    // Do arc interpolation
     arc_counter += arc_steps;
     if (arc_counter > 0) {
       arc_counter -= maximum_steps;
+      // Do one step of the arc:
       // Determine directions for each axis at this point in the arc
       dx = (y!=0) ?  signof(y) * angular_direction : -signof(x);
       dy = (x!=0) ? -signof(x) * angular_direction : -signof(y);
@@ -310,6 +314,7 @@ void mc_arc(double theta, double angular_travel, double radius, double linear_tr
         }
       }
     }    
+    // Tell the steppers to do the stepping 
     set_stepper_directions(direction);
     step_steppers(step_bits);
     
