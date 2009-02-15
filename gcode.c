@@ -23,7 +23,7 @@
 
 /* Intentionally not supported:
   - Canned cycles
-  - Tool radius compensatino
+  - Tool radius compensation
   - A,B,C-axes
   - Multiple coordinate systems
   - Evaluation of expressions
@@ -35,7 +35,7 @@
 
 /* 
    Omitted for the time being:
-   group 0 = {G10, G28, G30, G53, G92, G92.1, G92.2, G92.3} (Non modal G-codes)
+   group 0 = {G10, G28, G30, G92, G92.1, G92.2, G92.3} (Non modal G-codes)
    group 8 = {M7, M8, M9} coolant (special case: M7 and M8 may be active at the same time)
    group 9 = {M48, M49} enable/disable feed and speed override switches
    group 12 = {G54, G55, G56, G57, G58, G59, G59.1, G59.2, G59.3} coordinate system selection
@@ -114,6 +114,7 @@ void gc_init() {
   memset(&gc, 0, sizeof(gc));
   gc.feed_rate = DEFAULT_FEEDRATE;
   select_plane(X_AXIS, Y_AXIS, Z_AXIS);
+  gc.absolute_mode = true;
 }
 
 inline float to_millimeters(double value) {
@@ -180,7 +181,7 @@ uint8_t gc_execute_line(char *line) {
       case 'M':
       switch(int_value) {
         case 0: case 1: gc.program_flow = PROGRAM_FLOW_PAUSED; break;
-        case 2: gc.program_flow = PROGRAM_FLOW_COMPLETED; break;
+        case 2: case 30: case 60: gc.program_flow = PROGRAM_FLOW_COMPLETED; break;
         case 3: gc.spindle_direction = 1; break;
         case 4: gc.spindle_direction = -1; break;
         case 5: gc.spindle_direction = 0; break;

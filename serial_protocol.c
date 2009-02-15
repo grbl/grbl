@@ -32,7 +32,7 @@ char line[BLOCK_BUFFER_SIZE];
 uint8_t line_counter;
 
 void prompt() {
-  printString(PROMPT);
+  printString("\r\n@");
   line_counter = 0;
 }
 
@@ -74,7 +74,7 @@ void sp_init()
   
   printString("\r\nGrbl ");
   printString(VERSION);
-  printByte('\r');  
+  printString("\r\n");  
   prompt();
 }
 
@@ -85,9 +85,12 @@ void sp_process()
   {
     if((c < 32)) {  // Line is complete. Then execute!
       line[line_counter] = 0;
+      // printByte('"');
+      // printString(line);
+      // printByte('"');
       gc_execute_line(line);
       line_counter = 0;
-      print_result();
+      //print_result();
       prompt();
     } else if (c == ' ' || c == '\t') { // Throw away whitepace
     } else if (c >= 'a' && c <= 'z') { // Upcase lowercase

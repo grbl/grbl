@@ -65,7 +65,7 @@ void mc_dwell(uint32_t milliseconds)
 
 // Calculate the microseconds between steps that we should wait in order to travel the 
 // designated amount of millimeters in the amount of steps we are going to generate
-void set_step_pace(double feed_rate, double millimeters_of_travel, uint32_t steps, int invert) {
+void compute_and_set_step_pace(double feed_rate, double millimeters_of_travel, uint32_t steps, int invert) {
   int32_t pace;
   if (invert) {
     pace = round(ONE_MINUTE_OF_MICROSECONDS/feed_rate/steps);
@@ -113,11 +113,11 @@ void mc_line(double x, double y, double z, float feed_rate, int invert_feed_rate
 
 	// Ask old Phytagoras to estimate how many mm our next move is going to take us
 	double millimeters_of_travel = 
-    sqrt(pow(X_STEPS_PER_MM*step_count[X_AXIS],2) + 
-        pow(Y_STEPS_PER_MM*step_count[Y_AXIS],2) + 
-        pow(Z_STEPS_PER_MM*step_count[Z_AXIS],2));
+    sqrt(square(X_STEPS_PER_MM*step_count[X_AXIS]) + 
+        square(Y_STEPS_PER_MM*step_count[Y_AXIS]) + 
+        square(Z_STEPS_PER_MM*step_count[Z_AXIS]));
   // And set the step pace
-  set_step_pace(feed_rate, millimeters_of_travel, maximum_steps, invert_feed_rate);
+  compute_and_set_step_pace(feed_rate, millimeters_of_travel, maximum_steps, invert_feed_rate);
   
   // Execution -----------------------------------------------------------------------------------------------
 
@@ -247,10 +247,10 @@ void mc_arc(double theta, double angular_travel, double radius, double linear_tr
   // Calculate feed rate -------------------------------------------------------------------------------------
   
   // We then calculate the millimeters of helical travel
-  double millimeters_of_travel = sqrt(pow(angular_travel*radius,2)+pow(abs(linear_travel),2));
+  double millimeters_of_travel = hypot(angular_travel*radius, abs(linear_travel));
   // Then we calculate the microseconds between each step as if we will trace the full circle.
   // It doesn't matter what fraction of the circle we are actually going to trace. The pace is the same.
-  set_step_pace(feed_rate, millimeters_of_travel, maximum_steps, invert_feed_rate);
+  compute_and_set_step_pace(feed_rate, millimeters_of_travel, maximum_steps, invert_feed_rate);
 
   // Execution -----------------------------------------------------------------------------------------------
 

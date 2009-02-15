@@ -14,7 +14,7 @@ Status:
 * Runs on atmega168/arduino.
 * GCode interpreter complete
 * Linear interpolation machine control complete
-* Arcs complete (no helices yet)
+* Arcs and helical interpolation complete
 * Buffered, non blocking, asynchronous stepping so the rest of the system is free to generate new steps and parse 
   g-code while the steppers are still steppin' 
 * Basic serial protocol complete
