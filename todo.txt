@@ -11,3 +11,9 @@
 * Tool change M6
 * Path Control Modes
 * Spindle speed support
+
+Bugs to fix:
+
+This generates an infinite sequence of non-steppings
+G01 X152.730364 Y331.534522
+G03 X152.30001 Y331.959998 I-1.959917 J-1.552007

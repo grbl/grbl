@@ -23,9 +23,9 @@
 
 #define VERSION "0.0"
 
-#define X_STEPS_PER_MM 1.0
-#define Y_STEPS_PER_MM 1.0
-#define Z_STEPS_PER_MM 1.0
+#define X_STEPS_PER_MM 2.0
+#define Y_STEPS_PER_MM 2.0
+#define Z_STEPS_PER_MM 2.0
 
 #define INCHES_PER_MM 25.4
 #define X_STEPS_PER_INCH X_STEPS_PER_MM*INCHES_PER_MM
