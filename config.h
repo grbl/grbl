@@ -23,17 +23,17 @@
 
 #define VERSION "0.0"
 
-#define X_STEPS_PER_MM 2.0
-#define Y_STEPS_PER_MM 2.0
-#define Z_STEPS_PER_MM 2.0
+#define X_STEPS_PER_MM 128.0
+#define Y_STEPS_PER_MM 128.0
+#define Z_STEPS_PER_MM 128.0
 
 #define INCHES_PER_MM 25.4
 #define X_STEPS_PER_INCH X_STEPS_PER_MM*INCHES_PER_MM
 #define Y_STEPS_PER_INCH Y_STEPS_PER_MM*INCHES_PER_MM
 #define Z_STEPS_PER_INCH Z_STEPS_PER_MM*INCHES_PER_MM
 
-#define RAPID_FEEDRATE 200000.0 // in millimeters per minute
-#define DEFAULT_FEEDRATE 200000.0
+#define RAPID_FEEDRATE 960.0 // in millimeters per minute
+#define DEFAULT_FEEDRATE 960.0
 
 #define STEPPERS_ENABLE_DDR     DDRB
 #define STEPPERS_ENABLE_PORT    PORTB
