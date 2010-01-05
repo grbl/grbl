@@ -85,6 +85,7 @@ void st_init()
 {
 	// Configure directions of interface pins
   STEPPING_DDR   |= STEPPING_MASK;
+  printInteger(STEPPING_DDR);
   LIMIT_DDR &= ~(LIMIT_MASK);
   STEPPERS_ENABLE_DDR |= 1<<STEPPERS_ENABLE_BIT;
 
