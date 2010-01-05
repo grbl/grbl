@@ -36,12 +36,6 @@ void prompt() {
   line_counter = 0;
 }
 
-void sp_send_execution_marker()
-{
-  printByte(EXECUTION_MARKER);
-}
-
-
 void print_result() {
   double position[3];
   int inches_mode;
@@ -85,12 +79,8 @@ void sp_process()
   {
     if((c < 32)) {  // Line is complete. Then execute!
       line[line_counter] = 0;
-      // printByte('"');
-      // printString(line);
-      // printByte('"');
       gc_execute_line(line);
       line_counter = 0;
-      //print_result();
       prompt();
     } else if (c == ' ' || c == '\t') { // Throw away whitepace
     } else if (c >= 'a' && c <= 'z') { // Upcase lowercase

@@ -96,9 +96,9 @@ struct ParserState gc;
 
 #define FAIL(status) gc.status_code = status;
 
-int read_double(char *line, //!< string: line of RS274/NGC code being processed
-                     int *counter,       //!< pointer to a counter for position on the line 
-                     double *double_ptr); //!< pointer to double to be read                  
+int read_double(char *line,               //  <- string: line of RS274/NGC code being processed
+                     int *counter,        //  <- pointer to a counter for position on the line 
+                     double *double_ptr); //  <- pointer to double to be read                  
 
 int next_statement(char *letter, double *double_ptr, char *line, int *counter);
 
@@ -237,7 +237,6 @@ uint8_t gc_execute_line(char *line) {
   }
   
   // Perform any physical actions
-  sp_send_execution_marker();
   switch (next_action) {
     case NEXT_ACTION_GO_HOME: mc_go_home(); break;
     case NEXT_ACTION_DWELL: mc_dwell(trunc(p*1000)); break;

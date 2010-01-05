@@ -43,7 +43,6 @@ volatile uint32_t current_pace;
 volatile uint32_t next_pace = 0;
 
 uint8_t stepper_mode = STEPPER_MODE_STOPPED;
-uint8_t echo_steps = true;
 
 void config_pace_timer(uint32_t microseconds);
 
@@ -115,10 +114,6 @@ void st_buffer_step(uint8_t motor_port_bits)
 {
   // Buffer nothing unless stepping subsystem is running
   if (stepper_mode != STEPPER_MODE_RUNNING) { return; }
-  // Echo steps. If bit 7 is set, the message is internal to Grbl and should not be echoed
-  if (echo_steps && !(motor_port_bits&0x80)) {    
-    printByte('!'+motor_port_bits);
-  }
   // Calculate the buffer head after we push this byte
 	int next_buffer_head = (step_buffer_head + 1) % STEP_BUFFER_SIZE;	
 	// If the buffer is full: good! That means we are well ahead of the robot. 
@@ -281,11 +276,6 @@ int check_limit_switch(int axis)
 void st_go_home()
 {
   // Todo: Perform the homing cycle
-}
-
-void st_set_echo(int value)
-{
-  echo_steps = value;
 }
 
 // Convert from millimeters to step-counts along the designated axis
