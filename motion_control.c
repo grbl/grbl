@@ -71,7 +71,6 @@ void compute_and_set_step_pace(double feed_rate, double millimeters_of_travel, u
     pace = round(ONE_MINUTE_OF_MICROSECONDS/feed_rate/steps);
   } else {
     pace = round((ONE_MINUTE_OF_MICROSECONDS/X_STEPS_PER_MM)/feed_rate);
-  	//pace = round(((millimeters_of_travel * ONE_MINUTE_OF_MICROSECONDS) / feed_rate) / steps);
   }
   st_buffer_pace(pace);
 }
