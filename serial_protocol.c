@@ -32,7 +32,7 @@ char line[BLOCK_BUFFER_SIZE];
 uint8_t line_counter;
 
 void prompt() {
-  printString("\r\n@");
+  printString("ok\r\n");
   line_counter = 0;
 }
 
