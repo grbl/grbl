@@ -8,6 +8,10 @@ options_parser = OptionParser.new do |opts|
   opts.on('-v', '--verbose', 'Output more information') do
     $verbose = true
   end   
+
+  opts.on('-p', '--prebuffer', 'Prebuffer commands') do
+    $prebuffer = true
+  end   
   
   opts.on('-h', '--help', 'Display this screen') do
     puts opts
@@ -23,13 +27,16 @@ end
 SerialPort.open('/dev/tty.usbserial-A4001o6L', 9600) do |sp|
   ARGV.each do |file|
     puts "Processing file #{file}"
-    prebuffer = 5
+    prebuffer = $prebuffer ? 10 : 0
     File.readlines(file).each do |line|
-      sp.write("#{line.strip}\r\n");
+      next if line.strip == ''
       puts line.strip
+      sp.write("#{line.strip}\r\n");
       if prebuffer == 0
-        result = sp.gets 
-        puts result unless result.strip == 'ok'
+        begin
+          result = sp.gets.strip
+          puts result unless result == '' or result == 'ok'
+        end while result != 'ok'
       else
         prebuffer -= 1
       end

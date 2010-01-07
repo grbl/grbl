@@ -91,9 +91,9 @@ void mc_line(double x, double y, double z, float feed_rate, int invert_feed_rate
   
   // Setup ---------------------------------------------------------------------------------------------------
 
-  target[X_AXIS] = x*X_STEPS_PER_MM;
-  target[Y_AXIS] = y*Y_STEPS_PER_MM;
-  target[Z_AXIS] = z*Z_STEPS_PER_MM;  
+  target[X_AXIS] = round(x*X_STEPS_PER_MM);
+  target[Y_AXIS] = round(y*Y_STEPS_PER_MM);
+  target[Z_AXIS] = round(z*Z_STEPS_PER_MM);  
   // Determine direction and travel magnitude for each axis
   for(axis = X_AXIS; axis <= Z_AXIS; axis++) {
   	step_count[axis] = abs(target[axis] - position[axis]);
