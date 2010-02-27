@@ -23,9 +23,9 @@
 
 #define VERSION "0.0"
 
-#define X_STEPS_PER_MM 94.488188976378
-#define Y_STEPS_PER_MM 94.488188976378
-#define Z_STEPS_PER_MM 94.488188976378
+#define X_STEPS_PER_MM (94.488188976378*16)
+#define Y_STEPS_PER_MM (94.488188976378*16)
+#define Z_STEPS_PER_MM (94.488188976378*16)
 
 #define STEP_PULSE_MICROSECONDS 30
 
@@ -73,9 +73,11 @@
 #define LIMIT_MASK ((1<<X_LIMIT_BIT)|(1<<Y_LIMIT_BIT)|(1<<Z_LIMIT_BIT))
 
 // Use this line for default operation (step-pulses high)
-#define STEPPING_INVERT_MASK 0
+ #define STEPPING_INVERT_MASK 0
 // Uncomment this line for inverted stepping (step-pulses low, rest high)
 // #define STEPPING_INVERT_MASK (STEP_MASK)
+// Uncomment this line to invert all step- and direction bits
+// #define STEPPING_INVERT_MASK (STEPPING_MASK)
 // Or bake your own like this adding any step-bits or directions you want to invert:
 // #define STEPPING_INVERT_MASK (STEP_MASK | (1<<Z_DIRECTION_BIT))
 
