@@ -25,6 +25,7 @@
 #include "stepper.h"
 #include "config.h"
 #include <math.h>
+#include <util/delay.h>
 #include "nuts_bolts.h"
 #include <avr/interrupt.h>
 
@@ -57,15 +58,14 @@ SIGNAL(SIG_OUTPUT_COMPARE1A)
       // This is not a step-instruction, but a pace-change-marker: change pace
       config_pace_timer(next_pace);
       next_pace = 0;
-    } else {
-      // Set the direction pins a nanosecond or two before you step the steppers
+    } else {      
+      popped ^= STEPPING_INVERT_MASK;
+      // Set the direction pins a cuple of nanoseconds before we step the steppers
       STEPPING_PORT = (STEPPING_PORT & ~DIRECTION_MASK) | (popped & DIRECTION_MASK);
       // Then pulse the stepping pins
       STEPPING_PORT = (STEPPING_PORT & ~STEP_MASK) | popped;
-      // Reset and start timer 2 which will reset the motor port after 5 microsecond
-      TCNT2 = 0;                       // reset counter
-      OCR2A = 5*TICKS_PER_MICROSECOND; // set the trigger time
-      TIMSK2 |= (1<<OCIE2A);           // enable interrupt
+      // Reset step pulse reset timer
+      TCNT2 = -(((STEP_PULSE_MICROSECONDS-4)*TICKS_PER_MICROSECOND)/8);  
     }
     // move the step buffer tail to the next instruction
     step_buffer_tail = (step_buffer_tail + 1) % STEP_BUFFER_SIZE;
@@ -73,11 +73,11 @@ SIGNAL(SIG_OUTPUT_COMPARE1A)
 }
 
 // This interrupt is set up by SIG_OUTPUT_COMPARE1A when it sets the motor port bits. It resets
-// the motor port after a short period (5us) completing one step cycle.
-SIGNAL(SIG_OUTPUT_COMPARE2A)
+// the motor port after a short period (STEP_PULSE_MICROSECONDS) completing one step cycle.
+SIGNAL(SIG_OVERFLOW2)
 {
-  STEPPING_PORT = STEPPING_PORT & ~STEP_MASK; // reset stepping pins (leave the direction pins)
-  TIMSK2 &= ~(1<<OCIE2A); // disable this timer interrupt until next time
+  // reset stepping pins (leave the direction pins)
+  STEPPING_PORT = (STEPPING_PORT & ~STEPPING_MASK) | (STEPPING_INVERT_MASK & STEPPING_MASK); 
 }
 
 // Initialize and start the stepper motor subsystem
@@ -85,10 +85,10 @@ void st_init()
 {
 	// Configure directions of interface pins
   STEPPING_DDR   |= STEPPING_MASK;
-  printInteger(STEPPING_DDR);
+  STEPPING_PORT = (STEPPING_PORT & ~STEPPING_MASK) | STEPPING_INVERT_MASK;
   LIMIT_DDR &= ~(LIMIT_MASK);
   STEPPERS_ENABLE_DDR |= 1<<STEPPERS_ENABLE_BIT;
-
+  
 	// waveform generation = 0100 = CTC
 	TCCR1B &= ~(1<<WGM13);
 	TCCR1B |=  (1<<WGM12);
@@ -101,17 +101,16 @@ void st_init()
 	
 	// Configure Timer 2
   TCCR2A = 0; // Normal operation
-  TCCR2B = 1<<CS20; // Full speed, no prescaler
+  TCCR2B = (1<<CS21); // Full speed, 1/8 prescaler
   TIMSK2 = 0; // All interrupts disabled
   
   sei();
   
 	// start off with a mellow pace
   config_pace_timer(20000);
-  st_start();
 }
 
-void st_buffer_step(uint8_t motor_port_bits)
+inline void st_buffer_step(uint8_t motor_port_bits)
 {
   // Buffer nothing unless stepping subsystem is running
   if (stepper_mode != STEPPER_MODE_RUNNING) { return; }
@@ -119,7 +118,7 @@ void st_buffer_step(uint8_t motor_port_bits)
 	int next_buffer_head = (step_buffer_head + 1) % STEP_BUFFER_SIZE;	
 	// If the buffer is full: good! That means we are well ahead of the robot. 
 	// Nap until there is room for more steps.
-	while(step_buffer_tail == next_buffer_head) { sleep_mode(); }	
+  while(step_buffer_tail == next_buffer_head) { sleep_mode(); }
 	// Push byte
   step_buffer[step_buffer_head] = motor_port_bits;
   step_buffer_head = next_buffer_head;
@@ -146,8 +145,10 @@ void st_flush()
 // Start the stepper subsystem
 void st_start()
 {
-  // Enable timer interrupt
+  // Enable timer interrupts
 	TIMSK1 |= (1<<OCIE1A);
+  TIMSK2 |= (1<<TOIE2);      
+  // set enable pin   
   STEPPERS_ENABLE_PORT |= 1<<STEPPERS_ENABLE_BIT;
   stepper_mode = STEPPER_MODE_RUNNING;
 }
@@ -155,8 +156,12 @@ void st_start()
 // Execute all buffered steps, then stop the stepper subsystem
 inline void st_stop()
 {
+  // flush pending operations
   st_synchronize();
+  // disable timer interrupts
 	TIMSK1 &= ~(1<<OCIE1A);
+  TIMSK2 &= ~(1<<TOIE2);           
+  // reset enable pin
   STEPPERS_ENABLE_PORT &= ~(1<<STEPPERS_ENABLE_BIT);
   stepper_mode = STEPPER_MODE_STOPPED;
 }
@@ -237,42 +242,6 @@ int check_limit_switch(int axis)
   }
   return((LIMIT_PORT&mask) || (LIMIT_PORT&mask));    
 }
-
-// void perform_go_home() 
-// {
-//   int axis;
-//   if(stepper_mode.home.phase == PHASE_HOME_RETURN) {
-//     // We are running all axes in reverse until all limit switches are tripped
-//     // Check all limit switches:
-//     for(axis=X_AXIS; axis <= Z_AXIS; axis++) {
-//       stepper_mode.home.away[axis] |= check_limit_switch(axis);
-//     }
-//     // Step steppers. First retract along Z-axis. Then X and Y.
-//     if(stepper_mode.home.away[Z_AXIS]) {
-//       step_axis(Z_AXIS);
-//     } else {
-//       // Check if all axes are home
-//       if(!(stepper_mode.home.away[X_AXIS] || stepper_mode.home.away[Y_AXIS])) {
-//         // All axes are home, prepare next phase: to nudge the tool carefully out of the limit switches
-//         memset(stepper_mode.home.direction, 1, sizeof(stepper_mode.home.direction)); // direction = [1,1,1]
-//         set_direction_bits(stepper_mode.home.direction);
-//         stepper_mode.home.phase == PHASE_HOME_NUDGE;
-//         return;
-//       }
-//       step_steppers(stepper_mode.home.away);
-//     }
-//   } else {    
-//     for(axis=X_AXIS; axis <= Z_AXIS; axis++) {
-//       if(check_limit_switch(axis)) {
-//         step_axis(axis);
-//         return;
-//       }
-//     }
-//     // When this code is reached it means all axes are free of their limit-switches. Complete the cycle and rest:
-//     clear_vector(stepper_mode.position); // By definition this is location [0, 0, 0]
-//     stepper_mode.mode = MODE_AT_REST;
-//   }
-// }
 
 void st_go_home()
 {

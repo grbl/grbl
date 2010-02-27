@@ -42,7 +42,7 @@ uint8_t st_bit_for_stepper(int axis);
 void st_buffer_pace(uint32_t microseconds);
 
 // Buffer a new instruction for the steppers
-void st_buffer_step(uint8_t motor_port_bits);
+inline void st_buffer_step(uint8_t motor_port_bits);
 
 // Block until all buffered steps are executed
 void st_synchronize();

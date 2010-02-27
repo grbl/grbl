@@ -24,18 +24,21 @@ if ARGV.empty?
   exit
 end
 
-SerialPort.open('/dev/tty.usbserial-A4001o6L', 9600) do |sp|
+SerialPort.open('/dev/tty.usbserial-A9007QcR', 9600) do |sp|
+  sp.write("\r\n\r\n");
+  sleep 5
   ARGV.each do |file|
     puts "Processing file #{file}"
-    prebuffer = $prebuffer ? 10 : 0
+    prebuffer = $prebuffer ? 7 : 0
     File.readlines(file).each do |line|
       next if line.strip == ''
       puts line.strip
       sp.write("#{line.strip}\r\n");
       if prebuffer == 0
+        sleep 0.1
         begin
           result = sp.gets.strip
-          puts result unless result == '' or result == 'ok'
+          puts "Grbl >> #{result}" unless result == '' or result == 'ok'
         end while result != 'ok'
       else
         prebuffer -= 1

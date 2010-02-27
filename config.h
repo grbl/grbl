@@ -23,11 +23,13 @@
 
 #define VERSION "0.0"
 
-#define X_STEPS_PER_MM 128.0
-#define Y_STEPS_PER_MM 128.0
-#define Z_STEPS_PER_MM 128.0
+#define X_STEPS_PER_MM 94.488188976378
+#define Y_STEPS_PER_MM 94.488188976378
+#define Z_STEPS_PER_MM 94.488188976378
 
-#define INCHES_PER_MM 25.4
+#define STEP_PULSE_MICROSECONDS 30
+
+#define INCHES_PER_MM (1.0/25.4)
 #define X_STEPS_PER_INCH X_STEPS_PER_MM*INCHES_PER_MM
 #define Y_STEPS_PER_INCH Y_STEPS_PER_MM*INCHES_PER_MM
 #define Z_STEPS_PER_INCH Z_STEPS_PER_MM*INCHES_PER_MM
@@ -35,12 +37,12 @@
 #define RAPID_FEEDRATE 960.0 // in millimeters per minute
 #define DEFAULT_FEEDRATE 960.0
 
-#define STEPPERS_ENABLE_DDR     DDRB
-#define STEPPERS_ENABLE_PORT    PORTB
-#define STEPPERS_ENABLE_BIT         6
+#define STEPPERS_ENABLE_DDR     DDRD
+#define STEPPERS_ENABLE_PORT    PORTD
+#define STEPPERS_ENABLE_BIT         2
 
-#define STEPPING_DDR       DDRB
-#define STEPPING_PORT      PORTB 
+#define STEPPING_DDR       DDRC
+#define STEPPING_PORT      PORTC 
 #define X_STEP_BIT           0
 #define Y_STEP_BIT           1
 #define Z_STEP_BIT           2
@@ -48,19 +50,20 @@
 #define Y_DIRECTION_BIT            4
 #define Z_DIRECTION_BIT            5
 
-#define LIMIT_DDR      DDRC
-#define LIMIT_PORT     PORTC 
-#define X_LIMIT_BIT          0
-#define Y_LIMIT_BIT          1
-#define Z_LIMIT_BIT          2
 
-#define SPINDLE_ENABLE_DDR DDRC
-#define SPINDLE_ENABLE_PORT PORTC
-#define SPINDLE_ENABLE_BIT 3
+#define LIMIT_DDR      DDRD
+#define LIMIT_PORT     PORTD
+#define X_LIMIT_BIT          3
+#define Y_LIMIT_BIT          4
+#define Z_LIMIT_BIT          5
 
-#define SPINDLE_DIRECTION_DDR DDRC
-#define SPINDLE_DIRECTION_PORT PORTC
-#define SPINDLE_DIRECTION_BIT 4
+#define SPINDLE_ENABLE_DDR DDRD
+#define SPINDLE_ENABLE_PORT PORTD
+#define SPINDLE_ENABLE_BIT 6
+
+#define SPINDLE_DIRECTION_DDR DDRD
+#define SPINDLE_DIRECTION_PORT PORTD
+#define SPINDLE_DIRECTION_BIT 7
 
 #define BAUD_RATE 9600
 
@@ -68,5 +71,12 @@
 #define DIRECTION_MASK ((1<<X_DIRECTION_BIT)|(1<<Y_DIRECTION_BIT)|(1<<Z_DIRECTION_BIT))
 #define STEPPING_MASK (STEP_MASK | DIRECTION_MASK)
 #define LIMIT_MASK ((1<<X_LIMIT_BIT)|(1<<Y_LIMIT_BIT)|(1<<Z_LIMIT_BIT))
+
+// Use this line for default operation (step-pulses high)
+#define STEPPING_INVERT_MASK 0
+// Uncomment this line for inverted stepping (step-pulses low, rest high)
+// #define STEPPING_INVERT_MASK (STEP_MASK)
+// Or bake your own like this adding any step-bits or directions you want to invert:
+// #define STEPPING_INVERT_MASK (STEP_MASK | (1<<Z_DIRECTION_BIT))
 
 #endif

@@ -93,10 +93,10 @@ void mc_line(double x, double y, double z, float feed_rate, int invert_feed_rate
 
   target[X_AXIS] = round(x*X_STEPS_PER_MM);
   target[Y_AXIS] = round(y*Y_STEPS_PER_MM);
-  target[Z_AXIS] = round(z*Z_STEPS_PER_MM);  
+  target[Z_AXIS] = round(z*Z_STEPS_PER_MM); 
   // Determine direction and travel magnitude for each axis
   for(axis = X_AXIS; axis <= Z_AXIS; axis++) {
-  	step_count[axis] = abs(target[axis] - position[axis]);
+  	step_count[axis] = labs(target[axis] - position[axis]);
     direction[axis] = signof(target[axis] - position[axis]);
   }
   // Find the magnitude of the axis with the longest travel
@@ -138,7 +138,9 @@ void mc_line(double x, double y, double z, float feed_rate, int invert_feed_rate
   			}
   		}
   	}
-    if(step_bits) { step_steppers(step_bits); }
+    if(step_bits) { 
+      step_steppers(step_bits);
+    }
   } while (step_bits);
   mode = MC_MODE_AT_REST;
 }
@@ -210,11 +212,11 @@ void mc_arc(double theta, double angular_travel, double radius, double linear_tr
   int target_quadrant = quadrant_of_the_circle(target_x, target_y);
   uint32_t arc_steps=0;
   // Will this whole arc take place within the same quadrant?
-  if (start_quadrant == target_quadrant && (abs(angular_travel) <= (M_PI/2))) { 
+  if (start_quadrant == target_quadrant && (fabs(angular_travel) <= (M_PI/2))) { 
     if(quadrant_horizontal(start_quadrant)) { // a horizontal quadrant where x will be the primary direction
-      arc_steps = abs(target_x-start_x);
+      arc_steps = labs(target_x-start_x);
     } else { // a vertical quadrant where y will be the primary direction
-      arc_steps = abs(target_y-start_y);
+      arc_steps = labs(target_y-start_y);
     }
   } else { // the start and target points are in different quadrants
     // Lets estimate the amount of steps along half a quadrant
@@ -234,7 +236,7 @@ void mc_arc(double theta, double angular_travel, double radius, double linear_tr
   
   // Set up the linear interpolation of the "depth" axis -----------------------------------------------------
   
-  int32_t linear_steps = abs(st_millimeters_to_steps(linear_travel, axis_linear));
+  int32_t linear_steps = labs(st_millimeters_to_steps(linear_travel, axis_linear));
   int linear_direction = signof(linear_travel);
   // The number of steppings needed to trace this motion is equal to the motion that require the maximum 
   // amount of steps: the arc or the line:
@@ -247,7 +249,7 @@ void mc_arc(double theta, double angular_travel, double radius, double linear_tr
   // Calculate feed rate -------------------------------------------------------------------------------------
   
   // We then calculate the millimeters of helical travel
-  double millimeters_of_travel = hypot(angular_travel*radius, abs(linear_travel));
+  double millimeters_of_travel = hypot(angular_travel*radius, labs(linear_travel));
   // Then we calculate the microseconds between each step as if we will trace the full circle.
   // It doesn't matter what fraction of the circle we are actually going to trace. The pace is the same.
   compute_and_set_step_pace(feed_rate, millimeters_of_travel, maximum_steps, invert_feed_rate);
@@ -288,12 +290,12 @@ void mc_arc(double theta, double angular_travel, double radius, double linear_tr
       direction[axis_1] = dx;
       direction[axis_2] = dy;    
       // Check which axis will be "major" for this stepping
-      if (abs(x)<abs(y)) {
+      if (labs(x)<labs(y)) {
         // X is major: Step arc horizontally      
         error += 1 + 2*x * dx;
         x+=dx;
         diagonal_error = error + 1 + 2*y*dy;
-        if(abs(error) >= abs(diagonal_error)) {
+        if(labs(error) >= labs(diagonal_error)) {
           y += dy;
           error = diagonal_error;
           step_bits |= diagonal_bits; // step diagonal
@@ -305,7 +307,7 @@ void mc_arc(double theta, double angular_travel, double radius, double linear_tr
         error += 1 + 2*y * dy; 
         y+=dy;
         diagonal_error = error + 1 + 2*x * dx; 
-        if(abs(error) >= abs(diagonal_error)) { 
+        if(labs(error) >= labs(diagonal_error)) { 
           x += dx; 
           error = diagonal_error; 
           step_bits |= diagonal_bits; // step diagonal
@@ -362,16 +364,7 @@ void set_stepper_directions(int8_t *direction)
     ((direction[Z_AXIS]&0x80)>>(7-Z_DIRECTION_BIT)));
 }
 
-// Step enabled steppers. Enabled should be an array of three bytes. Each byte represent one
-// stepper motor in the order X, Y, Z. Set the bytes of the steppers you want to step to
-// 1, and the rest to 0. 
 inline void step_steppers(uint8_t bits) 
 {
   st_buffer_step(direction_bits | bits);
-}
-
-// Step only one motor
-inline void step_axis(uint8_t axis) 
-{
-  st_buffer_step(direction_bits | st_bit_for_stepper(axis));
 }

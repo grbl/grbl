@@ -26,9 +26,9 @@
 #include <math.h>
 #include "nuts_bolts.h"
 
-#define BLOCK_BUFFER_SIZE 128
+#define LINE_BUFFER_SIZE 128
 
-char line[BLOCK_BUFFER_SIZE];
+char line[LINE_BUFFER_SIZE];
 uint8_t line_counter;
 
 void prompt() {
@@ -79,6 +79,9 @@ void sp_process()
   {
     if((c < 32)) {  // Line is complete. Then execute!
       line[line_counter] = 0;
+      // printString("->");
+      // printString(line);
+      // printString("<-\r\n");
       gc_execute_line(line);
       line_counter = 0;
       prompt();

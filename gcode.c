@@ -118,7 +118,7 @@ void gc_init() {
 }
 
 inline float to_millimeters(double value) {
-  return(gc.inches_mode ? value * INCHES_PER_MM : value);
+  return(gc.inches_mode ? (value * INCHES_PER_MM) : value);
 }
 
 
@@ -139,7 +139,7 @@ uint8_t gc_execute_line(char *line) {
   
   double p = 0, r = 0;
   int int_value;
-
+  
   clear_vector(target);
   clear_vector(offset);
 

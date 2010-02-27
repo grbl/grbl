@@ -33,11 +33,13 @@
 int main(void)
 {
   beginSerial(BAUD_RATE);
-  st_init();
+  st_init(); // initialize the stepper subsystem
   mc_init(); // initialize motion control subsystem
   spindle_init(); // initialize spindle controller
   gc_init(); // initialize gcode-parser
   sp_init(); // initialize the serial protocol
+  
+  st_start(); // start the stepper subsystem
   
   for(;;){
     sleep_mode();

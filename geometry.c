@@ -54,7 +54,7 @@ double theta(double x, double y)
 
 // Find the quadrant of the coordinate 
 int quadrant_of_the_circle(int32_t x, int32_t y) {
-  if (abs(x)<abs(y)){
+  if (labs(x)<labs(y)){
     if (y>0) {
       return(0);
     } else {
