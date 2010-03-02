@@ -32,47 +32,109 @@
 #include "wiring_serial.h"
 
 #define TICKS_PER_MICROSECOND (F_CPU/1000000)
-#define STEP_BUFFER_SIZE 100
+#define LINE_BUFFER_SIZE 5
 
-// A marker used to notify the stepper handler of a pace change
-#define PACE_CHANGE_MARKER 0xff
+struct Line {
+  uint32_t steps_x, steps_y, steps_z;
+  uint32_t maximum_steps;
+  uint32_t iterations;
+  uint8_t direction_bits;
+  uint32_t rate;
+}
 
-volatile uint8_t step_buffer[STEP_BUFFER_SIZE]; // A buffer for step instructions
-volatile int step_buffer_head = 0;
-volatile int step_buffer_tail = 0;
-volatile uint32_t current_pace;
-volatile uint32_t next_pace = 0;
+volatile uint8_t line_buffer[LINE_BUFFER_SIZE]; // A buffer for step instructions
+volatile int line_buffer_head = 0;
+volatile int line_buffer_tail = 0;
+
+// Variables used by SIG_OUTPUT_COMPARE1A
+uint8_t out_bits;
+struct Line *current_line;
+uint32_t counter_x, counter_y, counter_z;
 
 uint8_t stepper_mode = STEPPER_MODE_STOPPED;
 
 void config_pace_timer(uint32_t microseconds);
 
+void st_buffer_line(int32_t steps_x, int32_t steps_y, int32_t steps_z, uint32_t rate) {
+  // Buffer nothing unless stepping subsystem is running
+  if (stepper_mode != STEPPER_MODE_RUNNING) { return; }
+  // Calculate the buffer head after we push this byte
+	int next_buffer_head = (line_buffer_head + 1) % LINE_BUFFER_SIZE;	
+	// If the buffer is full: good! That means we are well ahead of the robot. 
+	// Nap until there is room in the buffer.
+  while(line_buffer_tail == next_buffer_head) { sleep_mode(); }
+  
+  // setup line
+  struct Line *line = &line_buffer[line_buffer_head];
+  line->steps_x = labs(steps_x);
+  line->steps_y = labs(steps_y);
+  line->steps_z = labs(steps_y);  
+  line->maximum_steps = max(line->steps_x, max(line->steps_y, line->steps_z));
+  line->iterations = line->maximum_steps;
+  line->rate = rate;
+  uint8_t direction_bits = 0;
+  if (steps_x < 0) { direction_bits |= (1<<X_DIRECTION_BIT); }
+  if (steps_y < 0) { direction_bits |= (1<<Y_DIRECTION_BIT); }
+  if (steps_z < 0) { direction_bits |= (1<<Z_DIRECTION_BIT); }
+  line->direction_bits = direction_bits;
+  
+  // Move buffer head
+  line_buffer_head = next_buffer_head;
+}
+
 // This timer interrupt is executed at the pace set with st_buffer_pace. It pops one instruction from
-// the step_buffer, executes it. Then it starts timer2 in order to reset the motor port after
+// the line_buffer, executes it. Then it starts timer2 in order to reset the motor port after
 // five microseconds.
 SIGNAL(SIG_OUTPUT_COMPARE1A)
 {
-  if (step_buffer_head != step_buffer_tail) {
-    PORTD &= ~(1<<3);
-    uint8_t popped = step_buffer[step_buffer_tail]; 
-    if(popped == PACE_CHANGE_MARKER) {
-      // This is not a step-instruction, but a pace-change-marker: change pace
-      config_pace_timer(next_pace);
-      next_pace = 0;
-    } else {      
-      popped ^= STEPPING_INVERT_MASK;
-      // Set the direction pins a cuple of nanoseconds before we step the steppers
-      STEPPING_PORT = (STEPPING_PORT & ~DIRECTION_MASK) | (popped & DIRECTION_MASK);
-      // Then pulse the stepping pins
-      STEPPING_PORT = (STEPPING_PORT & ~STEP_MASK) | popped;
-      // Reset step pulse reset timer
-      TCNT2 = -(((STEP_PULSE_MICROSECONDS-4)*TICKS_PER_MICROSECOND)/8);  
+  // Set the direction pins a cuple of nanoseconds before we step the steppers
+  STEPPING_PORT = (STEPPING_PORT & ~DIRECTION_MASK) | (out_bits & DIRECTION_MASK);
+  // Then pulse the stepping pins
+  STEPPING_PORT = (STEPPING_PORT & ~STEP_MASK) | out_bits;
+  // Reset step pulse reset timer
+  TCNT2 = -(((STEP_PULSE_MICROSECONDS-4)*TICKS_PER_MICROSECOND)/8);
+    
+  // If there is no current line, attempt to pop one from the buffer
+  if (current_line == NULL) {
+    // Anything in the buffer?
+    if (line_buffer_head != line_buffer_tail) {
+      // Retrieve a new line and get ready to step it
+      current_line = &line_buffer[line_buffer_tail]; 
+      config_pace_timer(current_line->rate);
+      counter_x = -current_line->maximum_steps/2;
+      counter_y = counter_x;
+      counter_z = counter_x;
+      // move the line buffer tail to the next instruction
+      line_buffer_tail = (line_buffer_tail + 1) % LINE_BUFFER_SIZE;
     }
-    // move the step buffer tail to the next instruction
-    step_buffer_tail = (step_buffer_tail + 1) % STEP_BUFFER_SIZE;
-  } else {
-    PORTD |= (1<<3);    
   }
+
+  if (current_line != NULL) {
+    out_bits = current_line->direction_bits;
+    counter_x += current_line->steps_x;
+    if (counter_x > 0) {
+      out_bits |= (1<<X_STEP_BIT);
+      counter_x -= current_line->maximum_steps;
+    }
+    counter_y += current_line-> steps_y;
+    if (counter_y > 0) {
+      out_bits |= (1<<Y_STEP_BIT);
+      counter_y -= current_line->maximum_steps;
+    }
+    counter_z += current_line-> steps_z;
+    if (counter_z > 0) {
+      out_bits |= (1<<Z_STEP_BIT);
+      counter_z -= current_line->maximum_steps;
+    }
+    // If current line is finished, reset pointer 
+    current_line->iterations -= 1;
+    if (current_line->iterations <= 0) {
+      current_line = NULL;
+    }
+  } else {
+    out_bits = 0;
+  }
+  out_bits ^= STEPPING_INVERT_MASK;
 }
 
 // This interrupt is set up by SIG_OUTPUT_COMPARE1A when it sets the motor port bits. It resets
@@ -113,25 +175,11 @@ void st_init()
   config_pace_timer(20000);
 }
 
-inline void st_buffer_step(uint8_t motor_port_bits)
-{
-  // Buffer nothing unless stepping subsystem is running
-  if (stepper_mode != STEPPER_MODE_RUNNING) { return; }
-  // Calculate the buffer head after we push this byte
-	int next_buffer_head = (step_buffer_head + 1) % STEP_BUFFER_SIZE;	
-	// If the buffer is full: good! That means we are well ahead of the robot. 
-	// Nap until there is room for more steps.
-  while(step_buffer_tail == next_buffer_head) { sleep_mode(); }
-	// Push byte
-  step_buffer[step_buffer_head] = motor_port_bits;
-  step_buffer_head = next_buffer_head;
-}
-
 // Block until all buffered steps are executed
 void st_synchronize()
 {
   if (stepper_mode == STEPPER_MODE_RUNNING) {
-    while(step_buffer_tail != step_buffer_head) { sleep_mode(); }    
+    while(line_buffer_tail != line_buffer_head) { sleep_mode(); }    
   } else {
     st_flush();
   }
@@ -141,7 +189,8 @@ void st_synchronize()
 void st_flush()
 {
   cli();
-  step_buffer_tail = step_buffer_head;
+  line_buffer_tail = line_buffer_head;
+  current_line = NULL;
   sei();
 }
 
@@ -167,23 +216,6 @@ inline void st_stop()
   // reset enable pin
   STEPPERS_ENABLE_PORT &= ~(1<<STEPPERS_ENABLE_BIT);
   stepper_mode = STEPPER_MODE_STOPPED;
-}
-
-// Buffer a pace change. Pace is the rate with which steps are executed. It is measured in microseconds from step to step. 
-// It is continually adjusted to achieve constant actual feed rate. Unless pace-changes was buffered along with the steps 
-// they govern they might change at slightly wrong moments in time as the pace would change while the stepper buffer was
-// still churning out the previous movement.
-void st_buffer_pace(uint32_t microseconds)
-{
-  // Do nothing if the pace in unchanged or the stepping subsytem is not running
-  if ((current_pace == microseconds) || (stepper_mode != STEPPER_MODE_RUNNING)) { return; }
-  // If the single-element pace "buffer" is full, sleep until it is popped
-  while (next_pace != 0) {
-    sleep_mode();
-  }  
-  // Buffer the pace change
-  next_pace = microseconds;
-  st_buffer_step(PACE_CHANGE_MARKER); // Place a pace-change marker in the step-buffer
 }
 
 // Returns a bitmask with the stepper bit for the given axis set

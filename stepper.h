@@ -35,14 +35,8 @@ void st_init();
 // Returns a bitmask with the stepper bit for the given axis set
 uint8_t st_bit_for_stepper(int axis);
 
-// Buffer a pace change. Pace is the rate with which steps are executed. It is measured in microseconds from step to step. 
-// It is continually adjusted to achieve constant actual feed rate. Unless pace-changes was buffered along with the steps 
-// they govern they might change at slightly wrong moments in time as the pace would change while the stepper buffer was
-// still churning out the previous movement.
-void st_buffer_pace(uint32_t microseconds);
-
-// Buffer a new instruction for the steppers
-inline void st_buffer_step(uint8_t motor_port_bits);
+// Buffer a new line segment (might block until there is room in the buffer)
+void st_buffer_line(int32_t steps_x, int32_t steps_y, int32_t steps_z, uint32_t rate);
 
 // Block until all buffered steps are executed
 void st_synchronize();

@@ -34,8 +34,8 @@
 #define Y_STEPS_PER_INCH Y_STEPS_PER_MM*INCHES_PER_MM
 #define Z_STEPS_PER_INCH Z_STEPS_PER_MM*INCHES_PER_MM
 
-#define RAPID_FEEDRATE 960.0 // in millimeters per minute
-#define DEFAULT_FEEDRATE 960.0
+#define RAPID_FEEDRATE 480.0 // in millimeters per minute
+#define DEFAULT_FEEDRATE 480.0
 
 #define STEPPERS_ENABLE_DDR     DDRD
 #define STEPPERS_ENABLE_PORT    PORTD
