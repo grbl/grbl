@@ -41,6 +41,8 @@ int main(void)
   
   st_start(); // start the stepper subsystem
   
+  DDRD |= (1<<3)|(1<<4)|(1<<5);
+  
   for(;;){
     sleep_mode();
     sp_process(); // process the serial protocol

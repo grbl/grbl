@@ -90,34 +90,44 @@ void mc_line(double x, double y, double z, float feed_rate, int invert_feed_rate
     maximum_steps;   // The larges absolute step-count of any axis  
   
   // Setup ---------------------------------------------------------------------------------------------------
-
+  PORTD |= (1<<4);
+  PORTD |= (1<<5);
   target[X_AXIS] = round(x*X_STEPS_PER_MM);
   target[Y_AXIS] = round(y*Y_STEPS_PER_MM);
   target[Z_AXIS] = round(z*Z_STEPS_PER_MM); 
+  PORTD ^= (1<<5);
   // Determine direction and travel magnitude for each axis
   for(axis = X_AXIS; axis <= Z_AXIS; axis++) {
   	step_count[axis] = labs(target[axis] - position[axis]);
     direction[axis] = signof(target[axis] - position[axis]);
   }
+  PORTD ^= (1<<5);
   // Find the magnitude of the axis with the longest travel
 	maximum_steps = max(step_count[Z_AXIS], 
 	  max(step_count[X_AXIS], step_count[Y_AXIS]));
+  PORTD ^= (1<<5);
   // Nothing to do?
-	if (maximum_steps == 0) { return; }
+  if (maximum_steps == 0) { PORTD &= ~(1<<4); PORTD |= (1<<5); return; }
+  PORTD ^= (1<<5);
 	// Set up a neat counter for each axis
   for(axis = X_AXIS; axis <= Z_AXIS; axis++) {
     counter[axis] = -maximum_steps/2;
   }
+  PORTD ^= (1<<5);
 	// Set our direction pins 
   set_stepper_directions(direction);
+  PORTD ^= (1<<5);
 
 	// Ask old Phytagoras to estimate how many mm our next move is going to take us
 	double millimeters_of_travel = 
     sqrt(square(X_STEPS_PER_MM*step_count[X_AXIS]) + 
         square(Y_STEPS_PER_MM*step_count[Y_AXIS]) + 
         square(Z_STEPS_PER_MM*step_count[Z_AXIS]));
+      PORTD ^= (1<<5);
   // And set the step pace
   compute_and_set_step_pace(feed_rate, millimeters_of_travel, maximum_steps, invert_feed_rate);
+  PORTD &= ~(1<<5);
+  PORTD &= ~(1<<4);
   
   // Execution -----------------------------------------------------------------------------------------------
 

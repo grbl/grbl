@@ -53,6 +53,7 @@ void config_pace_timer(uint32_t microseconds);
 SIGNAL(SIG_OUTPUT_COMPARE1A)
 {
   if (step_buffer_head != step_buffer_tail) {
+    PORTD &= ~(1<<3);
     uint8_t popped = step_buffer[step_buffer_tail]; 
     if(popped == PACE_CHANGE_MARKER) {
       // This is not a step-instruction, but a pace-change-marker: change pace
@@ -69,6 +70,8 @@ SIGNAL(SIG_OUTPUT_COMPARE1A)
     }
     // move the step buffer tail to the next instruction
     step_buffer_tail = (step_buffer_tail + 1) % STEP_BUFFER_SIZE;
+  } else {
+    PORTD |= (1<<3);    
   }
 }
 

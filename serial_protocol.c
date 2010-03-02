@@ -77,7 +77,7 @@ void sp_process()
   char c;
   while((c = serialRead()) != -1) 
   {
-    if((c < 32)) {  // Line is complete. Then execute!
+    if((c == '\n')) {  // Line is complete. Then execute!
       line[line_counter] = 0;
       // printString("->");
       // printString(line);
@@ -85,7 +85,7 @@ void sp_process()
       gc_execute_line(line);
       line_counter = 0;
       prompt();
-    } else if (c == ' ' || c == '\t') { // Throw away whitepace
+    } else if (c <= ' ') { // Throw away whitepace and control characters
     } else if (c >= 'a' && c <= 'z') { // Upcase lowercase
       line[line_counter++] = c-'a'+'A';
     } else {
