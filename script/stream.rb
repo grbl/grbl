@@ -29,7 +29,7 @@ SerialPort.open('/dev/tty.usbserial-A9007QcR', 9600) do |sp|
   sleep 5
   ARGV.each do |file|
     puts "Processing file #{file}"
-    prebuffer = $prebuffer ? 7 : 0
+    prebuffer = $prebuffer ? 12 : 0
     File.readlines(file).each do |line|
       next if line.strip == ''
       puts line.strip

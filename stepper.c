@@ -25,6 +25,7 @@
 #include "stepper.h"
 #include "config.h"
 #include <math.h>
+#include <stdlib.h>
 #include <util/delay.h>
 #include "nuts_bolts.h"
 #include <avr/interrupt.h>
@@ -32,30 +33,30 @@
 #include "wiring_serial.h"
 
 #define TICKS_PER_MICROSECOND (F_CPU/1000000)
-#define LINE_BUFFER_SIZE 5
+#define LINE_BUFFER_SIZE 8
 
 struct Line {
   uint32_t steps_x, steps_y, steps_z;
-  uint32_t maximum_steps;
-  uint32_t iterations;
+  int32_t maximum_steps;
   uint8_t direction_bits;
   uint32_t rate;
-}
+};
 
-volatile uint8_t line_buffer[LINE_BUFFER_SIZE]; // A buffer for step instructions
+struct Line line_buffer[LINE_BUFFER_SIZE]; // A buffer for step instructions
 volatile int line_buffer_head = 0;
 volatile int line_buffer_tail = 0;
 
 // Variables used by SIG_OUTPUT_COMPARE1A
 uint8_t out_bits;
 struct Line *current_line;
-uint32_t counter_x, counter_y, counter_z;
+volatile int32_t counter_x, counter_y, counter_z;
+uint32_t iterations;
 
 uint8_t stepper_mode = STEPPER_MODE_STOPPED;
 
 void config_pace_timer(uint32_t microseconds);
 
-void st_buffer_line(int32_t steps_x, int32_t steps_y, int32_t steps_z, uint32_t rate) {
+void st_buffer_line(int32_t steps_x, int32_t steps_y, int32_t steps_z, uint32_t microseconds) {
   // Buffer nothing unless stepping subsystem is running
   if (stepper_mode != STEPPER_MODE_RUNNING) { return; }
   // Calculate the buffer head after we push this byte
@@ -68,18 +69,20 @@ void st_buffer_line(int32_t steps_x, int32_t steps_y, int32_t steps_z, uint32_t 
   struct Line *line = &line_buffer[line_buffer_head];
   line->steps_x = labs(steps_x);
   line->steps_y = labs(steps_y);
-  line->steps_z = labs(steps_y);  
+  line->steps_z = labs(steps_z);  
   line->maximum_steps = max(line->steps_x, max(line->steps_y, line->steps_z));
-  line->iterations = line->maximum_steps;
-  line->rate = rate;
+  // Bail if this is a zero-length line
+  if (line->maximum_steps == 0) { return; };
+  line->rate = microseconds/line->maximum_steps;
   uint8_t direction_bits = 0;
   if (steps_x < 0) { direction_bits |= (1<<X_DIRECTION_BIT); }
   if (steps_y < 0) { direction_bits |= (1<<Y_DIRECTION_BIT); }
   if (steps_z < 0) { direction_bits |= (1<<Z_DIRECTION_BIT); }
   line->direction_bits = direction_bits;
-  
   // Move buffer head
   line_buffer_head = next_buffer_head;
+  // enable stepper interrupt
+	TIMSK1 |= (1<<OCIE1A);
 }
 
 // This timer interrupt is executed at the pace set with st_buffer_pace. It pops one instruction from
@@ -87,6 +90,7 @@ void st_buffer_line(int32_t steps_x, int32_t steps_y, int32_t steps_z, uint32_t 
 // five microseconds.
 SIGNAL(SIG_OUTPUT_COMPARE1A)
 {
+  PORTD |= (1<<3);
   // Set the direction pins a cuple of nanoseconds before we step the steppers
   STEPPING_PORT = (STEPPING_PORT & ~DIRECTION_MASK) | (out_bits & DIRECTION_MASK);
   // Then pulse the stepping pins
@@ -96,18 +100,23 @@ SIGNAL(SIG_OUTPUT_COMPARE1A)
     
   // If there is no current line, attempt to pop one from the buffer
   if (current_line == NULL) {
+    PORTD &= ~(1<<4);
     // Anything in the buffer?
     if (line_buffer_head != line_buffer_tail) {
+      PORTD ^= (1<<5);
       // Retrieve a new line and get ready to step it
       current_line = &line_buffer[line_buffer_tail]; 
       config_pace_timer(current_line->rate);
-      counter_x = -current_line->maximum_steps/2;
+      counter_x = -(current_line->maximum_steps/2);
       counter_y = counter_x;
       counter_z = counter_x;
-      // move the line buffer tail to the next instruction
-      line_buffer_tail = (line_buffer_tail + 1) % LINE_BUFFER_SIZE;
-    }
-  }
+      iterations = current_line->maximum_steps;
+    } else {
+      // disable this interrupt until there is something to handle
+    	TIMSK1 &= ~(1<<OCIE1A);
+      PORTD |= (1<<4);          
+    }    
+  } 
 
   if (current_line != NULL) {
     out_bits = current_line->direction_bits;
@@ -116,25 +125,28 @@ SIGNAL(SIG_OUTPUT_COMPARE1A)
       out_bits |= (1<<X_STEP_BIT);
       counter_x -= current_line->maximum_steps;
     }
-    counter_y += current_line-> steps_y;
+    counter_y += current_line->steps_y;
     if (counter_y > 0) {
       out_bits |= (1<<Y_STEP_BIT);
       counter_y -= current_line->maximum_steps;
     }
-    counter_z += current_line-> steps_z;
+    counter_z += current_line->steps_z;
     if (counter_z > 0) {
       out_bits |= (1<<Z_STEP_BIT);
       counter_z -= current_line->maximum_steps;
     }
     // If current line is finished, reset pointer 
-    current_line->iterations -= 1;
-    if (current_line->iterations <= 0) {
+    iterations -= 1;
+    if (iterations <= 0) {
       current_line = NULL;
+      // move the line buffer tail to the next instruction
+      line_buffer_tail = (line_buffer_tail + 1) % LINE_BUFFER_SIZE;      
     }
   } else {
     out_bits = 0;
   }
   out_bits ^= STEPPING_INVERT_MASK;
+  PORTD &= ~(1<<3);  
 }
 
 // This interrupt is set up by SIG_OUTPUT_COMPARE1A when it sets the motor port bits. It resets
@@ -258,7 +270,6 @@ void config_pace_timer(uint32_t microseconds)
   TCCR1B = (TCCR1B & ~(0x07<<CS10)) | ((prescaler+1)<<CS10);
   // Set ceiling
   OCR1A = ceiling;
-  current_pace = microseconds;
 }
 
 int check_limit_switches()

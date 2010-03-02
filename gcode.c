@@ -112,7 +112,7 @@ void select_plane(uint8_t axis_0, uint8_t axis_1, uint8_t axis_2)
 
 void gc_init() {
   memset(&gc, 0, sizeof(gc));
-  gc.feed_rate = DEFAULT_FEEDRATE;
+  gc.feed_rate = DEFAULT_FEEDRATE/60;
   select_plane(X_AXIS, Y_AXIS, Z_AXIS);
   gc.absolute_mode = true;
 }
@@ -209,7 +209,7 @@ uint8_t gc_execute_line(char *line) {
       if (gc.inverse_feed_rate_mode) {
         inverse_feed_rate = unit_converted_value; // seconds per motion for this motion only
       } else {
-        gc.feed_rate = unit_converted_value; // millimeters pr second
+        gc.feed_rate = unit_converted_value/60; // millimeters pr second
       }
       break;
       case 'I': case 'J': case 'K': offset[letter-'I'] = unit_converted_value; break;

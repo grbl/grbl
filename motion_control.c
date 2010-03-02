@@ -63,90 +63,38 @@ void mc_dwell(uint32_t milliseconds)
   mode = MC_MODE_AT_REST; 
 }
 
-// Calculate the microseconds between steps that we should wait in order to travel the 
-// designated amount of millimeters in the amount of steps we are going to generate
-void compute_and_set_step_pace(double feed_rate, double millimeters_of_travel, uint32_t steps, int invert) {
-  int32_t pace;
-  if (invert) {
-    pace = round(ONE_MINUTE_OF_MICROSECONDS/feed_rate/steps);
-  } else {
-    pace = round((ONE_MINUTE_OF_MICROSECONDS/X_STEPS_PER_MM)/feed_rate);
-  }
-  st_buffer_pace(pace);
-}
-
 // Execute linear motion in absolute millimeter coordinates. Feed rate given in millimeters/second
 // unless invert_feed_rate is true. Then the feed_rate means that the motion should be completed in
 // 1/feed_rate minutes.
 void mc_line(double x, double y, double z, float feed_rate, int invert_feed_rate)
 {
 	// Flags to keep track of which axes to step
+  uint8_t axis; // loop variable
   int32_t target[3]; // The target position in absolute steps
+  int32_t steps[3]; // The target line in relative steps
   
   // Setup ---------------------------------------------------------------------------------------------------
-  PORTD |= (1<<4);
-  PORTD |= (1<<5);
-  target[X_AXIS] = round(x*X_STEPS_PER_MM);
-  target[Y_AXIS] = round(y*Y_STEPS_PER_MM);
-  target[Z_AXIS] = round(z*Z_STEPS_PER_MM); 
-  PORTD ^= (1<<5);
-  // Determine direction and travel magnitude for each axis
-  for(axis = X_AXIS; axis <= Z_AXIS; axis++) {
-  	step_count[axis] = labs(target[axis] - position[axis]);
-    direction[axis] = signof(target[axis] - position[axis]);
-  }
-  PORTD ^= (1<<5);
-  // Find the magnitude of the axis with the longest travel
-	maximum_steps = max(step_count[Z_AXIS], 
-	  max(step_count[X_AXIS], step_count[Y_AXIS]));
-  PORTD ^= (1<<5);
-  // Nothing to do?
-  if (maximum_steps == 0) { PORTD &= ~(1<<4); PORTD |= (1<<5); return; }
-  PORTD ^= (1<<5);
-	// Set up a neat counter for each axis
-  for(axis = X_AXIS; axis <= Z_AXIS; axis++) {
-    counter[axis] = -maximum_steps/2;
-  }
-  PORTD ^= (1<<5);
-	// Set our direction pins 
-  set_stepper_directions(direction);
-  PORTD ^= (1<<5);
 
-	// Ask old Phytagoras to estimate how many mm our next move is going to take us
-	double millimeters_of_travel = 
-    sqrt(square(X_STEPS_PER_MM*step_count[X_AXIS]) + 
-        square(Y_STEPS_PER_MM*step_count[Y_AXIS]) + 
-        square(Z_STEPS_PER_MM*step_count[Z_AXIS]));
-      PORTD ^= (1<<5);
-  // And set the step pace
-  compute_and_set_step_pace(feed_rate, millimeters_of_travel, maximum_steps, invert_feed_rate);
-  PORTD &= ~(1<<5);
-  PORTD &= ~(1<<4);
-  
-  // Execution -----------------------------------------------------------------------------------------------
+  target[X_AXIS] = lround(x*X_STEPS_PER_MM);
+  target[Y_AXIS] = lround(y*Y_STEPS_PER_MM);
+  target[Z_AXIS] = lround(z*Z_STEPS_PER_MM); 
 
-  mode = MC_MODE_LINEAR;
+  for(axis = X_AXIS; axis <= Z_AXIS; axis++) {
+    steps[axis] = target[axis]-position[axis];
+  }
   
-  do {
-  	// Trace the line
-    step_bits = 0;
-    for(axis = X_AXIS; axis <= Z_AXIS; axis++) {
-  		if (target[axis] != position[axis])
-  		{
-  			counter[axis] += step_count[axis];
-  			if (counter[axis] > 0)
-  			{
-          step_bits |= st_bit_for_stepper(axis);
-  				counter[axis] -= maximum_steps;
-          position[axis] += direction[axis];
-  			}
-  		}
-  	}
-    if(step_bits) { 
-      step_steppers(step_bits);
-    }
-  } while (step_bits);
-  mode = MC_MODE_AT_REST;
+	if (invert_feed_rate) {
+    st_buffer_line(steps[X_AXIS], steps[Y_AXIS], steps[Z_AXIS], lround(ONE_MINUTE_OF_MICROSECONDS/feed_rate));
+	} else {
+  	// Ask old Phytagoras to estimate how many mm our next move is going to take us
+  	double millimeters_of_travel = sqrt(
+  	  square(steps[X_AXIS]/X_STEPS_PER_MM) + 
+  	  square(steps[Y_AXIS]/Y_STEPS_PER_MM) + 
+  	  square(steps[Z_AXIS]/Z_STEPS_PER_MM));
+    st_buffer_line(steps[X_AXIS], steps[Y_AXIS], steps[Z_AXIS],
+      lround((millimeters_of_travel/feed_rate)*1000000));
+	}
+	memcpy(position, target, sizeof(target)); // position[] = target[] 
 }
 
 
@@ -188,9 +136,4 @@ void set_stepper_directions(int8_t *direction)
     ((direction[X_AXIS]&0x80)>>(7-X_DIRECTION_BIT)) |
     ((direction[Y_AXIS]&0x80)>>(7-Y_DIRECTION_BIT)) |
     ((direction[Z_AXIS]&0x80)>>(7-Z_DIRECTION_BIT)));
-}
-
-inline void step_steppers(uint8_t bits) 
-{
-  st_buffer_step(direction_bits | bits);
 }
