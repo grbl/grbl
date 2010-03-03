@@ -18,14 +18,6 @@
   along with Grbl.  If not, see <http://www.gnu.org/licenses/>.
 */
 
-/* The structure of this module was inspired by the Arduino GCode_Interpreter by Mike Ellery. The arc
-   interpolator written from the information provided in the Wikipedia article 'Midpoint circle algorithm'
-   and the lecture 'Circle Drawing Algorithms' by Leonard McMillan. 
-   
-   http://en.wikipedia.org/wiki/Midpoint_circle_algorithm
-   http://www.cs.unc.edu/~mcmillan/comp136/Lecture7/circle.html
-*/
-
 #include <avr/io.h>
 #include "config.h"
 #include "motion_control.h"
