@@ -344,7 +344,7 @@ uint8_t gc_execute_line(char *line) {
         // Negative R is g-code-alese for "I want a circle with more than 180 degrees of travel" (go figure!), 
         // even though it is advised against ever generating such circles in a single line of g-code. By 
         // inverting the sign of h_x2_div_d the center of the circles is placed on the opposite side of the line of
-        // travel and thus we get the unadvisably long circles as prescribed.
+        // travel and thus we get the unadvisably long arcs as prescribed.
         if (r < 0) { h_x2_div_d = -h_x2_div_d; }        
         // Complete the operation by calculating the actual center of the arc
         offset[gc.plane_axis_0] = (x-(y*h_x2_div_d))/2;
