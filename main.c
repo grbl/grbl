@@ -39,8 +39,6 @@ int main(void)
   gc_init(); // initialize gcode-parser
   sp_init(); // initialize the serial protocol
   
-  st_start(); // start the stepper subsystem
-  
   DDRD |= (1<<3)|(1<<4)|(1<<5);
   
   for(;;){

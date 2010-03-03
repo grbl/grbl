@@ -33,7 +33,7 @@
 #include "wiring_serial.h"
 
 #define TICKS_PER_MICROSECOND (F_CPU/1000000)
-#define LINE_BUFFER_SIZE 8
+#define LINE_BUFFER_SIZE 10
 
 struct Line {
   uint32_t steps_x, steps_y, steps_z;
@@ -52,15 +52,11 @@ struct Line *current_line;
 volatile int32_t counter_x, counter_y, counter_z;
 uint32_t iterations;
 
-uint8_t stepper_mode = STEPPER_MODE_STOPPED;
-
-void config_pace_timer(uint32_t microseconds);
+void config_step_timer(uint32_t microseconds);
 
 // Add a new linear movement to the buffer. steps_x, _y and _z is the signed, relative motion in 
 // steps. Microseconds specify how many microseconds the move should take to perform.
 void st_buffer_line(int32_t steps_x, int32_t steps_y, int32_t steps_z, uint32_t microseconds) {
-  // Buffer nothing unless stepping subsystem is running
-  if (stepper_mode != STEPPER_MODE_RUNNING) { return; }
   // Calculate the buffer head after we push this byte
 	int next_buffer_head = (line_buffer_head + 1) % LINE_BUFFER_SIZE;	
 	// If the buffer is full: good! That means we are well ahead of the robot. 
@@ -108,7 +104,7 @@ SIGNAL(SIG_OUTPUT_COMPARE1A)
       PORTD ^= (1<<5);
       // Retrieve a new line and get ready to step it
       current_line = &line_buffer[line_buffer_tail]; 
-      config_pace_timer(current_line->rate);
+      config_step_timer(current_line->rate);
       counter_x = -(current_line->maximum_steps/2);
       counter_y = counter_x;
       counter_z = counter_x;
@@ -182,24 +178,21 @@ void st_init()
   TCCR2A = 0; // Normal operation
   TCCR2B = (1<<CS21); // Full speed, 1/8 prescaler
   TIMSK2 = 0; // All interrupts disabled
+
+  TIMSK2 |= (1<<TOIE2);      
+  // set enable pin   
+  STEPPERS_ENABLE_PORT |= 1<<STEPPERS_ENABLE_BIT;
   
   sei();
-  
-	// start off with a mellow pace
-  config_pace_timer(20000);
 }
 
 // Block until all buffered steps are executed
 void st_synchronize()
 {
-  if (stepper_mode == STEPPER_MODE_RUNNING) {
-    while(line_buffer_tail != line_buffer_head) { sleep_mode(); }    
-  } else {
-    st_flush();
-  }
+  while(line_buffer_tail != line_buffer_head) { sleep_mode(); }    
 }
 
-// Cancel all pending steps
+// Cancel all buffered steps
 void st_flush()
 {
   cli();
@@ -208,42 +201,8 @@ void st_flush()
   sei();
 }
 
-// Start the stepper subsystem
-void st_start()
-{
-  // Enable timer interrupts
-	TIMSK1 |= (1<<OCIE1A);
-  TIMSK2 |= (1<<TOIE2);      
-  // set enable pin   
-  STEPPERS_ENABLE_PORT |= 1<<STEPPERS_ENABLE_BIT;
-  stepper_mode = STEPPER_MODE_RUNNING;
-}
-
-// Execute all buffered steps, then stop the stepper subsystem
-inline void st_stop()
-{
-  // flush pending operations
-  st_synchronize();
-  // disable timer interrupts
-	TIMSK1 &= ~(1<<OCIE1A);
-  TIMSK2 &= ~(1<<TOIE2);           
-  // reset enable pin
-  STEPPERS_ENABLE_PORT &= ~(1<<STEPPERS_ENABLE_BIT);
-  stepper_mode = STEPPER_MODE_STOPPED;
-}
-
-// Returns a bitmask with the stepper bit for the given axis set
-uint8_t st_bit_for_stepper(int axis) {
-  switch(axis) {
-    case X_AXIS: return(1<<X_STEP_BIT);
-    case Y_AXIS: return(1<<Y_STEP_BIT);
-    case Z_AXIS: return(1<<Z_STEP_BIT);
-  }
-  return(0);
-}
-
 // Configures the prescaler and ceiling of timer 1 to produce the given pace as accurately as possible.
-void config_pace_timer(uint32_t microseconds)
+void config_step_timer(uint32_t microseconds)
 {
   uint32_t ticks = microseconds*TICKS_PER_MICROSECOND;
   uint16_t ceiling;
@@ -274,34 +233,7 @@ void config_pace_timer(uint32_t microseconds)
   OCR1A = ceiling;
 }
 
-int check_limit_switches()
-{
-  // Dual read as crude debounce
-  return((LIMIT_PORT & LIMIT_MASK) | (LIMIT_PORT & LIMIT_MASK));
-}
-
-int check_limit_switch(int axis)
-{
-  uint8_t mask = 0;
-  switch (axis) {
-    case X_AXIS: mask = 1<<X_LIMIT_BIT; break;
-    case Y_AXIS: mask = 1<<Y_LIMIT_BIT; break;
-    case Z_AXIS: mask = 1<<Z_LIMIT_BIT; break;
-  }
-  return((LIMIT_PORT&mask) || (LIMIT_PORT&mask));    
-}
-
 void st_go_home()
 {
   // Todo: Perform the homing cycle
-}
-
-// Convert from millimeters to step-counts along the designated axis
-int32_t st_millimeters_to_steps(double millimeters, int axis) {
-  switch(axis) {
-    case X_AXIS: return(round(millimeters*X_STEPS_PER_MM));
-    case Y_AXIS: return(round(millimeters*Y_STEPS_PER_MM));
-    case Z_AXIS: return(round(millimeters*Z_STEPS_PER_MM));
-  }
-  return(0);
 }

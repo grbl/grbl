@@ -32,9 +32,6 @@
 // Initialize and start the stepper motor subsystem
 void st_init();
 
-// Returns a bitmask with the stepper bit for the given axis set
-uint8_t st_bit_for_stepper(int axis);
-
 // Add a new linear movement to the buffer. steps_x, _y and _z is the signed, relative motion in 
 // steps. Microseconds specify how many microseconds the move should take to perform.
 void st_buffer_line(int32_t steps_x, int32_t steps_y, int32_t steps_z, uint32_t rate);
@@ -45,19 +42,7 @@ void st_synchronize();
 // Cancel all pending steps
 void st_flush();
 
-// Start the stepper subsystem
-void st_start();
-
-// Execute all buffered steps, then stop the stepper subsystem
-inline void st_stop();
-
 // Execute the homing cycle
 void st_go_home();
-
-// Echo steps to serial port? (true/false)
-void st_set_echo(int value);
-
-// Convert from millimeters to step-counts along the designated axis
-int32_t st_millimeters_to_steps(double millimeters, int axis);
 
 #endif

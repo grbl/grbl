@@ -21,7 +21,7 @@
 #ifndef config_h
 #define config_h
 
-#define VERSION "0.0"
+#define VERSION "0.5"
 
 #define X_STEPS_PER_MM (94.488188976378*16)
 #define Y_STEPS_PER_MM (94.488188976378*16)

@@ -1,19 +1,6 @@
 * Use errno to detect fp-errors
-* Optimize arc target detection code utilizing the primary axis of travel
-* Arcs might be a step or two off because of FP gotchas. Must add a little nudge in the end there?
 * Implement homing cycle in stepper.c
 * Implement limit switch support in stepper.c (use port-triggered interrupts?)
-* How on earth am I going to deal with arcs in setups that have different steps/mm on each axis? Must 
-  support elipses?! Oh no.
-* Eliminate need for x and y in step_arc_along_
-* Tool table
-* Tool length offsets
 * Tool change M6
 * Path Control Modes
 * Spindle speed support
-
-Bugs to fix:
-
-This generates an infinite sequence of non-steppings
-G01 X152.730364 Y331.534522
-G03 X152.30001 Y331.959998 I-1.959917 J-1.552007

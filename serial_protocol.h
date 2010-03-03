@@ -27,8 +27,6 @@
 
 // Initialize the serial protocol
 void sp_init();
-// Called by motion control just before the motion starts
-void sp_send_execution_marker();
 // Read command lines from the serial port and execute them as they
 // come in. Blocks until the serial buffer is emptied. 
 void sp_process();

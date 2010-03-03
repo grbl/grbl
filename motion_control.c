@@ -40,27 +40,20 @@
 
 #define ONE_MINUTE_OF_MICROSECONDS 60000000.0
 
-volatile int8_t mode;   // The current operation mode
 int32_t position[3];    // The current position of the tool in absolute steps
-uint8_t direction_bits; // The direction bits to be used with any upcoming step-instruction
 
-void set_stepper_directions(int8_t *direction);
 inline void step_steppers(uint8_t bits);
 inline void step_axis(uint8_t axis);
 void prepare_linear_motion(uint32_t x, uint32_t y, uint32_t z, float feed_rate, int invert_feed_rate);
 
 void mc_init()
 {
-  mode = MC_MODE_AT_REST;
   clear_vector(position);
 }
 
 void mc_dwell(uint32_t milliseconds) 
 {
-  mode = MC_MODE_DWELL;
-  st_synchronize(); 
-  _delay_ms(milliseconds); 
-  mode = MC_MODE_AT_REST; 
+  st_buffer_line(0, 0, 0, milliseconds*1000);
 }
 
 // Execute linear motion in absolute millimeter coordinates. Feed rate given in millimeters/second
@@ -128,30 +121,6 @@ void mc_arc(double theta, double angular_travel, double radius, double linear_tr
 
 void mc_go_home()
 {
-  mode = MC_MODE_HOME;
   st_go_home();
-  st_synchronize();
   clear_vector(position); // By definition this is location [0, 0, 0]
-  mode = MC_MODE_AT_REST;
-}
-
-int mc_status() 
-{
-  return(mode);
-}
-
-// Set the direction bits for the stepper motors according to the provided vector. 
-// direction is an array of three 8 bit integers representing the direction of 
-// each motor. The values should be negative (reverse), 0 or positive (forward).
-void set_stepper_directions(int8_t *direction) 
-{
-  /* Sorry about this convoluted code! It uses the fact that bit 7 of each direction
-     int is set when the direction == -1, but is 0 when direction is forward. This
-     way we can generate the whole direction bit-mask without doing any comparisions
-     or branching. Fast and compact, yet practically unreadable. Sorry sorry sorry.
-  */
-  direction_bits = (
-    ((direction[X_AXIS]&0x80)>>(7-X_DIRECTION_BIT)) |
-    ((direction[Y_AXIS]&0x80)>>(7-Y_DIRECTION_BIT)) |
-    ((direction[Z_AXIS]&0x80)>>(7-Z_DIRECTION_BIT)));
 }

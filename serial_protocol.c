@@ -26,40 +26,13 @@
 #include <math.h>
 #include "nuts_bolts.h"
 
-#define LINE_BUFFER_SIZE 128
+#define LINE_BUFFER_SIZE 60
 
 char line[LINE_BUFFER_SIZE];
-uint8_t line_counter;
+uint8_t char_counter;
 
 void prompt() {
   printString("ok\r\n");
-  line_counter = 0;
-}
-
-void print_result() {
-  double position[3];
-  int inches_mode;
-  uint8_t status_code;
-  uint32_t line_number;
-  int i; // loop variable
-  gc_get_status(position, &status_code, &inches_mode, &line_number);
-  printString("\r\n[ ");  
-  for(i=X_AXIS; i<=Z_AXIS; i++) {
-    printInteger(trunc(position[i]*100));
-    printByte(' ');
-  }
-  printByte(']');
-  printByte('@');
-  printInteger(line_number);
-  printByte(':');
-  switch(status_code) {
-    case GCSTATUS_OK: printString("0 OK\r\n"); break;
-    case GCSTATUS_BAD_NUMBER_FORMAT: printString("1 Bad number format\r\n"); break;
-    case GCSTATUS_EXPECTED_COMMAND_LETTER: printString("2 Expected command letter\r\n"); break;
-    case GCSTATUS_UNSUPPORTED_STATEMENT: printString("3 Unsupported statement\r\n"); break;
-    case GCSTATUS_MOTION_CONTROL_ERROR: printString("4 Motion control error\r\n"); break;
-    case GCSTATUS_FLOATING_POINT_ERROR: printString("5 Floating point error\r\n"); break;
-  }
 }
 
 void sp_init() 
@@ -78,19 +51,15 @@ void sp_process()
   while((c = serialRead()) != -1) 
   {
     if((c == '\n')) {  // Line is complete. Then execute!
-      line[line_counter] = 0;
-      // printString("->");
-      // printString(line);
-      // printString("<-\r\n");
+      line[char_counter] = 0;
       gc_execute_line(line);
-      line_counter = 0;
+      char_counter = 0;
       prompt();
     } else if (c <= ' ') { // Throw away whitepace and control characters
     } else if (c >= 'a' && c <= 'z') { // Upcase lowercase
-      line[line_counter++] = c-'a'+'A';
+      line[char_counter++] = c-'a'+'A';
     } else {
-      line[line_counter++] = c;
+      line[char_counter++] = c;
     }
   }
 }
-
