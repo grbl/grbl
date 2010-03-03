@@ -94,6 +94,12 @@ SIGNAL(SIG_OUTPUT_COMPARE1A)
   STEPPING_PORT = (STEPPING_PORT & ~STEP_MASK) | out_bits;
   // Reset step pulse reset timer
   TCNT2 = -(((STEP_PULSE_MICROSECONDS-4)*TICKS_PER_MICROSECOND)/8);
+  // Enable interrupts in order for SIG_OVERFLOW2 to be able to be triggered 
+  // and reset the stepper signal even before this handler is done. Needed
+  // to generate a clean stepper-signal even if this is going to be a time consuming
+  // time oround in this interrupt e.g. if we just completed a line and need to
+  // set up another.
+  sei();
     
   // If there is no current line, attempt to pop one from the buffer
   if (current_line == NULL) {
