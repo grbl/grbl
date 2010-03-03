@@ -50,7 +50,6 @@
 #define Y_DIRECTION_BIT            4
 #define Z_DIRECTION_BIT            5
 
-
 #define LIMIT_DDR      DDRD
 #define LIMIT_PORT     PORTD
 #define X_LIMIT_BIT          3
@@ -64,6 +63,8 @@
 #define SPINDLE_DIRECTION_DDR DDRD
 #define SPINDLE_DIRECTION_PORT PORTD
 #define SPINDLE_DIRECTION_BIT 7
+
+#define MM_PER_ARC_SEGMENT 0.1
 
 #define BAUD_RATE 9600
 

@@ -56,6 +56,8 @@ uint8_t stepper_mode = STEPPER_MODE_STOPPED;
 
 void config_pace_timer(uint32_t microseconds);
 
+// Add a new linear movement to the buffer. steps_x, _y and _z is the signed, relative motion in 
+// steps. Microseconds specify how many microseconds the move should take to perform.
 void st_buffer_line(int32_t steps_x, int32_t steps_y, int32_t steps_z, uint32_t microseconds) {
   // Buffer nothing unless stepping subsystem is running
   if (stepper_mode != STEPPER_MODE_RUNNING) { return; }

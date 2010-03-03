@@ -35,7 +35,8 @@ void st_init();
 // Returns a bitmask with the stepper bit for the given axis set
 uint8_t st_bit_for_stepper(int axis);
 
-// Buffer a new line segment (might block until there is room in the buffer)
+// Add a new linear movement to the buffer. steps_x, _y and _z is the signed, relative motion in 
+// steps. Microseconds specify how many microseconds the move should take to perform.
 void st_buffer_line(int32_t steps_x, int32_t steps_y, int32_t steps_z, uint32_t rate);
 
 // Block until all buffered steps are executed

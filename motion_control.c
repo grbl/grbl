@@ -105,7 +105,25 @@ void mc_line(double x, double y, double z, float feed_rate, int invert_feed_rate
 // ISSUE: The arc interpolator assumes all axes have the same steps/mm as the X axis.
 void mc_arc(double theta, double angular_travel, double radius, double linear_travel, int axis_1, int axis_2, 
   int axis_linear, double feed_rate, int invert_feed_rate)
-{  
+{
+  double millimeters_of_travel = hypot(angular_travel*radius, labs(linear_travel));
+  if (millimeters_of_travel == 0.0) { return; }
+  uint16_t segments = ceil(millimeters_of_travel/MM_PER_ARC_SEGMENT);
+  if (invert_feed_rate) { feed_rate *= segments; }
+  double theta_per_segment = angular_travel/segments;
+  double linear_per_segment = linear_travel/segments;
+  double center_x = (position[axis_1]/X_STEPS_PER_MM)-sin(theta)*radius;
+  double center_y = (position[axis_2]/Y_STEPS_PER_MM)-cos(theta)*radius;
+  double target[3];
+  int i;
+  target[axis_linear] = position[axis_linear];
+  for (i=0; i<=segments; i++) {
+    target[axis_linear] += linear_per_segment;
+    theta += theta_per_segment;
+    target[axis_1] = center_x+sin(theta)*radius;
+    target[axis_2] = center_y+cos(theta)*radius;
+    mc_line(target[X_AXIS], target[Y_AXIS], target[Z_AXIS], feed_rate, invert_feed_rate);
+  }
 }
 
 void mc_go_home()
