@@ -88,21 +88,23 @@ void st_buffer_line(int32_t steps_x, int32_t steps_y, int32_t steps_z, uint32_t 
 // five microseconds.
 SIGNAL(SIG_OUTPUT_COMPARE1A)
 {
+  if(busy){ return; } // The busy-flag is used to avoid retriggering this interrupt.
+  
   PORTD |= (1<<3);
   // Set the direction pins a cuple of nanoseconds before we step the steppers
   STEPPING_PORT = (STEPPING_PORT & ~DIRECTION_MASK) | (out_bits & DIRECTION_MASK);
   // Then pulse the stepping pins
   STEPPING_PORT = (STEPPING_PORT & ~STEP_MASK) | out_bits;
   // Reset step pulse reset timer
-  TCNT2 = -(((STEP_PULSE_MICROSECONDS-4)*TICKS_PER_MICROSECOND)/8);
-  // Enable interrupts in order for SIG_OVERFLOW2 to be able to be triggered 
-  // and reset the stepper signal even before this handler is done. Needed
-  // to generate a clean stepper-signal in the event that this is going to be a time consuming
-  // time oround in this interrupt e.g. if we just completed a line and need to
-  // set up another. The busy-flag is used to avoid retriggering this interrupt.
-  if(busy){return;}
+  TCNT2 = -(((STEP_PULSE_MICROSECONDS-2)*TICKS_PER_MICROSECOND)/8);
+
   busy = TRUE;
   sei();
+  // We re-enable interrupts in order for SIG_OVERFLOW2 to be able to be triggered 
+  // and reset the stepper signal even before this handler is done. Needed
+  // to generate a clean stepper-signal in the event that this is going to be a time consuming
+  // time around in this interrupt e.g. if we just completed a line and need to
+  // set up another. 
     
   // If there is no current line, attempt to pop one from the buffer
   if (current_line == NULL) {
