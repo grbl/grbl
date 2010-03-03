@@ -50,6 +50,7 @@ uint8_t out_bits;
 struct Line *current_line;
 volatile int32_t counter_x, counter_y, counter_z;
 uint32_t iterations;
+volatile busy;
 
 void config_step_timer(uint32_t microseconds);
 
@@ -96,9 +97,11 @@ SIGNAL(SIG_OUTPUT_COMPARE1A)
   TCNT2 = -(((STEP_PULSE_MICROSECONDS-4)*TICKS_PER_MICROSECOND)/8);
   // Enable interrupts in order for SIG_OVERFLOW2 to be able to be triggered 
   // and reset the stepper signal even before this handler is done. Needed
-  // to generate a clean stepper-signal even if this is going to be a time consuming
+  // to generate a clean stepper-signal in the event that this is going to be a time consuming
   // time oround in this interrupt e.g. if we just completed a line and need to
-  // set up another.
+  // set up another. The busy-flag is used to avoid retriggering this interrupt.
+  if(busy){return;}
+  busy = TRUE;
   sei();
     
   // If there is no current line, attempt to pop one from the buffer
@@ -149,6 +152,7 @@ SIGNAL(SIG_OUTPUT_COMPARE1A)
     out_bits = 0;
   }
   out_bits ^= STEPPING_INVERT_MASK;
+  busy=FALSE;
   PORTD &= ~(1<<3);  
 }
 
