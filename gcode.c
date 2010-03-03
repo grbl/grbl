@@ -50,7 +50,6 @@
 #include "config.h"
 #include "motion_control.h"
 #include "spindle_control.h"
-#include "geometry.h"
 #include "errno.h"
 #include "serial_protocol.h"
 
@@ -113,13 +112,29 @@ void gc_init() {
   memset(&gc, 0, sizeof(gc));
   gc.feed_rate = DEFAULT_FEEDRATE/60;
   select_plane(X_AXIS, Y_AXIS, Z_AXIS);
-  gc.absolute_mode = true;
+  gc.absolute_mode = TRUE;
 }
 
 inline float to_millimeters(double value) {
   return(gc.inches_mode ? (value * INCHES_PER_MM) : value);
 }
 
+// Find the angle in radians of deviance from the positive y axis. negative angles to the left of y-axis, 
+// positive to the right.
+double theta(double x, double y)
+{
+  double theta = atan(x/fabs(y));
+  if (y>0) {
+    return(theta);
+  } else {
+    if (theta>0) 
+    {
+      return(M_PI-theta);
+    } else {
+      return(-M_PI-theta);
+    }
+  }
+}
 
 // Executes one line of 0-terminated G-Code. The line is assumed to contain only uppercase
 // characters and signed floats (no whitespace).
@@ -129,9 +144,9 @@ uint8_t gc_execute_line(char *line) {
   double value;
   double unit_converted_value;
   double inverse_feed_rate = -1; // negative inverse_feed_rate means no inverse_feed_rate specified
-  int radius_mode = false;
+  int radius_mode = FALSE;
   
-  uint8_t absolute_override = false;       /* 1 = absolute motion for this block only {G53} */
+  uint8_t absolute_override = FALSE;       /* 1 = absolute motion for this block only {G53} */
   uint8_t next_action = NEXT_ACTION_DEFAULT;         /* One of the NEXT_ACTION_-constants */
   
   double target[3], offset[3];  
@@ -163,15 +178,15 @@ uint8_t gc_execute_line(char *line) {
         case 17: select_plane(X_AXIS, Y_AXIS, Z_AXIS); break;
         case 18: select_plane(X_AXIS, Z_AXIS, Y_AXIS); break;
         case 19: select_plane(Y_AXIS, Z_AXIS, X_AXIS); break;
-        case 20: gc.inches_mode = true; break;
-        case 21: gc.inches_mode = false; break;
+        case 20: gc.inches_mode = TRUE; break;
+        case 21: gc.inches_mode = FALSE; break;
         case 28: case 30: next_action = NEXT_ACTION_GO_HOME; break;
-        case 53: absolute_override = true; break;
+        case 53: absolute_override = TRUE; break;
         case 80: gc.motion_mode = MOTION_MODE_CANCEL; break;
-        case 90: gc.absolute_mode = true; break;
-        case 91: gc.absolute_mode = false; break;
-        case 93: gc.inverse_feed_rate_mode = true; break;
-        case 94: gc.inverse_feed_rate_mode = false; break;
+        case 90: gc.absolute_mode = TRUE; break;
+        case 91: gc.absolute_mode = FALSE; break;
+        case 93: gc.inverse_feed_rate_mode = TRUE; break;
+        case 94: gc.inverse_feed_rate_mode = FALSE; break;
         default: FAIL(GCSTATUS_UNSUPPORTED_STATEMENT);
       }
       break;
@@ -212,7 +227,7 @@ uint8_t gc_execute_line(char *line) {
       break;
       case 'I': case 'J': case 'K': offset[letter-'I'] = unit_converted_value; break;
       case 'P': p = value; break;
-      case 'R': r = unit_converted_value; radius_mode = true; break;
+      case 'R': r = unit_converted_value; radius_mode = TRUE; break;
       case 'S': gc.spindle_speed = value; break;
       case 'X': case 'Y': case 'Z':
       if (gc.absolute_mode || absolute_override) {

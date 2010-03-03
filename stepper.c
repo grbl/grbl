@@ -32,7 +32,6 @@
 
 #include "wiring_serial.h"
 
-#define TICKS_PER_MICROSECOND (F_CPU/1000000)
 #define LINE_BUFFER_SIZE 10
 
 struct Line {
