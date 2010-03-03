@@ -76,7 +76,6 @@
 #define SPINDLE_DIRECTION_CCW 1
 
 struct ParserState {
-  uint32_t line_number;
   uint8_t status_code;
 
   uint8_t motion_mode;         /* {G0, G1, G2, G3, G38.2, G80, G81, G82, G83, G84, G85, G86, G87, G88, G89} */
@@ -143,7 +142,6 @@ uint8_t gc_execute_line(char *line) {
   clear_vector(target);
   clear_vector(offset);
 
-  gc.line_number++;
   gc.status_code = GCSTATUS_OK;
   
   /* First: parse all statements */
@@ -385,21 +383,6 @@ uint8_t gc_execute_line(char *line) {
   // in any intermediate location.
   memcpy(gc.position, target, sizeof(double)*3);
   return(gc.status_code);
-}
-
-void gc_get_status(double *position, uint8_t *status_code, int *inches_mode, uint32_t *line_number) 
-{
-  int axis;
-  if (gc.inches_mode) {
-    for(axis = X_AXIS; axis <= Z_AXIS; axis++) {
-      position[axis] = gc.position[axis]*INCHES_PER_MM;
-    }
-  } else {
-    memcpy(position, gc.position, sizeof(gc.position));    
-  }
-  *status_code = gc.status_code;
-  *inches_mode = gc.inches_mode;
-  *line_number = gc.line_number;
 }
 
 // Parses the next statement and leaves the counter on the first character following
