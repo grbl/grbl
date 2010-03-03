@@ -176,10 +176,11 @@ void st_init()
 	// Configure Timer 2
   TCCR2A = 0; // Normal operation
   TCCR2B = (1<<CS21); // Full speed, 1/8 prescaler
-  TIMSK2 = 0; // All interrupts disabled
-
   TIMSK2 |= (1<<TOIE2);      
-  // set enable pin   
+  
+  // Just ste the step_timer to something serviceably lazy
+  config_step_timer(20000);
+  // set enable pin     
   STEPPERS_ENABLE_PORT |= 1<<STEPPERS_ENABLE_BIT;
   
   sei();
