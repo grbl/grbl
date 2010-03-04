@@ -1,2 +1,2 @@
 #!/opt/local/bin/ruby
-require 'stream'
+require 'script/stream'

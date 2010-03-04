@@ -46,11 +46,11 @@ volatile int line_buffer_head = 0;
 volatile int line_buffer_tail = 0;
 
 // Variables used by SIG_OUTPUT_COMPARE1A
-uint8_t out_bits;
-struct Line *current_line;
-volatile int32_t counter_x, counter_y, counter_z;
-uint32_t iterations;
-volatile busy;
+uint8_t out_bits; // The next stepping-bits to be output
+struct Line *current_line; // A pointer to the line currently being traced
+volatile int32_t counter_x, counter_y, counter_z; // counter variables for the bresenham line tracer
+uint32_t iterations; // The number of iterations left to complete the current_line
+volatile busy; // TRUE when SIG_OUTPUT_COMPARE1A is being serviced. Used to avoid retriggering that handler.
 
 void config_step_timer(uint32_t microseconds);
 
@@ -62,8 +62,7 @@ void st_buffer_line(int32_t steps_x, int32_t steps_y, int32_t steps_z, uint32_t 
 	// If the buffer is full: good! That means we are well ahead of the robot. 
 	// Nap until there is room in the buffer.
   while(line_buffer_tail == next_buffer_head) { sleep_mode(); }
-  
-  // setup line
+  // Setup line record
   struct Line *line = &line_buffer[line_buffer_head];
   line->steps_x = labs(steps_x);
   line->steps_y = labs(steps_y);
@@ -83,28 +82,26 @@ void st_buffer_line(int32_t steps_x, int32_t steps_y, int32_t steps_z, uint32_t 
 	TIMSK1 |= (1<<OCIE1A);
 }
 
-// This timer interrupt is executed at the pace set with st_buffer_pace. It pops one instruction from
+// This timer interrupt is executed at the rate set with config_step_timer. It pops one instruction from
 // the line_buffer, executes it. Then it starts timer2 in order to reset the motor port after
 // five microseconds.
 SIGNAL(SIG_OUTPUT_COMPARE1A)
 {
-  if(busy){ return; } // The busy-flag is used to avoid retriggering this interrupt.
+  if(busy){ return; } // The busy-flag is used to avoid reentering this interrupt
   
   PORTD |= (1<<3);
   // Set the direction pins a cuple of nanoseconds before we step the steppers
   STEPPING_PORT = (STEPPING_PORT & ~DIRECTION_MASK) | (out_bits & DIRECTION_MASK);
   // Then pulse the stepping pins
   STEPPING_PORT = (STEPPING_PORT & ~STEP_MASK) | out_bits;
-  // Reset step pulse reset timer
+  // Reset step pulse reset timer so that SIG_OVERFLOW2 can reset the signal after
+  // exactly STEP_PULSE_MICROSECONDS microseconds.
   TCNT2 = -(((STEP_PULSE_MICROSECONDS-2)*TICKS_PER_MICROSECOND)/8);
 
   busy = TRUE;
-  sei();
+  sei(); // Re enable interrupts (normally disabled while inside an interrupt handler)
   // We re-enable interrupts in order for SIG_OVERFLOW2 to be able to be triggered 
-  // and reset the stepper signal even before this handler is done. Needed
-  // to generate a clean stepper-signal in the event that this is going to be a time consuming
-  // time around in this interrupt e.g. if we just completed a line and need to
-  // set up another. 
+  // at exactly the right time even if we occasionally spend a lot of time inside this handler.
     
   // If there is no current line, attempt to pop one from the buffer
   if (current_line == NULL) {
@@ -115,7 +112,7 @@ SIGNAL(SIG_OUTPUT_COMPARE1A)
       // Retrieve a new line and get ready to step it
       current_line = &line_buffer[line_buffer_tail]; 
       config_step_timer(current_line->rate);
-      counter_x = -(current_line->maximum_steps/2);
+      counter_x = -(current_line->maximum_steps >> 1);
       counter_y = counter_x;
       counter_z = counter_x;
       iterations = current_line->maximum_steps;
@@ -213,7 +210,7 @@ void st_flush()
   sei();
 }
 
-// Configures the prescaler and ceiling of timer 1 to produce the given pace as accurately as possible.
+// Configures the prescaler and ceiling of timer 1 to produce the given rate as accurately as possible.
 void config_step_timer(uint32_t microseconds)
 {
   uint32_t ticks = microseconds*TICKS_PER_MICROSECOND;
