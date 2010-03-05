@@ -50,7 +50,7 @@ uint8_t out_bits; // The next stepping-bits to be output
 struct Line *current_line; // A pointer to the line currently being traced
 volatile int32_t counter_x, counter_y, counter_z; // counter variables for the bresenham line tracer
 uint32_t iterations; // The number of iterations left to complete the current_line
-volatile busy; // TRUE when SIG_OUTPUT_COMPARE1A is being serviced. Used to avoid retriggering that handler.
+volatile int busy; // TRUE when SIG_OUTPUT_COMPARE1A is being serviced. Used to avoid retriggering that handler.
 
 void config_step_timer(uint32_t microseconds);
 
