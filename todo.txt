@@ -1,6 +1,5 @@
 * Complete support for using and setting separate seek-rate for G0-commnads
-* Implement homing cycle in stepper.c
 * Implement limit switch support in stepper.c (use port-triggered interrupts?)
-* Tool change M6
+* Implement homing cycle in stepper.c
 * Path Control Modes
 * Spindle speed support
