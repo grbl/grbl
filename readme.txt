@@ -1,4 +1,4 @@
-Grbl - An embedded rs274/ngc (g-code) integrater interpreter and motion-controller for the Arduino/AVR328 microcontroller
+Grbl - An embedded rs274/ngc (g-code) interpreter and motion-controller for the Arduino/AVR328 microcontroller
 
 Goal: A no-compromise, high performance, low cost alternative to parallel-port based motion control for CNC milling
 
@@ -10,12 +10,12 @@ Status:
 * Standards-compliant g-code arcs/circles fully supported
 * Buffered, non blocking, asynchronous step generation so the rest of the system is free to process
   g-code while the steppers are steppin'
+* Configuration parameters stored in EEPROM and set via simple commands
 * Tested on very few (two) CNC rigs
 
 Pending: 
 * Battle hardening in the field
 * Documentation and web-site
-* Simpler configuration (w/o recompilation)
 * Optional support for a alphanumeric LCD readout, a joystick and a few buttons for program control
 * Support "headless" fabrication by buffering all code to SD-card or similar
 * Easing of feed rate

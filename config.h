@@ -1,5 +1,5 @@
 /*
-  config.h - configuration data for Grbl
+  config.h - eeprom and compile time configuration handling 
   Part of Grbl
 
   Copyright (c) 2009 Simen Svale Skogsrud
@@ -21,22 +21,11 @@
 #ifndef config_h
 #define config_h
 
-#define VERSION "0.5"
+#define VERSION "0.51"
 
-#define MICROSTEPS 8
-#define X_STEPS_PER_MM (94.488188976378*MICROSTEPS)
-#define Y_STEPS_PER_MM (94.488188976378*MICROSTEPS)
-#define Z_STEPS_PER_MM (94.488188976378*MICROSTEPS)
+// Settings that can only be set at compile-time:
 
-#define STEP_PULSE_MICROSECONDS 30
-
-#define INCHES_PER_MM (1.0/25.4)
-#define X_STEPS_PER_INCH X_STEPS_PER_MM*INCHES_PER_MM
-#define Y_STEPS_PER_INCH Y_STEPS_PER_MM*INCHES_PER_MM
-#define Z_STEPS_PER_INCH Z_STEPS_PER_MM*INCHES_PER_MM
-
-#define RAPID_FEEDRATE 480.0 // in millimeters per minute
-#define DEFAULT_FEEDRATE 480.0
+#define BAUD_RATE 9600
 
 #define STEPPERS_ENABLE_DDR     DDRD
 #define STEPPERS_ENABLE_PORT    PORTD
@@ -65,14 +54,44 @@
 #define SPINDLE_DIRECTION_PORT PORTD
 #define SPINDLE_DIRECTION_BIT 7
 
+
+// Version of the EEPROM data. Will be used to migrate existing data from older versions of Grbl
+// when firmware is upgraded. Always stored in byte 0 of eeprom
+#define SETTINGS_VERSION 1
+
+// Current global settings (persisted in EEPROM from byte 1 onwards)
+struct Settings {
+  double steps_per_mm[3];
+  uint8_t microsteps;
+  uint8_t pulse_microseconds;
+  double default_feed_rate;
+  double default_seek_rate;
+  uint8_t invert_mask;
+  double mm_per_arc_segment;
+};
+struct Settings settings;
+
+// Initialize the configuration subsystem (load settings from EEPROM)
+void config_init();
+
+// Print current settings
+void dump_settings();
+
+// A helper method to set new settings from command line
+void store_setting(int parameter, double value);
+
+
+// Default settings (used when resetting eeprom-settings)
+#define MICROSTEPS 8
+#define X_STEPS_PER_MM (94.488188976378*MICROSTEPS)
+#define Y_STEPS_PER_MM (94.488188976378*MICROSTEPS)
+#define Z_STEPS_PER_MM (94.488188976378*MICROSTEPS)
+#define STEP_PULSE_MICROSECONDS 30
+
 #define MM_PER_ARC_SEGMENT 0.1
 
-#define BAUD_RATE 9600
-
-#define STEP_MASK ((1<<X_STEP_BIT)|(1<<Y_STEP_BIT)|(1<<Z_STEP_BIT))
-#define DIRECTION_MASK ((1<<X_DIRECTION_BIT)|(1<<Y_DIRECTION_BIT)|(1<<Z_DIRECTION_BIT))
-#define STEPPING_MASK (STEP_MASK | DIRECTION_MASK)
-#define LIMIT_MASK ((1<<X_LIMIT_BIT)|(1<<Y_LIMIT_BIT)|(1<<Z_LIMIT_BIT))
+#define RAPID_FEEDRATE 480.0 // in millimeters per minute
+#define DEFAULT_FEEDRATE 480.0
 
 // Use this line for default operation (step-pulses high)
 #define STEPPING_INVERT_MASK 0
@@ -82,5 +101,14 @@
 // #define STEPPING_INVERT_MASK (STEPPING_MASK)
 // Or bake your own like this adding any step-bits or directions you want to invert:
 // #define STEPPING_INVERT_MASK (STEP_MASK | (1<<X_DIRECTION_BIT) | (1<<Y_DIRECTION_BIT))
+
+
+// Some useful constants
+#define STEP_MASK ((1<<X_STEP_BIT)|(1<<Y_STEP_BIT)|(1<<Z_STEP_BIT)) // All step bits
+#define DIRECTION_MASK ((1<<X_DIRECTION_BIT)|(1<<Y_DIRECTION_BIT)|(1<<Z_DIRECTION_BIT)) // All direction bits
+#define STEPPING_MASK (STEP_MASK | DIRECTION_MASK) // All stepping-related bits (step/direction)
+#define LIMIT_MASK ((1<<X_LIMIT_BIT)|(1<<Y_LIMIT_BIT)|(1<<Z_LIMIT_BIT)) // All limit bits
+
+#define INCHES_PER_MM (1.0/25.4) // A conversion rate
 
 #endif

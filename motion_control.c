@@ -51,9 +51,9 @@ void mc_line(double x, double y, double z, float feed_rate, int invert_feed_rate
   int32_t target[3]; // The target position in absolute steps
   int32_t steps[3]; // The target line in relative steps
   
-  target[X_AXIS] = lround(x*X_STEPS_PER_MM);
-  target[Y_AXIS] = lround(y*Y_STEPS_PER_MM);
-  target[Z_AXIS] = lround(z*Z_STEPS_PER_MM); 
+  target[X_AXIS] = lround(x*settings.steps_per_mm[0]);
+  target[Y_AXIS] = lround(y*settings.steps_per_mm[1]);
+  target[Z_AXIS] = lround(z*settings.steps_per_mm[2]); 
 
   for(axis = X_AXIS; axis <= Z_AXIS; axis++) {
     steps[axis] = target[axis]-position[axis];
@@ -64,9 +64,9 @@ void mc_line(double x, double y, double z, float feed_rate, int invert_feed_rate
 	} else {
   	// Ask old Phytagoras to estimate how many mm our next move is going to take us
   	double millimeters_of_travel = sqrt(
-  	  square(steps[X_AXIS]/X_STEPS_PER_MM) + 
-  	  square(steps[Y_AXIS]/Y_STEPS_PER_MM) + 
-  	  square(steps[Z_AXIS]/Z_STEPS_PER_MM));
+  	  square(steps[X_AXIS]/settings.steps_per_mm[0]) + 
+  	  square(steps[Y_AXIS]/settings.steps_per_mm[1]) + 
+  	  square(steps[Z_AXIS]/settings.steps_per_mm[2]));
     st_buffer_line(steps[X_AXIS], steps[Y_AXIS], steps[Z_AXIS],
       lround((millimeters_of_travel/feed_rate)*1000000));
 	}
@@ -80,14 +80,12 @@ void mc_line(double x, double y, double z, float feed_rate, int invert_feed_rate
 
 // The arc is approximated by generating a huge number of tiny, linear segments. The length of each 
 // segment is configured in config.h by setting MM_PER_ARC_SEGMENT.  
-
-// ISSUE: The arc interpolator assumes all axes have the same steps/mm as the X axis.
 void mc_arc(double theta, double angular_travel, double radius, double linear_travel, int axis_1, int axis_2, 
   int axis_linear, double feed_rate, int invert_feed_rate)
 {
   double millimeters_of_travel = hypot(angular_travel*radius, labs(linear_travel));
   if (millimeters_of_travel == 0.0) { return; }
-  uint16_t segments = ceil(millimeters_of_travel/MM_PER_ARC_SEGMENT);
+  uint16_t segments = ceil(millimeters_of_travel/settings.mm_per_arc_segment);
   // Multiply inverse feed_rate to compensate for the fact that this movement is approximated
   // by a number of discrete segments. The inverse feed_rate should be correct for the sum of 
   // all segments.
@@ -97,8 +95,8 @@ void mc_arc(double theta, double angular_travel, double radius, double linear_tr
   // The linear motion for each segment
   double linear_per_segment = linear_travel/segments;
   // Compute the center of this circle
-  double center_x = (position[axis_1]/X_STEPS_PER_MM)-sin(theta)*radius;
-  double center_y = (position[axis_2]/Y_STEPS_PER_MM)-cos(theta)*radius;
+  double center_x = (position[axis_1]/settings.steps_per_mm[axis_1])-sin(theta)*radius;
+  double center_y = (position[axis_2]/settings.steps_per_mm[axis_2])-cos(theta)*radius;
   // a vector to track the end point of each segment
   double target[3];
   int i;

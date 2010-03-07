@@ -83,7 +83,7 @@ struct ParserState {
   uint8_t absolute_mode;       /* 0 = relative motion, 1 = absolute motion {G90, G91} */
   uint8_t program_flow;
   int spindle_direction;
-  double feed_rate;              /* Millimeters/second */
+  double feed_rate, seek_rate;              /* Millimeters/second */
   double position[3];    /* Where the interpreter considers the tool to be at this point in the code */
   uint8_t tool;
   int16_t spindle_speed;         /* RPM/100 */
@@ -110,7 +110,8 @@ void select_plane(uint8_t axis_0, uint8_t axis_1, uint8_t axis_2)
 
 void gc_init() {
   memset(&gc, 0, sizeof(gc));
-  gc.feed_rate = DEFAULT_FEEDRATE/60;
+  gc.feed_rate = settings.default_feed_rate/60;
+  gc.seek_rate = settings.default_seek_rate/60;
   select_plane(X_AXIS, Y_AXIS, Z_AXIS);
   gc.absolute_mode = TRUE;
 }
@@ -163,6 +164,16 @@ uint8_t gc_execute_line(char *line) {
   
   if (line[0] == '(') { return(gc.status_code); }
   if (line[0] == '/') { counter++; } // ignore block delete
+  if (line[0] == '$') { // This is a parameter line intended to change EEPROM-settings
+    // Parameter lines are on the form '$4=374.3' or '$' to dump current settings
+    counter = 1;
+    if(line[counter] == 0) { dump_settings(); return(GCSTATUS_OK); }
+    read_double(line, &counter, &p);
+    if(line[counter++] != '=') { return(GCSTATUS_UNSUPPORTED_STATEMENT); }
+    read_double(line, &counter, &value);
+    if(line[counter] != 0) { return(GCSTATUS_UNSUPPORTED_STATEMENT); }
+    store_setting(p, value);
+  }
   
   // Pass 1: Commands
   while(next_statement(&letter, &value, line, &counter)) {
@@ -256,7 +267,8 @@ uint8_t gc_execute_line(char *line) {
     case NEXT_ACTION_DEFAULT: 
     switch (gc.motion_mode) {
       case MOTION_MODE_CANCEL: break;
-      case MOTION_MODE_RAPID_LINEAR: case MOTION_MODE_LINEAR:
+      case MOTION_MODE_RAPID_LINEAR:
+      case MOTION_MODE_LINEAR:
       mc_line(target[X_AXIS], target[Y_AXIS], target[Z_AXIS], 
         (gc.inverse_feed_rate_mode) ? inverse_feed_rate : gc.feed_rate, gc.inverse_feed_rate_mode);
       break;

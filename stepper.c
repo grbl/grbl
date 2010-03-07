@@ -95,8 +95,8 @@ SIGNAL(SIG_OUTPUT_COMPARE1A)
   // Then pulse the stepping pins
   STEPPING_PORT = (STEPPING_PORT & ~STEP_MASK) | out_bits;
   // Reset step pulse reset timer so that SIG_OVERFLOW2 can reset the signal after
-  // exactly STEP_PULSE_MICROSECONDS microseconds.
-  TCNT2 = -(((STEP_PULSE_MICROSECONDS-2)*TICKS_PER_MICROSECOND)/8);
+  // exactly settings.pulse_microseconds microseconds.
+  TCNT2 = -(((settings.pulse_microseconds-2)*TICKS_PER_MICROSECOND)/8);
 
   busy = TRUE;
   sei(); // Re enable interrupts (normally disabled while inside an interrupt handler)
@@ -150,17 +150,17 @@ SIGNAL(SIG_OUTPUT_COMPARE1A)
   } else {
     out_bits = 0;
   }
-  out_bits ^= STEPPING_INVERT_MASK;
+  out_bits ^= settings.invert_mask;
   busy=FALSE;
   PORTD &= ~(1<<3);  
 }
 
 // This interrupt is set up by SIG_OUTPUT_COMPARE1A when it sets the motor port bits. It resets
-// the motor port after a short period (STEP_PULSE_MICROSECONDS) completing one step cycle.
+// the motor port after a short period (settings.pulse_microseconds) completing one step cycle.
 SIGNAL(SIG_OVERFLOW2)
 {
   // reset stepping pins (leave the direction pins)
-  STEPPING_PORT = (STEPPING_PORT & ~STEP_MASK) | (STEPPING_INVERT_MASK & STEP_MASK); 
+  STEPPING_PORT = (STEPPING_PORT & ~STEP_MASK) | (settings.invert_mask & STEP_MASK); 
 }
 
 // Initialize and start the stepper motor subsystem
@@ -168,7 +168,7 @@ void st_init()
 {
 	// Configure directions of interface pins
   STEPPING_DDR   |= STEPPING_MASK;
-  STEPPING_PORT = (STEPPING_PORT & ~STEPPING_MASK); //| STEPPING_INVERT_MASK;
+  STEPPING_PORT = (STEPPING_PORT & ~STEPPING_MASK) | settings.invert_mask;
   LIMIT_DDR &= ~(LIMIT_MASK);
   STEPPERS_ENABLE_DDR |= 1<<STEPPERS_ENABLE_BIT;
   

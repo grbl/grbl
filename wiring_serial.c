@@ -180,6 +180,15 @@ void printInteger(long n)
 	printIntegerInBase(n, 10);
 }
 
+void printFloat(double n)
+{
+  double integer_part, fractional_part;
+  fractional_part = modf(n, &integer_part);
+  printInteger(integer_part);
+  printByte('.');
+  printInteger(round(fractional_part*1000));
+}
+
 // void printHex(unsigned long n)
 // {
 //  printIntegerInBase(n, 16);

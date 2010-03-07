@@ -39,5 +39,6 @@ void printHex(unsigned long n);
 void printOctal(unsigned long n);
 void printBinary(unsigned long n);
 void printIntegerInBase(unsigned long n, unsigned long base);
+void printFloat(double n);
 
 #endif
