@@ -34,6 +34,7 @@ void printMode(int);
 void printByte(unsigned char c);
 void printNewline(void);
 void printString(const char *s);
+void printPgmString(const char *s);
 void printInteger(long n);
 void printHex(unsigned long n);
 void printOctal(unsigned long n);

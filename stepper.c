@@ -80,6 +80,7 @@ void st_buffer_line(int32_t steps_x, int32_t steps_y, int32_t steps_z, uint32_t 
   line_buffer_head = next_buffer_head;
   // enable stepper interrupt
 	TIMSK1 |= (1<<OCIE1A);
+  
 }
 
 // This timer interrupt is executed at the rate set with config_step_timer. It pops one instruction from

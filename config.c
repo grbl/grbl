@@ -24,6 +24,7 @@
 #include "config.h"
 #include "eeprom.h"
 #include "wiring_serial.h"
+#include <avr/pgmspace.h>
 
 void reset_settings() {
   settings.steps_per_mm[0] = X_STEPS_PER_MM;
@@ -37,16 +38,16 @@ void reset_settings() {
 }
 
 void dump_settings() {
-  printString("$0 = "); printFloat(settings.steps_per_mm[0]);
-  printString(" (steps/mm x)\r\n$1 = "); printFloat(settings.steps_per_mm[1]);
-  printString(" (steps/mm y)\r\n$2 = "); printFloat(settings.steps_per_mm[2]);
-  printString(" (steps/mm z)\r\n$3 = "); printInteger(settings.pulse_microseconds);
-  printString(" (microseconds step pulse)\r\n$4 = "); printFloat(settings.default_feed_rate);
-  printString(" (mm/sec default feed rate)\r\n$5 = "); printFloat(settings.default_seek_rate);
-  printString(" (mm/sec default seek rate)\r\n$6 = "); printFloat(settings.mm_per_arc_segment);
-  printString(" (mm/arc segment)\r\n$7 = "); printInteger(settings.invert_mask); 
-  printString(" (step port invert mask. binary = "); printIntegerInBase(settings.invert_mask, 2);  
-  printString(")\r\n\r\n'$x=value' to set parameter or just '$' to dump current settings\r\n");
+  printPgmString(PSTR("$0 = ")); printFloat(settings.steps_per_mm[0]);
+  printPgmString(PSTR(" (steps/mm x)\r\n$1 = ")); printFloat(settings.steps_per_mm[1]);
+  printPgmString(PSTR(" (steps/mm y)\r\n$2 = ")); printFloat(settings.steps_per_mm[2]);
+  printPgmString(PSTR(" (steps/mm z)\r\n$3 = ")); printInteger(settings.pulse_microseconds);
+  printPgmString(PSTR(" (microseconds step pulse)\r\n$4 = ")); printFloat(settings.default_feed_rate);
+  printPgmString(PSTR(" (mm/sec default feed rate)\r\n$5 = ")); printFloat(settings.default_seek_rate);
+  printPgmString(PSTR(" (mm/sec default seek rate)\r\n$6 = ")); printFloat(settings.mm_per_arc_segment);
+  printPgmString(PSTR(" (mm/arc segment)\r\n$7 = ")); printInteger(settings.invert_mask); 
+  printPgmString(PSTR(" (step port invert mask. binary = ")); printIntegerInBase(settings.invert_mask, 2);  
+  printPgmString(PSTR(")\r\n\r\n'$x=value' to set parameter or just '$' to dump current settings\r\n"));
 }
 
 int read_settings() {
@@ -76,18 +77,18 @@ void store_setting(int parameter, double value) {
     case 6: settings.mm_per_arc_segment = value; break;
     case 7: settings.invert_mask = trunc(value); break;
     default: 
-    printString("Unknown parameter\r\n");
+    printPgmString(PSTR("Unknown parameter\r\n"));
     return;
   }
   write_settings();
-  printString("Stored new setting\r\n");
+  printPgmString(PSTR("Stored new setting\r\n"));
 }
 
 void config_init() {
   if(read_settings()) {
-    printString("'$' to dump current settings\r\n");
+    printPgmString(PSTR("'$' to dump current settings\r\n"));
   } else {
-    printString("EEPROM blank. Rewrote default settings:\r\n");
+    printPgmString(("EEPROM blank. Rewrote default settings:\r\n"));
     reset_settings();
     write_settings();
     dump_settings();

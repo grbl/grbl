@@ -25,7 +25,8 @@
 
 // Settings that can only be set at compile-time:
 
-#define BAUD_RATE 9600
+// #define BAUD_RATE 9600
+#define BAUD_RATE 115200
 
 #define STEPPERS_ENABLE_DDR     DDRD
 #define STEPPERS_ENABLE_PORT    PORTD

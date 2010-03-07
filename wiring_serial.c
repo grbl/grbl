@@ -23,6 +23,8 @@
 */
 
 #include "wiring_private.h"
+#include <math.h>
+#include <avr/pgmspace.h>
 
 // Define constants and variables for buffering incoming serial data.  We're
 // using a ring buffer (I think), in which rx_buffer_head is the index of the
@@ -147,6 +149,14 @@ void printString(const char *s)
 {
 	while (*s)
 		printByte(*s++);
+}
+
+// Print a string stored in PGM-memory
+void printPgmString(const char *s)
+{
+  char c;
+	while ((c = pgm_read_byte_near(s++)))
+		printByte(c);
 }
 
 void printIntegerInBase(unsigned long n, unsigned long base)

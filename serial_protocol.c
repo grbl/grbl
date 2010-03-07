@@ -25,23 +25,23 @@
 #include "config.h"
 #include <math.h>
 #include "nuts_bolts.h"
-
-#define LINE_BUFFER_SIZE 60
+#include <avr/pgmspace.h>
+#define LINE_BUFFER_SIZE 30
 
 char line[LINE_BUFFER_SIZE];
 uint8_t char_counter;
 
 void prompt() {
-  printString("ok\r\n");
+  printPgmString(PSTR("ok\r\n"));
 }
 
 void sp_init() 
 {
   beginSerial(BAUD_RATE);
   
-  printString("\r\nGrbl ");
-  printString(VERSION);
-  printString("\r\n");  
+  printPgmString(PSTR("\r\nGrbl "));
+  printPgmString(PSTR(VERSION));
+  printPgmString(PSTR("\r\n"));  
   prompt();
 }
 
