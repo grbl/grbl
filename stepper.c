@@ -19,7 +19,7 @@
 */
 
 /* The timer calculations of this module informed by the 'RepRap cartesian firmware' by Zack Smith
-   and Philipp Tiefenbacher. The circle buffer implementation gleaned from the wiring_serial library 
+   and Philipp Tiefenbacher. The ring buffer implementation gleaned from the wiring_serial library 
    by David A. Mellis */
 
 #include "stepper.h"
@@ -32,7 +32,12 @@
 
 #include "wiring_serial.h"
 
+// Pick a suitable line-buffer size
+#ifdef __AVR_ATmega328P__
+#define LINE_BUFFER_SIZE 40   // Atmega 328 has one full kilobyte of extra RAM!
+#else
 #define LINE_BUFFER_SIZE 10
+#endif
 
 struct Line {
   uint32_t steps_x, steps_y, steps_z;
@@ -86,7 +91,11 @@ void st_buffer_line(int32_t steps_x, int32_t steps_y, int32_t steps_z, uint32_t 
 // This timer interrupt is executed at the rate set with config_step_timer. It pops one instruction from
 // the line_buffer, executes it. Then it starts timer2 in order to reset the motor port after
 // five microseconds.
+#ifdef TIMER1_COMPA_vect
+SIGNAL(TIMER1_COMPA_vect)
+#else
 SIGNAL(SIG_OUTPUT_COMPARE1A)
+#endif
 {
   if(busy){ return; } // The busy-flag is used to avoid reentering this interrupt
   
@@ -158,7 +167,11 @@ SIGNAL(SIG_OUTPUT_COMPARE1A)
 
 // This interrupt is set up by SIG_OUTPUT_COMPARE1A when it sets the motor port bits. It resets
 // the motor port after a short period (settings.pulse_microseconds) completing one step cycle.
+#ifdef TIMER2_OVF_vect
+SIGNAL(TIMER2_OVF_vect)
+#else
 SIGNAL(SIG_OVERFLOW2)
+#endif
 {
   // reset stepping pins (leave the direction pins)
   STEPPING_PORT = (STEPPING_PORT & ~STEP_MASK) | (settings.invert_mask & STEP_MASK); 

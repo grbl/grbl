@@ -26,7 +26,7 @@
 #include <math.h>
 #include "nuts_bolts.h"
 #include <avr/pgmspace.h>
-#define LINE_BUFFER_SIZE 30
+#define LINE_BUFFER_SIZE 50
 
 char line[LINE_BUFFER_SIZE];
 uint8_t char_counter;
@@ -52,6 +52,7 @@ void sp_process()
   {
     if((c == '\n')) {  // Line is complete. Then execute!
       line[char_counter] = 0;
+      printString(line); printPgmString(PSTR("\r\n"));        
       gc_execute_line(line);
       char_counter = 0;
       prompt();

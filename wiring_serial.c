@@ -39,7 +39,6 @@ int rx_buffer_tail = 0;
 
 void beginSerial(long baud)
 {
-#if defined(__AVR_ATmega168__)
 	UBRR0H = ((F_CPU / 16 + baud / 2) / baud - 1) >> 8;
 	UBRR0L = ((F_CPU / 16 + baud / 2) / baud - 1);
 	
@@ -49,34 +48,16 @@ void beginSerial(long baud)
 	
 	// enable interrupt on complete reception of a byte
 	sbi(UCSR0B, RXCIE0);
-#else
-	UBRRH = ((F_CPU / 16 + baud / 2) / baud - 1) >> 8;
-	UBRRL = ((F_CPU / 16 + baud / 2) / baud - 1);
-	
-	// enable rx and tx
-	sbi(UCSRB, RXEN);
-	sbi(UCSRB, TXEN);
-	
-	// enable interrupt on complete reception of a byte
-	sbi(UCSRB, RXCIE);
-#endif
 	
 	// defaults to 8-bit, no parity, 1 stop bit
 }
 
 void serialWrite(unsigned char c)
 {
-#if defined(__AVR_ATmega168__)
 	while (!(UCSR0A & (1 << UDRE0)))
 		;
 
 	UDR0 = c;
-#else
-	while (!(UCSRA & (1 << UDRE)))
-		;
-
-	UDR = c;
-#endif
 }
 
 int serialAvailable()
@@ -106,18 +87,13 @@ void serialFlush()
 	rx_buffer_head = rx_buffer_tail;
 }
 
-#if defined(__AVR_ATmega168__)
-SIGNAL(SIG_USART_RECV)
+#ifdef USART_RX_vect
+SIGNAL(USART_RX_vect)
 #else
-SIGNAL(SIG_UART_RECV)
+SIGNAL(SIG_USART_RECV)
 #endif
 {
-#if defined(__AVR_ATmega168__)
 	unsigned char c = UDR0;
-#else
-	unsigned char c = UDR;
-#endif
-
 	int i = (rx_buffer_head + 1) % RX_BUFFER_SIZE;
 
 	// if we should be storing the received character into the location

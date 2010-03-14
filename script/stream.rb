@@ -26,16 +26,15 @@ end
 
 SerialPort.open('/dev/tty.FireFly-A964-SPP-1', 115200) do |sp|
   sp.write("\r\n\r\n");
-  sleep 5
+  sleep 1
   ARGV.each do |file|
     puts "Processing file #{file}"
-    prebuffer = $prebuffer ? 12 : 0
+    prebuffer = $prebuffer ? 20 : 0
     File.readlines(file).each do |line|
       next if line.strip == ''
       puts line.strip
       sp.write("#{line.strip}\r\n");
       if prebuffer == 0
-        sleep 0.1
         begin
           result = sp.gets.strip
           puts "Grbl >> #{result}" unless result == '' or result == 'ok'
