@@ -88,7 +88,7 @@ void config_init() {
   if(read_settings()) {
     printPgmString(PSTR("'$' to dump current settings\r\n"));
   } else {
-    printPgmString(("EEPROM blank. Rewrote default settings:\r\n"));
+    printPgmString(PSTR("Warning: Failed to read EEPROM settings. Using defaults.\r\n"));
     reset_settings();
     write_settings();
     dump_settings();
