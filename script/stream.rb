@@ -44,4 +44,6 @@ SerialPort.open('/dev/tty.FireFly-A964-SPP-1', 115200) do |sp|
       end
     end
   end
+  puts "Done."
+  sleep 500
 end
