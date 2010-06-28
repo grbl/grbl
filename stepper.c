@@ -28,6 +28,7 @@
 #include <stdlib.h>
 #include <util/delay.h>
 #include "nuts_bolts.h"
+#include "acceleration.h"
 #include <avr/interrupt.h>
 
 #include "wiring_serial.h"
@@ -43,25 +44,42 @@ struct Line {
   uint32_t steps_x, steps_y, steps_z;
   int32_t maximum_steps;
   uint8_t direction_bits;
-  uint32_t rate;
+  double average_millimeters_per_step_event;
+  uin32_t ideal_rate; // in step-events/minute
+  uin32_t exit_rate;
+  uin32_t brake_point; // the point where braking starts measured in step-events from end point
+  uint32_t rate;  // in cpu-ticks pr. step
 };
 
 struct Line line_buffer[LINE_BUFFER_SIZE]; // A buffer for step instructions
 volatile int line_buffer_head = 0;
 volatile int line_buffer_tail = 0;
+volatile int moving = FALSE;
 
 // Variables used by SIG_OUTPUT_COMPARE1A
-uint8_t out_bits; // The next stepping-bits to be output
+uint8_t out_bits;          // The next stepping-bits to be output
 struct Line *current_line; // A pointer to the line currently being traced
-volatile int32_t counter_x, counter_y, counter_z; // counter variables for the bresenham line tracer
-uint32_t iterations; // The number of iterations left to complete the current_line
-volatile int busy; // TRUE when SIG_OUTPUT_COMPARE1A is being serviced. Used to avoid retriggering that handler.
+volatile int32_t counter_x, 
+  counter_y, counter_z;    // counter variables for the bresenham line tracer
+uint32_t iterations;       // The number of iterations left to complete the current_line
+volatile int busy;         // TRUE when SIG_OUTPUT_COMPARE1A is being serviced. Used to avoid retriggering that handler.
 
-void config_step_timer(uint32_t microseconds);
+void set_step_events_per_minute(uint32_t steps_per_minute);
+
+uint32_t mm_per_minute_to_step_events_pr_minute(struct Line* line, double mm_per_minute) {
+  return(mm_per_minute/line->average_millimeters_per_step_event);
+}
+
+void update_accelleration_plan() {
+  // Store the current 
+  int initial_buffer_tail = line_buffer_tail;
+  
+}
 
 // Add a new linear movement to the buffer. steps_x, _y and _z is the signed, relative motion in 
-// steps. Microseconds specify how many microseconds the move should take to perform.
-void st_buffer_line(int32_t steps_x, int32_t steps_y, int32_t steps_z, uint32_t microseconds) {
+// steps. Microseconds specify how many microseconds the move should take to perform. To aid accelleration
+// calculation the caller must also provide the physical length of the line in millimeters.
+void st_buffer_line(int32_t steps_x, int32_t steps_y, int32_t steps_z, uint32_t microseconds, double millimeters) {
   // Calculate the buffer head after we push this byte
 	int next_buffer_head = (line_buffer_head + 1) % LINE_BUFFER_SIZE;	
 	// If the buffer is full: good! That means we are well ahead of the robot. 
@@ -75,12 +93,13 @@ void st_buffer_line(int32_t steps_x, int32_t steps_y, int32_t steps_z, uint32_t 
   line->maximum_steps = max(line->steps_x, max(line->steps_y, line->steps_z));
   // Bail if this is a zero-length line
   if (line->maximum_steps == 0) { return; };
-  line->rate = microseconds/line->maximum_steps;
+  line->rate = (TICKS_PER_MICROSECOND*microseconds)/line->maximum_steps;
   uint8_t direction_bits = 0;
   if (steps_x < 0) { direction_bits |= (1<<X_DIRECTION_BIT); }
   if (steps_y < 0) { direction_bits |= (1<<Y_DIRECTION_BIT); }
   if (steps_z < 0) { direction_bits |= (1<<Z_DIRECTION_BIT); }
   line->direction_bits = direction_bits;
+  line->average_millimeters_per_step_event = millimeters/line->maximum_steps
   // Move buffer head
   line_buffer_head = next_buffer_head;
   // enable stepper interrupt
@@ -126,8 +145,10 @@ SIGNAL(SIG_OUTPUT_COMPARE1A)
       counter_y = counter_x;
       counter_z = counter_x;
       iterations = current_line->maximum_steps;
+      moving = TRUE;
     } else {
       // disable this interrupt until there is something to handle
+      moving = FALSE;
     	TIMSK1 &= ~(1<<OCIE1A);
       PORTD |= (1<<4);          
     }    
@@ -225,9 +246,8 @@ void st_flush()
 }
 
 // Configures the prescaler and ceiling of timer 1 to produce the given rate as accurately as possible.
-void config_step_timer(uint32_t microseconds)
+void config_step_timer(uint32_t ticks)
 {
-  uint32_t ticks = microseconds*TICKS_PER_MICROSECOND;
   uint16_t ceiling;
   uint16_t prescaler;
 	if (ticks <= 0xffffL) {
@@ -254,6 +274,10 @@ void config_step_timer(uint32_t microseconds)
   TCCR1B = (TCCR1B & ~(0x07<<CS10)) | ((prescaler+1)<<CS10);
   // Set ceiling
   OCR1A = ceiling;
+}
+
+void set_step_events_per_minute(uint32_t steps_per_minute) {
+  config_step_timer((TICKS_PER_MICROSECOND*1000000*60)/steps_per_minute);
 }
 
 void st_go_home()

@@ -68,7 +68,7 @@ void mc_line(double x, double y, double z, float feed_rate, int invert_feed_rate
   	  square(steps[Y_AXIS]/settings.steps_per_mm[1]) + 
   	  square(steps[Z_AXIS]/settings.steps_per_mm[2]));
     st_buffer_line(steps[X_AXIS], steps[Y_AXIS], steps[Z_AXIS],
-      lround((millimeters_of_travel/feed_rate)*1000000));
+      lround((millimeters_of_travel/feed_rate)*1000000), millimeters_of_travel);
 	}
 	memcpy(position, target, sizeof(target)); // position[] = target[] 
 }
@@ -79,7 +79,7 @@ void mc_line(double x, double y, double z, float feed_rate, int invert_feed_rate
 // axis in axis_l which will be the axis for linear travel if you are tracing a helical motion.
 
 // The arc is approximated by generating a huge number of tiny, linear segments. The length of each 
-// segment is configured in config.h by setting MM_PER_ARC_SEGMENT.  
+// segment is configured in settings.mm_per_arc_segment.  
 void mc_arc(double theta, double angular_travel, double radius, double linear_travel, int axis_1, int axis_2, 
   int axis_linear, double feed_rate, int invert_feed_rate)
 {
@@ -107,7 +107,8 @@ void mc_arc(double theta, double angular_travel, double radius, double linear_tr
     theta += theta_per_segment;
     target[axis_1] = center_x+sin(theta)*radius;
     target[axis_2] = center_y+cos(theta)*radius;
-    mc_line(target[X_AXIS], target[Y_AXIS], target[Z_AXIS], feed_rate, invert_feed_rate);
+    mc_line(target[X_AXIS], target[Y_AXIS], target[Z_AXIS], feed_rate, invert_feed_rate,
+      settings.mm_per_arc_segment);
   }
 }
 

@@ -33,6 +33,8 @@ void reset_settings() {
   settings.pulse_microseconds = STEP_PULSE_MICROSECONDS;
   settings.default_feed_rate = DEFAULT_FEEDRATE;
   settings.default_seek_rate = RAPID_FEEDRATE;
+  settings.dead_feed_rate = DEFAULT_FEEDRATE/5;
+  settings.acceleration = DEFAULT_FEEDRATE/100;
   settings.mm_per_arc_segment = MM_PER_ARC_SEGMENT;
   settings.invert_mask = STEPPING_INVERT_MASK;
 }
@@ -44,8 +46,10 @@ void dump_settings() {
   printPgmString(PSTR(" (steps/mm z)\r\n$3 = ")); printInteger(settings.pulse_microseconds);
   printPgmString(PSTR(" (microseconds step pulse)\r\n$4 = ")); printFloat(settings.default_feed_rate);
   printPgmString(PSTR(" (mm/sec default feed rate)\r\n$5 = ")); printFloat(settings.default_seek_rate);
-  printPgmString(PSTR(" (mm/sec default seek rate)\r\n$6 = ")); printFloat(settings.mm_per_arc_segment);
-  printPgmString(PSTR(" (mm/arc segment)\r\n$7 = ")); printInteger(settings.invert_mask); 
+  printPgmString(PSTR(" (mm/sec default seek rate)\r\n$7 = ")); printFloat(settings.dead_feed_rate);
+  printPgmString(PSTR(" (mm/sec max start and stop feed rate)\r\n$8 = ")); printFloat(settings.mm_per_arc_segment);
+  printPgmString(PSTR(" (mm/sec^2 max acceleration)\r\n$9 = ")); printFloat(settings.acceleration);
+  printPgmString(PSTR(" (mm/arc segment)\r\n$10 = ")); printInteger(settings.invert_mask); 
   printPgmString(PSTR(" (step port invert mask. binary = ")); printIntegerInBase(settings.invert_mask, 2);  
   printPgmString(PSTR(")\r\n\r\n'$x=value' to set parameter or just '$' to dump current settings\r\n"));
 }
@@ -74,8 +78,10 @@ void store_setting(int parameter, double value) {
     case 3: settings.pulse_microseconds = round(value); break;
     case 4: settings.default_feed_rate = value; break;
     case 5: settings.default_seek_rate = value; break;
-    case 6: settings.mm_per_arc_segment = value; break;
-    case 7: settings.invert_mask = trunc(value); break;
+    case 6: settings.dead_feed_rate = value; break;
+    case 8: settings.mm_per_arc_segment = value; break;
+    case 9: settings.acceleration = value; break;
+    case 10: settings.invert_mask = trunc(value); break;
     default: 
     printPgmString(PSTR("Unknown parameter\r\n"));
     return;

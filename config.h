@@ -69,6 +69,7 @@ struct Settings {
   double default_seek_rate;
   uint8_t invert_mask;
   double mm_per_arc_segment;
+  double accelleration;
 };
 struct Settings settings;
 
