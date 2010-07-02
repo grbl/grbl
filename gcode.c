@@ -21,27 +21,6 @@
 /* This code is inspired by the Arduino GCode Interpreter by Mike Ellery and the NIST RS274/NGC Interpreter
    by Kramer, Proctor and Messina. */
 
-/* Intentionally not supported:
-  - Canned cycles
-  - Tool radius compensation
-  - A,B,C-axes
-  - Multiple coordinate systems
-  - Evaluation of expressions
-  - Variables
-  - Multiple home locations
-  - Probing
-  - Override control
-*/
-
-/* 
-   Omitted for the time being:
-   group 0 = {G10, G28, G30, G92, G92.1, G92.2, G92.3} (Non modal G-codes)
-   group 8 = {M7, M8, M9} coolant (special case: M7 and M8 may be active at the same time)
-   group 9 = {M48, M49} enable/disable feed and speed override switches
-   group 12 = {G54, G55, G56, G57, G58, G59, G59.1, G59.2, G59.3} coordinate system selection
-   group 13 = {G61, G61.1, G64} path control mode
-*/
-
 #include "gcode.h"
 #include <stdlib.h>
 #include <string.h>
@@ -57,7 +36,7 @@
 #define NEXT_ACTION_DWELL 1
 #define NEXT_ACTION_GO_HOME 2
 
-#define MOTION_MODE_RAPID_LINEAR 0 // G0 
+#define MOTION_MODE_SEEK 0 // G0 
 #define MOTION_MODE_LINEAR 1 // G1
 #define MOTION_MODE_CW_ARC 2  // G2
 #define MOTION_MODE_CCW_ARC 3  // G3
@@ -77,7 +56,7 @@
 struct ParserState {
   uint8_t status_code;
 
-  uint8_t motion_mode;         /* {G0, G1, G2, G3, G38.2, G80, G81, G82, G83, G84, G85, G86, G87, G88, G89} */
+  uint8_t motion_mode;         /* {G0, G1, G2, G3, G80} */
   uint8_t inverse_feed_rate_mode; /* G93, G94 */
   uint8_t inches_mode;         /* 0 = millimeter mode, 1 = inches mode {G20, G21} */
   uint8_t absolute_mode;       /* 0 = relative motion, 1 = absolute motion {G90, G91} */
@@ -95,10 +74,10 @@ struct ParserState gc;
 #define FAIL(status) gc.status_code = status;
 
 int read_double(char *line,               //  <- string: line of RS274/NGC code being processed
-                     int *counter,        //  <- pointer to a counter for position on the line 
+                     int *char_counter,        //  <- pointer to a counter for position on the line 
                      double *double_ptr); //  <- pointer to double to be read                  
 
-int next_statement(char *letter, double *double_ptr, char *line, int *counter);
+int next_statement(char *letter, double *double_ptr, char *line, int *char_counter);
 
 
 void select_plane(uint8_t axis_0, uint8_t axis_1, uint8_t axis_2) 
@@ -140,7 +119,7 @@ double theta(double x, double y)
 // Executes one line of 0-terminated G-Code. The line is assumed to contain only uppercase
 // characters and signed floats (no whitespace).
 uint8_t gc_execute_line(char *line) {
-  int counter = 0;  
+  int char_counter = 0;  
   char letter;
   double value;
   double unit_converted_value;
@@ -148,7 +127,7 @@ uint8_t gc_execute_line(char *line) {
   int radius_mode = FALSE;
   
   uint8_t absolute_override = FALSE;       /* 1 = absolute motion for this block only {G53} */
-  uint8_t next_action = NEXT_ACTION_DEFAULT;         /* One of the NEXT_ACTION_-constants */
+  uint8_t next_action = NEXT_ACTION_DEFAULT;  /* The action that will be taken by the parsed line */
   
   double target[3], offset[3];  
   
@@ -163,25 +142,25 @@ uint8_t gc_execute_line(char *line) {
   /* First: parse all statements */
   
   if (line[0] == '(') { return(gc.status_code); }
-  if (line[0] == '/') { counter++; } // ignore block delete
+  if (line[0] == '/') { char_counter++; } // ignore block delete
   if (line[0] == '$') { // This is a parameter line intended to change EEPROM-settings
     // Parameter lines are on the form '$4=374.3' or '$' to dump current settings
-    counter = 1;
-    if(line[counter] == 0) { dump_settings(); return(GCSTATUS_OK); }
-    read_double(line, &counter, &p);
-    if(line[counter++] != '=') { return(GCSTATUS_UNSUPPORTED_STATEMENT); }
-    read_double(line, &counter, &value);
-    if(line[counter] != 0) { return(GCSTATUS_UNSUPPORTED_STATEMENT); }
+    char_counter = 1;
+    if(line[char_counter] == 0) { dump_settings(); return(GCSTATUS_OK); }
+    read_double(line, &char_counter, &p);
+    if(line[char_counter++] != '=') { return(GCSTATUS_UNSUPPORTED_STATEMENT); }
+    read_double(line, &char_counter, &value);
+    if(line[char_counter] != 0) { return(GCSTATUS_UNSUPPORTED_STATEMENT); }
     store_setting(p, value);
   }
   
   // Pass 1: Commands
-  while(next_statement(&letter, &value, line, &counter)) {
+  while(next_statement(&letter, &value, line, &char_counter)) {
     int_value = trunc(value);
     switch(letter) {
       case 'G':
       switch(int_value) {
-        case 0: gc.motion_mode = MOTION_MODE_RAPID_LINEAR; break;
+        case 0: gc.motion_mode = MOTION_MODE_SEEK; break;
         case 1: gc.motion_mode = MOTION_MODE_LINEAR; break;
         case 2: gc.motion_mode = MOTION_MODE_CW_ARC; break;
         case 3: gc.motion_mode = MOTION_MODE_CCW_ARC; break;
@@ -220,12 +199,12 @@ uint8_t gc_execute_line(char *line) {
   // If there were any errors parsing this line, we will return right away with the bad news
   if (gc.status_code) { return(gc.status_code); }
 
-  counter = 0;
+  char_counter = 0;
   clear_vector(offset);
-  memcpy(target, gc.position, sizeof(target)); // target = gc.position
+  memcpy(target, gc.position, sizeof(target)); // i.e. target = gc.position
 
   // Pass 2: Parameters
-  while(next_statement(&letter, &value, line, &counter)) {
+  while(next_statement(&letter, &value, line, &char_counter)) {
     int_value = trunc(value);
     unit_converted_value = to_millimeters(value);
     switch(letter) {
@@ -267,7 +246,9 @@ uint8_t gc_execute_line(char *line) {
     case NEXT_ACTION_DEFAULT: 
     switch (gc.motion_mode) {
       case MOTION_MODE_CANCEL: break;
-      case MOTION_MODE_RAPID_LINEAR:
+      case MOTION_MODE_SEEK:
+      mc_line(target[X_AXIS], target[Y_AXIS], target[Z_AXIS], gc.seek_rate, FALSE);
+      break;
       case MOTION_MODE_LINEAR:
       mc_line(target[X_AXIS], target[Y_AXIS], target[Z_AXIS], 
         (gc.inverse_feed_rate_mode) ? inverse_feed_rate : gc.feed_rate, gc.inverse_feed_rate_mode);
@@ -415,28 +396,28 @@ uint8_t gc_execute_line(char *line) {
 // Parses the next statement and leaves the counter on the first character following
 // the statement. Returns 1 if there was a statements, 0 if end of string was reached
 // or there was an error (check state.status_code).
-int next_statement(char *letter, double *double_ptr, char *line, int *counter) {
-  if (line[*counter] == 0) {
+int next_statement(char *letter, double *double_ptr, char *line, int *char_counter) {
+  if (line[*char_counter] == 0) {
     return(0); // No more statements
   }
   
-  *letter = line[*counter];
+  *letter = line[*char_counter];
   if((*letter < 'A') || (*letter > 'Z')) {
     FAIL(GCSTATUS_EXPECTED_COMMAND_LETTER);
     return(0);
   }
-  (*counter)++;
-  if (!read_double(line, counter, double_ptr)) {
+  (*char_counter)++;
+  if (!read_double(line, char_counter, double_ptr)) {
     return(0);
   };
   return(1);
 }
 
 int read_double(char *line, //!< string: line of RS274/NGC code being processed
-                     int *counter,       //!< pointer to a counter for position on the line 
+                     int *char_counter,       //!< pointer to a counter for position on the line 
                      double *double_ptr) //!< pointer to double to be read                  
 {
-  char *start = line + *counter;
+  char *start = line + *char_counter;
   char *end;
   
   *double_ptr = strtod(start, &end);
@@ -445,6 +426,28 @@ int read_double(char *line, //!< string: line of RS274/NGC code being processed
     return(0); 
   };
 
-  *counter = end - line;
+  *char_counter = end - line;
   return(1);
 }
+
+/* Intentionally not supported:
+  - Canned cycles
+  - Tool radius compensation
+  - A,B,C-axes
+  - Multiple coordinate systems
+  - Evaluation of expressions
+  - Variables
+  - Multiple home locations
+  - Probing
+  - Override control
+*/
+
+/* 
+   Omitted for the time being:
+   group 0 = {G10, G28, G30, G92, G92.1, G92.2, G92.3} (Non modal G-codes)
+   group 8 = {M7, M8, M9} coolant (special case: M7 and M8 may be active at the same time)
+   group 9 = {M48, M49} enable/disable feed and speed override switches
+   group 12 = {G54, G55, G56, G57, G58, G59, G59.1, G59.2, G59.3} coordinate system selection
+   group 13 = {G61, G61.1, G64} path control mode
+*/
+
