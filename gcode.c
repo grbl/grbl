@@ -32,6 +32,8 @@
 #include "errno.h"
 #include "serial_protocol.h"
 
+#define MM_PER_INCH (25.4)
+
 #define NEXT_ACTION_DEFAULT 0
 #define NEXT_ACTION_DWELL 1
 #define NEXT_ACTION_GO_HOME 2
@@ -96,7 +98,7 @@ void gc_init() {
 }
 
 inline float to_millimeters(double value) {
-  return(gc.inches_mode ? (value * INCHES_PER_MM) : value);
+  return(gc.inches_mode ? (value * MM_PER_INCH) : value);
 }
 
 // Find the angle in radians of deviance from the positive y axis. negative angles to the left of y-axis, 
