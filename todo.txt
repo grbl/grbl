@@ -1,5 +1,0 @@
-* Complete support for using and setting separate seek-rate for G0-commnads
-* Implement limit switch support in stepper.c (use port-triggered interrupts?)
-* Implement homing cycle in stepper.c
-* Path Control Modes
-* Spindle speed support

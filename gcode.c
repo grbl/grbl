@@ -141,11 +141,13 @@ uint8_t gc_execute_line(char *line) {
 
   gc.status_code = GCSTATUS_OK;
   
-  /* First: parse all statements */
-  
+  // Disregard comments and block delete
   if (line[0] == '(') { return(gc.status_code); }
   if (line[0] == '/') { char_counter++; } // ignore block delete
-  if (line[0] == '$') { // This is a parameter line intended to change EEPROM-settings
+  
+  
+  // If the line starts with an '$' it is a configuration-command
+  if (line[0] == '$') { 
     // Parameter lines are on the form '$4=374.3' or '$' to dump current settings
     char_counter = 1;
     if(line[char_counter] == 0) { dump_settings(); return(GCSTATUS_OK); }
@@ -156,6 +158,8 @@ uint8_t gc_execute_line(char *line) {
     store_setting(p, value);
   }
   
+  /* We'll handle this as g-code. First: parse all statements */
+
   // Pass 1: Commands
   while(next_statement(&letter, &value, line, &char_counter)) {
     int_value = trunc(value);
@@ -415,9 +419,9 @@ int next_statement(char *letter, double *double_ptr, char *line, int *char_count
   return(1);
 }
 
-int read_double(char *line, //!< string: line of RS274/NGC code being processed
-                     int *char_counter,       //!< pointer to a counter for position on the line 
-                     double *double_ptr) //!< pointer to double to be read                  
+int read_double(char *line,               //!< string: line of RS274/NGC code being processed
+                     int *char_counter,   //!< pointer to a counter for position on the line 
+                     double *double_ptr)  //!< pointer to double to be read                  
 {
   char *start = line + *char_counter;
   char *end;
