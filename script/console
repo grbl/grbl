@@ -1,3 +1,4 @@
-# socat -d -d READLINE /dev/tty.usbserial-A9007QcR,clocal=1,nonblock=1,cread=1,cs8,ixon=1,ixoff=1
-socat -d -d READLINE /dev/tty.FireFly-A964-SPP-1,clocal=1,nonblock=1,cread=1,cs8,ixon=1,ixoff=1
+# socat -d -d READLINE /dev/tty.usbserial-FTE3HK2C,clocal=1,nonblock=1,cread=1,cs8,ixon=1,ixoff=1
+socat -d -d READLINE /dev/tty.usbserial-A9007QcR,clocal=1,nonblock=1,cread=1,cs8,ixon=1,ixoff=1
+# socat -d -d READLINE /dev/tty.FireFly-A964-SPP-1,clocal=1,nonblock=1,cread=1,cs8,ixon=1,ixoff=1
 

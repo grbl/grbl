@@ -25,8 +25,8 @@
 
 // Settings that can only be set at compile-time:
 
-// #define BAUD_RATE 9600
-#define BAUD_RATE 115200
+#define BAUD_RATE 9600
+//#define BAUD_RATE 115200
 
 #define STEPPERS_ENABLE_DDR     DDRD
 #define STEPPERS_ENABLE_PORT    PORTD
@@ -109,7 +109,5 @@ void store_setting(int parameter, double value);
 #define DIRECTION_MASK ((1<<X_DIRECTION_BIT)|(1<<Y_DIRECTION_BIT)|(1<<Z_DIRECTION_BIT)) // All direction bits
 #define STEPPING_MASK (STEP_MASK | DIRECTION_MASK) // All stepping-related bits (step/direction)
 #define LIMIT_MASK ((1<<X_LIMIT_BIT)|(1<<Y_LIMIT_BIT)|(1<<Z_LIMIT_BIT)) // All limit bits
-
-#define INCHES_PER_MM (1.0/25.4) // A conversion rate
 
 #endif
