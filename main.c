@@ -42,7 +42,7 @@ int main(void)
   
   for(;;){
     sleep_mode();
-    sp_process(); // process the serial protocol
+    sp_process(); // Process the serial protocol
   }
   return 0;   /* never reached */
 }
