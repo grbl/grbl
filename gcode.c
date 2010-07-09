@@ -35,52 +35,50 @@
 #define MM_PER_INCH (25.4)
 
 #define NEXT_ACTION_DEFAULT 0
-#define NEXT_ACTION_DWELL 1
+#define NEXT_ACTION_DWELL   1
 #define NEXT_ACTION_GO_HOME 2
 
-#define MOTION_MODE_SEEK 0 // G0 
-#define MOTION_MODE_LINEAR 1 // G1
-#define MOTION_MODE_CW_ARC 2  // G2
+#define MOTION_MODE_SEEK    0  // G0 
+#define MOTION_MODE_LINEAR  1  // G1
+#define MOTION_MODE_CW_ARC  2  // G2
 #define MOTION_MODE_CCW_ARC 3  // G3
-#define MOTION_MODE_CANCEL 4 // G80
+#define MOTION_MODE_CANCEL  4  // G80
 
 #define PATH_CONTROL_MODE_EXACT_PATH 0
 #define PATH_CONTROL_MODE_EXACT_STOP 1
 #define PATH_CONTROL_MODE_CONTINOUS  2
 
-#define PROGRAM_FLOW_RUNNING 0
-#define PROGRAM_FLOW_PAUSED 1
+#define PROGRAM_FLOW_RUNNING   0
+#define PROGRAM_FLOW_PAUSED    1
 #define PROGRAM_FLOW_COMPLETED 2
 
-#define SPINDLE_DIRECTION_CW 0
+#define SPINDLE_DIRECTION_CW  0
 #define SPINDLE_DIRECTION_CCW 1
 
 struct ParserState {
-  uint8_t status_code;
-
-  uint8_t motion_mode;         /* {G0, G1, G2, G3, G80} */
-  uint8_t inverse_feed_rate_mode; /* G93, G94 */
-  uint8_t inches_mode;         /* 0 = millimeter mode, 1 = inches mode {G20, G21} */
-  uint8_t absolute_mode;       /* 0 = relative motion, 1 = absolute motion {G90, G91} */
-  uint8_t program_flow;
-  int spindle_direction;
-  double feed_rate;              /* Millimeters/second */
-  double position[3];    /* Where the interpreter considers the tool to be at this point in the code */
-  uint8_t tool;
-  int16_t spindle_speed;         /* RPM/100 */
-  uint8_t plane_axis_0, plane_axis_1, plane_axis_2; // The axes of the selected plane
+  uint8_t status_code;            // Current GCSTATUS_* of the interpreter
+  uint8_t motion_mode;            // {G0, G1, G2, G3, G80} 
+  uint8_t inverse_feed_rate_mode; // G93, G94 
+  uint8_t inches_mode;            // 0 = millimeter mode, 1 = inches mode {G20, G21} 
+  uint8_t absolute_mode;          // 0 = relative motion, 1 = absolute motion {G90, G91} 
+  uint8_t program_flow;           // Follows G-code specs for no apparent reason. Currently unsupported
+  int spindle_direction;          // +1 == forward, -1 == reverse, 0 == stopped (handled in the spindle_control module)
+  double feed_rate;               // Millimeters/second 
+  double position[3];             // The current location of the tool at this point in the code (will generally diverge from current reality)
+  uint8_t tool;                   // The currently loaded tool (currently unsupported)
+  int16_t spindle_speed;          // RPM/100 (currently unsupported in spindle_control)
+  uint8_t plane_axis_0,           // The axes of the selected plane
+          plane_axis_1, 
+          plane_axis_2;           
   
 };
 struct ParserState gc;
 
-#define FAIL(status) gc.status_code = status;
-
 int read_double(char *line,               //  <- string: line of RS274/NGC code being processed
-                     int *char_counter,        //  <- pointer to a counter for position on the line 
+                     int *char_counter,   //  <- pointer to a counter for position on the line 
                      double *double_ptr); //  <- pointer to double to be read                  
 
 int next_statement(char *letter, double *double_ptr, char *line, int *char_counter);
-
 
 void select_plane(uint8_t axis_0, uint8_t axis_1, uint8_t axis_2) 
 {
@@ -124,16 +122,16 @@ uint8_t gc_execute_line(char *line) {
   char letter;
   double value;
   double unit_converted_value;
-  double inverse_feed_rate = -1; // negative inverse_feed_rate means no inverse_feed_rate specified
+  double inverse_feed_rate = -1;             // negative inverse_feed_rate means no inverse_feed_rate specified
   int radius_mode = FALSE;
   
-  uint8_t absolute_override = FALSE;       /* 1 = absolute motion for this block only {G53} */
-  uint8_t next_action = NEXT_ACTION_DEFAULT;  /* The action that will be taken by the parsed line */
+  uint8_t absolute_override = FALSE;         // 1 = absolute motion for this block only {G53}
+  uint8_t next_action = NEXT_ACTION_DEFAULT; // The action that will be taken by the parsed line 
   
   double target[3], offset[3];  
   
-  double p = 0, r = 0;
-  int int_value;
+  double p = 0, r = 0;                       // Stores the value of R and P statements until their meaning is determined
+  int int_value;                             // A truncated integer version of parameter value of the current statement
   
   clear_vector(target);
   clear_vector(offset);
@@ -155,11 +153,12 @@ uint8_t gc_execute_line(char *line) {
     read_double(line, &char_counter, &value);
     if(line[char_counter] != 0) { return(GCSTATUS_UNSUPPORTED_STATEMENT); }
     store_setting(p, value);
+    return(gc.status_code);
   }
   
-  /* We'll handle this as g-code. First: parse all statements */
+  // Not a comment. Not a configuration-command. Then we'll handle this as g-code.
 
-  // Pass 1: Commands
+  // Pass 1: Command statements
   while(next_statement(&letter, &value, line, &char_counter)) {
     int_value = trunc(value);
     switch(letter) {
@@ -182,7 +181,7 @@ uint8_t gc_execute_line(char *line) {
         case 91: gc.absolute_mode = FALSE; break;
         case 93: gc.inverse_feed_rate_mode = TRUE; break;
         case 94: gc.inverse_feed_rate_mode = FALSE; break;
-        default: FAIL(GCSTATUS_UNSUPPORTED_STATEMENT);
+        default: gc.status_code = GCSTATUS_UNSUPPORTED_STATEMENT;
       }
       break;
       
@@ -193,7 +192,7 @@ uint8_t gc_execute_line(char *line) {
         case 3: gc.spindle_direction = 1; break;
         case 4: gc.spindle_direction = -1; break;
         case 5: gc.spindle_direction = 0; break;
-        default: FAIL(GCSTATUS_UNSUPPORTED_STATEMENT);
+        default: gc.status_code = GCSTATUS_UNSUPPORTED_STATEMENT;
       }            
       break;
       case 'T': gc.tool = trunc(value); break;
@@ -208,7 +207,7 @@ uint8_t gc_execute_line(char *line) {
   clear_vector(offset);
   memcpy(target, gc.position, sizeof(target)); // i.e. target = gc.position
 
-  // Pass 2: Parameters
+  // Pass 2: Parameter statements
   while(next_statement(&letter, &value, line, &char_counter)) {
     int_value = trunc(value);
     unit_converted_value = to_millimeters(value);
@@ -318,7 +317,7 @@ uint8_t gc_execute_line(char *line) {
         double h_x2_div_d = -sqrt(4 * r*r - x*x - y*y)/hypot(x,y); // == -(h * 2 / d)
         // If r is smaller than d, the arc is now traversing the complex plane beyond the reach of any
         // real CNC, and thus - for practical reasons - we will terminate promptly:
-        if(isnan(h_x2_div_d)) { FAIL(GCSTATUS_FLOATING_POINT_ERROR); return(gc.status_code); }
+        if(isnan(h_x2_div_d)) { gc.status_code = GCSTATUS_FLOATING_POINT_ERROR; return(gc.status_code); }
         // Invert the sign of h_x2_div_d if the circle is counter clockwise (see sketch below)
         if (gc.motion_mode == MOTION_MODE_CCW_ARC) { h_x2_div_d = -h_x2_div_d; }
         
@@ -405,10 +404,9 @@ int next_statement(char *letter, double *double_ptr, char *line, int *char_count
   if (line[*char_counter] == 0) {
     return(0); // No more statements
   }
-  
   *letter = line[*char_counter];
   if((*letter < 'A') || (*letter > 'Z')) {
-    FAIL(GCSTATUS_EXPECTED_COMMAND_LETTER);
+    gc.status_code = GCSTATUS_EXPECTED_COMMAND_LETTER;
     return(0);
   }
   (*char_counter)++;
@@ -427,32 +425,9 @@ int read_double(char *line,               //!< string: line of RS274/NGC code be
   
   *double_ptr = strtod(start, &end);
   if(end == start) { 
-    FAIL(GCSTATUS_BAD_NUMBER_FORMAT); 
+    gc.status_code = GCSTATUS_BAD_NUMBER_FORMAT; 
     return(0); 
   };
-
   *char_counter = end - line;
   return(1);
 }
-
-/* Intentionally not supported:
-  - Canned cycles
-  - Tool radius compensation
-  - A,B,C-axes
-  - Multiple coordinate systems
-  - Evaluation of expressions
-  - Variables
-  - Multiple home locations
-  - Probing
-  - Override control
-*/
-
-/* 
-   Omitted for the time being:
-   group 0 = {G10, G28, G30, G92, G92.1, G92.2, G92.3} (Non modal G-codes)
-   group 8 = {M7, M8, M9} coolant (special case: M7 and M8 may be active at the same time)
-   group 9 = {M48, M49} enable/disable feed and speed override switches
-   group 12 = {G54, G55, G56, G57, G58, G59, G59.1, G59.2, G59.3} coordinate system selection
-   group 13 = {G61, G61.1, G64} path control mode
-*/
-
