@@ -102,7 +102,6 @@ SIGNAL(SIG_OUTPUT_COMPARE1A)
 {
   if(busy){ return; } // The busy-flag is used to avoid reentering this interrupt
   
-  PORTD |= (1<<3);
   // Set the direction pins a cuple of nanoseconds before we step the steppers
   STEPPING_PORT = (STEPPING_PORT & ~DIRECTION_MASK) | (out_bits & DIRECTION_MASK);
   // Then pulse the stepping pins
@@ -118,10 +117,8 @@ SIGNAL(SIG_OUTPUT_COMPARE1A)
     
   // If there is no current line, attempt to pop one from the buffer
   if (current_line == NULL) {
-    PORTD &= ~(1<<4);
     // Anything in the buffer?
     if (line_buffer_head != line_buffer_tail) {
-      PORTD ^= (1<<5);
       // Retrieve a new line and get ready to step it
       current_line = &line_buffer[line_buffer_tail]; 
       config_step_timer(current_line->rate);
@@ -132,7 +129,6 @@ SIGNAL(SIG_OUTPUT_COMPARE1A)
     } else {
       // disable this interrupt until there is something to handle
     	TIMSK1 &= ~(1<<OCIE1A);
-      PORTD |= (1<<4);          
     }    
   } 
 
@@ -165,7 +161,6 @@ SIGNAL(SIG_OUTPUT_COMPARE1A)
   }
   out_bits ^= settings.invert_mask;
   busy=FALSE;
-  PORTD &= ~(1<<3);  
 }
 
 // This interrupt is set up by SIG_OUTPUT_COMPARE1A when it sets the motor port bits. It resets
