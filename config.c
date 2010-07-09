@@ -66,7 +66,7 @@ void write_settings() {
   memcpy_to_eeprom_with_checksum(1, (char*)&settings, sizeof(struct Settings));
 }
 
-// A helper method to set settings from command line
+// A helper method to modify settings from command line
 void store_setting(int parameter, double value) {
   switch(parameter) {
     case 0: case 1: case 2:
@@ -88,7 +88,7 @@ void config_init() {
   if(read_settings()) {
     printPgmString(PSTR("'$' to dump current settings\r\n"));
   } else {
-    printPgmString(("EEPROM blank. Rewrote default settings:\r\n"));
+    printPgmString(("No valid configuration found. Resetting to defaults.\r\n"));
     reset_settings();
     write_settings();
     dump_settings();
