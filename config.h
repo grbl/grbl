@@ -66,7 +66,7 @@ struct Settings {
   uint8_t microsteps;
   uint8_t pulse_microseconds;
   double default_feed_rate;
-  double default_seek_rate;
+  double seek_rate;
   uint8_t invert_mask;
   double mm_per_arc_segment;
 };
@@ -90,7 +90,7 @@ void store_setting(int parameter, double value);
 
 #define DEFAULT_MM_PER_ARC_SEGMENT 0.1
 
-#define DEFAULT_RAPID_FEEDRATE 480.0 // in millimeters per minute
+#define DEFAULT_SEEKRATE 480.0 // in millimeters per minute
 #define DEFAULT_FEEDRATE 480.0
 
 // Some useful constants

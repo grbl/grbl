@@ -64,7 +64,7 @@ struct ParserState {
   uint8_t absolute_mode;       /* 0 = relative motion, 1 = absolute motion {G90, G91} */
   uint8_t program_flow;
   int spindle_direction;
-  double feed_rate, seek_rate;              /* Millimeters/second */
+  double feed_rate;              /* Millimeters/second */
   double position[3];    /* Where the interpreter considers the tool to be at this point in the code */
   uint8_t tool;
   int16_t spindle_speed;         /* RPM/100 */
@@ -92,7 +92,6 @@ void select_plane(uint8_t axis_0, uint8_t axis_1, uint8_t axis_2)
 void gc_init() {
   memset(&gc, 0, sizeof(gc));
   gc.feed_rate = settings.default_feed_rate/60;
-  gc.seek_rate = settings.default_seek_rate/60;
   select_plane(X_AXIS, Y_AXIS, Z_AXIS);
   gc.absolute_mode = TRUE;
 }
@@ -253,7 +252,7 @@ uint8_t gc_execute_line(char *line) {
     switch (gc.motion_mode) {
       case MOTION_MODE_CANCEL: break;
       case MOTION_MODE_SEEK:
-      mc_line(target[X_AXIS], target[Y_AXIS], target[Z_AXIS], gc.seek_rate, FALSE);
+      mc_line(target[X_AXIS], target[Y_AXIS], target[Z_AXIS], settings.seek_rate/60, FALSE);
       break;
       case MOTION_MODE_LINEAR:
       mc_line(target[X_AXIS], target[Y_AXIS], target[Z_AXIS], 
