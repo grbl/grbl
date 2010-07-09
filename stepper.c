@@ -39,11 +39,12 @@
 #define LINE_BUFFER_SIZE 10
 #endif
 
+// This record is used to buffer the setup for each linear motion
 struct Line {
-  uint32_t steps_x, steps_y, steps_z;
-  int32_t maximum_steps;
-  uint8_t direction_bits;
-  uint32_t rate;
+  uint32_t steps_x, steps_y, steps_z; // Step count along each axis
+  int32_t  maximum_steps;             // The largest stepcount of any axis for this line
+  uint8_t  direction_bits;            // The direction bit set for this line (refers to *_DIRECTION_BIT in config.h)
+  uint32_t rate;                      // The step rate in microseconds/step
 };
 
 struct Line line_buffer[LINE_BUFFER_SIZE]; // A buffer for step instructions
@@ -51,11 +52,13 @@ volatile int line_buffer_head = 0;
 volatile int line_buffer_tail = 0;
 
 // Variables used by SIG_OUTPUT_COMPARE1A
-uint8_t out_bits; // The next stepping-bits to be output
-struct Line *current_line; // A pointer to the line currently being traced
-volatile int32_t counter_x, counter_y, counter_z; // counter variables for the bresenham line tracer
-uint32_t iterations; // The number of iterations left to complete the current_line
-volatile int busy; // TRUE when SIG_OUTPUT_COMPARE1A is being serviced. Used to avoid retriggering that handler.
+uint8_t          out_bits;      // The next stepping-bits to be output
+struct Line      *current_line; // A pointer to the line currently being traced
+volatile int32_t counter_x, 
+                 counter_y, 
+                 counter_z;     // counter variables for the bresenham line tracer
+uint32_t         iterations;    // The number of iterations left to complete the current_line
+volatile int     busy;          // TRUE when SIG_OUTPUT_COMPARE1A is being serviced. Used to avoid retriggering that handler.
 
 void config_step_timer(uint32_t microseconds);
 

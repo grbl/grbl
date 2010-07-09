@@ -101,7 +101,7 @@ void mc_arc(double theta, double angular_travel, double radius, double linear_tr
   double target[3];
   int i;
   // Initialize the linear axis
-  target[axis_linear] = position[axis_linear]/Z_STEPS_PER_MM;
+  target[axis_linear] = position[axis_linear]/settings.steps_per_mm[Z_AXIS];
   for (i=0; i<=segments; i++) {
     target[axis_linear] += linear_per_segment;
     theta += theta_per_segment;

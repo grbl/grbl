@@ -81,28 +81,17 @@ void dump_settings();
 // A helper method to set new settings from command line
 void store_setting(int parameter, double value);
 
-
 // Default settings (used when resetting eeprom-settings)
 #define MICROSTEPS 8
-#define X_STEPS_PER_MM (94.488188976378*MICROSTEPS)
-#define Y_STEPS_PER_MM (94.488188976378*MICROSTEPS)
-#define Z_STEPS_PER_MM (94.488188976378*MICROSTEPS)
-#define STEP_PULSE_MICROSECONDS 30
+#define DEFAULT_X_STEPS_PER_MM (94.488188976378*MICROSTEPS)
+#define DEFAULT_Y_STEPS_PER_MM (94.488188976378*MICROSTEPS)
+#define DEFAULT_Z_STEPS_PER_MM (94.488188976378*MICROSTEPS)
+#define DEFAULT_STEP_PULSE_MICROSECONDS 30
 
-#define MM_PER_ARC_SEGMENT 0.1
+#define DEFAULT_MM_PER_ARC_SEGMENT 0.1
 
-#define RAPID_FEEDRATE 480.0 // in millimeters per minute
+#define DEFAULT_RAPID_FEEDRATE 480.0 // in millimeters per minute
 #define DEFAULT_FEEDRATE 480.0
-
-// Use this line for default operation (step-pulses high)
-#define STEPPING_INVERT_MASK 0
-// Uncomment this line for inverted stepping (step-pulses low, rest high)
-// #define STEPPING_INVERT_MASK (STEP_MASK)
-// Uncomment this line to invert all step- and direction bits
-// #define STEPPING_INVERT_MASK (STEPPING_MASK)
-// Or bake your own like this adding any step-bits or directions you want to invert:
-// #define STEPPING_INVERT_MASK (STEP_MASK | (1<<X_DIRECTION_BIT) | (1<<Y_DIRECTION_BIT))
-
 
 // Some useful constants
 #define STEP_MASK ((1<<X_STEP_BIT)|(1<<Y_STEP_BIT)|(1<<Z_STEP_BIT)) // All step bits
