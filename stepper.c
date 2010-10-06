@@ -41,10 +41,17 @@
 
 struct Line {
   uint32_t steps_x, steps_y, steps_z;
+  uint32_t pos_x, pos_y, pos_z;
   int32_t maximum_steps;
   uint8_t direction_bits;
   uint32_t rate;
 };
+
+extern int32_t position[3];    // The current position of the tool in absolute steps
+
+int32_t actual_position[3];    // The current position of the tool in absolute steps
+						// In this file, this is actually the current position, not 
+						// estimated current position...
 
 struct Line line_buffer[LINE_BUFFER_SIZE]; // A buffer for step instructions
 volatile int line_buffer_head = 0;
@@ -61,7 +68,9 @@ void config_step_timer(uint32_t microseconds);
 
 // Add a new linear movement to the buffer. steps_x, _y and _z is the signed, relative motion in 
 // steps. Microseconds specify how many microseconds the move should take to perform.
-void st_buffer_line(int32_t steps_x, int32_t steps_y, int32_t steps_z, uint32_t microseconds) {
+void st_buffer_line(int32_t steps_x, int32_t steps_y, int32_t steps_z,
+					int32_t pos_x,   int32_t pos_y,   int32_t pos_z,
+					uint32_t microseconds) {
   // Calculate the buffer head after we push this byte
 	int next_buffer_head = (line_buffer_head + 1) % LINE_BUFFER_SIZE;	
 	// If the buffer is full: good! That means we are well ahead of the robot. 
@@ -72,6 +81,11 @@ void st_buffer_line(int32_t steps_x, int32_t steps_y, int32_t steps_z, uint32_t 
   line->steps_x = labs(steps_x);
   line->steps_y = labs(steps_y);
   line->steps_z = labs(steps_z);  
+    
+  line->pos_x = pos_x;
+  line->pos_y = pos_y;
+  line->pos_z = pos_z;  
+  
   line->maximum_steps = max(line->steps_x, max(line->steps_y, line->steps_z));
   // Bail if this is a zero-length line
   if (line->maximum_steps == 0) { return; };
@@ -125,6 +139,9 @@ SIGNAL(SIG_OUTPUT_COMPARE1A)
       counter_x = -(current_line->maximum_steps >> 1);
       counter_y = counter_x;
       counter_z = counter_x;
+      actual_position[X_AXIS] = current_line->pos_x;
+      actual_position[Y_AXIS] = current_line->pos_y;
+      actual_position[Z_AXIS] = current_line->pos_z;
       iterations = current_line->maximum_steps;
     } else {
       // disable this interrupt until there is something to handle
@@ -139,16 +156,33 @@ SIGNAL(SIG_OUTPUT_COMPARE1A)
     if (counter_x > 0) {
       out_bits |= (1<<X_STEP_BIT);
       counter_x -= current_line->maximum_steps;
+      if (out_bits & (1<<X_DIRECTION_BIT)){
+      	actual_position[X_AXIS]-=1;
+      } else {
+      	actual_position[X_AXIS]+=1;
+      }
     }
     counter_y += current_line->steps_y;
     if (counter_y > 0) {
       out_bits |= (1<<Y_STEP_BIT);
       counter_y -= current_line->maximum_steps;
+      if (out_bits & (1<<Y_DIRECTION_BIT)){
+      	actual_position[Y_AXIS]-=1;
+      } else {
+      	actual_position[Y_AXIS]+=1;
+      }
+
     }
     counter_z += current_line->steps_z;
     if (counter_z > 0) {
       out_bits |= (1<<Z_STEP_BIT);
       counter_z -= current_line->maximum_steps;
+      if (out_bits & (1<<Z_DIRECTION_BIT)){
+      	actual_position[Z_AXIS]-=1;
+      } else {
+      	actual_position[Z_AXIS]+=1;
+      }
+
     }
     // If current line is finished, reset pointer 
     iterations -= 1;

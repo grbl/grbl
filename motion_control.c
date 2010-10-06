@@ -30,6 +30,7 @@
 #include "wiring_serial.h"
 
 int32_t position[3];    // The current position of the tool in absolute steps
+extern int32_t actual_position[3];
 
 void mc_init()
 {
@@ -60,15 +61,18 @@ void mc_line(double x, double y, double z, float feed_rate, int invert_feed_rate
   }
   
 	if (invert_feed_rate) {
-    st_buffer_line(steps[X_AXIS], steps[Y_AXIS], steps[Z_AXIS], lround(ONE_MINUTE_OF_MICROSECONDS/feed_rate));
+    	st_buffer_line(steps[X_AXIS], steps[Y_AXIS], steps[Z_AXIS], 
+    				   position[X_AXIS], position[Y_AXIS], position[Z_AXIS], 
+    					lround(ONE_MINUTE_OF_MICROSECONDS/feed_rate));
 	} else {
   	// Ask old Phytagoras to estimate how many mm our next move is going to take us
   	double millimeters_of_travel = sqrt(
   	  square(steps[X_AXIS]/settings.steps_per_mm[0]) + 
   	  square(steps[Y_AXIS]/settings.steps_per_mm[1]) + 
   	  square(steps[Z_AXIS]/settings.steps_per_mm[2]));
-    st_buffer_line(steps[X_AXIS], steps[Y_AXIS], steps[Z_AXIS],
-      lround((millimeters_of_travel/feed_rate)*1000000));
+		st_buffer_line(steps[X_AXIS], steps[Y_AXIS], steps[Z_AXIS],
+					   position[X_AXIS], position[Y_AXIS], position[Z_AXIS], 
+					   lround((millimeters_of_travel/feed_rate)*1000000));
 	}
 	memcpy(position, target, sizeof(target)); // position[] = target[] 
 }
@@ -82,6 +86,10 @@ void mc_reposition(double x, double y, double z)
   target[Z_AXIS] = lround(z*settings.steps_per_mm[2]); 
   
   memcpy(position, target, sizeof(target)); // position[] = target[] 
+  memcpy(actual_position, target, sizeof(target));	// Only really necessary for display - actual
+  													// position gets updated at the start of the 
+  													// next move, but until then the display would
+  													// be wrong.
 }
 
 // Execute an arc. theta == start angle, angular_travel == number of radians to go along the arc,
