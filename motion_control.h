@@ -31,6 +31,8 @@ void mc_init();
 // (1 minute)/feed_rate time.
 void mc_line(double x, double y, double z, float feed_rate, int invert_feed_rate);
 
+void mc_reposition(double x, double y, double z);
+
 // Execute an arc. theta == start angle, angular_travel == number of radians to go along the arc,
 // positive angular_travel means clockwise, negative means counterclockwise. Radius == the radius of the
 // circle in millimeters. axis_1 and axis_2 selects the circle plane in tool space. Stick the remaining

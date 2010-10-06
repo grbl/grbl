@@ -37,6 +37,7 @@
 #define NEXT_ACTION_DEFAULT 0
 #define NEXT_ACTION_DWELL 1
 #define NEXT_ACTION_GO_HOME 2
+#define NEXT_ACTION_REPOSITION 3 // G92
 
 #define MOTION_MODE_SEEK 0 // G0 
 #define MOTION_MODE_LINEAR 1 // G1
@@ -181,6 +182,7 @@ uint8_t gc_execute_line(char *line) {
         case 80: gc.motion_mode = MOTION_MODE_CANCEL; break;
         case 90: gc.absolute_mode = TRUE; break;
         case 91: gc.absolute_mode = FALSE; break;
+        case 92: next_action = NEXT_ACTION_REPOSITION; break;                         //used to change current position or zero it
         case 93: gc.inverse_feed_rate_mode = TRUE; break;
         case 94: gc.inverse_feed_rate_mode = FALSE; break;
         default: FAIL(GCSTATUS_UNSUPPORTED_STATEMENT);
@@ -249,6 +251,7 @@ uint8_t gc_execute_line(char *line) {
   switch (next_action) {
     case NEXT_ACTION_GO_HOME: mc_go_home(); break;
     case NEXT_ACTION_DWELL: mc_dwell(trunc(p*1000)); break;
+    case NEXT_ACTION_REPOSITION: mc_reposition(target[X_AXIS], target[Y_AXIS], target[Z_AXIS]); break;      
     case NEXT_ACTION_DEFAULT: 
     switch (gc.motion_mode) {
       case MOTION_MODE_CANCEL: break;

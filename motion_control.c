@@ -73,6 +73,17 @@ void mc_line(double x, double y, double z, float feed_rate, int invert_feed_rate
 	memcpy(position, target, sizeof(target)); // position[] = target[] 
 }
 
+void mc_reposition(double x, double y, double z)
+{
+  int32_t target[3]; // The target position in absolute steps
+  
+  target[X_AXIS] = lround(x*settings.steps_per_mm[0]);
+  target[Y_AXIS] = lround(y*settings.steps_per_mm[1]);
+  target[Z_AXIS] = lround(z*settings.steps_per_mm[2]); 
+  
+  memcpy(position, target, sizeof(target)); // position[] = target[] 
+}
+
 // Execute an arc. theta == start angle, angular_travel == number of radians to go along the arc,
 // positive angular_travel means clockwise, negative means counterclockwise. Radius == the radius of the
 // circle in millimeters. axis_1 and axis_2 selects the circle plane in tool space. Stick the remaining
