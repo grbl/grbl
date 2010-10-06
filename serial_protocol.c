@@ -120,7 +120,7 @@ void process_command(char *line)
 	} else {
 		switch (line[1]){
 			case 'P': sp_report_position(); break;
-//			case 'S': mc_stop(); break;
+			case 'S': mc_stop(); break;
 			default: printPgmString(PSTR("Unrecognised command in sp_process_command\r\n"));
 		}
 	}

@@ -294,3 +294,14 @@ void st_go_home()
 {
   // Todo: Perform the homing cycle
 }
+
+void st_stop()
+{
+	st_flush();
+	current_line=NULL;		// Rather brutal. Should work.
+	
+	position[X_AXIS] = actual_position[X_AXIS];
+	position[Y_AXIS] = actual_position[Y_AXIS];
+	position[Z_AXIS] = actual_position[Z_AXIS];
+	
+}

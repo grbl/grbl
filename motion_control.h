@@ -46,4 +46,7 @@ void mc_dwell(uint32_t milliseconds);
 // Send the tool home
 void mc_go_home();
 
+// Stop any current motions
+void mc_stop();
+
 #endif

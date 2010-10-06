@@ -135,3 +135,8 @@ void mc_go_home()
   st_go_home();
   clear_vector(position); // By definition this is location [0, 0, 0]
 }
+
+void mc_stop()
+{
+	st_stop();
+}

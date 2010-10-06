@@ -41,6 +41,9 @@ void st_synchronize();
 // Cancel all pending steps
 void st_flush();
 
+// Stop whatever is going on right now!
+void st_stop();
+
 // Execute the homing cycle
 void st_go_home();
 
