@@ -27,24 +27,41 @@
 #                is connected.
 # FUSES ........ Parameters for avrdude to flash the fuses appropriately.
 
+
+INSTALL_DIR = /Applications/Arduino.app/Contents
+
+ARDUINO = $(INSTALL_DIR)/Resources/Java/hardware/arduino/cores/arduino
+ARDUINO_LIB = $(INSTALL_DIR)/Resources/Java/libraries
+
 DEVICE     = atmega328p
 CLOCK      = 16000000
 PROGRAMMER = -c avrisp2 -P usb
 OBJECTS    = main.o motion_control.o gcode.o spindle_control.o wiring_serial.o serial_protocol.o stepper.o \
-             eeprom.o config.o
+             eeprom.o config.o virtfunc.o \
+			$(ARDUINO)/wiring_digital.o \
+             $(ARDUINO_LIB)/LiquidCrystal/LiquidCrystal.o \
+             $(ARDUINO)/Print.o \
+			$(ARDUINO)/WString.o \
+             $(ARDUINO)/pins_arduino.o \
+             $(ARDUINO)/wiring.o 
+             
 # FUSES      = -U hfuse:w:0xd9:m -U lfuse:w:0x24:m
 FUSES      = -U hfuse:w:0xd2:m -U lfuse:w:0xff:m
 
 # Tune the lines below only if you know what you are doing:
 
 AVRDUDE = avrdude $(PROGRAMMER) -p $(DEVICE) -B 10 -F 
-COMPILE = avr-gcc -Wall -Os -DF_CPU=$(CLOCK) -mmcu=$(DEVICE) -I. 
+COMPILE = avr-gcc -Wall -Os -DF_CPU=$(CLOCK) -mmcu=$(DEVICE) -I. -I$(ARDUINO)
 
 # symbolic targets:
 all:	grbl.hex
 
 .c.o:
 	$(COMPILE) -c $< -o $@ 
+
+.cpp.o:
+	$(COMPILE) -c $< -o $@ 
+
 
 .S.o:
 	$(COMPILE) -x assembler-with-cpp -c $< -o $@
