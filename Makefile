@@ -37,7 +37,9 @@ DEVICE     = atmega328p
 CLOCK      = 16000000
 PROGRAMMER = -c avrisp2 -P usb
 OBJECTS    = main.o motion_control.o gcode.o spindle_control.o wiring_serial.o serial_protocol.o stepper.o \
-             eeprom.o config.o virtfunc.o \
+             eeprom.o config.o \
+             lc_display.o \
+             virtfunc.o \
 			$(ARDUINO)/wiring_digital.o \
              $(ARDUINO_LIB)/LiquidCrystal/LiquidCrystal.o \
              $(ARDUINO)/Print.o \

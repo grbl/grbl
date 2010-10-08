@@ -113,7 +113,7 @@ SIGNAL(SIG_OUTPUT_COMPARE1A)
 {
   if(busy){ return; } // The busy-flag is used to avoid reentering this interrupt
   
-  PORTD |= (1<<STEPPERS_ENABLE_BIT);
+//  PORTD |= (1<<STEPPERS_ENABLE_BIT);
   // Set the direction pins a cuple of nanoseconds before we step the steppers
   STEPPING_PORT = (STEPPING_PORT & ~DIRECTION_MASK) | (out_bits & DIRECTION_MASK);
   // Then pulse the stepping pins
@@ -196,7 +196,7 @@ SIGNAL(SIG_OUTPUT_COMPARE1A)
   }
   out_bits ^= settings.invert_mask;
   busy=FALSE;
-  PORTD &= ~(1<<STEPPERS_ENABLE_BIT);  
+//  PORTD &= ~(1<<STEPPERS_ENABLE_BIT);  
 }
 
 // This interrupt is set up by SIG_OUTPUT_COMPARE1A when it sets the motor port bits. It resets
