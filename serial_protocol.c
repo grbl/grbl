@@ -74,7 +74,7 @@ void print_count_as_mm(float count)
 	long fraction;
 	float answer;
 	
-	answer = count*0.79375;
+	answer = count*DEFAULT_UM_PER_STEP;
 	whole = round(answer/10.0);
 	fraction = abs(whole) % 100;
 	whole = whole/100;

@@ -13,7 +13,7 @@
 
 
 // initialize the library with the numbers of the interface pins
-LiquidCrystal lcd(2,3,4,5,6,7);//LCD_RS, LCD_ENABLE, LCD_DB0, LCD_DB1, LCD_DB2, LCD_DB3);
+LiquidCrystal lcd(LCD_RS, LCD_ENABLE, LCD_DB0, LCD_DB1, LCD_DB2, LCD_DB3);
 		
 extern "C" int32_t actual_position[3];    // The current actual position of the tool in absolute steps
 extern "C" int32_t position[3];    // The current target position of the tool in absolute steps
@@ -55,17 +55,12 @@ void lcd_init() {
 
 
 void lcd_print_count_as_mm(float count)
-{
-	// Convert position in steps to mm:
-	// pos = steps * 1.27/1600 
-	//     = steps * .00079375
-	//     = steps * 79375 / 100 000 000    (1e-8) 
-	
+{	
 	long whole;
 	long fraction;
 	float answer;
 	
-	answer = count*0.79375;
+	answer = count*DEFAULT_UM_PER_STEP;
 	whole = round(answer/10.0);
 	fraction = abs(whole) % 100;
 	whole = whole/100;

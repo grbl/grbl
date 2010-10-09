@@ -56,6 +56,13 @@
 #define SPINDLE_DIRECTION_PORT  PORTD
 #define SPINDLE_DIRECTION_BIT   7
 
+#define LCD_DB0 	4				// Using Ardiuno numbering, not port numbering
+#define LCD_DB1		5				// Equivalent to PORTD, pins 7 to 2
+#define LCD_DB2		6
+#define LCD_DB3		7
+#define LCD_ENABLE	3
+#define LCD_RS 		2
+
 // Version of the EEPROM data. Will be used to migrate existing data from older versions of Grbl
 // when firmware is upgraded. Always stored in byte 0 of eeprom
 #define SETTINGS_VERSION 1
@@ -83,9 +90,19 @@ void store_setting(int parameter, double value);
 
 // Default settings (used when resetting eeprom-settings)
 #define MICROSTEPS 8
-#define DEFAULT_X_STEPS_PER_MM (94.488188976378*MICROSTEPS)
-#define DEFAULT_Y_STEPS_PER_MM (94.488188976378*MICROSTEPS)
-#define DEFAULT_Z_STEPS_PER_MM (94.488188976378*MICROSTEPS)
+//#define DEFAULT_X_STEPS_PER_MM (94.488188976378*MICROSTEPS)
+//#define DEFAULT_Y_STEPS_PER_MM (94.488188976378*MICROSTEPS)
+//#define DEFAULT_Z_STEPS_PER_MM (94.488188976378*MICROSTEPS)
+
+#define DEFAULT_X_STEPS_PER_MM (200/1.27*MICROSTEPS)
+#define DEFAULT_Y_STEPS_PER_MM (DEFAULT_X_STEPS_PER_MM)
+#define DEFAULT_Z_STEPS_PER_MM (DEFAULT_X_STEPS_PER_MM)
+
+// UM per step is used in display routines. It uses um rather than
+// mm, as the roundoff error works better, and the value is divided
+// in the display routine back to mm.
+#define DEFAULT_UM_PER_STEP (1000* 1.27/(200*MICROSTEPS))
+
 #define DEFAULT_STEP_PULSE_MICROSECONDS 30
 #define DEFAULT_MM_PER_ARC_SEGMENT 0.1
 #define DEFAULT_SEEKRATE 480.0 // in millimeters per minute
