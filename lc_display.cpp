@@ -3,17 +3,17 @@
 #include <LiquidCrystal.h>
 #include <WProgram.h>  //all things wiring / arduino
 #include "config.h"
-
-#define LCD_DB0 	4				// Using Ardiuno numbering, not port numbering
-#define LCD_DB1		5				// Equivalent to PORTD, pins 7 to 2
-#define LCD_DB2		6
-#define LCD_DB3		7
-#define LCD_ENABLE	3
-#define LCD_RS 		2
+// 
+// #define LCD_DB0 	4				// Using Ardiuno numbering, not port numbering
+// #define LCD_DB1		5				// Equivalent to PORTD, pins 7 to 2
+// #define LCD_DB2		6
+// #define LCD_DB3		7
+// #define LCD_ENABLE	3
+// #define LCD_RS 		2
 
 
 // initialize the library with the numbers of the interface pins
-LiquidCrystal lcd(LCD_RS, LCD_ENABLE, LCD_DB0, LCD_DB1, LCD_DB2, LCD_DB3);
+LiquidCrystal lcd(2,3,4,5,6,7);//LCD_RS, LCD_ENABLE, LCD_DB0, LCD_DB1, LCD_DB2, LCD_DB3);
 		
 extern "C" int32_t actual_position[3];    // The current actual position of the tool in absolute steps
 extern "C" int32_t position[3];    // The current target position of the tool in absolute steps
@@ -48,7 +48,7 @@ void lcd_init() {
   lcd.print("Z");
   lcd.setCursor(0,1);
   lcd.print("Y");
-  
+
   pinMode(13,OUTPUT);
   digitalWrite(13, HIGH);
 }

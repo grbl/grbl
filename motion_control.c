@@ -61,7 +61,7 @@ void mc_line(double x, double y, double z, float feed_rate, int invert_feed_rate
   }
   
 	if (invert_feed_rate) {
-    	st_buffer_line(steps[X_AXIS], steps[Y_AXIS], steps[Z_AXIS], 
+    	st_buffer_block(steps[X_AXIS], steps[Y_AXIS], steps[Z_AXIS], 
     				   position[X_AXIS], position[Y_AXIS], position[Z_AXIS], 
     					lround(ONE_MINUTE_OF_MICROSECONDS/feed_rate));
 	} else {
@@ -70,7 +70,7 @@ void mc_line(double x, double y, double z, float feed_rate, int invert_feed_rate
   	  square(steps[X_AXIS]/settings.steps_per_mm[0]) + 
   	  square(steps[Y_AXIS]/settings.steps_per_mm[1]) + 
   	  square(steps[Z_AXIS]/settings.steps_per_mm[2]));
-		st_buffer_line(steps[X_AXIS], steps[Y_AXIS], steps[Z_AXIS],
+		st_buffer_block(steps[X_AXIS], steps[Y_AXIS], steps[Z_AXIS],
 					   position[X_AXIS], position[Y_AXIS], position[Z_AXIS], 
 					   lround((millimeters_of_travel/feed_rate)*1000000));
 	}
@@ -120,7 +120,7 @@ void mc_arc(double theta, double angular_travel, double radius, double linear_tr
   double target[3];
   int i;
   // Initialize the linear axis
-  target[axis_linear] = position[axis_linear]/Z_STEPS_PER_MM;
+  target[axis_linear] = position[axis_linear]/settings.steps_per_mm[Z_AXIS];
   for (i=0; i<=segments; i++) {
     target[axis_linear] += linear_per_segment;
     theta += theta_per_segment;

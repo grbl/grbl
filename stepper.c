@@ -32,19 +32,21 @@
 
 #include "wiring_serial.h"
 
-// Pick a suitable line-buffer size
+// Pick a suitable block-buffer size
 #ifdef __AVR_ATmega328P__
-#define LINE_BUFFER_SIZE 40   // Atmega 328 has one full kilobyte of extra RAM!
+#define BLOCK_BUFFER_SIZE 40   // Atmega 328 has one full kilobyte of extra RAM!
 #else
-#define LINE_BUFFER_SIZE 10
+#define BLOCK_BUFFER_SIZE 10
 #endif
 
-struct Line {
-  uint32_t steps_x, steps_y, steps_z;
-  uint32_t pos_x, pos_y, pos_z;
-  int32_t maximum_steps;
-  uint8_t direction_bits;
-  uint32_t rate;
+// This record is used to buffer the setup for each motion block
+struct Block {
+  uint32_t steps_x, steps_y, steps_z; // Step count along each axis
+  uint32_t pos_x, pos_y, pos_z;		  // Initial position on line
+//  double rate_x, rate_y, rate_z;      // Nominal steps/second for each axis
+  int32_t  maximum_steps;             // The largest stepcount of any axis for this block
+  uint8_t  direction_bits;            // The direction bit set for this block (refers to *_DIRECTION_BIT in config.h)
+  uint32_t rate;                      // The nominal step rate for this block in microseconds/step
 };
 
 extern int32_t position[3];    // The current position of the tool in absolute steps
@@ -53,58 +55,70 @@ int32_t actual_position[3];    // The current position of the tool in absolute s
 						// In this file, this is actually the current position, not 
 						// estimated current position...
 
-struct Line line_buffer[LINE_BUFFER_SIZE]; // A buffer for step instructions
-volatile int line_buffer_head = 0;
-volatile int line_buffer_tail = 0;
+
+struct Block block_buffer[BLOCK_BUFFER_SIZE]; // A buffer for step instructions
+volatile int block_buffer_head = 0;
+volatile int block_buffer_tail = 0;
+
+#define ENABLE_STEPPER_DRIVER_INTERRUPT()  TIMSK1 |= (1<<OCIE1A)
+#define DISABLE_STEPPER_DRIVER_INTERRUPT() TIMSK1 &= ~(1<<OCIE1A)
+
 
 // Variables used by SIG_OUTPUT_COMPARE1A
-uint8_t out_bits; // The next stepping-bits to be output
-struct Line *current_line; // A pointer to the line currently being traced
-volatile int32_t counter_x, counter_y, counter_z; // counter variables for the bresenham line tracer
-uint32_t iterations; // The number of iterations left to complete the current_line
-volatile int busy; // TRUE when SIG_OUTPUT_COMPARE1A is being serviced. Used to avoid retriggering that handler.
+uint8_t out_bits;               // The next stepping-bits to be output
+struct Block *current_block;    // A pointer to the block currently being traced
+volatile int32_t counter_x, 
+                 counter_y, 
+                 counter_z;     // counter variables for the bresenham line tracer
+uint32_t iterations;            // The number of iterations left to complete the current_block
+volatile int busy;              // TRUE when SIG_OUTPUT_COMPARE1A is being serviced. Used to avoid retriggering that handler.
 
 void config_step_timer(uint32_t microseconds);
 
 // Add a new linear movement to the buffer. steps_x, _y and _z is the signed, relative motion in 
 // steps. Microseconds specify how many microseconds the move should take to perform.
-void st_buffer_line(int32_t steps_x, int32_t steps_y, int32_t steps_z,
+void st_buffer_block(int32_t steps_x, int32_t steps_y, int32_t steps_z,
 					int32_t pos_x,   int32_t pos_y,   int32_t pos_z,
 					uint32_t microseconds) {
   // Calculate the buffer head after we push this byte
-	int next_buffer_head = (line_buffer_head + 1) % LINE_BUFFER_SIZE;	
+	int next_buffer_head = (block_buffer_head + 1) % BLOCK_BUFFER_SIZE;	
 	// If the buffer is full: good! That means we are well ahead of the robot. 
 	// Nap until there is room in the buffer.
-  while(line_buffer_tail == next_buffer_head) { sleep_mode(); }
-  // Setup line record
-  struct Line *line = &line_buffer[line_buffer_head];
-  line->steps_x = labs(steps_x);
-  line->steps_y = labs(steps_y);
-  line->steps_z = labs(steps_z);  
+  while(block_buffer_tail == next_buffer_head) { sleep_mode(); }
+  // Setup block record
+  struct Block *block = &block_buffer[block_buffer_head];
+  block->steps_x = labs(steps_x);
+  block->steps_y = labs(steps_y);
+  block->steps_z = labs(steps_z);  
     
-  line->pos_x = pos_x;
-  line->pos_y = pos_y;
-  line->pos_z = pos_z;  
+  block->pos_x = pos_x;
+  block->pos_y = pos_y;
+  block->pos_z = pos_z;  
   
-  line->maximum_steps = max(line->steps_x, max(line->steps_y, line->steps_z));
-  // Bail if this is a zero-length line
-  if (line->maximum_steps == 0) { return; };
-  line->rate = microseconds/line->maximum_steps;
+  block->maximum_steps = max(block->steps_x, max(block->steps_y, block->steps_z));
+  // Bail if this is a zero-length block
+  if (block->maximum_steps == 0) { return; };
+  // Rate in steps/second for each axis
+//  double rate_multiplier = 1000000.0/microseconds;
+//  block->rate_x = block->steps_x*rate_multiplier;
+//  block->rate_y = block->steps_y*rate_multiplier;
+//  block->rate_z = block->steps_z*rate_multiplier;
+  block->rate = microseconds/block->maximum_steps;
+  // Compute direction bits for this block
   uint8_t direction_bits = 0;
   if (steps_x < 0) { direction_bits |= (1<<X_DIRECTION_BIT); }
   if (steps_y < 0) { direction_bits |= (1<<Y_DIRECTION_BIT); }
   if (steps_z < 0) { direction_bits |= (1<<Z_DIRECTION_BIT); }
-  line->direction_bits = direction_bits;
+  block->direction_bits = direction_bits;
   // Move buffer head
-  line_buffer_head = next_buffer_head;
-  // enable stepper interrupt
-	TIMSK1 |= (1<<OCIE1A);
-  
+  block_buffer_head = next_buffer_head;
+  // Ensure that blocks will be processed by enabling The Stepper Driver Interrupt
+  ENABLE_STEPPER_DRIVER_INTERRUPT();
 }
 
-// This timer interrupt is executed at the rate set with config_step_timer. It pops one instruction from
-// the line_buffer, executes it. Then it starts timer2 in order to reset the motor port after
-// five microseconds.
+// "The Stepper Driver Interrupt" - This timer interrupt is the workhorse of Trbl. It is  executed at the rate set with
+// config_step_timer. It pops blocks from the block_buffer and executes them by pulsing the stepper pins appropriately. 
+// It is supported by The Stepper Port Reset Interrupt which it uses to reset the stepper port after each pulse.
 #ifdef TIMER1_COMPA_vect
 SIGNAL(TIMER1_COMPA_vect)
 #else
@@ -112,7 +126,7 @@ SIGNAL(SIG_OUTPUT_COMPARE1A)
 #endif
 {
   if(busy){ return; } // The busy-flag is used to avoid reentering this interrupt
-  
+
 //  PORTD |= (1<<STEPPERS_ENABLE_BIT);
   // Set the direction pins a cuple of nanoseconds before we step the steppers
   STEPPING_PORT = (STEPPING_PORT & ~DIRECTION_MASK) | (out_bits & DIRECTION_MASK);
@@ -124,83 +138,83 @@ SIGNAL(SIG_OUTPUT_COMPARE1A)
 
   busy = TRUE;
   sei(); // Re enable interrupts (normally disabled while inside an interrupt handler)
-  // We re-enable interrupts in order for SIG_OVERFLOW2 to be able to be triggered 
-  // at exactly the right time even if we occasionally spend a lot of time inside this handler.
-    
-  // If there is no current line, attempt to pop one from the buffer
-  if (current_line == NULL) {
+ 		 // We re-enable interrupts in order for SIG_OVERFLOW2 to be able to be triggered 
+ 		 // at exactly the right time even if we occasionally spend a lot of time inside this handler.
+        
+  // If there is no current block, attempt to pop one from the buffer
+  if (current_block == NULL) {
     // PORTD &= ~(1<<4); // Can't figure out what this does (bob)
     // Anything in the buffer?
-    if (line_buffer_head != line_buffer_tail) {
+    if (block_buffer_head != block_buffer_tail) {
       // PORTD ^= (1<<5); // Can't figure out what this does (bob)
-      // Retrieve a new line and get ready to step it
-      current_line = &line_buffer[line_buffer_tail]; 
-      config_step_timer(current_line->rate);
-      counter_x = -(current_line->maximum_steps >> 1);
+      // Retrieve a new block and get ready to step it
+      current_block = &block_buffer[block_buffer_tail]; 
+      config_step_timer(current_block->rate);
+      counter_x = -(current_block->maximum_steps >> 1);
       counter_y = counter_x;
       counter_z = counter_x;
-      actual_position[X_AXIS] = current_line->pos_x;
-      actual_position[Y_AXIS] = current_line->pos_y;
-      actual_position[Z_AXIS] = current_line->pos_z;
-      iterations = current_line->maximum_steps;
+      actual_position[X_AXIS] = current_block->pos_x;
+      actual_position[Y_AXIS] = current_block->pos_y;
+      actual_position[Z_AXIS] = current_block->pos_z;
+      iterations = current_block->maximum_steps;
     } else {
-      // disable this interrupt until there is something to handle
-    	TIMSK1 &= ~(1<<OCIE1A);
+      // Buffer empty. Disable this interrupt until there is something to handle
+      DISABLE_STEPPER_DRIVER_INTERRUPT();
+
       // PORTD |= (1<<4);    // Can't figure out what this does (bob)      
     }    
   } 
 
-  if (current_line != NULL) {
-    out_bits = current_line->direction_bits;
-    counter_x += current_line->steps_x;
+  if (current_block != NULL) {
+    out_bits = current_block->direction_bits;
+    counter_x += current_block->steps_x;
     if (counter_x > 0) {
       out_bits |= (1<<X_STEP_BIT);
-      counter_x -= current_line->maximum_steps;
+      counter_x -= current_block->maximum_steps;
       if (out_bits & (1<<X_DIRECTION_BIT)){
       	actual_position[X_AXIS]-=1;
       } else {
       	actual_position[X_AXIS]+=1;
       }
     }
-    counter_y += current_line->steps_y;
+    counter_y += current_block->steps_y;
     if (counter_y > 0) {
       out_bits |= (1<<Y_STEP_BIT);
-      counter_y -= current_line->maximum_steps;
+      counter_y -= current_block->maximum_steps;
       if (out_bits & (1<<Y_DIRECTION_BIT)){
       	actual_position[Y_AXIS]-=1;
       } else {
       	actual_position[Y_AXIS]+=1;
       }
-
     }
-    counter_z += current_line->steps_z;
+    counter_z += current_block->steps_z;
     if (counter_z > 0) {
       out_bits |= (1<<Z_STEP_BIT);
-      counter_z -= current_line->maximum_steps;
+      counter_z -= current_block->maximum_steps;
       if (out_bits & (1<<Z_DIRECTION_BIT)){
       	actual_position[Z_AXIS]-=1;
       } else {
       	actual_position[Z_AXIS]+=1;
       }
-
     }
-    // If current line is finished, reset pointer 
+    // If current block is finished, reset pointer 
     iterations -= 1;
     if (iterations <= 0) {
-      current_line = NULL;
-      // move the line buffer tail to the next instruction
-      line_buffer_tail = (line_buffer_tail + 1) % LINE_BUFFER_SIZE;      
+      current_block = NULL;
+      // move the block buffer tail to the next instruction
+      block_buffer_tail = (block_buffer_tail + 1) % BLOCK_BUFFER_SIZE;      
     }
   } else {
     out_bits = 0;
   }
   out_bits ^= settings.invert_mask;
   busy=FALSE;
-//  PORTD &= ~(1<<STEPPERS_ENABLE_BIT);  
+  // Done. The next time this interrupt is entered the out_bits we just calculated will be pulsed onto the port
 }
 
-// This interrupt is set up by SIG_OUTPUT_COMPARE1A when it sets the motor port bits. It resets
-// the motor port after a short period (settings.pulse_microseconds) completing one step cycle.
+
+// "The Stepper Port Reset Interrupt" - This interrupt is set up by The Stepper Driver Interrupt when it sets the 
+// motor port bits. It resets the motor port after a short period (settings.pulse_microseconds) completing one step cycle.
 #ifdef TIMER2_OVF_vect
 SIGNAL(TIMER2_OVF_vect)
 #else
@@ -235,7 +249,7 @@ void st_init()
   TCCR2B = (1<<CS21); // Full speed, 1/8 prescaler
   TIMSK2 |= (1<<TOIE2);      
   
-  // Just ste the step_timer to something serviceably lazy
+  // Just set the step_timer to something serviceably lazy
   config_step_timer(20000);
   // set enable pin     
   STEPPERS_ENABLE_PORT |= 1<<STEPPERS_ENABLE_BIT;
@@ -246,15 +260,15 @@ void st_init()
 // Block until all buffered steps are executed
 void st_synchronize()
 {
-  while(line_buffer_tail != line_buffer_head) { sleep_mode(); }    
+  while(block_buffer_tail != block_buffer_head) { sleep_mode(); }    
 }
 
 // Cancel all buffered steps
 void st_flush()
 {
   cli();
-  line_buffer_tail = line_buffer_head;
-  current_line = NULL;
+  block_buffer_tail = block_buffer_head;
+  current_block = NULL;
   sei();
 }
 
@@ -298,7 +312,7 @@ void st_go_home()
 void st_stop()
 {
 	st_flush();
-	current_line=NULL;		// Rather brutal. Should work.
+	current_block=NULL;		// Rather brutal. Works!
 	
 	position[X_AXIS] = actual_position[X_AXIS];
 	position[Y_AXIS] = actual_position[Y_AXIS];

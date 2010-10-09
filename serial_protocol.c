@@ -42,7 +42,6 @@ extern int32_t position[3];    // The current target position of the tool in abs
 void sp_init() 
 {
   beginSerial(BAUD_RATE);
-  
   printPgmString(PSTR("\r\nGrbl "));
   printPgmString(PSTR(VERSION));
   printPgmString(PSTR("\r\n"));  

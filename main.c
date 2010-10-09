@@ -34,24 +34,20 @@
 //*************************************************************************************
 int main(void)
 {
-	lcd_init();
-//	loop();
-
-
+  lcd_init();
 
   beginSerial(BAUD_RATE);
   config_init();
-  st_init(); // initialize the stepper subsystem
-  mc_init(); // initialize motion control subsystem
+  st_init();      // initialize the stepper subsystem
+  mc_init();      // initialize motion control subsystem
   spindle_init(); // initialize spindle controller
-  gc_init(); // initialize gcode-parser
-  sp_init(); // initialize the serial protocol
+  gc_init();      // initialize gcode-parser
+  sp_init();      // initialize the serial protocol
   
   DDRD |= (1<<3)|(1<<4)|(1<<5);
-  
+
   for(;;){
     lcd_report_position();
-    //sleep_mode();
     sp_process(); // process the serial protocol
   }
   return 0;   /* never reached */

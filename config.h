@@ -25,35 +25,36 @@
 
 // Settings that can only be set at compile-time:
 
+#ifndef BAUD_RATE
 #define BAUD_RATE 115200
+#endif
 
 #define STEPPERS_ENABLE_DDR     DDRD
 #define STEPPERS_ENABLE_PORT    PORTD
-#define STEPPERS_ENABLE_BIT         2
+#define STEPPERS_ENABLE_BIT     2
 
-#define STEPPING_DDR       DDRC
-#define STEPPING_PORT      PORTC 
-#define X_STEP_BIT           0
-#define Y_STEP_BIT           1
-#define Z_STEP_BIT           2
-#define X_DIRECTION_BIT            3
-#define Y_DIRECTION_BIT            4
-#define Z_DIRECTION_BIT            5
+#define STEPPING_DDR            DDRC
+#define STEPPING_PORT           PORTC 
+#define X_STEP_BIT              0
+#define Y_STEP_BIT              2
+#define Z_STEP_BIT              4
+#define X_DIRECTION_BIT         1
+#define Y_DIRECTION_BIT         3
+#define Z_DIRECTION_BIT         5
 
-#define LIMIT_DDR      DDRD
-#define LIMIT_PORT     PORTD
-#define X_LIMIT_BIT          3
-#define Y_LIMIT_BIT          4
-#define Z_LIMIT_BIT          5
+#define LIMIT_DDR               DDRD
+#define LIMIT_PORT              PORTD
+#define X_LIMIT_BIT             3
+#define Y_LIMIT_BIT             4
+#define Z_LIMIT_BIT             5
 
-#define SPINDLE_ENABLE_DDR DDRD
-#define SPINDLE_ENABLE_PORT PORTD
-#define SPINDLE_ENABLE_BIT 6
+#define SPINDLE_ENABLE_DDR      DDRD
+#define SPINDLE_ENABLE_PORT     PORTD
+#define SPINDLE_ENABLE_BIT      6
 
-#define SPINDLE_DIRECTION_DDR DDRD
-#define SPINDLE_DIRECTION_PORT PORTD
-#define SPINDLE_DIRECTION_BIT 7
-
+#define SPINDLE_DIRECTION_DDR   DDRD
+#define SPINDLE_DIRECTION_PORT  PORTD
+#define SPINDLE_DIRECTION_BIT   7
 
 // Version of the EEPROM data. Will be used to migrate existing data from older versions of Grbl
 // when firmware is upgraded. Always stored in byte 0 of eeprom
@@ -80,33 +81,20 @@ void dump_settings();
 // A helper method to set new settings from command line
 void store_setting(int parameter, double value);
 
-
 // Default settings (used when resetting eeprom-settings)
 #define MICROSTEPS 8
-#define X_STEPS_PER_MM (94.488188976378*MICROSTEPS)
-#define Y_STEPS_PER_MM (94.488188976378*MICROSTEPS)
-#define Z_STEPS_PER_MM (94.488188976378*MICROSTEPS)
-#define STEP_PULSE_MICROSECONDS 30
-
-#define MM_PER_ARC_SEGMENT 0.1
-
-#define RAPID_FEEDRATE 480.0 // in millimeters per minute
+#define DEFAULT_X_STEPS_PER_MM (94.488188976378*MICROSTEPS)
+#define DEFAULT_Y_STEPS_PER_MM (94.488188976378*MICROSTEPS)
+#define DEFAULT_Z_STEPS_PER_MM (94.488188976378*MICROSTEPS)
+#define DEFAULT_STEP_PULSE_MICROSECONDS 30
+#define DEFAULT_MM_PER_ARC_SEGMENT 0.1
+#define DEFAULT_SEEKRATE 480.0 // in millimeters per minute
 #define DEFAULT_FEEDRATE 480.0
 
-// Use this line for default operation (step-pulses high)
-#define STEPPING_INVERT_MASK 0
-// Uncomment this line for inverted stepping (step-pulses low, rest high)
-// #define STEPPING_INVERT_MASK (STEP_MASK)
-// Uncomment this line to invert all step- and direction bits
-// #define STEPPING_INVERT_MASK (STEPPING_MASK)
-// Or bake your own like this adding any step-bits or directions you want to invert:
-// #define STEPPING_INVERT_MASK (STEP_MASK | (1<<X_DIRECTION_BIT) | (1<<Y_DIRECTION_BIT))
-
-
 // Some useful constants
-#define STEP_MASK ((1<<X_STEP_BIT)|(1<<Y_STEP_BIT)|(1<<Z_STEP_BIT)) // All step bits
+#define STEP_MASK ((1<<X_STEP_BIT)|(1<<Y_STEP_BIT)|(1<<Z_STEP_BIT))                     // All step bits
 #define DIRECTION_MASK ((1<<X_DIRECTION_BIT)|(1<<Y_DIRECTION_BIT)|(1<<Z_DIRECTION_BIT)) // All direction bits
-#define STEPPING_MASK (STEP_MASK | DIRECTION_MASK) // All stepping-related bits (step/direction)
-#define LIMIT_MASK ((1<<X_LIMIT_BIT)|(1<<Y_LIMIT_BIT)|(1<<Z_LIMIT_BIT)) // All limit bits
+#define STEPPING_MASK (STEP_MASK | DIRECTION_MASK)                                      // All stepping-related bits (step/direction)
+#define LIMIT_MASK ((1<<X_LIMIT_BIT)|(1<<Y_LIMIT_BIT)|(1<<Z_LIMIT_BIT))                 // All limit bits
 
 #endif

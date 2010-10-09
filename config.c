@@ -27,14 +27,14 @@
 #include <avr/pgmspace.h>
 
 void reset_settings() {
-  settings.steps_per_mm[0] = X_STEPS_PER_MM;
-  settings.steps_per_mm[1] = Y_STEPS_PER_MM;
-  settings.steps_per_mm[2] = Z_STEPS_PER_MM;
-  settings.pulse_microseconds = STEP_PULSE_MICROSECONDS;
+  settings.steps_per_mm[0] = DEFAULT_X_STEPS_PER_MM;
+  settings.steps_per_mm[1] = DEFAULT_Y_STEPS_PER_MM;
+  settings.steps_per_mm[2] = DEFAULT_Z_STEPS_PER_MM;
+  settings.pulse_microseconds = DEFAULT_STEP_PULSE_MICROSECONDS;
   settings.default_feed_rate = DEFAULT_FEEDRATE;
-  settings.default_seek_rate = RAPID_FEEDRATE;
-  settings.mm_per_arc_segment = MM_PER_ARC_SEGMENT;
-  settings.invert_mask = STEPPING_INVERT_MASK;
+  settings.default_seek_rate = DEFAULT_SEEKRATE;
+  settings.mm_per_arc_segment = DEFAULT_MM_PER_ARC_SEGMENT;
+  settings.invert_mask = 0;
 }
 
 void dump_settings() {
@@ -44,7 +44,7 @@ void dump_settings() {
   printPgmString(PSTR(" (steps/mm z)\r\n$3 = ")); printInteger(settings.pulse_microseconds);
   printPgmString(PSTR(" (microseconds step pulse)\r\n$4 = ")); printFloat(settings.default_feed_rate);
   printPgmString(PSTR(" (mm/sec default feed rate)\r\n$5 = ")); printFloat(settings.default_seek_rate);
-  printPgmString(PSTR(" (mm/sec default seek rate)\r\n$6 = ")); printFloat(settings.mm_per_arc_segment);
+  printPgmString(PSTR(" (mm/sec G0 seek rate)\r\n$6 = ")); printFloat(settings.mm_per_arc_segment);
   printPgmString(PSTR(" (mm/arc segment)\r\n$7 = ")); printInteger(settings.invert_mask); 
   printPgmString(PSTR(" (step port invert mask. binary = ")); printIntegerInBase(settings.invert_mask, 2);  
   printPgmString(PSTR(")\r\n\r\n'$x=value' to set parameter or just '$' to dump current settings\r\n"));
@@ -66,7 +66,7 @@ void write_settings() {
   memcpy_to_eeprom_with_checksum(1, (char*)&settings, sizeof(struct Settings));
 }
 
-// A helper method to set settings from command line
+// A helper method to modify settings from command line
 void store_setting(int parameter, double value) {
   switch(parameter) {
     case 0: case 1: case 2:
@@ -88,7 +88,7 @@ void config_init() {
   if(read_settings()) {
     printPgmString(PSTR("'$' to dump current settings\r\n"));
   } else {
-    printPgmString(("EEPROM blank. Rewrote default settings:\r\n"));
+    printPgmString(("No valid configuration found. Resetting to defaults.\r\n"));
     reset_settings();
     write_settings();
     dump_settings();

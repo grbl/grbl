@@ -32,8 +32,8 @@ void st_init();
 // pos_x, _y, _z is the position in absolute steps at the start of the move
 // Microseconds specify how many microseconds the move should take to perform.
 void st_buffer_line(int32_t steps_x, int32_t steps_y, int32_t steps_z, 
-					int32_t pos_x,   int32_t pos_y,   int32_t pos_z,
-					uint32_t rate);
+					 int32_t pos_x,   int32_t pos_y,   int32_t pos_z,
+					 uint32_t rate);
 
 // Block until all buffered steps are executed
 void st_synchronize();
