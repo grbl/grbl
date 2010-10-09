@@ -126,8 +126,7 @@ SIGNAL(SIG_OUTPUT_COMPARE1A)
 #endif
 {
   if(busy){ return; } // The busy-flag is used to avoid reentering this interrupt
-
-//  PORTD |= (1<<STEPPERS_ENABLE_BIT);
+  STEPPERS_ENABLE_PORT |= (1<<STEPPERS_ENABLE_BIT);
   // Set the direction pins a cuple of nanoseconds before we step the steppers
   STEPPING_PORT = (STEPPING_PORT & ~DIRECTION_MASK) | (out_bits & DIRECTION_MASK);
   // Then pulse the stepping pins
@@ -160,8 +159,7 @@ SIGNAL(SIG_OUTPUT_COMPARE1A)
     } else {
       // Buffer empty. Disable this interrupt until there is something to handle
       DISABLE_STEPPER_DRIVER_INTERRUPT();
-
-      // PORTD |= (1<<4);    // Can't figure out what this does (bob)      
+	  STEPPERS_ENABLE_PORT &= ~(1<<STEPPERS_ENABLE_BIT);
     }    
   } 
 

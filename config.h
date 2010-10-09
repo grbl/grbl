@@ -29,9 +29,9 @@
 #define BAUD_RATE 115200
 #endif
 
-#define STEPPERS_ENABLE_DDR     DDRD
-#define STEPPERS_ENABLE_PORT    PORTD
-#define STEPPERS_ENABLE_BIT     2
+#define STEPPERS_ENABLE_DDR     DDRB
+#define STEPPERS_ENABLE_PORT    PORTB
+#define STEPPERS_ENABLE_BIT     5			// Arduino LCD pin
 
 #define STEPPING_DDR            DDRC
 #define STEPPING_PORT           PORTC 
