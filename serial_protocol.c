@@ -42,6 +42,7 @@ extern int32_t position[3];    // The current target position of the tool in abs
 void sp_init() 
 {
   beginSerial(BAUD_RATE);
+  
   printPgmString(PSTR("\r\nGrbl "));
   printPgmString(PSTR(VERSION));
   printPgmString(PSTR("\r\n"));  
@@ -145,12 +146,12 @@ void sp_process()
       if (line[0]=='E'){
       	process_command(line);
       	char_counter=0;
+	    prompt();
       } else {     
       	status = gc_execute_line(line);
       	char_counter = 0; 
       	return_status(status);
       }
-      prompt();
     } else if (c <= ' ') { // Throw away whitepace and control characters
     } else if (c >= 'a' && c <= 'z') { // Upcase lowercase
       line[char_counter++] = c-'a'+'A';
