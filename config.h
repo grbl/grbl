@@ -65,17 +65,20 @@
 
 // Version of the EEPROM data. Will be used to migrate existing data from older versions of Grbl
 // when firmware is upgraded. Always stored in byte 0 of eeprom
-#define SETTINGS_VERSION 1
+#define SETTINGS_VERSION 2
 
 // Current global settings (persisted in EEPROM from byte 1 onwards)
 struct Settings {
-  double steps_per_mm[3];
-  uint8_t microsteps;
-  uint8_t pulse_microseconds;
-  double default_feed_rate;
-  double default_seek_rate;
-  uint8_t invert_mask;
-  double mm_per_arc_segment;
+  double 	steps_per_mm[3];
+  uint8_t 	microsteps;
+  uint8_t 	pulse_microseconds;
+  double 	default_feed_rate;
+  double 	default_seek_rate;
+  uint8_t 	invert_mask;
+  double 	mm_per_arc_segment;
+  uint32_t  backlash_x_count;
+  uint32_t  backlash_y_count;
+  uint32_t  backlash_z_count;
 };
 struct Settings settings;
 

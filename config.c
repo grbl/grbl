@@ -35,6 +35,9 @@ void reset_settings() {
   settings.default_seek_rate = DEFAULT_SEEKRATE;
   settings.mm_per_arc_segment = DEFAULT_MM_PER_ARC_SEGMENT;
   settings.invert_mask = 0;
+  settings.backlash_x_count = 0;
+  settings.backlash_y_count = 0;
+  settings.backlash_z_count = 0;
 }
 
 void dump_settings() {
@@ -47,7 +50,11 @@ void dump_settings() {
   printPgmString(PSTR(" (mm/sec G0 seek rate)\r\n$6 = ")); printFloat(settings.mm_per_arc_segment);
   printPgmString(PSTR(" (mm/arc segment)\r\n$7 = ")); printInteger(settings.invert_mask); 
   printPgmString(PSTR(" (step port invert mask. binary = ")); printIntegerInBase(settings.invert_mask, 2);  
-  printPgmString(PSTR(")\r\n\r\n'$x=value' to set parameter or just '$' to dump current settings\r\n"));
+  printPgmString(PSTR(")\r\n$8 = "));printInteger(settings.backlash_x_count); 
+  printPgmString(PSTR("(counts to compensate for backlash in x)\r\n$9 = "));printInteger(settings.backlash_y_count); 
+  printPgmString(PSTR("(counts to compensate for backlash in x)\r\n$10 = "));printInteger(settings.backlash_z_count); 
+  printPgmString(PSTR("(counts to compensate for backlash in z)\r\n"));
+  printPgmString(PSTR("\r\n'$x=value' to set parameter or just '$' to dump current settings\r\n"));
 }
 
 int read_settings() {
@@ -76,6 +83,9 @@ void store_setting(int parameter, double value) {
     case 5: settings.default_seek_rate = value; break;
     case 6: settings.mm_per_arc_segment = value; break;
     case 7: settings.invert_mask = trunc(value); break;
+    case 8: settings.backlash_x_count= trunc(value); break;
+    case 9: settings.backlash_y_count= trunc(value); break;
+    case 10: settings.backlash_z_count= trunc(value); break;
     default: 
     printPgmString(PSTR("Unknown parameter\r\n"));
     return;
@@ -84,13 +94,17 @@ void store_setting(int parameter, double value) {
   printPgmString(PSTR("Stored new setting\r\n"));
 }
 
-void config_init() {
-  if(read_settings()) {
-    printPgmString(PSTR("'$' to dump current settings\r\n"));
-  } else {
+void config_reset(){
     printPgmString(("No valid configuration found. Resetting to defaults.\r\n"));
     reset_settings();
     write_settings();
     dump_settings();
+}
+
+void config_init() {
+  if(read_settings()) {
+    printPgmString(PSTR("'$' to dump current settings\r\n"));
+  } else {
+  	config_reset();
   }
 }

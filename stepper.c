@@ -80,13 +80,72 @@ void config_step_timer(uint32_t microseconds);
 void st_buffer_block(int32_t steps_x, int32_t steps_y, int32_t steps_z,
 					int32_t pos_x,   int32_t pos_y,   int32_t pos_z,
 					uint32_t microseconds) {
-  // Calculate the buffer head after we push this byte
-	int next_buffer_head = (block_buffer_head + 1) % BLOCK_BUFFER_SIZE;	
-	// If the buffer is full: good! That means we are well ahead of the robot. 
-	// Nap until there is room in the buffer.
-  while(block_buffer_tail == next_buffer_head) { sleep_mode(); }
+  // First determine direction bits					
+  uint8_t 		direction_bits = 0;
+  uint8_t 		changed_dir;
+  int			next_buffer_head;
+  struct Block 	*block;
+  struct Block 	*comp_block=NULL;
+  uint32_t		maximum_steps;
+  
+  maximum_steps = max(labs(steps_x), max(labs(steps_y), labs(steps_z)));
+  // Don't process empty blocks 
+  if (maximum_steps==0) {return;}
+  
+  if (steps_x < 0) { direction_bits |= (1<<X_DIRECTION_BIT); }
+  if (steps_y < 0) { direction_bits |= (1<<Y_DIRECTION_BIT); }
+  if (steps_z < 0) { direction_bits |= (1<<Z_DIRECTION_BIT); }
+	
+	
+  // If direction has changed, then put a backlash instruction				
+  // on the queue:
+  next_buffer_head = (block_buffer_head + 1) % BLOCK_BUFFER_SIZE;	
+  while(block_buffer_tail == next_buffer_head) { sleep_mode(); }				
+  
+  if (direction_bits!=old_direction_bits){
+  	next_buffer_head = (block_buffer_head + 1) % BLOCK_BUFFER_SIZE;	
+	while(block_buffer_tail == next_buffer_head) { sleep_mode(); }				
+  	comp_block = &block_buffer[block_buffer_head];
+
+	comp_block->backlash = 1;
+  	comp_block->direction_bits = direction_bits;
+	
+	
+    comp_block->steps_x = 0;
+    comp_block->steps_y = 0;
+    comp_block->steps_z = 0;  
+    
+    comp_block->pos_x = pos_x;
+    comp_block->pos_y = pos_y;
+    comp_block->pos_z = pos_z;  
+
+	changed_dir = direction_bits^old_direction_bits;
+
+  	old_direction_bits = direction_bits;
+
+	if (changed_dir & (1<<X_DIRECTION_BIT)) comp_block->steps_x=settings.backlash_x_count;
+	if (changed_dir & (1<<Y_DIRECTION_BIT)) comp_block->steps_y=settings.backlash_y_count;
+	if (changed_dir & (1<<Z_DIRECTION_BIT)) comp_block->steps_z=settings.backlash_z_count;
+	  
+	// Use same rate for backlash compensation as for the block itself:
+  	comp_block->rate = microseconds/maximum_steps;
+
+  	comp_block->maximum_steps = max(comp_block->steps_x, max(comp_block->steps_y, comp_block->steps_z));
+  // If compensation is empty, then don't use it, 
+  // make the actual block into this one, else
+  // advance the pointer to create the actual block
+  	if (comp_block->maximum_steps > 0) {
+	  	block_buffer_head = next_buffer_head;
+		// Calculate the buffer head after we push this byte
+		next_buffer_head = (block_buffer_head + 1) % BLOCK_BUFFER_SIZE;	
+	    while(block_buffer_tail == next_buffer_head) { sleep_mode(); }
+	}
+  }
+
+  printPgmString(PSTR("adding block\n\r"));
   // Setup block record
-  struct Block *block = &block_buffer[block_buffer_head];
+  block = &block_buffer[block_buffer_head];
+  block->backlash=0;
   block->steps_x = labs(steps_x);
   block->steps_y = labs(steps_y);
   block->steps_z = labs(steps_z);  
@@ -95,23 +154,20 @@ void st_buffer_block(int32_t steps_x, int32_t steps_y, int32_t steps_z,
   block->pos_y = pos_y;
   block->pos_z = pos_z;  
   
-  block->maximum_steps = max(block->steps_x, max(block->steps_y, block->steps_z));
-  // Bail if this is a zero-length block
-  if (block->maximum_steps == 0) { return; };
+  block->maximum_steps = maximum_steps;
+  
   // Rate in steps/second for each axis
 //  double rate_multiplier = 1000000.0/microseconds;
 //  block->rate_x = block->steps_x*rate_multiplier;
 //  block->rate_y = block->steps_y*rate_multiplier;
 //  block->rate_z = block->steps_z*rate_multiplier;
+
   block->rate = microseconds/block->maximum_steps;
   // Compute direction bits for this block
-  uint8_t direction_bits = 0;
-  if (steps_x < 0) { direction_bits |= (1<<X_DIRECTION_BIT); }
-  if (steps_y < 0) { direction_bits |= (1<<Y_DIRECTION_BIT); }
-  if (steps_z < 0) { direction_bits |= (1<<Z_DIRECTION_BIT); }
   block->direction_bits = direction_bits;
   // Move buffer head
   block_buffer_head = next_buffer_head;
+  
   // Ensure that blocks will be processed by enabling The Stepper Driver Interrupt
   ENABLE_STEPPER_DRIVER_INTERRUPT();
 }
