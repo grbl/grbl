@@ -30,11 +30,15 @@
 #define GCSTATUS_MOTION_CONTROL_ERROR    4
 #define GCSTATUS_FLOATING_POINT_ERROR    5
 #define GCSTATUS_UNSUPPORTED_LETTER 	 6
+#define GCSTATUS_BUFFER_FULL			 7
 
 // Initialize the parser
 void gc_init();
 
 // Execute one block of rs275/ngc/g-code
 uint8_t gc_execute_line(char *line);
+
+
+void set_gcPosition();
 
 #endif

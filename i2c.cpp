@@ -1,13 +1,30 @@
+/*
+  i2c.cpp - 
+  Part of Grbl: An embedded CNC Controller with rs274/ngc (g-code) support
+
+  Copyright (c) 2010 Albert Daffe
+
+  Grbl is free software: you can redistribute it and/or modify
+  it under the terms of the GNU General Public License as published by
+  the Free Software Foundation, either version 3 of the License, or
+  (at your option) any later version.
+
+  Grbl is distributed in the hope that it will be useful,
+  but WITHOUT ANY WARRANTY; without even the implied warranty of
+  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+  GNU General Public License for more details.
+
+  You should have received a copy of the GNU General Public License
+  along with Grbl.  If not, see <http://www.gnu.org/licenses/>.
+*/
+
 #include <WProgram.h>  //all things wiring / arduino
 #include <Wire.h>
-//#include "config.h"
 
 extern "C" void i2c_init();
 extern "C" void i2c_write_value(byte addr, byte config, int32_t value);
 extern "C" void i2c_report_position(void);
 extern "C" void i2c_get_buttons(void);
-
-//extern TwoWire Wire;
 
 extern "C" int32_t actual_position[3];    // The current actual position of the tool in absolute steps
 extern "C" int32_t position[3];    // The current target position of the tool in absolute steps
@@ -32,7 +49,6 @@ void i2c_write_value(byte addr, byte config, int32_t value)
   Wire.endTransmission();    	
 }
 
-
 void i2c_report_position(void)
 {
 	if (i2c_line<3){
@@ -43,7 +59,6 @@ void i2c_report_position(void)
 	i2c_line++;
 	if (i2c_line>5) i2c_line=0;
 }
-
 
 void i2c_get_buttons(void)
 {

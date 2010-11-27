@@ -28,16 +28,26 @@
 #include "config.h"
 #include "wiring_serial.h"
 #include "serial_protocol.h"
-#include "lc_display.h"
+//#include "lc_display.h"
+#include <WProgram.h>
+#include "i2c.h"
 
+extern char buttons[4];
+#define ENABLE_STEPPER_DRIVER_INTERRUPT()  TIMSK1 |= (1<<OCIE1A)
 
 //*************************************************************************************
 int main(void)
 {
-  lcd_init();
-
   beginSerial(BAUD_RATE);
-  config_init();
+
+//  lcd_init();			// Can use lcd on this arduino, but moved HMI to another 
+						// arduino module
+  i2c_init();
+
+  // config_reset(); // This routine forces the eeprom config into its default state
+  					 // if something really messes it up. Uncomment to use.
+
+  config_init();	// Restore state from eeprom if it is there, else restore default.
   st_init();      // initialize the stepper subsystem
   mc_init();      // initialize motion control subsystem
   spindle_init(); // initialize spindle controller
@@ -47,8 +57,18 @@ int main(void)
   DDRD |= (1<<3)|(1<<4)|(1<<5);
 
   for(;;){
-    lcd_report_position();
-    sp_process(); // process the serial protocol
+    //lcd_report_position();
+    i2c_report_position();
+    i2c_get_buttons();
+    if (buttons[0]|buttons[1]|buttons[2]|buttons[3]){
+    	mc_running=1;
+    	STEPPERS_ENABLE_PORT |= (1<<STEPPERS_ENABLE_BIT);
+		ENABLE_STEPPER_DRIVER_INTERRUPT();
+	}
+    
+    //delay(100);
+    if (serialAvailable()) sp_process(); // process the serial protocol
+    if (mc_in_arc()) mc_continue_arc(); // if busy drawing an arc, keep drawing
   }
   return 0;   /* never reached */
 }

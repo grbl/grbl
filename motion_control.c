@@ -26,27 +26,32 @@
 #include <stdlib.h>
 #include "nuts_bolts.h"
 #include "stepper.h"
-
 #include "wiring_serial.h"
+#include <avr/pgmspace.h>   // contains PSTR definition
+
 
 int32_t position[3];    // The current position of the tool in absolute steps
 extern int32_t actual_position[3];
+volatile char mc_running=0;
+int16_t acting_line_number=0;
 
 void mc_init()
 {
   clear_vector(position);
 }
 
-void mc_dwell(uint32_t milliseconds) 
+void mc_dwell(uint32_t milliseconds, int line_number) 
 {
   st_synchronize();
   _delay_ms(milliseconds);
+  acting_line_number=line_number;
+  
 }
 
 // Execute linear motion in absolute millimeter coordinates. Feed rate given in millimeters/second
 // unless invert_feed_rate is true. Then the feed_rate means that the motion should be completed in
 // 1/feed_rate minutes.
-void mc_line(double x, double y, double z, float feed_rate, int invert_feed_rate)
+void mc_line(double x, double y, double z, float feed_rate, int invert_feed_rate, int16_t line_number)
 {
   uint8_t axis; // loop variable
   int32_t target[3]; // The target position in absolute steps
@@ -62,8 +67,9 @@ void mc_line(double x, double y, double z, float feed_rate, int invert_feed_rate
   
 	if (invert_feed_rate) {
     	st_buffer_block(steps[X_AXIS], steps[Y_AXIS], steps[Z_AXIS], 
-    				   position[X_AXIS], position[Y_AXIS], position[Z_AXIS], 
-    					lround(ONE_MINUTE_OF_MICROSECONDS/feed_rate));
+                         position[X_AXIS], position[Y_AXIS], position[Z_AXIS], 
+                         lround(ONE_MINUTE_OF_MICROSECONDS/feed_rate),
+                         line_number);
 	} else {
   	// Ask old Phytagoras to estimate how many mm our next move is going to take us
   	double millimeters_of_travel = sqrt(
@@ -71,13 +77,14 @@ void mc_line(double x, double y, double z, float feed_rate, int invert_feed_rate
   	  square(steps[Y_AXIS]/settings.steps_per_mm[1]) + 
   	  square(steps[Z_AXIS]/settings.steps_per_mm[2]));
 		st_buffer_block(steps[X_AXIS], steps[Y_AXIS], steps[Z_AXIS],
-					   position[X_AXIS], position[Y_AXIS], position[Z_AXIS], 
-					   lround((millimeters_of_travel/feed_rate)*1000000));
+                         position[X_AXIS], position[Y_AXIS], position[Z_AXIS], 
+                         lround((millimeters_of_travel/feed_rate)*1000000),
+                         line_number);
 	}
 	memcpy(position, target, sizeof(target)); // position[] = target[] 
 }
 
-void mc_reposition(double x, double y, double z)
+void mc_reposition(double x, double y, double z, int16_t line_number)
 {
   int32_t target[3]; // The target position in absolute steps
   
@@ -90,6 +97,8 @@ void mc_reposition(double x, double y, double z)
   													// position gets updated at the start of the 
   													// next move, but until then the display would
   													// be wrong.
+  acting_line_number=line_number;
+
 }
 
 // Execute an arc. theta == start angle, angular_travel == number of radians to go along the arc,
@@ -97,46 +106,170 @@ void mc_reposition(double x, double y, double z)
 // circle in millimeters. axis_1 and axis_2 selects the circle plane in tool space. Stick the remaining
 // axis in axis_l which will be the axis for linear travel if you are tracing a helical motion.
 
-// The arc is approximated by generating a huge number of tiny, linear segments. The length of each 
-// segment is configured in config.h by setting MM_PER_ARC_SEGMENT.  
-void mc_arc(double theta, double angular_travel, double radius, double linear_travel, int axis_1, int axis_2, 
-  int axis_linear, double feed_rate, int invert_feed_rate)
+
+
+struct arc_to_lineS {    // Contains the low level representation for an arc 
+            double target[3];    // in a way that can be converted to lines
+            double theta;
+            double theta_per_segment;
+            double linear_per_segment;
+            double center_x;
+            double center_y;
+            double radius;
+            double feed_rate;
+            double end[3];
+            int axis_1;
+            int axis_2;
+            int axis_linear;
+            int invert_feed_rate; 
+            int16_t line_number;
+            uint16_t segments;
+            uint16_t i;
+   volatile uint8_t active;
+} arc; 
+
+
+void mc_continue_arc(){
+    if (st_buffer_full()) return;
+    while ((arc.active)&&(!st_buffer_full())){
+        if (arc.i <arc.segments){
+			arc.target[arc.axis_linear] += arc.linear_per_segment;
+			arc.theta += arc.theta_per_segment;
+			arc.target[arc.axis_1] = arc.center_x+sin(arc.theta)*arc.radius;
+			arc.target[arc.axis_2] = arc.center_y+cos(arc.theta)*arc.radius;
+			mc_line(arc.target[X_AXIS], 
+					arc.target[Y_AXIS], 
+					arc.target[Z_AXIS], 
+					arc.feed_rate, arc.invert_feed_rate, arc.line_number);
+		} else {
+			mc_line(arc.end[X_AXIS], 
+					arc.end[Y_AXIS], 
+					arc.end[Z_AXIS], 
+					arc.feed_rate, arc.invert_feed_rate, arc.line_number);
+		}
+		arc.i +=1;
+		arc.active = (arc.i<=arc.segments);
+/*        
+        printInteger(arc.i);
+        printPgmString(PSTR(", "));
+        printFloat(arc.target[X_AXIS]);
+        printPgmString(PSTR(", "));
+        printFloat(arc.target[Y_AXIS]);
+        printPgmString(PSTR(", "));
+        printFloat(arc.target[Z_AXIS]);
+        printPgmString(PSTR("\n\r"));
+*/
+    }
+}
+
+
+// The arc is approximated by generating a huge number of tiny, linear segments. 
+// The length of each segment is configured in config.h by setting MM_PER_ARC_SEGMENT.  
+void mc_arc(double theta, double angular_travel, double radius, 
+            double linear_travel, 
+            int axis_1, int axis_2, int axis_linear, 
+            double target_x, double target_y, double target_z,
+            double feed_rate, int invert_feed_rate, int16_t line_number)
 {
+/*      
+  printPgmString(PSTR("values in mc_arc:\r\n"));  
+    printPgmString(PSTR("theta start: "));
+    printFloat(theta);
+    printPgmString(PSTR("\r\nangle: "));
+    printFloat(angular_travel);
+    printPgmString(PSTR("\r\nradius: "));
+    printFloat(radius);
+    printPgmString(PSTR("\r\nlinear travel: ")); 
+    printFloat(linear_travel);
+    printPgmString(PSTR("\r\nposition: ")); 
+    printFloat(position[axis_1]);
+    printPgmString(PSTR(", ")); 
+    printFloat(position[axis_2]);
+    printPgmString(PSTR(", ")); 
+    printFloat(position[axis_linear]);
+*/    
   double millimeters_of_travel = hypot(angular_travel*radius, labs(linear_travel));
-  if (millimeters_of_travel == 0.0) { return; }
-  uint16_t segments = ceil(millimeters_of_travel/settings.mm_per_arc_segment);
+  if (millimeters_of_travel == 0.0) { 
+      printPgmString(PSTR("\r\nArc length is 0, returning...\r\n")); 
+      return; 
+  }
+    
+  arc.end[X_AXIS] = target_x;
+  arc.end[Y_AXIS] = target_y;
+  arc.end[Z_AXIS] = target_z;
+  arc.axis_linear = axis_linear;
+  arc.axis_1 = axis_1;
+  arc.axis_2 = axis_2;
+  arc.line_number = line_number;
+    arc.theta = theta;
+  arc.radius = radius;
+  arc.segments = ceil(millimeters_of_travel/settings.mm_per_arc_segment);
   // Multiply inverse feed_rate to compensate for the fact that this movement is approximated
   // by a number of discrete segments. The inverse feed_rate should be correct for the sum of 
   // all segments.
-  if (invert_feed_rate) { feed_rate *= segments; }
+  if (invert_feed_rate) { feed_rate *= arc.segments; }
+  arc.feed_rate = feed_rate;
+  arc.invert_feed_rate = invert_feed_rate;
   // The angular motion for each segment
-  double theta_per_segment = angular_travel/segments;
+  arc.theta_per_segment = angular_travel/arc.segments;
   // The linear motion for each segment
-  double linear_per_segment = linear_travel/segments;
+  arc.linear_per_segment = linear_travel/arc.segments;
   // Compute the center of this circle
-  double center_x = (position[axis_1]/settings.steps_per_mm[axis_1])-sin(theta)*radius;
-  double center_y = (position[axis_2]/settings.steps_per_mm[axis_2])-cos(theta)*radius;
+  arc.center_x = (position[axis_1]/settings.steps_per_mm[axis_1])-sin(theta)*radius;
+  arc.center_y = (position[axis_2]/settings.steps_per_mm[axis_2])-cos(theta)*radius;
   // a vector to track the end point of each segment
-  double target[3];
-  int i;
+  // double target[3];
+  // int i;
   // Initialize the linear axis
-  target[axis_linear] = position[axis_linear]/settings.steps_per_mm[Z_AXIS];
-  for (i=0; i<=segments; i++) {
-    target[axis_linear] += linear_per_segment;
-    theta += theta_per_segment;
-    target[axis_1] = center_x+sin(theta)*radius;
-    target[axis_2] = center_y+cos(theta)*radius;
-    mc_line(target[X_AXIS], target[Y_AXIS], target[Z_AXIS], feed_rate, invert_feed_rate);
-  }
+  arc.target[axis_linear] = position[axis_linear]/settings.steps_per_mm[Z_AXIS];
+  
+/*  
+    printPgmString(PSTR("\r\nno of segments: ")); 
+    printInteger(arc.segments);
+    printPgmString(PSTR("\r\nsegment size: ")); 
+    printFloat(arc.theta_per_segment);
+    printPgmString(PSTR("\r\ncentre_x: ")); 
+    printInteger(arc.center_x);
+    printPgmString(PSTR("\r\ncentre_y: ")); 
+    printFloat(arc.center_y);    
+    printPgmString(PSTR("\r\n\r\n"));  
+*/
+    
+  arc.i=0;
+  arc.active=1;
+  mc_continue_arc();					// Start drawing arc
 }
 
-void mc_go_home()
+// Are we busy drawing an arc?
+uint8_t mc_in_arc(){
+   return arc.active;
+}
+
+
+
+
+void mc_go_home(int16_t line_number)
 {
   st_go_home();
   clear_vector(position); // By definition this is location [0, 0, 0]
+  acting_line_number=line_number;
 }
 
 void mc_stop()
 {
 	st_stop();
+	acting_line_number=-1;
 }
+
+/*
+void mc_continue(int line_number)
+{	
+	st_continue();
+}
+
+void mc_next(int line_number)
+{
+	st_next();
+}
+
+*/

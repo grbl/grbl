@@ -31,6 +31,9 @@
 #include "spindle_control.h"
 #include "errno.h"
 #include "serial_protocol.h"
+#include "wiring_serial.h"
+#include <avr/pgmspace.h>   // contains PSTR definition
+
 
 #define MM_PER_INCH (25.4)
 
@@ -74,6 +77,19 @@ struct ParserState {
   
 };
 struct ParserState gc;
+
+extern int32_t position[3];
+
+// This routine is required to get the correct state into the 
+// Parser if the position is manipulated using the buttons.
+void set_gcPosition()
+{
+//	memcpy(gc.position, position, sizeof(gc.position)); lround(x*settings.steps_per_mm[0]);
+	gc.position[X_AXIS] = position[X_AXIS]/settings.steps_per_mm[0];
+	gc.position[Y_AXIS] = position[Y_AXIS]/settings.steps_per_mm[1];
+	gc.position[Z_AXIS] = position[Z_AXIS]/settings.steps_per_mm[2];
+}
+
 
 #define FAIL(status) gc.status_code = status;
 
@@ -126,6 +142,7 @@ uint8_t gc_execute_line(char *line) {
   int char_counter = 0;  
   char letter;
   double value;
+  int16_t line_number=0;
   double unit_converted_value;
   double inverse_feed_rate = -1;             // negative inverse_feed_rate means no inverse_feed_rate specified
   int radius_mode = FALSE;
@@ -160,7 +177,17 @@ uint8_t gc_execute_line(char *line) {
     store_setting(p, value);
   }
   
+
   // Not a comment. Not a configuration-command. Then we'll handle this as g-code.
+
+  // If the machine step buffer is full, return with error. This is to prevent 
+  // blocking. The sequencer that feeds grbl should check before sending whether
+  // it can send right now.
+  
+  if (st_buffer_full()){
+      FAIL(GCSTATUS_BUFFER_FULL);
+      return(gc.status_code);
+  }	
 
   // Pass 1: Command statements
   while(next_statement(&letter, &value, line, &char_counter)) {
@@ -189,6 +216,11 @@ uint8_t gc_execute_line(char *line) {
         default: FAIL(GCSTATUS_UNSUPPORTED_STATEMENT);
       }
       break;
+/*      
+      case 'N':
+      	line_number = int_value % 10000; //DV: I'm restricting line numbers to 4 digits...
+      	break;
+*/      
       
       case 'M':
       switch(int_value) {
@@ -200,7 +232,7 @@ uint8_t gc_execute_line(char *line) {
         default: FAIL(GCSTATUS_UNSUPPORTED_STATEMENT);
       }            
       break;
-      case 'T': gc.tool = trunc(value); break;
+      case 'T': gc.tool = int_value; break;
     }
     if(gc.status_code) { break; }
   }
@@ -221,7 +253,7 @@ uint8_t gc_execute_line(char *line) {
       if (gc.inverse_feed_rate_mode) {
         inverse_feed_rate = unit_converted_value; // seconds per motion for this motion only
       } else {
-        gc.feed_rate = unit_converted_value/60; // millimeters pr second
+        gc.feed_rate = unit_converted_value/60; // millimeters / second
       }
       break;
       case 'I': case 'J': case 'K': offset[letter-'I'] = unit_converted_value; break;
@@ -250,18 +282,19 @@ uint8_t gc_execute_line(char *line) {
   
   // Perform any physical actions
   switch (next_action) {
-    case NEXT_ACTION_GO_HOME: mc_go_home(); break;
-    case NEXT_ACTION_DWELL: mc_dwell(trunc(p*1000)); break;
-    case NEXT_ACTION_REPOSITION: mc_reposition(target[X_AXIS], target[Y_AXIS], target[Z_AXIS]); break;      
+    case NEXT_ACTION_GO_HOME: mc_go_home(line_number); break;
+    case NEXT_ACTION_DWELL: mc_dwell(trunc(p*1000), line_number); break;
+    case NEXT_ACTION_REPOSITION: mc_reposition(target[X_AXIS], target[Y_AXIS], target[Z_AXIS], line_number); break;      
     case NEXT_ACTION_DEFAULT: 
     switch (gc.motion_mode) {
       case MOTION_MODE_CANCEL: break;
       case MOTION_MODE_SEEK:
-      mc_line(target[X_AXIS], target[Y_AXIS], target[Z_AXIS], gc.seek_rate, FALSE);
+      mc_line(target[X_AXIS], target[Y_AXIS], target[Z_AXIS], gc.seek_rate, FALSE, line_number);
       break;
       case MOTION_MODE_LINEAR:
       mc_line(target[X_AXIS], target[Y_AXIS], target[Z_AXIS], 
-        (gc.inverse_feed_rate_mode) ? inverse_feed_rate : gc.feed_rate, gc.inverse_feed_rate_mode);
+        (gc.inverse_feed_rate_mode) ? inverse_feed_rate : gc.feed_rate, gc.inverse_feed_rate_mode,
+        line_number);
       break;
       case MOTION_MODE_CW_ARC: case MOTION_MODE_CCW_ARC:
       if (radius_mode) {
@@ -369,6 +402,9 @@ uint8_t gc_execute_line(char *line) {
 
       */
             
+      // Find the radius
+      double radius = hypot(offset[gc.plane_axis_0], offset[gc.plane_axis_1]);
+      if (radius<0.0001) break;
       // calculate the theta (angle) of the current point
       double theta_start = theta(-offset[gc.plane_axis_0], -offset[gc.plane_axis_1]);
       // calculate the theta (angle) of the target point
@@ -383,16 +419,35 @@ uint8_t gc_execute_line(char *line) {
         angular_travel = angular_travel-2*M_PI;
       }
       // Find the radius
-      double radius = hypot(offset[gc.plane_axis_0], offset[gc.plane_axis_1]);
+      //double radius = hypot(offset[gc.plane_axis_0], offset[gc.plane_axis_1]);
       // Calculate the motion along the depth axis of the helix
       double depth = target[gc.plane_axis_2]-gc.position[gc.plane_axis_2];
       // Trace the arc
-      mc_arc(theta_start, angular_travel, radius, depth, gc.plane_axis_0, gc.plane_axis_1, gc.plane_axis_2, 
-        (gc.inverse_feed_rate_mode) ? inverse_feed_rate : gc.feed_rate, gc.inverse_feed_rate_mode);
+            
+/*            
+            printPgmString(PSTR("values in gc_execute line:\r\n"));  
+            printPgmString(PSTR("theta start: "));
+            printFloat(theta_start);
+            printPgmString(PSTR("\r\ntheta end: "));
+            printFloat(theta_end);
+            printPgmString(PSTR("\r\noffset: ")); 
+            printFloat(offset[gc.plane_axis_0]);
+            printPgmString(PSTR(", ")); 
+            printFloat(offset[gc.plane_axis_1]);
+            printPgmString(PSTR("\r\n\r\n"));  
+*/            
+            
+      mc_arc(theta_start, angular_travel, radius, depth, 
+             gc.plane_axis_0, gc.plane_axis_1, gc.plane_axis_2, 
+             target[X_AXIS], target[Y_AXIS], target[Z_AXIS],
+             (gc.inverse_feed_rate_mode) ? inverse_feed_rate : gc.feed_rate, 
+             gc.inverse_feed_rate_mode,
+             line_number);
       // Finish off with a line to make sure we arrive exactly where we think we are
-      mc_line(target[X_AXIS], target[Y_AXIS], target[Z_AXIS], 
-        (gc.inverse_feed_rate_mode) ? inverse_feed_rate : gc.feed_rate, gc.inverse_feed_rate_mode);
-      break;
+/*      mc_line( 
+        (gc.inverse_feed_rate_mode) ? inverse_feed_rate : gc.feed_rate, 
+        gc.inverse_feed_rate_mode, line_number);
+*/      break;
     }    
   }
   

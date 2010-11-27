@@ -31,9 +31,17 @@ void st_init();
 // steps.
 // pos_x, _y, _z is the position in absolute steps at the start of the move
 // Microseconds specify how many microseconds the move should take to perform.
-void st_buffer_line(int32_t steps_x, int32_t steps_y, int32_t steps_z, 
+int st_buffer_block(int32_t steps_x, int32_t steps_y, int32_t steps_z, 
 					 int32_t pos_x,   int32_t pos_y,   int32_t pos_z,
-					 uint32_t rate);
+					 uint32_t rate, 
+					 int16_t line_number);
+
+// Returns true if the stepper buffer is full. This can allow the controlling
+// program not to send more commands... Don't know if this is going to work.
+char st_buffer_full();
+
+// Set to true if the controller is running in manual mode:
+extern char buttons_in_use;
 
 // Block until all buffered steps are executed
 void st_synchronize();
@@ -46,5 +54,11 @@ void st_stop();
 
 // Execute the homing cycle
 void st_go_home();
+
+// End current instruction and go to next one:
+void st_next();
+
+// Continue stopped command:
+void st_continue();
 
 #endif

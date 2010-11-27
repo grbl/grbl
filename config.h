@@ -21,7 +21,7 @@
 #ifndef config_h
 #define config_h
 
-#define VERSION "0.51"
+#define VERSION "0.60"
 
 // Settings that can only be set at compile-time:
 
@@ -29,39 +29,39 @@
 #define BAUD_RATE 115200
 #endif
 
-#define STEPPERS_ENABLE_DDR     DDRB
+#define STEPPERS_ENABLE_DDR     DDRB		// pin 13, with LED
 #define STEPPERS_ENABLE_PORT    PORTB
-#define STEPPERS_ENABLE_BIT     5			// Arduino LCD pin
+#define STEPPERS_ENABLE_BIT     5	
 
-#define STEPPING_DDR            DDRC
-#define STEPPING_PORT           PORTC 
-#define X_STEP_BIT              0
-#define Y_STEP_BIT              2
-#define Z_STEP_BIT              4
-#define X_DIRECTION_BIT         1
-#define Y_DIRECTION_BIT         3
-#define Z_DIRECTION_BIT         5
+#define STEPPING_DDR            DDRD
+#define STEPPING_PORT           PORTD 
+#define X_STEP_BIT              7
+#define Y_STEP_BIT              5
+#define Z_STEP_BIT              3
+#define X_DIRECTION_BIT         6
+#define Y_DIRECTION_BIT         4
+#define Z_DIRECTION_BIT         2
 
-#define LIMIT_DDR               DDRD
-#define LIMIT_PORT              PORTD
-#define X_LIMIT_BIT             3
-#define Y_LIMIT_BIT             4
-#define Z_LIMIT_BIT             5
+#define LIMIT_DDR               DDRC
+#define LIMIT_PORT              PORTC
+#define X_LIMIT_BIT             0
+#define Y_LIMIT_BIT             1
+#define Z_LIMIT_BIT             2
 
-#define SPINDLE_ENABLE_DDR      DDRD
-#define SPINDLE_ENABLE_PORT     PORTD
-#define SPINDLE_ENABLE_BIT      6
+#define SPINDLE_ENABLE_DDR      DDRC
+#define SPINDLE_ENABLE_PORT     PORTC
+#define SPINDLE_ENABLE_BIT      3
 
 #define SPINDLE_DIRECTION_DDR   DDRD
 #define SPINDLE_DIRECTION_PORT  PORTD
-#define SPINDLE_DIRECTION_BIT   7
+#define SPINDLE_DIRECTION_BIT   2
 
-#define LCD_DB0 	4				// Using Ardiuno numbering, not port numbering
-#define LCD_DB1		5				// Equivalent to PORTD, pins 7 to 2
-#define LCD_DB2		6
-#define LCD_DB3		7
-#define LCD_ENABLE	3
-#define LCD_RS 		2
+#define LCD_DB0 	10				// Using Ardiuno numbering, not port numbering
+#define LCD_DB1		11				// Equivalent to PORTD, pins 7 to 2
+#define LCD_DB2		12
+#define LCD_DB3		13
+#define LCD_ENABLE	9
+#define LCD_RS 		8
 
 // Version of the EEPROM data. Will be used to migrate existing data from older versions of Grbl
 // when firmware is upgraded. Always stored in byte 0 of eeprom
@@ -84,6 +84,7 @@ struct Settings settings;
 
 // Initialize the configuration subsystem (load settings from EEPROM)
 void config_init();
+void config_reset();
 
 // Print current settings
 void dump_settings();

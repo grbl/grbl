@@ -30,12 +30,19 @@
 // using a ring buffer (I think), in which rx_buffer_head is the index of the
 // location to which to write the next incoming character and rx_buffer_tail
 // is the index of the location from which to read.
-#define RX_BUFFER_SIZE 200
+#define RX_BUFFER_SIZE 150
+#define TX_BUFFER_SIZE 50				// Limited to < sizeof(char)
 
 unsigned char rx_buffer[RX_BUFFER_SIZE];
 
-int rx_buffer_head = 0;
-int rx_buffer_tail = 0;
+unsigned char tx_buffer[TX_BUFFER_SIZE];
+volatile unsigned char tx_head=0;
+volatile unsigned char tx_tail=0;
+
+volatile int rx_buffer_head = 0;
+volatile int rx_buffer_tail = 0;
+
+
 
 void beginSerial(long baud)
 {
@@ -48,17 +55,11 @@ void beginSerial(long baud)
 	
 	// enable interrupt on complete reception of a byte
 	sbi(UCSR0B, RXCIE0);
-	
+	cbi(UCSR0B, UDRIE0);
+
 	// defaults to 8-bit, no parity, 1 stop bit
 }
 
-void serialWrite(unsigned char c)
-{
-	while (!(UCSR0A & (1 << UDRE0)))
-		;
-
-	UDR0 = c;
-}
 
 int serialAvailable()
 {
@@ -87,11 +88,7 @@ void serialFlush()
 	rx_buffer_head = rx_buffer_tail;
 }
 
-#ifdef USART_RX_vect
 SIGNAL(USART_RX_vect)
-#else
-SIGNAL(SIG_USART_RECV)
-#endif
 {
 	unsigned char c = UDR0;
 	int i = (rx_buffer_head + 1) % RX_BUFFER_SIZE;
@@ -105,6 +102,86 @@ SIGNAL(SIG_USART_RECV)
 		rx_buffer_head = i;
 	}
 }
+
+//**********************************************************************
+// Tx buffer code
+
+SIGNAL(USART_UDRE_vect)
+{
+
+  if (tx_head == tx_tail) {
+	// Buffer empty, so disable interrupts
+    cbi(UCSR0B, UDRIE0);
+  }
+  else {
+    // There is more data in the output buffer. Send the next byte
+    unsigned char c = tx_buffer[tx_tail];
+    tx_tail = (tx_tail + 1) % TX_BUFFER_SIZE;
+	
+    UDR0 = c;
+  }
+}
+
+void serialWrite(unsigned char c)
+{
+  unsigned char empty = (tx_head == tx_tail);
+  unsigned char i = (tx_head + 1) % TX_BUFFER_SIZE;
+	
+  // If the output buffer is full, there's nothing for it other than to 
+  // wait for the interrupt handler to empty it a bit
+  while (i == tx_tail)
+	;
+	
+  tx_buffer[tx_head] = c;
+  tx_head = i;
+	
+  if (empty) {
+    // The buffer was empty before the new character was added, so enable interrupt on
+    // USART Data Register empty. The interrupt handler will take it from there
+    sbi(UCSR0B, UDRIE0);
+  }
+}
+
+
+/*
+void HardwareSerial::write(uint8_t c)
+{
+  bool empty = (_tx_buffer->head == _tx_buffer->tail);
+  int i = (_tx_buffer->head + 1) % SERIAL_BUFFER_SIZE;
+	
+  // If the output buffer is full, there's nothing for it other than to 
+  // wait for the interrupt handler to empty it a bit
+  while (i == _tx_buffer->tail)
+	;
+	
+  _tx_buffer->buffer[_tx_buffer->head] = c;
+  _tx_buffer->head = i;
+	
+  if (empty) {
+    // The buffer was empty, so enable interrupt on
+    // USART Data Register empty. The interrupt handler will take it from there
+    sbi(*_ucsrb, _udrie);
+  }
+}
+#else
+void HardwareSerial::write(uint8_t c)
+{
+  while (!((*_ucsra) & (1 << _udre)))
+    ;
+
+  *_udr = c;
+}
+*/
+/*
+void serialWrite(unsigned char c)
+{
+	while (!(UCSR0A & (1 << UDRE0)))
+		;
+
+	UDR0 = c;
+}
+
+*/
 
 // void printMode(int mode)
 // {
@@ -172,7 +249,7 @@ void printFloat(double n)
   fractional_part = modf(n, &integer_part);
   printInteger(integer_part);
   printByte('.');
-  printInteger(round(fractional_part*1000));
+  printInteger(round(labs(fractional_part*1000)));
 }
 
 // void printHex(unsigned long n)

@@ -33,19 +33,28 @@ INSTALL_DIR = /Applications/Arduino.app/Contents
 ARDUINO = $(INSTALL_DIR)/Resources/Java/hardware/arduino/cores/arduino
 ARDUINO_LIB = $(INSTALL_DIR)/Resources/Java/libraries
 
+
 DEVICE     = atmega328p
 CLOCK      = 16000000
 PROGRAMMER = -c avrisp2 -P usb
-OBJECTS    = main.o motion_control.o gcode.o spindle_control.o wiring_serial.o serial_protocol.o stepper.o \
+OBJECTS    = main.o motion_control.o gcode.o spindle_control.o \
+             wiring_serial.o serial_protocol.o stepper.o \
              eeprom.o config.o \
-             lc_display.o \
              virtfunc.o \
-			$(ARDUINO)/wiring_digital.o \
-             $(ARDUINO_LIB)/LiquidCrystal/LiquidCrystal.o \
-             $(ARDUINO)/Print.o \
-			$(ARDUINO)/WString.o \
-             $(ARDUINO)/pins_arduino.o \
-             $(ARDUINO)/wiring.o 
+             i2c.o \
+             Wire.o \
+             twi.o \
+#             lc_display.o \
+#			 $(ARDUINO)/wiring_digital.o \
+#             $(ARDUINO)/Print.o \
+#			 $(ARDUINO)/WString.o \
+#			 $(ARDUINO)/WMath.o \
+#             $(ARDUINO)/pins_arduino.o \
+#             $(ARDUINO)/wiring.o \
+#             $(ARDUINO_LIB)/LiquidCrystal/LiquidCrystal.o \
+#             $(ARDUINO_LIB)/PS2X_lib/PS2X_lib.o \
+#             ps2_controller.o \
+#             PS2Y_lib.o \
              
 # FUSES      = -U hfuse:w:0xd9:m -U lfuse:w:0x24:m
 FUSES      = -U hfuse:w:0xd2:m -U lfuse:w:0xff:m
@@ -53,7 +62,7 @@ FUSES      = -U hfuse:w:0xd2:m -U lfuse:w:0xff:m
 # Tune the lines below only if you know what you are doing:
 
 AVRDUDE = avrdude $(PROGRAMMER) -p $(DEVICE) -B 10 -F 
-COMPILE = avr-gcc -Wall -Os -DF_CPU=$(CLOCK) -mmcu=$(DEVICE) -I. -I$(ARDUINO)
+COMPILE = avr-gcc -Wall -Os -DF_CPU=$(CLOCK) -mmcu=$(DEVICE) -I. -I$(ARDUINO) -I$(ARDUINO_LIB)
 
 # symbolic targets:
 all:	grbl.hex
@@ -93,7 +102,7 @@ clean:
 
 # file targets:
 main.elf: $(OBJECTS)
-	$(COMPILE) -o main.elf $(OBJECTS) -lm
+	$(COMPILE) -o main.elf $(OBJECTS) -lm -Wl,-Map,demo.map
 
 grbl.hex: main.elf
 	rm -f grbl.hex
