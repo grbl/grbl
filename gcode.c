@@ -142,7 +142,7 @@ uint8_t gc_execute_line(char *line) {
   int char_counter = 0;  
   char letter;
   double value;
-  int16_t line_number=0;
+  int32_t line_number=0;
   double unit_converted_value;
   double inverse_feed_rate = -1;             // negative inverse_feed_rate means no inverse_feed_rate specified
   int radius_mode = FALSE;
@@ -216,11 +216,10 @@ uint8_t gc_execute_line(char *line) {
         default: FAIL(GCSTATUS_UNSUPPORTED_STATEMENT);
       }
       break;
-/*      
+      
       case 'N':
-      	line_number = int_value % 10000; //DV: I'm restricting line numbers to 4 digits...
-      	break;
-*/      
+      	line_number = int_value % 100000; //Spec puts line number up to 99999
+        break;
       
       case 'M':
       switch(int_value) {

@@ -33,14 +33,14 @@
 int32_t position[3];    // The current position of the tool in absolute steps
 extern int32_t actual_position[3];
 volatile char mc_running=0;
-int16_t acting_line_number=0;
+int32_t acting_line_number=0;
 
 void mc_init()
 {
   clear_vector(position);
 }
 
-void mc_dwell(uint32_t milliseconds, int line_number) 
+void mc_dwell(uint32_t milliseconds, int32_t line_number) 
 {
   st_synchronize();
   _delay_ms(milliseconds);
@@ -51,7 +51,7 @@ void mc_dwell(uint32_t milliseconds, int line_number)
 // Execute linear motion in absolute millimeter coordinates. Feed rate given in millimeters/second
 // unless invert_feed_rate is true. Then the feed_rate means that the motion should be completed in
 // 1/feed_rate minutes.
-void mc_line(double x, double y, double z, float feed_rate, int invert_feed_rate, int16_t line_number)
+void mc_line(double x, double y, double z, float feed_rate, int invert_feed_rate, int32_t line_number)
 {
   uint8_t axis; // loop variable
   int32_t target[3]; // The target position in absolute steps
@@ -84,7 +84,7 @@ void mc_line(double x, double y, double z, float feed_rate, int invert_feed_rate
 	memcpy(position, target, sizeof(target)); // position[] = target[] 
 }
 
-void mc_reposition(double x, double y, double z, int16_t line_number)
+void mc_reposition(double x, double y, double z, int32_t line_number)
 {
   int32_t target[3]; // The target position in absolute steps
   
@@ -122,7 +122,7 @@ struct arc_to_lineS {    // Contains the low level representation for an arc
             int axis_2;
             int axis_linear;
             int invert_feed_rate; 
-            int16_t line_number;
+            int32_t line_number;
             uint16_t segments;
             uint16_t i;
    volatile uint8_t active;
@@ -169,7 +169,7 @@ void mc_arc(double theta, double angular_travel, double radius,
             double linear_travel, 
             int axis_1, int axis_2, int axis_linear, 
             double target_x, double target_y, double target_z,
-            double feed_rate, int invert_feed_rate, int16_t line_number)
+            double feed_rate, int invert_feed_rate, int32_t line_number)
 {
 /*      
   printPgmString(PSTR("values in mc_arc:\r\n"));  
@@ -248,7 +248,7 @@ uint8_t mc_in_arc(){
 
 
 
-void mc_go_home(int16_t line_number)
+void mc_go_home(int32_t line_number)
 {
   st_go_home();
   clear_vector(position); // By definition this is location [0, 0, 0]

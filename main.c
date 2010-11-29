@@ -28,6 +28,7 @@
 #include "config.h"
 #include "wiring_serial.h"
 #include "serial_protocol.h"
+#include <avr/pgmspace.h>   // contains PSTR definition
 //#include "lc_display.h"
 #include <WProgram.h>
 #include "i2c.h"
@@ -59,14 +60,26 @@ int main(void)
   for(;;){
     //lcd_report_position();
     i2c_report_position();
-    i2c_get_buttons();
+    _delay_ms(1);			// Delay is required, otherwise
+    i2c_get_buttons();      // i2c_get doesn't work. 1ms seems to be enough
+/*    
+            printPgmString(PSTR("buttons:\r\n"));  
+            printInteger(buttons[0]);
+            printPgmString(PSTR(", "));
+            printInteger(buttons[1]);
+            printPgmString(PSTR(", "));
+            printInteger(buttons[2]);
+            printPgmString(PSTR(", "));
+            printInteger(buttons[3]);
+            printPgmString(PSTR("\r\n"));
+*/
+    
     if (buttons[0]|buttons[1]|buttons[2]|buttons[3]){
     	mc_running=1;
     	STEPPERS_ENABLE_PORT |= (1<<STEPPERS_ENABLE_BIT);
 		ENABLE_STEPPER_DRIVER_INTERRUPT();
 	}
     
-    //delay(100);
     if (serialAvailable()) sp_process(); // process the serial protocol
     if (mc_in_arc()) mc_continue_arc(); // if busy drawing an arc, keep drawing
   }

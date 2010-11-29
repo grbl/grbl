@@ -30,3 +30,7 @@ Prioritized to-do:
 * Support "headless" fabrication by buffering all code to SD-card or similar
 
 The project was initially inspired by the Arduino GCode Interpreter by Mike Ellery
+
+To be done:
+- G4 dwell is currently blocking! 
+
