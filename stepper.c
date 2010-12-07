@@ -97,11 +97,17 @@ void config_step_timer(uint32_t microseconds);
 
 char st_buffer_full()
 {
-  int next_buffer_head;
+//In cases where there is a change of direction, two items 
+// get put onto the st_buffer (the backlash compensation step
+// and the actual movement). So this check for space in the
+// buffer checks to see if there are two spaces left.
+  int nb1;
+  int nb2;
   
-  next_buffer_head = (block_buffer_head + 1) % BLOCK_BUFFER_SIZE;	
+  nb2 = (block_buffer_head + 2) % BLOCK_BUFFER_SIZE;	
+  nb1 = (block_buffer_head + 1) % BLOCK_BUFFER_SIZE;	
 
-  return (block_buffer_tail == next_buffer_head);
+  return ((nb1 == block_buffer_tail)||(nb2 == block_buffer_tail));
 }
 
 // *************************************************************************************************
@@ -118,10 +124,8 @@ int st_buffer_block(int32_t steps_x, int32_t steps_y, int32_t steps_z,
 					int32_t pos_x,   int32_t pos_y,   int32_t pos_z,
 					uint32_t microseconds, 
 					int16_t line_number) {
-  // First determine direction bits					
   uint8_t 		direction_bits = 0;
   uint8_t 		changed_dir;
-  volatile int	next_buffer_head;
   struct Block 	*block;
   struct Block 	*comp_block=NULL;
   uint32_t		maximum_steps;
@@ -130,6 +134,7 @@ int st_buffer_block(int32_t steps_x, int32_t steps_y, int32_t steps_z,
   // Don't process empty blocks 
   if (maximum_steps==0) {return 0;}
   
+  // Determine direction bits					
   if (steps_x < 0) { direction_bits |= (1<<X_DIRECTION_BIT); }
   if (steps_y < 0) { direction_bits |= (1<<Y_DIRECTION_BIT); }
   if (steps_z < 0) { direction_bits |= (1<<Z_DIRECTION_BIT); }
@@ -137,12 +142,16 @@ int st_buffer_block(int32_t steps_x, int32_t steps_y, int32_t steps_z,
 	
   // If direction has changed, then put a backlash instruction				
   // on the queue:
-  next_buffer_head = (block_buffer_head + 1) % BLOCK_BUFFER_SIZE;	
-  while(block_buffer_tail == next_buffer_head) { sleep_mode(); }				
   
+//  next_buffer_head = (block_buffer_head + 1) % BLOCK_BUFFER_SIZE;	
+//  while(block_buffer_tail == next_buffer_head) { sleep_mode(); }				
+  
+  while (st_buffer_full()) { sleep_mode();}  // makes sure there are two
+                                            // slots left on buffer
+                                            
   if (direction_bits!=old_direction_bits){
-  	next_buffer_head = (block_buffer_head + 1) % BLOCK_BUFFER_SIZE;	
-	while(block_buffer_tail == next_buffer_head) { sleep_mode(); }				
+  	// next_buffer_head = (block_buffer_head + 1) % BLOCK_BUFFER_SIZE;	
+	// while(block_buffer_tail == next_buffer_head) { sleep_mode(); }				
   	comp_block = &block_buffer[block_buffer_head];
 
 	comp_block->backlash = 1;
@@ -169,14 +178,9 @@ int st_buffer_block(int32_t steps_x, int32_t steps_y, int32_t steps_z,
   	comp_block->rate = microseconds/maximum_steps;
 
   	comp_block->maximum_steps = max(comp_block->steps_x, max(comp_block->steps_y, comp_block->steps_z));
-  // If compensation is empty, then don't use it, 
-  // make the actual block into this one, else
-  // advance the pointer to create the actual block
+  // If compensation is not empty, advance the end of the queue 
   	if (comp_block->maximum_steps > 0) {
-	  	block_buffer_head = next_buffer_head;
-		// Calculate the buffer head after we push this byte
-		next_buffer_head = (block_buffer_head + 1) % BLOCK_BUFFER_SIZE;	
-	    while(block_buffer_tail == next_buffer_head) { sleep_mode(); }
+	  	block_buffer_head = (block_buffer_head + 1) % BLOCK_BUFFER_SIZE;
 	}
   }
 
@@ -204,8 +208,9 @@ int st_buffer_block(int32_t steps_x, int32_t steps_y, int32_t steps_z,
   block->rate = microseconds/block->maximum_steps;
   // Compute direction bits for this block
   block->direction_bits = direction_bits;
+  
   // Move buffer head
-  block_buffer_head = next_buffer_head;
+  block_buffer_head = (block_buffer_head + 1) % BLOCK_BUFFER_SIZE;	//next_buffer_head;
   
   // Ensure that blocks will be processed by enabling The Stepper Driver Interrupt
   ENABLE_STEPPER_DRIVER_INTERRUPT();
