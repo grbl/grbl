@@ -21,7 +21,7 @@
 #ifndef config_h
 #define config_h
 
-#define VERSION "0.60"
+#define VERSION "0.61"
 
 // Settings that can only be set at compile-time:
 

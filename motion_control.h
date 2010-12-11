@@ -46,6 +46,7 @@ void mc_continue_arc();
 
 // Dwell for a couple of time units
 void mc_dwell(uint32_t milliseconds, int32_t line_number);
+void mc_halt(int32_t line_number);
 
 // Send the tool home
 void mc_go_home(int32_t line_number);

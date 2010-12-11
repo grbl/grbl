@@ -46,17 +46,6 @@ extern int32_t position[3];    // The current target position of the tool in abs
 
 void sp_init() 
 {
-  // beginSerial(BAUD_RATE);
-/*  
-  printPgmString(PSTR("PS2 controller init result: "));
-  printInteger(ps2_init());
-  printPgmString(PSTR("\n\r"));
-*/  
-/*  printPgmString(PSTR("12345678901234567890123456789012345678\n\r"));
-  printPgmString(PSTR("12345678901234567890123456789012345678\n\r"));
-  printPgmString(PSTR("12345678901234567890123456789012345678\n\r"));
-  printPgmString(PSTR("12345678901234567890123456789012345678\n\r"));
-*/
   printPgmString(PSTR("\r\nGrbl "));
   printPgmString(PSTR(VERSION));
   printPgmString(PSTR("\r\n"));  
@@ -147,7 +136,9 @@ void sp_quick_position()
 {
 	// Byte 1: steppers are running under 'M'anual control, 'A'uto control, or are 'O'ff
     if (mc_running) {
-    	if (buttons_in_use) printPgmString(PSTR("M")); else printPgmString(PSTR("A"));
+    	if (buttons_in_use) printPgmString(PSTR("M")); 
+    	else if (st_current_mode==SM_RUN) printPgmString(PSTR("A"));
+    	else printPgmString(PSTR("S"));
     } else {
     	printPgmString(PSTR("O"));
     }
@@ -161,8 +152,11 @@ void sp_quick_position()
 	print_count_as_mm(actual_position[1], 0);
 	printPgmString(PSTR("Z"));
 	print_count_as_mm(actual_position[2], 0);
+    if (mc_running &&(st_current_mode==SM_HALT)) {
+	    printPgmString(PSTR("L"));			// L for "seconds (L)eft"
+		printInteger(iterations/100);            // The number of iterations left to complete the current_block
+    }
 	printPgmString(PSTR("\n\r"));
-
 } 
 
 extern char buttons[4];
@@ -210,43 +204,7 @@ void process_command(char *line)
 		if (line[1]!='Q') prompt();
 	}
 } 
-/* 
-void  ps2_process()
-{
-	ps2_read_gamepad();
-  if(ps2_ButtonPressed(PSB_RED))             //will be TRUE if button was JUST pressed
-       printPgmString(PSTR("Circle just pressed\n\r"));
-       
-  if(ps2_ButtonReleased(PSB_PINK))             //will be TRUE if button was JUST released
-       printPgmString(PSTR("Square just released\n\r"));     
-  
-  if(ps2_NewButtonState(PSB_BLUE))            //will be TRUE if button was JUST pressed OR released
-       printPgmString(PSTR("X just changed\n\r"));           
-}
-*/
- 
-/* 
-void gc_machine(char *line)
-{ 
-  uint8_t status;
-  if (line[0]=='E'){
-	  if (mc_in_arc()){
-			mc_arc_to_line();
-		} else {
-		   process_command(line);
-		}
-		char_counter=0;
-  } else {   
-		if (mc_in_arc()){
-			mc_arc_to_line();
-		} else {
-			status = gc_execute_line(line);
-		}
-		char_counter = 0; 
-		return_status(status);
-  }
-} 
-*/
+
 void sp_process()
 {
   char c;

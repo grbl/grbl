@@ -24,11 +24,19 @@
 #include <avr/io.h>
 #include <avr/sleep.h>
 
+
+#define StepModeT int8_t
+#define SM_RUN 0
+#define SM_HALT 1
+
+extern StepModeT st_current_mode;
+extern uint32_t iterations;            // The number of iterations left to complete the current_block
+
 // Initialize and start the stepper motor subsystem
 void st_init();
 
-// Add a new linear movement to the buffer. steps_x, _y and _z is the signed, relative motion in 
-// steps.
+// Add a new linear movement to the buffer. steps_x, _y and _z is the signed, 
+// relative motion in steps.
 // pos_x, _y, _z is the position in absolute steps at the start of the move
 // Microseconds specify how many microseconds the move should take to perform.
 int st_buffer_block(int32_t steps_x, int32_t steps_y, int32_t steps_z, 
@@ -44,21 +52,21 @@ char st_buffer_full();
 extern char buttons_in_use;
 
 // Block until all buffered steps are executed
-void st_synchronize();
+//void st_synchronize();
 
 // Cancel all pending steps
-void st_flush();
+// void st_flush();
 
 // Stop whatever is going on right now!
 void st_stop();
 
 // Execute the homing cycle
-void st_go_home();
+// void st_go_home();
 
 // End current instruction and go to next one:
-void st_next();
+// void st_next();
 
 // Continue stopped command:
-void st_continue();
+// void st_continue();
 
 #endif

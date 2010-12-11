@@ -41,6 +41,7 @@
 #define NEXT_ACTION_DWELL   1
 #define NEXT_ACTION_GO_HOME 2
 #define NEXT_ACTION_REPOSITION 3 // G92
+#define NEXT_ACTION_HALT	5
 
 #define MOTION_MODE_SEEK    0  // G0 
 #define MOTION_MODE_LINEAR  1  // G1
@@ -223,7 +224,9 @@ uint8_t gc_execute_line(char *line) {
       
       case 'M':
       switch(int_value) {
-        case 0: case 1: gc.program_flow = PROGRAM_FLOW_PAUSED; break;
+        case 0: case 1: gc.program_flow = PROGRAM_FLOW_PAUSED; 
+        				gc.motion_mode = NEXT_ACTION_HALT;
+        				break;
         case 2: case 30: case 60: gc.program_flow = PROGRAM_FLOW_COMPLETED; break;
         case 3: gc.spindle_direction = 1; break;
         case 4: gc.spindle_direction = -1; break;
@@ -283,6 +286,7 @@ uint8_t gc_execute_line(char *line) {
   switch (next_action) {
     case NEXT_ACTION_GO_HOME: mc_go_home(line_number); break;
     case NEXT_ACTION_DWELL: mc_dwell(trunc(p*1000), line_number); break;
+    case NEXT_ACTION_HALT: mc_halt(line_number); break;
     case NEXT_ACTION_REPOSITION: mc_reposition(target[X_AXIS], target[Y_AXIS], target[Z_AXIS], line_number); break;      
     case NEXT_ACTION_DEFAULT: 
     switch (gc.motion_mode) {

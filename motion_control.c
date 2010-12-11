@@ -42,10 +42,21 @@ void mc_init()
 
 void mc_dwell(uint32_t milliseconds, int32_t line_number) 
 {
-  st_synchronize();
+/*  st_synchronize();
   _delay_ms(milliseconds);
   acting_line_number=line_number;
-  
+*/
+
+  st_buffer_delay(milliseconds);
+  acting_line_number=line_number;
+
+}
+
+
+void mc_halt(int32_t line_number)
+{
+  st_buffer_delay(0);
+  acting_line_number=line_number;
 }
 
 // Execute linear motion in absolute millimeter coordinates. Feed rate given in millimeters/second
@@ -67,9 +78,9 @@ void mc_line(double x, double y, double z, float feed_rate, int invert_feed_rate
   
 	if (invert_feed_rate) {
     	st_buffer_block(steps[X_AXIS], steps[Y_AXIS], steps[Z_AXIS], 
-                         position[X_AXIS], position[Y_AXIS], position[Z_AXIS], 
-                         lround(ONE_MINUTE_OF_MICROSECONDS/feed_rate),
-                         line_number);
+                        position[X_AXIS], position[Y_AXIS], position[Z_AXIS], 
+                        lround(ONE_MINUTE_OF_MICROSECONDS/feed_rate),
+                        line_number);
 	} else {
   	// Ask old Phytagoras to estimate how many mm our next move is going to take us
   	double millimeters_of_travel = sqrt(
@@ -105,8 +116,6 @@ void mc_reposition(double x, double y, double z, int32_t line_number)
 // positive angular_travel means clockwise, negative means counterclockwise. Radius == the radius of the
 // circle in millimeters. axis_1 and axis_2 selects the circle plane in tool space. Stick the remaining
 // axis in axis_l which will be the axis for linear travel if you are tracing a helical motion.
-
-
 
 struct arc_to_lineS {    // Contains the low level representation for an arc 
             double target[3];    // in a way that can be converted to lines
@@ -149,16 +158,7 @@ void mc_continue_arc(){
 		}
 		arc.i +=1;
 		arc.active = (arc.i<=arc.segments);
-/*        
-        printInteger(arc.i);
-        printPgmString(PSTR(", "));
-        printFloat(arc.target[X_AXIS]);
-        printPgmString(PSTR(", "));
-        printFloat(arc.target[Y_AXIS]);
-        printPgmString(PSTR(", "));
-        printFloat(arc.target[Z_AXIS]);
-        printPgmString(PSTR("\n\r"));
-*/
+
     }
 }
 
@@ -171,23 +171,6 @@ void mc_arc(double theta, double angular_travel, double radius,
             double target_x, double target_y, double target_z,
             double feed_rate, int invert_feed_rate, int32_t line_number)
 {
-/*      
-  printPgmString(PSTR("values in mc_arc:\r\n"));  
-    printPgmString(PSTR("theta start: "));
-    printFloat(theta);
-    printPgmString(PSTR("\r\nangle: "));
-    printFloat(angular_travel);
-    printPgmString(PSTR("\r\nradius: "));
-    printFloat(radius);
-    printPgmString(PSTR("\r\nlinear travel: ")); 
-    printFloat(linear_travel);
-    printPgmString(PSTR("\r\nposition: ")); 
-    printFloat(position[axis_1]);
-    printPgmString(PSTR(", ")); 
-    printFloat(position[axis_2]);
-    printPgmString(PSTR(", ")); 
-    printFloat(position[axis_linear]);
-*/    
   double millimeters_of_travel = hypot(angular_travel*radius, labs(linear_travel));
   if (millimeters_of_travel == 0.0) { 
       printPgmString(PSTR("\r\nArc length is 0, returning...\r\n")); 
@@ -217,23 +200,7 @@ void mc_arc(double theta, double angular_travel, double radius,
   // Compute the center of this circle
   arc.center_x = (position[axis_1]/settings.steps_per_mm[axis_1])-sin(theta)*radius;
   arc.center_y = (position[axis_2]/settings.steps_per_mm[axis_2])-cos(theta)*radius;
-  // a vector to track the end point of each segment
-  // double target[3];
-  // int i;
-  // Initialize the linear axis
   arc.target[axis_linear] = position[axis_linear]/settings.steps_per_mm[Z_AXIS];
-  
-/*  
-    printPgmString(PSTR("\r\nno of segments: ")); 
-    printInteger(arc.segments);
-    printPgmString(PSTR("\r\nsegment size: ")); 
-    printFloat(arc.theta_per_segment);
-    printPgmString(PSTR("\r\ncentre_x: ")); 
-    printInteger(arc.center_x);
-    printPgmString(PSTR("\r\ncentre_y: ")); 
-    printFloat(arc.center_y);    
-    printPgmString(PSTR("\r\n\r\n"));  
-*/
     
   arc.i=0;
   arc.active=1;
@@ -244,9 +211,6 @@ void mc_arc(double theta, double angular_travel, double radius,
 uint8_t mc_in_arc(){
    return arc.active;
 }
-
-
-
 
 void mc_go_home(int32_t line_number)
 {

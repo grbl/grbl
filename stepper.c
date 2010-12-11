@@ -41,6 +41,7 @@
 
 //extern volatile char mc_running;
 char buttons_in_use=0;
+StepModeT st_current_mode=SM_RUN;
 
 // Pick a suitable block-buffer size
 #ifdef __AVR_ATmega328P__
@@ -53,20 +54,21 @@ char buttons_in_use=0;
 struct Block {
   uint32_t  steps_x, steps_y, steps_z;  // Step count along each axis
   uint32_t  pos_x, pos_y, pos_z;	    // Initial position on line
-//  double rate_x, rate_y, rate_z;      // Nominal steps/second for each axis
   int32_t   maximum_steps;              // The largest stepcount of any axis for this block
   uint8_t   direction_bits;             // The direction bit set for this block (refers to *_DIRECTION_BIT in config.h)
   uint32_t  rate;                       // The nominal step rate for this block in microseconds/step
   uint8_t	backlash;					// Set true if the block is for backlash compensation
   int line_number;						// Holds line number of current block
+  StepModeT mode;						// Holds whether the next steps are run or
+  										// delay. If in delay mode, then the delay
+  										// lasts for maximum_steps of rate each
 };
 
 extern int32_t position[3];    // The current position of the tool in absolute steps
 
-int32_t actual_position[3];    // The current position of the tool in absolute steps
-						// In this file, this is actually the current position, not 
-						// estimated current position...
-
+int32_t actual_position[3];    	// The current position of the tool in absolute steps
+								// In this file, this is actually the current position, not 
+								// estimated current position...
 
 struct Block block_buffer[BLOCK_BUFFER_SIZE]; // A buffer for step instructions
 volatile int block_buffer_head = 0;
@@ -91,8 +93,6 @@ uint8_t old_direction_bits;		// Holds the direction bits from the previous
 
 extern char buttons[4];
 
-
-
 void config_step_timer(uint32_t microseconds);
 
 char st_buffer_full()
@@ -108,6 +108,39 @@ char st_buffer_full()
   nb1 = (block_buffer_head + 1) % BLOCK_BUFFER_SIZE;	
 
   return ((nb1 == block_buffer_tail)||(nb2 == block_buffer_tail));
+}
+
+int st_buffer_delay(uint32_t milliseconds, int16_t line_number) {
+  struct Block 	*block;
+
+  if (milliseconds==0) {
+    st_stop();
+  	return 0;
+  }
+	
+  while (st_buffer_full()) { sleep_mode();}  // makes sure there are two
+
+/*                                             // slots left on buffer
+ printPgmString(PSTR("in st_buffer_delay. Delay = "));
+ printInteger(milliseconds);
+ printPgmString(PSTR("\r\n"));*/
+ 
+ 
+   // Setup block record
+  block = &block_buffer[block_buffer_head];
+  block->backlash=0;
+  block->line_number = line_number;
+  
+  block->maximum_steps = milliseconds;
+  block->rate = 1000;
+  block->mode = SM_HALT;
+
+  // Move buffer head
+  block_buffer_head = (block_buffer_head + 1) % BLOCK_BUFFER_SIZE;	//next_buffer_head;
+  
+  // Ensure that blocks will be processed by enabling the Stepper Driver Interrupt
+  ENABLE_STEPPER_DRIVER_INTERRUPT();
+  return 1;
 }
 
 // *************************************************************************************************
@@ -139,19 +172,12 @@ int st_buffer_block(int32_t steps_x, int32_t steps_y, int32_t steps_z,
   if (steps_y < 0) { direction_bits |= (1<<Y_DIRECTION_BIT); }
   if (steps_z < 0) { direction_bits |= (1<<Z_DIRECTION_BIT); }
 	
-	
+  while (st_buffer_full()) { sleep_mode();}  // makes sure there are two
+                                             // slots left on buffer
+                                            
   // If direction has changed, then put a backlash instruction				
   // on the queue:
-  
-//  next_buffer_head = (block_buffer_head + 1) % BLOCK_BUFFER_SIZE;	
-//  while(block_buffer_tail == next_buffer_head) { sleep_mode(); }				
-  
-  while (st_buffer_full()) { sleep_mode();}  // makes sure there are two
-                                            // slots left on buffer
-                                            
   if (direction_bits!=old_direction_bits){
-  	// next_buffer_head = (block_buffer_head + 1) % BLOCK_BUFFER_SIZE;	
-	// while(block_buffer_tail == next_buffer_head) { sleep_mode(); }				
   	comp_block = &block_buffer[block_buffer_head];
 
 	comp_block->backlash = 1;
@@ -176,6 +202,7 @@ int st_buffer_block(int32_t steps_x, int32_t steps_y, int32_t steps_z,
 	  
 	// Use same rate for backlash compensation as for the block itself:
   	comp_block->rate = microseconds/maximum_steps;
+  	comp_block->mode = SM_RUN;
 
   	comp_block->maximum_steps = max(comp_block->steps_x, max(comp_block->steps_y, comp_block->steps_z));
   // If compensation is not empty, advance the end of the queue 
@@ -198,14 +225,9 @@ int st_buffer_block(int32_t steps_x, int32_t steps_y, int32_t steps_z,
   block->pos_z = pos_z;  
   
   block->maximum_steps = maximum_steps;
-  
-  // Rate in steps/second for each axis
-//  double rate_multiplier = 1000000.0/microseconds;
-//  block->rate_x = block->steps_x*rate_multiplier;
-//  block->rate_y = block->steps_y*rate_multiplier;
-//  block->rate_z = block->steps_z*rate_multiplier;
 
   block->rate = microseconds/block->maximum_steps;
+  block->mode = SM_RUN;
   // Compute direction bits for this block
   block->direction_bits = direction_bits;
   
@@ -261,15 +283,30 @@ SIGNAL(SIG_OUTPUT_COMPARE1A)
     if (block_buffer_head != block_buffer_tail) {
       // Retrieve a new block and get ready to step it
       current_block = &block_buffer[block_buffer_tail];
-      acting_line_number = current_block->line_number; 
+      acting_line_number = current_block->line_number;
+      st_current_mode = current_block->mode;
       config_step_timer(current_block->rate);
-      counter_x = -(current_block->maximum_steps >> 1);
-      counter_y = counter_x;
-      counter_z = counter_x;
-      actual_position[X_AXIS] = current_block->pos_x;
-      actual_position[Y_AXIS] = current_block->pos_y;
-      actual_position[Z_AXIS] = current_block->pos_z;
       iterations = current_block->maximum_steps;
+      if (st_current_mode == SM_RUN){
+		  counter_x = -(current_block->maximum_steps >> 1);
+		  counter_y = counter_x;
+		  counter_z = counter_x;
+		  actual_position[X_AXIS] = current_block->pos_x;
+		  actual_position[Y_AXIS] = current_block->pos_y;
+		  actual_position[Z_AXIS] = current_block->pos_z;
+	  } else {
+	  // In SM_HALT mode
+
+		  if (iterations==0){
+		  // Gcode put a stop on the buffer that has now arrived.
+			st_flush();
+			current_block=NULL;
+			out_bits=0;
+			DISABLE_STEPPER_DRIVER_INTERRUPT();
+			STEPPERS_ENABLE_PORT &= ~(1<<STEPPERS_ENABLE_BIT);
+			mc_running = 0;
+		  }
+	  }      
     } else {
 	  if (buttons[0]|buttons[1]|buttons[2]|buttons[3]) {
 	    buttons_in_use=1;
@@ -294,48 +331,50 @@ SIGNAL(SIG_OUTPUT_COMPARE1A)
   } 
 
   if (current_block != NULL) {
-    mc_running=1;
-    out_bits = current_block->direction_bits;
-    counter_x += current_block->steps_x;
-    if (counter_x > 0) {
-      out_bits |= (1<<X_STEP_BIT);
-      counter_x -= current_block->maximum_steps;
-      if (out_bits & (1<<X_DIRECTION_BIT)){
-      	actual_position[X_AXIS]-=1;
-      } else {
-      	actual_position[X_AXIS]+=1;
-      }
-    }
-    counter_y += current_block->steps_y;
-    if (counter_y > 0) {
-      out_bits |= (1<<Y_STEP_BIT);
-      counter_y -= current_block->maximum_steps;
-      if (out_bits & (1<<Y_DIRECTION_BIT)){
-      	actual_position[Y_AXIS]-=1;
-      } else {
-      	actual_position[Y_AXIS]+=1;
-      }
-    }
-    counter_z += current_block->steps_z;
-    if (counter_z > 0) {
-      out_bits |= (1<<Z_STEP_BIT);
-      counter_z -= current_block->maximum_steps;
-      if (out_bits & (1<<Z_DIRECTION_BIT)){
-      	actual_position[Z_AXIS]-=1;
-      } else {
-      	actual_position[Z_AXIS]+=1;
-      }
-    }
-    // If current block is finished, reset pointer 
-    iterations -= 1;
-    if (iterations <= 0) {
-      current_block = NULL;
-      // move the block buffer tail to the next instruction
-      block_buffer_tail = (block_buffer_tail + 1) % BLOCK_BUFFER_SIZE;      
-    }
-  } //else {
-  //  out_bits = 0;
-  //}
+	mc_running=1;
+	out_bits = current_block->direction_bits;
+  	if (current_block->mode == SM_RUN){
+		counter_x += current_block->steps_x;
+		if (counter_x > 0) {
+		  out_bits |= (1<<X_STEP_BIT);
+		  counter_x -= current_block->maximum_steps;
+		  if (out_bits & (1<<X_DIRECTION_BIT)){
+			actual_position[X_AXIS]-=1;
+		  } else {
+			actual_position[X_AXIS]+=1;
+		  }
+		}
+		counter_y += current_block->steps_y;
+		if (counter_y > 0) {
+		  out_bits |= (1<<Y_STEP_BIT);
+		  counter_y -= current_block->maximum_steps;
+		  if (out_bits & (1<<Y_DIRECTION_BIT)){
+			actual_position[Y_AXIS]-=1;
+		  } else {
+			actual_position[Y_AXIS]+=1;
+		  }
+		}
+		counter_z += current_block->steps_z;
+		if (counter_z > 0) {
+		  out_bits |= (1<<Z_STEP_BIT);
+		  counter_z -= current_block->maximum_steps;
+		  if (out_bits & (1<<Z_DIRECTION_BIT)){
+			actual_position[Z_AXIS]-=1;
+		  } else {
+			actual_position[Z_AXIS]+=1;
+		  }
+		} else {
+	        // Support delays - nothing actually to do!
+		}
+	}	
+	// If current block is finished, reset pointer 
+	iterations -= 1;
+	if (iterations <= 0) {
+	  current_block = NULL;
+	  // move the block buffer tail to the next instruction
+	  block_buffer_tail = (block_buffer_tail + 1) % BLOCK_BUFFER_SIZE;      
+	}
+  }
   out_bits ^= settings.invert_mask;
   busy=FALSE;
   // Done. The next time this interrupt is entered the out_bits we just calculated will be pulsed onto the port
@@ -388,12 +427,13 @@ void st_init()
   sei();
 }
 
+/*
 // Block until all buffered steps are executed
 void st_synchronize()
 {
   while(block_buffer_tail != block_buffer_head) { sleep_mode(); }    
 }
-
+*/
 // Cancel all buffered steps
 void st_flush()
 {
@@ -403,7 +443,8 @@ void st_flush()
   sei();
 }
 
-// Configures the prescaler and ceiling of timer 1 to produce the given rate as accurately as possible.
+// Configures the prescaler and ceiling of timer 1 to produce 
+// the given rate as accurately as possible.
 void config_step_timer(uint32_t microseconds)
 {
   uint32_t ticks = microseconds*TICKS_PER_MICROSECOND;
@@ -435,10 +476,12 @@ void config_step_timer(uint32_t microseconds)
   OCR1A = ceiling;
 }
 
+
 void st_go_home()
 {
   // Todo: Perform the homing cycle
 }
+
 
 void st_stop()
 {
@@ -537,33 +580,10 @@ char st_process_manual_buttons(void)
 		actual_position[Z_AXIS]+=1;
 	  }
  } 	
- 
- 
-/*    
-    
-    counter_x += current_block->steps_x;
-    if (counter_x > 0) {
-      out_bits |= (1<<X_STEP_BIT);
-      counter_x -= current_block->maximum_steps;
-    }
-    counter_y += current_block->steps_y;
-    if (counter_y > 0) {
-      out_bits |= (1<<Y_STEP_BIT);
-      counter_y -= current_block->maximum_steps;
-    }
-    counter_z += current_block->steps_z;
-    if (counter_z > 0) {
-      out_bits |= (1<<Z_STEP_BIT);
-      counter_z -= current_block->maximum_steps;
-    }
-
-*/
 
 // Update the actual position register based on
 // steps about to be issued.
 
   out_bits ^= settings.invert_mask;
-
-
   return 1;	// always return true
 }

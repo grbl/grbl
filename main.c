@@ -40,9 +40,6 @@ extern char buttons[4];
 int main(void)
 {
   beginSerial(BAUD_RATE);
-
-//  lcd_init();			// Can use lcd on this arduino, but moved HMI to another 
-						// arduino module
   i2c_init();
 
   // config_reset(); // This routine forces the eeprom config into its default state
@@ -58,21 +55,9 @@ int main(void)
   DDRD |= (1<<3)|(1<<4)|(1<<5);
 
   for(;;){
-    //lcd_report_position();
     i2c_report_position();
     _delay_ms(1);			// Delay is required, otherwise
     i2c_get_buttons();      // i2c_get doesn't work. 1ms seems to be enough
-/*    
-            printPgmString(PSTR("buttons:\r\n"));  
-            printInteger(buttons[0]);
-            printPgmString(PSTR(", "));
-            printInteger(buttons[1]);
-            printPgmString(PSTR(", "));
-            printInteger(buttons[2]);
-            printPgmString(PSTR(", "));
-            printInteger(buttons[3]);
-            printPgmString(PSTR("\r\n"));
-*/
     
     if (buttons[0]|buttons[1]|buttons[2]|buttons[3]){
     	mc_running=1;
