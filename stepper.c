@@ -40,6 +40,7 @@
 #define LINE_BUFFER_SIZE 10
 #endif
 
+<<<<<<< Updated upstream
 struct Line {
   uint32_t steps_x, steps_y, steps_z;
   int32_t maximum_steps;
@@ -75,6 +76,41 @@ void update_accelleration_plan() {
   int initial_buffer_tail = line_buffer_tail;
   
 }
+=======
+#define ENABLE_STEPPER_DRIVER_INTERRUPT()  TIMSK1 |= (1<<OCIE1A)
+#define DISABLE_STEPPER_DRIVER_INTERRUPT() TIMSK1 &= ~(1<<OCIE1A)
+
+#define CYCLES_PER_ACCELLERATION_TICK (F_CPU)
+
+// This record is used to buffer the setup for each linear movement
+struct Block {
+  uint32_t steps_x, steps_y, steps_z; // Step count along each axis
+  double  rate_x, rate_y, rate_z;     // Nominal steps/minute for each axis
+  int32_t  maximum_steps;             // The largest stepcount of any axis for this block
+  uint8_t  direction_bits;            // The direction bit set for this block (refers to *_DIRECTION_BIT in config.h)
+  uint32_t rate;                      // The nominal step rate for this block in microseconds/step
+};
+
+struct Block block_buffer[BLOCK_BUFFER_SIZE]; // A buffer for motion instructions
+volatile int block_buffer_head = 0;           // Index of the next block to be pushed
+volatile int block_buffer_tail = 0;           // Index of the block to process now
+
+// Variables used by The Stepper Driver Interrupt
+uint8_t out_bits;               // The next stepping-bits to be output
+struct Block *current_block;    // A pointer to the block currently being traced
+int32_t counter_x, 
+        counter_y, 
+        counter_z;              // counter variables for the bresenham line tracer
+uint32_t iterations;            // The number of iterations left to complete the current_block
+volatile int busy;              // TRUE when SIG_OUTPUT_COMPARE1A is being serviced. Used to avoid retriggering that handler.
+
+// Variables used by the accelleration manager
+float rate_multiplier;          // The current rate multiplier. at 1.0 nominal rates equals actual rates
+float rate_change_rate;         // The amount the rate_multiplier changes each 
+uint32_t rate_ramp_iterations;  // The accelleration iterations for which the current rate ramp is valid
+
+void config_step_timer(uint32_t microseconds);
+>>>>>>> Stashed changes
 
 // Add a new linear movement to the buffer. steps_x, _y and _z is the signed, relative motion in 
 // steps. Microseconds specify how many microseconds the move should take to perform. To aid accelleration
@@ -83,6 +119,7 @@ void st_buffer_line(int32_t steps_x, int32_t steps_y, int32_t steps_z, uint32_t 
   // Calculate the buffer head after we push this byte
 	int next_buffer_head = (line_buffer_head + 1) % LINE_BUFFER_SIZE;	
 	// If the buffer is full: good! That means we are well ahead of the robot. 
+<<<<<<< Updated upstream
 	// Nap until there is room in the buffer.
   while(line_buffer_tail == next_buffer_head) { sleep_mode(); }
   // Setup line record
@@ -94,6 +131,26 @@ void st_buffer_line(int32_t steps_x, int32_t steps_y, int32_t steps_z, uint32_t 
   // Bail if this is a zero-length line
   if (line->maximum_steps == 0) { return; };
   line->rate = (TICKS_PER_MICROSECOND*microseconds)/line->maximum_steps;
+=======
+	// Rest here until there is room in the buffer.
+  while(block_buffer_tail == next_buffer_head) { sleep_mode(); }
+  // Prepare to set up new block
+  struct Block *block = &block_buffer[block_buffer_head];
+  // Number of steps for each axis
+  block->steps_x = labs(steps_x);
+  block->steps_y = labs(steps_y);
+  block->steps_z = labs(steps_z);
+  block->maximum_steps = max(block->steps_x, max(block->steps_y, block->steps_z));
+  // Bail if this is a zero-length block
+  if (block->maximum_steps == 0) { return; };
+  // Rate in steps/second for each axis
+  double rate_multiplier = 60.0*1000000.0/microseconds;
+  block->rate_x = round(block->steps_x*rate_multiplier);
+  block->rate_y = round(block->steps_y*rate_multiplier);
+  block->rate_z = round(block->steps_z*rate_multiplier);
+  block->rate = microseconds/block->maximum_steps;
+  // Compute direction bits for this block
+>>>>>>> Stashed changes
   uint8_t direction_bits = 0;
   if (steps_x < 0) { direction_bits |= (1<<X_DIRECTION_BIT); }
   if (steps_y < 0) { direction_bits |= (1<<Y_DIRECTION_BIT); }
@@ -101,6 +158,7 @@ void st_buffer_line(int32_t steps_x, int32_t steps_y, int32_t steps_z, uint32_t 
   line->direction_bits = direction_bits;
   line->average_millimeters_per_step_event = millimeters/line->maximum_steps
   // Move buffer head
+<<<<<<< Updated upstream
   line_buffer_head = next_buffer_head;
   // enable stepper interrupt
 	TIMSK1 |= (1<<OCIE1A);
@@ -110,6 +168,16 @@ void st_buffer_line(int32_t steps_x, int32_t steps_y, int32_t steps_z, uint32_t 
 // This timer interrupt is executed at the rate set with config_step_timer. It pops one instruction from
 // the line_buffer, executes it. Then it starts timer2 in order to reset the motor port after
 // five microseconds.
+=======
+  block_buffer_head = next_buffer_head;
+  // Ensure that block processing is running by enabling The Stepper Driver Interrupt
+  ENABLE_STEPPER_DRIVER_INTERRUPT();
+}
+
+// "The Stepper Driver Interrupt" - This timer interrupt is the workhorse of Grbl. It is  executed at the rate set with
+// config_step_timer. It pops blocks from the block_buffer and executes them by pulsing the stepper pins appropriately. 
+// It is supported by The Stepper Port Reset Interrupt which it uses to reset the stepper port after each pulse.
+>>>>>>> Stashed changes
 #ifdef TIMER1_COMPA_vect
 SIGNAL(TIMER1_COMPA_vect)
 #else
@@ -123,7 +191,7 @@ SIGNAL(SIG_OUTPUT_COMPARE1A)
   STEPPING_PORT = (STEPPING_PORT & ~DIRECTION_MASK) | (out_bits & DIRECTION_MASK);
   // Then pulse the stepping pins
   STEPPING_PORT = (STEPPING_PORT & ~STEP_MASK) | out_bits;
-  // Reset step pulse reset timer so that SIG_OVERFLOW2 can reset the signal after
+  // Reset step pulse reset timer so that The Stepper Port Reset Interrupt can reset the signal after
   // exactly settings.pulse_microseconds microseconds.
   TCNT2 = -(((settings.pulse_microseconds-2)*TICKS_PER_MICROSECOND)/8);
 
@@ -222,7 +290,7 @@ void st_init()
   TCCR2B = (1<<CS21); // Full speed, 1/8 prescaler
   TIMSK2 |= (1<<TOIE2);      
   
-  // Just ste the step_timer to something serviceably lazy
+  // Just set the step_timer to something serviceably lazy
   config_step_timer(20000);
   // set enable pin     
   STEPPERS_ENABLE_PORT |= 1<<STEPPERS_ENABLE_BIT;

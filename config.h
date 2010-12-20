@@ -22,6 +22,8 @@
 #define config_h
 
 #define VERSION "0.51"
+#include <math.h>
+#include <inttypes.h>
 
 // Settings that can only be set at compile-time:
 
@@ -69,6 +71,10 @@ struct Settings {
   double default_seek_rate;
   uint8_t invert_mask;
   double mm_per_arc_segment;
+<<<<<<< Updated upstream
+=======
+  double max_jerk;
+>>>>>>> Stashed changes
   double accelleration;
 };
 struct Settings settings;
@@ -94,6 +100,8 @@ void store_setting(int parameter, double value);
 
 #define RAPID_FEEDRATE 480.0 // in millimeters per minute
 #define DEFAULT_FEEDRATE 480.0
+#define DEFAULT_MAX_JERK 10.0
+#define DEFAULT_ACCELLERATION 0.1
 
 // Use this line for default operation (step-pulses high)
 #define STEPPING_INVERT_MASK 0

@@ -41,4 +41,10 @@
 #define Y_AXIS 1
 #define Z_AXIS 2
 
+void scale_vector(float *target, float *source, float multiplier) {
+  target[0] = source[0]*multiplier;
+  target[1] = source[1]*multiplier;
+  target[2] = source[2]*multiplier;
+}
+
 #endif
