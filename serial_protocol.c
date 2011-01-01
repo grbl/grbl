@@ -75,7 +75,7 @@ void return_status(uint8_t status)
 	}
 }
 
-void print_count_as_mm(float count, char Pad)
+void print_count_as_mm(float count, char axis, char Pad)
 {
 	// Convert position in steps to mm:
 	// pos = steps * 1.27/1600 
@@ -86,7 +86,13 @@ void print_count_as_mm(float count, char Pad)
 	long fraction;
 	float answer;
 	
-	answer = count*DEFAULT_UM_PER_STEP;
+        if (axis==X_AXIS){
+            answer = count*DEFAULT_X_UM_PER_STEP;
+        } else if (axis==Y_AXIS){
+            answer = count*DEFAULT_Y_UM_PER_STEP;
+        } else if (axis==Z_AXIS){
+            answer = count*DEFAULT_Z_UM_PER_STEP;
+        }
 	whole = round(answer/10.0);
 	fraction = labs(whole) % 100;			// must be labs, otherwise overflows at 327.67 mm
 											// and gets fractional part wrong higher than that.
@@ -113,21 +119,21 @@ void sp_report_position()
 
 	printPgmString(PSTR("Position:\n\r"));
 	printPgmString(PSTR("X: "));
-	print_count_as_mm(position[0], 1);
+	print_count_as_mm(position[X_AXIS], X_AXIS, 1);
 	printPgmString(PSTR(" : "));
-	print_count_as_mm(actual_position[0],1);
+	print_count_as_mm(actual_position[X_AXIS], X_AXIS, 1);
 	printPgmString(PSTR("\n\r"));
 
 	printPgmString(PSTR("Y: "));
-	print_count_as_mm(position[1],1);
+	print_count_as_mm(position[Y_AXIS], Y_AXIS, 1);
 	printPgmString(PSTR(" : "));
-	print_count_as_mm(actual_position[1],1);
+	print_count_as_mm(actual_position[Y_AXIS], Y_AXIS, 1);
 	printPgmString(PSTR("\n\r"));
 
 	printPgmString(PSTR("Z: "));
-	print_count_as_mm(position[2],1);
+	print_count_as_mm(position[Z_AXIS], Z_AXIS, 1);
 	printPgmString(PSTR(" : "));
-	print_count_as_mm(actual_position[2],1);
+	print_count_as_mm(actual_position[Z_AXIS], Z_AXIS, 1);
 	printPgmString(PSTR("\n\r\n\r"));
 
 } 
@@ -147,11 +153,11 @@ void sp_quick_position()
     printPgmString(PSTR("N"));
 	printInteger(acting_line_number);
 	printPgmString(PSTR("X"));
-	print_count_as_mm(actual_position[0], 0);
+	print_count_as_mm(actual_position[X_AXIS], X_AXIS, 0);
 	printPgmString(PSTR("Y"));
-	print_count_as_mm(actual_position[1], 0);
+	print_count_as_mm(actual_position[Y_AXIS], Y_AXIS, 0);
 	printPgmString(PSTR("Z"));
-	print_count_as_mm(actual_position[2], 0);
+	print_count_as_mm(actual_position[Z_AXIS], Z_AXIS, 0);
     if (mc_running &&(st_current_mode==SM_HALT)) {
 	    printPgmString(PSTR("L"));			// L for "seconds (L)eft"
 		printInteger(iterations/100);            // The number of iterations left to complete the current_block

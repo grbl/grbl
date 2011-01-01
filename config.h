@@ -107,6 +107,11 @@ void store_setting(int parameter, double value);
 // in the display routine back to mm.
 #define DEFAULT_UM_PER_STEP (1000* 1.27/(200*MICROSTEPS))
 
+#define DEFAULT_X_UM_PER_STEP (1000* 1.27/(200*10))
+#define DEFAULT_Y_UM_PER_STEP (1000* 1.27/(200*8))
+#define DEFAULT_Z_UM_PER_STEP (1000* 1.27/(200*8))
+
+
 #define DEFAULT_STEP_PULSE_MICROSECONDS 30
 #define DEFAULT_MM_PER_ARC_SEGMENT 0.1
 #define DEFAULT_SEEKRATE 480.0 // in millimeters per minute

@@ -26,6 +26,7 @@
 #include <stdlib.h>
 #include "nuts_bolts.h"
 #include "stepper.h"
+#include "gcode.h"
 #include "wiring_serial.h"
 #include <avr/pgmspace.h>   // contains PSTR definition
 
@@ -221,7 +222,12 @@ void mc_go_home(int32_t line_number)
 
 void mc_stop()
 {
-	st_stop();
+	st_stop();              // Stops machine, clears step buffer
+                                // sets target position to actual
+        set_gcPosition();        // Sets position in g-code interpreter
+                                // to current position. Otherwise
+                                // next command in g-code contains
+                                // wrong position info
 	acting_line_number=-1;
 }
 
