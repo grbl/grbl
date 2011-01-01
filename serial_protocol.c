@@ -179,36 +179,113 @@ void sp_report_buttons()
 	printInteger(buttons[3]);
 	printPgmString(PSTR("\n\r"));
 }
- 
+
+void return_motion_mode(mode)
+{
+    if (Verbose){
+        switch(mode) {
+            case MOTION_MODE_SEEK: printPgmString(PSTR("G0: Seek")); break;
+            case MOTION_MODE_LINEAR: printPgmString(PSTR("G1: Linear")); break;
+            case MOTION_MODE_CW_ARC: printPgmString(PSTR("G2: Clockwise arc")); break;
+            case MOTION_MODE_CCW_ARC: printPgmString(PSTR("G3: Counter-clockwise arc")); break;
+            default: printPgmString(PSTR("Unknown\r\n"));
+        }
+    } else {
+        switch(mode) {
+            case MOTION_MODE_SEEK: printPgmString(PSTR("G0")); break;
+            case MOTION_MODE_LINEAR: printPgmString(PSTR("G1")); break;
+            case MOTION_MODE_CW_ARC: printPgmString(PSTR("G2")); break;
+            case MOTION_MODE_CCW_ARC: printPgmString(PSTR("G3")); break;
+            default: printPgmString(PSTR("GE"));
+        }
+    }
+
+}
+
+void report_plane_axis(axis_0, axis_1)
+{
+    if (axis_0==X_AXIS) {
+        if (axis_1==Y_AXIS) {
+            printPgmString(PSTR("G17"));
+            if (Verbose) printPgmString(PSTR(": XY"));
+        } else {
+            printPgmString(PSTR("G18"));
+            if (Verbose) printPgmString(PSTR(": XZ"));
+        }
+    } else {
+        printPgmString(PSTR("G19"));
+        if (Verbose) printPgmString(PSTR(": YZ"));
+    }
+}
+
+void sp_report_gcode_state()
+{
+    if (Verbose){
+        printPgmString(PSTR("G-code parser state\r\n"));
+        printPgmString(PSTR("-------------------\r\n"));
+        printPgmString(PSTR("G-code status: "));
+        return_status(gc.status_code);
+        printPgmString(PSTR("\r\nMotion mode: "));
+        return_motion_mode(gc.motion_mode);
+        printPgmString(PSTR("\r\nInverse feed rate: "));
+        if (gc.inverse_feed_rate_mode) printPgmString(PSTR("G93: yes"));
+            else printPgmString(PSTR("G94: no"));
+        printPgmString(PSTR("\r\nUnits: "));
+        if (gc.inches_mode) printPgmString(PSTR("G20: inches"));
+            else printPgmString(PSTR("G21: metric"));
+        printPgmString(PSTR("\r\nCoordinates: "));
+        if (gc.absolute_mode) printPgmString(PSTR("G90: absolute"));
+            else printPgmString(PSTR("G91: relative"));
+        printPgmString(PSTR("\r\nFeed rate: "));
+        printInteger(round(gc.feed_rate*60));
+        printPgmString(PSTR(" mm/s\r\nSelected plane: "));
+        report_plane_axis(gc.plane_axis_0, gc.plane_axis_1);
+        printPgmString(PSTR("\r\n"));
+    } else {
+        return_motion_mode(gc.motion_mode);
+        report_plane_axis(gc.plane_axis_0, gc.plane_axis_1);
+        if (gc.inches_mode) printPgmString(PSTR("G20"));
+            else printPgmString(PSTR("G21"));
+        if (gc.inches_mode) printPgmString(PSTR("G90"));
+            else printPgmString(PSTR("G91"));
+        if (gc.inverse_feed_rate_mode) printPgmString(PSTR("G93"));
+            else printPgmString(PSTR("G94"));
+        printPgmString(PSTR("F"));
+        printInteger(round(gc.feed_rate*60));
+        printPgmString(PSTR("\r\n"));
+    }
+}
+
 void process_command(char *line)
 {
-	if (line[1]==0){
-		printPgmString(PSTR("You have entered an interpreter command\r\n"));
-		printPgmString(PSTR("B\tReport button values on HMI\r\n"));
-		
-		printPgmString(PSTR("P\tReturn x, y, z, position\r\n"));
-		printPgmString(PSTR("Q\tQuick response: running mode (O - off, M-anual, A-uto), \r\n"));
-		printPgmString(PSTR( "\t\t\t\t\tbuffer ready (F-ull or R-eady),\r\n"));
+    if (line[1]==0){
+        printPgmString(PSTR("You have entered an interpreter command\r\n"));
+        printPgmString(PSTR("B\tReport button values on HMI\r\n"));
+        printPgmString(PSTR("G\tReport current g-code status\r\n"));
+        printPgmString(PSTR("P\tReturn x, y, z, position\r\n"));
+        printPgmString(PSTR("Q\tQuick response: running mode (O - off, M-anual, A-uto), \r\n"));
+        printPgmString(PSTR( "\t\t\t\t\tbuffer ready (F-ull or R-eady),\r\n"));
         printPgmString(PSTR( "\t\t\t\t\tline number,\r\n"));
         printPgmString(PSTR( "\t\t\t\t\tx, y, z, position\r\n"));
-		printPgmString(PSTR("S\tStop current operation\r\n"));
-		printPgmString(PSTR("T\tPut communications into Terse mode (default on startup)\r\n"));
-		printPgmString(PSTR("V\tPut communications into Verbose mode, also enables echo\r\n"));
-		
-		printPgmString(PSTR("\n\r"));
-	
-	} else {
-		switch (line[1]){
-			case 'B': sp_report_buttons(); break;
-			case 'Q': sp_quick_position(); break;
-			case 'P': sp_report_position(); break;
-			case 'S': mc_stop(); break;
-			case 'T': Verbose = FALSE; break;
-			case 'V': Verbose = TRUE; break;
-			default: printPgmString(PSTR("Unrecognised command in sp_process_command\r\n"));
-		}
-		if (line[1]!='Q') prompt();
-	}
+        printPgmString(PSTR("S\tStop current operation\r\n"));
+        printPgmString(PSTR("T\tPut communications into Terse mode (default on startup)\r\n"));
+        printPgmString(PSTR("V\tPut communications into Verbose mode, also enables echo\r\n"));
+
+        printPgmString(PSTR("\n\r"));
+
+    } else {
+        switch (line[1]){
+            case 'B': sp_report_buttons(); break;
+            case 'G': sp_report_gcode_state(); break;
+            case 'Q': sp_quick_position(); break;
+            case 'P': sp_report_position(); break;
+            case 'S': mc_stop(); break;
+            case 'T': Verbose = FALSE; break;
+            case 'V': Verbose = TRUE; break;
+            default: printPgmString(PSTR("Unrecognised command in sp_process_command\r\n"));
+        }
+        if (line[1]!='Q') prompt();
+    }
 } 
 
 void sp_process()
