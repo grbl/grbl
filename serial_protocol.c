@@ -188,7 +188,7 @@ void return_motion_mode(mode)
             case MOTION_MODE_LINEAR: printPgmString(PSTR("G1: Linear")); break;
             case MOTION_MODE_CW_ARC: printPgmString(PSTR("G2: Clockwise arc")); break;
             case MOTION_MODE_CCW_ARC: printPgmString(PSTR("G3: Counter-clockwise arc")); break;
-            default: printPgmString(PSTR("Unknown\r\n"));
+            default: printPgmString(PSTR("Unknown"));
         }
     } else {
         switch(mode) {

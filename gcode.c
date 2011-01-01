@@ -202,7 +202,10 @@ uint8_t gc_execute_line(char *line) {
       case 'M':
       switch(int_value) {
         case 0: case 1: gc.program_flow = PROGRAM_FLOW_PAUSED; 
+/*
         				gc.motion_mode = NEXT_ACTION_HALT;
+*/
+        				next_action = NEXT_ACTION_HALT;
         				break;
         case 2: case 30: case 60: gc.program_flow = PROGRAM_FLOW_COMPLETED; break;
         case 3: gc.spindle_direction = 1; break;
