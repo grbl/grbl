@@ -70,7 +70,9 @@ void return_status(uint8_t status)
 		if (status == GCSTATUS_OK){
 			printPgmString(PSTR("ok\r\n"));
 		} else {
-			printPgmString(PSTR("err\r\n"));
+			printPgmString(PSTR("err"));
+                        printInteger(status);
+			printPgmString(PSTR("\r\n"));
 		}
 	}
 }
@@ -149,7 +151,7 @@ void sp_quick_position()
     	printPgmString(PSTR("O"));
     }
 	// Byte 2: stepper buffer is 'F'ull or 'R'eady
-    if (st_buffer_full()) printPgmString(PSTR("F")); else printPgmString(PSTR("R"));
+    if (st_buffer_full()||mc_in_arc()) printPgmString(PSTR("F")); else printPgmString(PSTR("R"));
     printPgmString(PSTR("N"));
 	printInteger(acting_line_number);
 	printPgmString(PSTR("X"));

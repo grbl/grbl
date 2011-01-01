@@ -101,13 +101,21 @@ char st_buffer_full()
 // get put onto the st_buffer (the backlash compensation step
 // and the actual movement). So this check for space in the
 // buffer checks to see if there are two spaces left.
+
+// There is also a race condition that may arise while drawing
+// arcs: when status is checked, the buffer shows one element
+// free and reports it, but by the time the command arrives
+// to add another block, the arc code has filled the buffer
+// and there is an error. So the buffer is reported full
+// if arc adding is still going on.
+
   int nb1;
   int nb2;
-  
   nb2 = (block_buffer_head + 2) % BLOCK_BUFFER_SIZE;	
   nb1 = (block_buffer_head + 1) % BLOCK_BUFFER_SIZE;	
 
-  return ((nb1 == block_buffer_tail)||(nb2 == block_buffer_tail));
+  return ((nb1 == block_buffer_tail)||
+          (nb2 == block_buffer_tail));
 }
 
 int st_buffer_delay(uint32_t milliseconds, int16_t line_number) {

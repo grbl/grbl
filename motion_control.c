@@ -179,7 +179,7 @@ void mc_arc(double theta, double angular_travel, double radius,
 {
   double millimeters_of_travel = hypot(angular_travel*radius, labs(linear_travel));
   if (millimeters_of_travel == 0.0) { 
-      printPgmString(PSTR("\r\nArc length is 0, returning...\r\n")); 
+      //printPgmString(PSTR("\r\nArc length is 0, returning...\r\n"));
       return; 
   }
     
