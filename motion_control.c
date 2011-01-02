@@ -59,14 +59,15 @@ void mc_line(double x, double y, double z, float feed_rate, int invert_feed_rate
     steps[axis] = target[axis]-position[axis];
   }
   
+	// Ask old Phytagoras to estimate how many mm our next move is going to take us
+	double millimeters_of_travel = sqrt(
+	  square(steps[X_AXIS]/settings.steps_per_mm[0]) + 
+	  square(steps[Y_AXIS]/settings.steps_per_mm[1]) + 
+	  square(steps[Z_AXIS]/settings.steps_per_mm[2]));
 	if (invert_feed_rate) {
-    st_buffer_line(steps[X_AXIS], steps[Y_AXIS], steps[Z_AXIS], lround(ONE_MINUTE_OF_MICROSECONDS/feed_rate));
+    st_buffer_line(steps[X_AXIS], steps[Y_AXIS], steps[Z_AXIS], lround(ONE_MINUTE_OF_MICROSECONDS/feed_rate), 
+      millimeters_of_travel);
 	} else {
-  	// Ask old Phytagoras to estimate how many mm our next move is going to take us
-  	double millimeters_of_travel = sqrt(
-  	  square(steps[X_AXIS]/settings.steps_per_mm[0]) + 
-  	  square(steps[Y_AXIS]/settings.steps_per_mm[1]) + 
-  	  square(steps[Z_AXIS]/settings.steps_per_mm[2]));
     st_buffer_line(steps[X_AXIS], steps[Y_AXIS], steps[Z_AXIS],
       lround((millimeters_of_travel/feed_rate)*1000000), millimeters_of_travel);
 	}
