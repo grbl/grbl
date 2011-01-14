@@ -27,20 +27,20 @@
 #endif
 
 struct AccellerationProfile {
-  float initial_scaler;
-  float final_scaler;
-  float accelleration_delta;
-  float decelleration_delta;
+  double initial_scaler;
+  double final_scaler;
+  double accelleration_delta;
+  double decelleration_delta;
   uint32_t accellerate_ticks;
   uint32_t plateau_ticks;    
 };
 
 struct AccellerationProfileSegment {
-  float v_entry[3];
-  float v_ideal[3];
-  float v_exit[3];
-  float distance;
-  float f_entry, f_exit;
+  double v_entry[3];
+  double v_ideal[3];
+  double v_exit[3];
+  double distance;
+  double f_entry, f_exit;
 };
 
 struct AccellerationProfileBuilder {

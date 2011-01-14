@@ -116,7 +116,7 @@ void gc_init() {
   gc.absolute_mode = TRUE;
 }
 
-inline float to_millimeters(double value) {
+inline double to_millimeters(double value) {
   return(gc.inches_mode ? (value * INCHES_PER_MM) : value);
 }
 
@@ -138,7 +138,7 @@ double theta(double x, double y)
 }
 
 // Executes one line of 0-terminated G-Code. The line is assumed to contain only uppercase
-// characters and signed floats (no whitespace).
+// characters and signed floating point values (no whitespace).
 uint8_t gc_execute_line(char *line) {
   int counter = 0;  
   char letter;

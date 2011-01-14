@@ -45,7 +45,7 @@ void mc_dwell(uint32_t milliseconds)
 // Execute linear motion in absolute millimeter coordinates. Feed rate given in millimeters/second
 // unless invert_feed_rate is true. Then the feed_rate means that the motion should be completed in
 // 1/feed_rate minutes.
-void mc_line(double x, double y, double z, float feed_rate, int invert_feed_rate)
+void mc_line(double x, double y, double z, double feed_rate, int invert_feed_rate)
 {
   uint8_t axis; // loop variable
   int32_t target[3]; // The target position in absolute steps
@@ -108,8 +108,7 @@ void mc_arc(double theta, double angular_travel, double radius, double linear_tr
     theta += theta_per_segment;
     target[axis_1] = center_x+sin(theta)*radius;
     target[axis_2] = center_y+cos(theta)*radius;
-    mc_line(target[X_AXIS], target[Y_AXIS], target[Z_AXIS], feed_rate, invert_feed_rate,
-      settings.mm_per_arc_segment);
+    mc_line(target[X_AXIS], target[Y_AXIS], target[Z_AXIS], feed_rate, invert_feed_rate);
   }
 }
 

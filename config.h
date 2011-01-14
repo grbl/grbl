@@ -71,11 +71,7 @@ struct Settings {
   double default_seek_rate;
   uint8_t invert_mask;
   double mm_per_arc_segment;
-<<<<<<< Updated upstream
-=======
-  double max_jerk;
->>>>>>> Stashed changes
-  double accelleration;
+  double acceleration;
 };
 struct Settings settings;
 
@@ -100,8 +96,7 @@ void store_setting(int parameter, double value);
 
 #define RAPID_FEEDRATE 480.0 // in millimeters per minute
 #define DEFAULT_FEEDRATE 480.0
-#define DEFAULT_MAX_JERK 10.0
-#define DEFAULT_ACCELLERATION 0.1
+#define DEFAULT_ACCELERATION (DEFAULT_FEEDRATE/100.0)
 
 // Use this line for default operation (step-pulses high)
 #define STEPPING_INVERT_MASK 0

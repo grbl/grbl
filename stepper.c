@@ -28,7 +28,6 @@
 #include <stdlib.h>
 #include <util/delay.h>
 #include "nuts_bolts.h"
-#include "acceleration.h"
 #include <avr/interrupt.h>
 
 #include "wiring_serial.h"
@@ -43,16 +42,11 @@
 
 void set_step_events_per_minute(uint32_t steps_per_minute);
 
-void update_acceleration_plan() {
-  // Store the current 
-  int initial_buffer_tail = block_buffer_tail;
-  
-}
-
 #define ENABLE_STEPPER_DRIVER_INTERRUPT()  TIMSK1 |= (1<<OCIE1A)
 #define DISABLE_STEPPER_DRIVER_INTERRUPT() TIMSK1 &= ~(1<<OCIE1A)
 
 #define ACCELERATION_TICKS_PER_SECOND 10
+#define MINIMAL_STEP_RATE (ACCELERATION_TICKS_PER_SECOND*5)
 #define CYCLES_PER_ACCELERATION_TICK ((TICKS_PER_MICROSECOND*1000000)/ACCELERATION_TICKS_PER_SECOND)
 
 // This struct is used when buffering the setup for each linear movement
@@ -64,7 +58,7 @@ struct Block {
   int32_t  step_event_count;          // The number of step events required to complete this block
   uint32_t nominal_rate;              // The nominal step rate for this block in step_events/minute
   // Values used for acceleration management
-  float  speed_x, speed_y, speed_z;   // Nominal mm/minute for each axis
+  double  speed_x, speed_y, speed_z;   // Nominal mm/minute for each axis
   uint32_t initial_rate;              // The jerk-adjusted step rate at start of block
   int16_t rate_delta;                 // The steps/minute to add or subtract when changing speed (must be positive)
   uint16_t accelerate_ticks;          // The number of acceleration-ticks to accelerate 
@@ -99,17 +93,57 @@ uint32_t trapezoid_tick_cycle_counter;
 //                           time ----->
 // 
 //  The trapezoid is the shape the speed curve over time. It starts at block->initial_rate, accelerates for 
-//  block->accelerate_ticks then stays up for block->plateau_ticks and decelerates for the rest of the block
-//  until the trapezoid generator is reset for the next block. The slope of acceleration is always 
-//  +/- block->rate_delta. Any stage may be skipped by setting the duration to 0 ticks. 
+//  block->accelerate_ticks by block->rate_delta each tick, then stays up for block->plateau_ticks and 
+//  decelerates for the rest of the block until the trapezoid generator is reset for the next block. 
+//  The slope of acceleration is always +/- block->rate_delta. Any stage may be skipped by setting the 
+//  duration to 0 ticks. 
      
 #define TRAPEZOID_STAGE_ACCELERATING 0
 #define TRAPEZOID_STAGE_PLATEAU 1
 #define TRAPEZOID_STAGE_DECELERATING 2
-uint8_t trapezoid_stage = TRAPEZOID_STAGE_IDLE;
+uint8_t trapezoid_stage;
 uint16_t trapezoid_stage_ticks;
 uint32_t trapezoid_rate;
 int16_t trapezoid_delta;
+
+inline uint32_t estimate_acceleration_distance(int32_t current_rate, int32_t target_rate, int32_t acceleration) {
+  return((target_rate*target_rate-current_rate*current_rate)/(2*acceleration));
+}
+
+inline uint32_t estimate_acceleration_ticks(int32_t start_rate, int32_t acceleration_per_tick, int32_t step_events) {
+  return(
+    round(
+      (sqrt(2*acceleration_per_tick*step_events+(start_rate*start_rate))-start_rate)/
+      acceleration_per_tick));
+}
+
+// Calculates trapezoid parameters so that the entry- and exit-speed is compensated by the provided factors.
+// In practice both factors must be in the range 0 ... 1.0
+void calculate_trapezoid_for_block(struct Block *block, double entry_factor, double exit_factor) {
+  block->initial_rate = max(round(block->nominal_rate*entry_factor),MINIMAL_STEP_RATE);
+  int32_t final_rate = max(round(block->nominal_rate*entry_factor),MINIMAL_STEP_RATE);
+  int32_t acceleration_per_second = block->rate_delta*ACCELERATION_TICKS_PER_SECOND;
+  int32_t acceleration_steps = 
+    estimate_acceleration_distance(block->initial_rate, block->nominal_rate, acceleration_per_second);
+  int32_t decelleration_steps = 
+    estimate_acceleration_distance(block->nominal_rate, final_rate, -acceleration_per_second);
+  // Check if the acceleration and decelleration periods overlap. In that case nominal_speed will
+  // never be reached but that's okay. Just truncate both periods proportionally so that they
+  // fit within the allotted step events.
+  int32_t plateau_steps = block->step_event_count-acceleration_steps-decelleration_steps;
+  if (plateau_steps < 0) {
+    int32_t half_overlap_region = abs(plateau_steps)/2;
+    plateau_steps = 0;
+    acceleration_steps = max(acceleration_steps-half_overlap_region,0);
+    decelleration_steps = max(decelleration_steps-half_overlap_region,0);
+  }
+  block->accelerate_ticks = estimate_acceleration_ticks(block->initial_rate, block->rate_delta, acceleration_steps);
+  if (plateau_steps) {
+    block->plateau_ticks = round(1.0*plateau_steps/(block->nominal_rate*ACCELERATION_TICKS_PER_SECOND));
+  } else {
+    block->plateau_ticks = 0;
+  }
+}
 
 // Call this when a new block is started
 inline void reset_trapezoid_generator() {      
@@ -124,21 +158,22 @@ inline void reset_trapezoid_generator() {
 // interrupt. It can be assumed that the trapezoid-generator-parameters and the
 // current_block stays untouched by outside handlers for the duration of this function call.
 inline void trapezoid_generator_tick() {     
-  // Is there a block currently in execution?
-  if(!current_block) {return;}
-
   if (trapezoid_stage_ticks) {
-    trapezoid_rate += trapezoid_delta;
     trapezoid_stage_ticks--;
-    set_step_events_per_minute(trapezoid_rate);
+    if (trapezoid_delta) {
+      trapezoid_rate += trapezoid_delta;
+      set_step_events_per_minute(trapezoid_rate);
+    }
   } else {
-    // Stage complete, move on 
+    // Is there a block currently in execution?
+    if(!current_block) {return;}    
+    // Trapezoid stage complete, move on
     if(trapezoid_stage == TRAPEZOID_STAGE_ACCELERATING) {
       // Progress to plateau stage
       trapezoid_delta = 0;
       trapezoid_stage_ticks = current_block->plateau_ticks;
-      trapezoid_stage = TRAPEZOID_STAGE_PLATEAU
-    } elsif (trapezoid_stage == TRAPEZOID_STAGE_PLATEAU) {
+      trapezoid_stage = TRAPEZOID_STAGE_PLATEAU;
+    } else if (trapezoid_stage == TRAPEZOID_STAGE_PLATEAU) {
       // Progress to deceleration stage
       trapezoid_delta = -current_block->rate_delta;
       trapezoid_stage_ticks = 0xffff; // "forever" until the block is complete
@@ -146,8 +181,6 @@ inline void trapezoid_generator_tick() {
     }
   }
 }
-
-void config_step_timer(uint32_t microseconds);
 
 // Add a new linear movement to the buffer. steps_x, _y and _z is the signed, relative motion in 
 // steps. Microseconds specify how many microseconds the move should take to perform. To aid acceleration
@@ -165,15 +198,27 @@ void st_buffer_line(int32_t steps_x, int32_t steps_y, int32_t steps_z, uint32_t 
   block->steps_y = labs(steps_y);
   block->steps_z = labs(steps_z);   
   block->step_event_count = max(block->steps_x, max(block->steps_y, block->steps_z));
-//  block->travel_per_step = (1.0*millimeters)/block->step_event_count;
   // Bail if this is a zero-length block
   if (block->step_event_count == 0) { return; };
-  // Calculate speed in steps/second for each axis
-  float multiplier = 60.0*1000000.0/microseconds;
+  // Calculate speed in mm/minute for each axis
+  double multiplier = 60.0*1000000.0/microseconds;
   block->speed_x = block->steps_x*multiplier/settings.steps_per_mm[0];
   block->speed_y = block->steps_y*multiplier/settings.steps_per_mm[1];
   block->speed_z = block->steps_z*multiplier/settings.steps_per_mm[2];
-  block->nominal_rate = round(block->step_event_count*multiplier);
+  block->nominal_rate = max(round(block->step_event_count*multiplier), MINIMAL_STEP_RATE);
+  
+  // Compute the acceleration rate for the trapezoid generator. Depending on the slope of the line
+  // average travel per step event changes. For a line along one axis the travel per step event
+  // is equal to the travel/step in the particular axis. For a 45 degree line the steppers of both
+  // axes might step for every step event. Travel per step event is then sqrt(travel_x^2+travel_y^2).
+  // To generate trapezoids with contant acceleration between blocks the rate_delta must be computed 
+  // specifically for each line to compensate for this phenomenon:
+  double travel_per_step = (1.0*millimeters)/block->step_event_count;
+  block->rate_delta = round(
+    (settings.acceleration/(60.0*ACCELERATION_TICKS_PER_SECOND))/ // acceleration mm/min per acceleration_tick
+    travel_per_step);                                           // convert to: acceleration steps/min/acceleration_tick    
+  calculate_trapezoid_for_block(block,0,0);                     // compute a default trapezoid
+  
   // Compute direction bits for this block
   block->direction_bits = 0;
   if (steps_x < 0) { block->direction_bits |= (1<<X_DIRECTION_BIT); }
@@ -301,9 +346,9 @@ void st_init()
   TCCR2A = 0;         // Normal operation
   TCCR2B = (1<<CS21); // Full speed, 1/8 prescaler
   TIMSK2 |= (1<<TOIE2);      
+
+  DISABLE_STEPPER_DRIVER_INTERRUPT();
   
-  // Just set the step_timer to something serviceably lazy
-  config_step_timer(20000);
   // set enable pin     
   STEPPERS_ENABLE_PORT |= 1<<STEPPERS_ENABLE_BIT;
   
