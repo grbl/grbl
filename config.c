@@ -26,6 +26,8 @@
 #include "wiring_serial.h"
 #include <avr/pgmspace.h>
 
+struct Settings settings;
+
 void reset_settings() {
   settings.steps_per_mm[0] = X_STEPS_PER_MM;
   settings.steps_per_mm[1] = Y_STEPS_PER_MM;
@@ -36,6 +38,7 @@ void reset_settings() {
   settings.acceleration = DEFAULT_ACCELERATION;
   settings.mm_per_arc_segment = MM_PER_ARC_SEGMENT;
   settings.invert_mask = STEPPING_INVERT_MASK;
+  settings.max_jerk = DEFAULT_MAX_JERK;
 }
 
 void dump_settings() {
@@ -50,7 +53,8 @@ void dump_settings() {
   printPgmString(PSTR(" (mm/arc segment)\r\n$8 = ")); printInteger(settings.invert_mask); 
   printPgmString(PSTR(" (step port invert mask. binary = ")); printIntegerInBase(settings.invert_mask, 2);  
   printPgmString(PSTR(")\r\n$9 = ")); printFloat(settings.acceleration);
-  printPgmString(PSTR(" (acceleration in mm/min^2)"));
+  printPgmString(PSTR(" (acceleration in mm/min^2)\r\n$10 = ")); printFloat(settings.max_jerk);
+  printPgmString(PSTR(" (max instant cornering speed change in delta mm/min)"));
   printPgmString(PSTR("\r\n'$x=value' to set parameter or just '$' to dump current settings\r\n"));
 }
 

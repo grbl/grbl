@@ -72,8 +72,9 @@ struct Settings {
   uint8_t invert_mask;
   double mm_per_arc_segment;
   double acceleration;
+  double max_jerk;
 };
-struct Settings settings;
+extern struct Settings settings;
 
 // Initialize the configuration subsystem (load settings from EEPROM)
 void config_init();
@@ -97,6 +98,7 @@ void store_setting(int parameter, double value);
 #define RAPID_FEEDRATE 480.0 // in millimeters per minute
 #define DEFAULT_FEEDRATE 480.0
 #define DEFAULT_ACCELERATION (DEFAULT_FEEDRATE/100.0)
+#define DEFAULT_MAX_JERK 50.0
 
 // Use this line for default operation (step-pulses high)
 #define STEPPING_INVERT_MASK 0

@@ -1,5 +1,5 @@
 /*
-  motion_plan.c - buffers movement commands and manages the acceleration profile plan
+  stepper_plan.c - buffers movement commands and manages the acceleration profile plan
   Part of Grbl
 
   Copyright (c) 2009-2011 Simen Svale Skogsrud
@@ -22,7 +22,7 @@
 #include <math.h>       
 #include <stdlib.h>
 
-#include "motion_plan.h"
+#include "stepper_plan.h"
 #include "nuts_bolts.h"
 #include "stepper.h"
 #include "config.h"
@@ -42,27 +42,6 @@ inline uint32_t estimate_acceleration_ticks(int32_t start_rate, int32_t accelera
       (sqrt(2*acceleration_per_tick*step_events+(start_rate*start_rate))-start_rate)/
       acceleration_per_tick));
 }
-
-void mp_enable_acceleration_management() {
-  if (!acceleration_management) {
-    st_synchronize();
-    acceleration_management = TRUE;
-  }
-}
-
-void mp_disable_acceleration_management() {
-  if(acceleration_management) {
-    st_synchronize();
-    acceleration_management = FALSE;
-  }
-}
-
-void mp_init() {
-  block_buffer_head = 0;
-  block_buffer_tail = 0;
-  mp_enable_acceleration_management();
-}
-
 
 // Calculates trapezoid parameters so that the entry- and exit-speed is compensated by the provided factors.
 // In practice both factors must be in the range 0 ... 1.0
@@ -92,10 +71,92 @@ void calculate_trapezoid_for_block(struct Block *block, double entry_factor, dou
   }
 }
 
+inline double estimate_max_speed(double max_acceleration, double target_velocity, double distance) {
+  return(sqrt(-2*max_acceleration*distance+target_velocity*target_velocity));
+}
+
+inline double estimate_jerk(struct Block *before, struct Block *after) {
+  return(max(fabs(before->speed_x-after->speed_x),
+    max(fabs(before->speed_y-after->speed_y), 
+    fabs(before->speed_z-after->speed_z))));
+}
+
+// Builds plan for a single block provided. Returns TRUE if changes were made to this block
+// that requires any earlier blocks to be recalculated too.
+int8_t build_plan_for_single_block(struct Block *previous, struct Block *current, struct Block *next) {
+  if(!current){return(TRUE);}
+  double exit_factor;
+  double entry_factor = 1.0;
+  if (next) {
+    exit_factor = next->entry_factor;
+  } else {
+    exit_factor = 0.0;
+  }
+  
+  if (previous) {
+    double jerk = estimate_jerk(previous, current);
+    if (jerk > settings.max_jerk) {
+      entry_factor = (settings.max_jerk/jerk);
+    } 
+    if (exit_factor<entry_factor) {
+      double max_entry_speed = estimate_max_speed(-settings.acceleration,current->nominal_speed*exit_factor, 
+        current->millimeters);
+      double max_entry_factor = max_entry_speed/current->nominal_speed;
+      if (max_entry_factor < entry_factor) {
+        entry_factor = max_entry_factor;
+      }
+    }    
+  } else {
+    entry_factor = 0.0;
+  }
+  // Check if we made a difference for this block. If we didn't, the planner can call it quits
+  // here. No need to process any earlier blocks.
+  int8_t keep_going = (entry_factor > current->entry_factor ? TRUE : FALSE);  
+  // Store result and recalculate trapezoid parameters
+  current->entry_factor = entry_factor;
+  calculate_trapezoid_for_block(current, entry_factor, exit_factor);
+  return(keep_going);
+}
+
+void recalculate_plan() {
+  int8_t block_index = block_buffer_head;
+  struct Block *block[3] = {NULL, NULL, NULL};
+  while(block_index != block_buffer_tail) {
+    block[2]= block[1];
+    block[1]= block[0];
+    block[0] = &block_buffer[block_index];
+    if (!build_plan_for_single_block(block[0], block[1], block[2])) {return;}
+    block_index = (block_index-1) % BLOCK_BUFFER_SIZE;
+  }
+  if (block[1]) {
+    calculate_trapezoid_for_block(block[0], block[0]->entry_factor, block[1]->entry_factor);
+  }
+}
+
+void plan_enable_acceleration_management() {
+  if (!acceleration_management) {
+    st_synchronize();
+    acceleration_management = TRUE;
+  }
+}
+
+void plan_disable_acceleration_management() {
+  if(acceleration_management) {
+    st_synchronize();
+    acceleration_management = FALSE;
+  }
+}
+
+void plan_init() {
+  block_buffer_head = 0;
+  block_buffer_tail = 0;
+  plan_enable_acceleration_management();
+}
+
 // Add a new linear movement to the buffer. steps_x, _y and _z is the signed, relative motion in 
 // steps. Microseconds specify how many microseconds the move should take to perform. To aid acceleration
 // calculation the caller must also provide the physical length of the line in millimeters.
-void mp_buffer_line(int32_t steps_x, int32_t steps_y, int32_t steps_z, uint32_t microseconds, double millimeters) {
+void plan_buffer_line(int32_t steps_x, int32_t steps_y, int32_t steps_z, uint32_t microseconds, double millimeters) {
   // Calculate the buffer head after we push this byte
 	int next_buffer_head = (block_buffer_head + 1) % BLOCK_BUFFER_SIZE;	
 	// If the buffer is full: good! That means we are well ahead of the robot. 
@@ -115,7 +176,8 @@ void mp_buffer_line(int32_t steps_x, int32_t steps_y, int32_t steps_z, uint32_t 
   block->speed_x = block->steps_x*multiplier/settings.steps_per_mm[0];
   block->speed_y = block->steps_y*multiplier/settings.steps_per_mm[1];
   block->speed_z = block->steps_z*multiplier/settings.steps_per_mm[2];
-  block->nominal_rate = round(block->step_event_count*multiplier);
+  block->nominal_speed = millimeters*multiplier;
+  block->nominal_rate = round(block->step_event_count*multiplier);  
   
   // Compute the acceleration rate for the trapezoid generator. Depending on the slope of the line
   // average travel per step event changes. For a line along one axis the travel per step event

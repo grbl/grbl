@@ -20,6 +20,7 @@ Prioritized to-do:
 * Documentation and web-site
 * Support for a alphanumeric LCD readout, a joystick and a few buttons for program control
 * Support "headless" fabrication by buffering all code to SD-card or similar
+* Backlash compensation
 
 Limitations by design:
 * Limited GCode-support. Focus on the kind of GCode produced by CAM tools. Leave human GCoders frustrated.

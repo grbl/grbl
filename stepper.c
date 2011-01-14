@@ -29,7 +29,7 @@
 #include <util/delay.h>
 #include "nuts_bolts.h"
 #include <avr/interrupt.h>
-#include "motion_plan.h"
+#include "stepper_plan.h"
 #include "wiring_serial.h"
 
 void set_step_events_per_minute(uint32_t steps_per_minute);
@@ -120,7 +120,7 @@ inline void trapezoid_generator_tick() {
 // steps. Microseconds specify how many microseconds the move should take to perform. To aid acceleration
 // calculation the caller must also provide the physical length of the line in millimeters.
 void st_buffer_line(int32_t steps_x, int32_t steps_y, int32_t steps_z, uint32_t microseconds, double millimeters) {
-  mp_buffer_line(steps_x, steps_y, steps_z, microseconds, millimeters);
+  plan_buffer_line(steps_x, steps_y, steps_z, microseconds, millimeters);
   // Ensure that block processing is running by enabling The Stepper Driver Interrupt
   ENABLE_STEPPER_DRIVER_INTERRUPT();
 }

@@ -21,7 +21,7 @@
 #include <avr/io.h>
 #include <avr/sleep.h>
 #include <util/delay.h>
-#include "motion_plan.h"
+#include "stepper_plan.h"
 #include "stepper.h"
 #include "spindle_control.h"
 #include "motion_control.h"
@@ -36,7 +36,7 @@ int main(void)
   beginSerial(BAUD_RATE);
   printString("A");
   config_init();
-  mp_init(); // initialize the motion plan subsystem
+  plan_init(); // initialize the stepper plan subsystem
   st_init(); // initialize the stepper subsystem
   mc_init(); // initialize motion control subsystem
   spindle_init(); // initialize spindle controller
