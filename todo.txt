@@ -1,8 +1,0 @@
-Todo
-* Refactor stepper.c extracting motion blocks so that they can be processed by other code
-* non blocking dwells
-* Path Control Modes
-* Implement limit switch support in stepper.c (use port-triggered interrupts?)
-* Implement homing cycle in stepper.c
-* Spindle speed support
-
