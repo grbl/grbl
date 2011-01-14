@@ -1,8 +1,8 @@
 /*
-  stepper.c - stepper motor interface
+  stepper.c - stepper motor driver: executes motion plans using stepper motors
   Part of Grbl
 
-  Copyright (c) 2009 Simen Svale Skogsrud
+  Copyright (c) 2009-2011 Simen Svale Skogsrud
 
   Grbl is free software: you can redistribute it and/or modify
   it under the terms of the GNU General Public License as published by
@@ -29,49 +29,20 @@
 #include <util/delay.h>
 #include "nuts_bolts.h"
 #include <avr/interrupt.h>
-
+#include "motion_plan.h"
 #include "wiring_serial.h"
-
-// Pick a suitable block-buffer size
-#ifdef __AVR_ATmega328P__
-#define BLOCK_BUFFER_SIZE 40   // Atmega 328 has one full kilobyte of extra RAM!
-#else
-#define BLOCK_BUFFER_SIZE 10
-#endif
-
 
 void set_step_events_per_minute(uint32_t steps_per_minute);
 
 #define ENABLE_STEPPER_DRIVER_INTERRUPT()  TIMSK1 |= (1<<OCIE1A)
 #define DISABLE_STEPPER_DRIVER_INTERRUPT() TIMSK1 &= ~(1<<OCIE1A)
 
-#define ACCELERATION_TICKS_PER_SECOND 10
-#define MINIMAL_STEP_RATE (ACCELERATION_TICKS_PER_SECOND*5)
 #define CYCLES_PER_ACCELERATION_TICK ((TICKS_PER_MICROSECOND*1000000)/ACCELERATION_TICKS_PER_SECOND)
 
-// This struct is used when buffering the setup for each linear movement
-// "nominal" values are as specified in the source g-code and may never
-// actually be reached if acceleration management is active.
-struct Block {
-  uint32_t steps_x, steps_y, steps_z; // Step count along each axis
-  uint8_t  direction_bits;            // The direction bit set for this block (refers to *_DIRECTION_BIT in config.h)
-  int32_t  step_event_count;          // The number of step events required to complete this block
-  uint32_t nominal_rate;              // The nominal step rate for this block in step_events/minute
-  // Values used for acceleration management
-  double  speed_x, speed_y, speed_z;   // Nominal mm/minute for each axis
-  uint32_t initial_rate;              // The jerk-adjusted step rate at start of block
-  int16_t rate_delta;                 // The steps/minute to add or subtract when changing speed (must be positive)
-  uint16_t accelerate_ticks;          // The number of acceleration-ticks to accelerate 
-  uint16_t plateau_ticks;             // The number of acceleration-ticks to maintain top speed
-};
-
-struct Block block_buffer[BLOCK_BUFFER_SIZE]; // A ring buffer for motion instructions
-volatile int block_buffer_head = 0;           // Index of the next block to be pushed
-volatile int block_buffer_tail = 0;           // Index of the block to process now
+struct Block *current_block;    // A convenience pointer to the block currently being traced
 
 // Variables used by The Stepper Driver Interrupt
 uint8_t out_bits;               // The next stepping-bits to be output
-struct Block *current_block;    // A pointer to the block currently being traced
 int32_t counter_x, 
         counter_y, 
         counter_z;              // counter variables for the bresenham line tracer
@@ -106,46 +77,9 @@ uint16_t trapezoid_stage_ticks;
 uint32_t trapezoid_rate;
 int16_t trapezoid_delta;
 
-inline uint32_t estimate_acceleration_distance(int32_t current_rate, int32_t target_rate, int32_t acceleration) {
-  return((target_rate*target_rate-current_rate*current_rate)/(2*acceleration));
-}
 
-inline uint32_t estimate_acceleration_ticks(int32_t start_rate, int32_t acceleration_per_tick, int32_t step_events) {
-  return(
-    round(
-      (sqrt(2*acceleration_per_tick*step_events+(start_rate*start_rate))-start_rate)/
-      acceleration_per_tick));
-}
-
-// Calculates trapezoid parameters so that the entry- and exit-speed is compensated by the provided factors.
-// In practice both factors must be in the range 0 ... 1.0
-void calculate_trapezoid_for_block(struct Block *block, double entry_factor, double exit_factor) {
-  block->initial_rate = max(round(block->nominal_rate*entry_factor),MINIMAL_STEP_RATE);
-  int32_t final_rate = max(round(block->nominal_rate*entry_factor),MINIMAL_STEP_RATE);
-  int32_t acceleration_per_second = block->rate_delta*ACCELERATION_TICKS_PER_SECOND;
-  int32_t acceleration_steps = 
-    estimate_acceleration_distance(block->initial_rate, block->nominal_rate, acceleration_per_second);
-  int32_t decelleration_steps = 
-    estimate_acceleration_distance(block->nominal_rate, final_rate, -acceleration_per_second);
-  // Check if the acceleration and decelleration periods overlap. In that case nominal_speed will
-  // never be reached but that's okay. Just truncate both periods proportionally so that they
-  // fit within the allotted step events.
-  int32_t plateau_steps = block->step_event_count-acceleration_steps-decelleration_steps;
-  if (plateau_steps < 0) {
-    int32_t half_overlap_region = abs(plateau_steps)/2;
-    plateau_steps = 0;
-    acceleration_steps = max(acceleration_steps-half_overlap_region,0);
-    decelleration_steps = max(decelleration_steps-half_overlap_region,0);
-  }
-  block->accelerate_ticks = estimate_acceleration_ticks(block->initial_rate, block->rate_delta, acceleration_steps);
-  if (plateau_steps) {
-    block->plateau_ticks = round(1.0*plateau_steps/(block->nominal_rate*ACCELERATION_TICKS_PER_SECOND));
-  } else {
-    block->plateau_ticks = 0;
-  }
-}
-
-// Call this when a new block is started
+// Initializes the trapezoid generator from the current block. Called whenever a new 
+// block begins.
 inline void reset_trapezoid_generator() {      
   trapezoid_stage = TRAPEZOID_STAGE_ACCELERATING;
   trapezoid_stage_ticks = current_block->accelerate_ticks;

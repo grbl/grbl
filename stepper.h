@@ -1,8 +1,8 @@
 /*
-  stepper.h - stepper motor interface
+  stepper.h - stepper motor driver: executes motion plans using stepper motors
   Part of Grbl
 
-  Copyright (c) 2009 Simen Svale Skogsrud
+  Copyright (c) 2009-2011 Simen Svale Skogsrud
 
   Grbl is free software: you can redistribute it and/or modify
   it under the terms of the GNU General Public License as published by
@@ -23,6 +23,9 @@
 
 #include <avr/io.h>
 #include <avr/sleep.h>
+
+#define ACCELERATION_TICKS_PER_SECOND 10
+#define MINIMAL_STEP_RATE (ACCELERATION_TICKS_PER_SECOND*5)
 
 // Initialize and start the stepper motor subsystem
 void st_init();

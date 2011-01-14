@@ -2,7 +2,7 @@
   config.h - eeprom and compile time configuration handling 
   Part of Grbl
 
-  Copyright (c) 2009 Simen Svale Skogsrud
+  Copyright (c) 2009-2011 Simen Svale Skogsrud
 
   Grbl is free software: you can redistribute it and/or modify
   it under the terms of the GNU General Public License as published by
@@ -27,8 +27,8 @@
 
 // Settings that can only be set at compile-time:
 
-// #define BAUD_RATE 9600
-#define BAUD_RATE 115200
+#define BAUD_RATE 9600
+//#define BAUD_RATE 115200
 
 #define STEPPERS_ENABLE_DDR     DDRD
 #define STEPPERS_ENABLE_PORT    PORTD

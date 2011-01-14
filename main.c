@@ -2,7 +2,7 @@
   main.c - An embedded CNC Controller with rs274/ngc (g-code) support
   Part of Grbl
 
-  Copyright (c) 2009 Simen Svale Skogsrud
+  Copyright (c) 2009-2011 Simen Svale Skogsrud
 
   Grbl is free software: you can redistribute it and/or modify
   it under the terms of the GNU General Public License as published by
@@ -33,6 +33,7 @@
 int main(void)
 {
   beginSerial(BAUD_RATE);
+  printString("A");
   config_init();
   st_init(); // initialize the stepper subsystem
   mc_init(); // initialize motion control subsystem
