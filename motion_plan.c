@@ -20,14 +20,17 @@
 
 #include <inttypes.h>
 #include <math.h>       
+#include <stdlib.h>
 
 #include "motion_plan.h"
 #include "nuts_bolts.h"
 #include "stepper.h"
+#include "config.h"
 
 struct Block block_buffer[BLOCK_BUFFER_SIZE]; // A ring buffer for motion instructions
-volatile int block_buffer_head = 0;           // Index of the next block to be pushed
-volatile int block_buffer_tail = 0;           // Index of the block to process now
+volatile int block_buffer_head;           // Index of the next block to be pushed
+volatile int block_buffer_tail;           // Index of the block to process now
+uint8_t acceleration_management;              // Acceleration management active?
 
 inline uint32_t estimate_acceleration_distance(int32_t current_rate, int32_t target_rate, int32_t acceleration) {
   return((target_rate*target_rate-current_rate*current_rate)/(2*acceleration));
@@ -39,6 +42,27 @@ inline uint32_t estimate_acceleration_ticks(int32_t start_rate, int32_t accelera
       (sqrt(2*acceleration_per_tick*step_events+(start_rate*start_rate))-start_rate)/
       acceleration_per_tick));
 }
+
+void mp_enable_acceleration_management() {
+  if (!acceleration_management) {
+    st_synchronize();
+    acceleration_management = TRUE;
+  }
+}
+
+void mp_disable_acceleration_management() {
+  if(acceleration_management) {
+    st_synchronize();
+    acceleration_management = FALSE;
+  }
+}
+
+void mp_init() {
+  block_buffer_head = 0;
+  block_buffer_tail = 0;
+  mp_enable_acceleration_management();
+}
+
 
 // Calculates trapezoid parameters so that the entry- and exit-speed is compensated by the provided factors.
 // In practice both factors must be in the range 0 ... 1.0
@@ -103,7 +127,13 @@ void mp_buffer_line(int32_t steps_x, int32_t steps_y, int32_t steps_z, uint32_t 
   block->rate_delta = round(
     (settings.acceleration/(60.0*ACCELERATION_TICKS_PER_SECOND))/ // acceleration mm/min per acceleration_tick
     travel_per_step);                                           // convert to: acceleration steps/min/acceleration_tick    
-  calculate_trapezoid_for_block(block,0,0);                     // compute a default trapezoid
+  if (acceleration_management) {
+    calculate_trapezoid_for_block(block,0,0);                     // compute a conservative acceleration trapezoid for now
+  } else {
+    block->accelerate_ticks = 0;
+    block->plateau_ticks = 0;
+    block->rate_delta = 0;
+  }
   
   // Compute direction bits for this block
   block->direction_bits = 0;
@@ -112,7 +142,5 @@ void mp_buffer_line(int32_t steps_x, int32_t steps_y, int32_t steps_z, uint32_t 
   if (steps_z < 0) { block->direction_bits |= (1<<Z_DIRECTION_BIT); }
   // Move buffer head
   block_buffer_head = next_buffer_head;
-  // Ensure that block processing is running by enabling The Stepper Driver Interrupt
-  ENABLE_STEPPER_DRIVER_INTERRUPT();
 }
 

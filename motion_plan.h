@@ -50,11 +50,20 @@ extern struct Block block_buffer[BLOCK_BUFFER_SIZE]; // A ring buffer for motion
 extern volatile int block_buffer_head;           // Index of the next block to be pushed
 extern volatile int block_buffer_tail;           // Index of the block to process now
 
+// Initialize the motion plan subsystem      
+void mp_init();
+
 // Add a new linear movement to the buffer. steps_x, _y and _z is the signed, relative motion in 
 // steps. Microseconds specify how many microseconds the move should take to perform. To aid acceleration
 // calculation the caller must also provide the physical length of the line in millimeters.
 // Do not call directly unless you are writing a motor driver. In current iteration this is called by 
 // st_buffer_line which also wakes up the stepper subsystem.
 void mp_buffer_line(int32_t steps_x, int32_t steps_y, int32_t steps_z, uint32_t microseconds, double millimeters);
+
+// Enables acceleration-management for upcoming blocks
+void mp_enable_acceleration_management();
+// Disables acceleration-management for upcoming blocks
+void mp_disable_acceleration_management();
+
 
 #endif
