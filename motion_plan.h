@@ -50,8 +50,11 @@ extern struct Block block_buffer[BLOCK_BUFFER_SIZE]; // A ring buffer for motion
 extern volatile int block_buffer_head;           // Index of the next block to be pushed
 extern volatile int block_buffer_tail;           // Index of the block to process now
 
-// Calculates trapezoid parameters so that the entry- and exit-speed is compensated by the provided factors.
-// In practice both factors must be in the range 0 ... 1.0
-void calculate_trapezoid_for_block(struct Block *block, double entry_factor, double exit_factor);
+// Add a new linear movement to the buffer. steps_x, _y and _z is the signed, relative motion in 
+// steps. Microseconds specify how many microseconds the move should take to perform. To aid acceleration
+// calculation the caller must also provide the physical length of the line in millimeters.
+// Do not call directly unless you are writing a motor driver. In current iteration this is called by 
+// st_buffer_line which also wakes up the stepper subsystem.
+void mp_buffer_line(int32_t steps_x, int32_t steps_y, int32_t steps_z, uint32_t microseconds, double millimeters);
 
 #endif

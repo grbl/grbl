@@ -43,8 +43,8 @@ inline uint32_t estimate_acceleration_ticks(int32_t start_rate, int32_t accelera
 // Calculates trapezoid parameters so that the entry- and exit-speed is compensated by the provided factors.
 // In practice both factors must be in the range 0 ... 1.0
 void calculate_trapezoid_for_block(struct Block *block, double entry_factor, double exit_factor) {
-  block->initial_rate = max(round(block->nominal_rate*entry_factor),MINIMAL_STEP_RATE);
-  int32_t final_rate = max(round(block->nominal_rate*entry_factor),MINIMAL_STEP_RATE);
+  block->initial_rate = round(block->nominal_rate*entry_factor);
+  int32_t final_rate = round(block->nominal_rate*entry_factor);
   int32_t acceleration_per_second = block->rate_delta*ACCELERATION_TICKS_PER_SECOND;
   int32_t acceleration_steps = 
     estimate_acceleration_distance(block->initial_rate, block->nominal_rate, acceleration_per_second);
@@ -67,3 +67,52 @@ void calculate_trapezoid_for_block(struct Block *block, double entry_factor, dou
     block->plateau_ticks = 0;
   }
 }
+
+// Add a new linear movement to the buffer. steps_x, _y and _z is the signed, relative motion in 
+// steps. Microseconds specify how many microseconds the move should take to perform. To aid acceleration
+// calculation the caller must also provide the physical length of the line in millimeters.
+void mp_buffer_line(int32_t steps_x, int32_t steps_y, int32_t steps_z, uint32_t microseconds, double millimeters) {
+  // Calculate the buffer head after we push this byte
+	int next_buffer_head = (block_buffer_head + 1) % BLOCK_BUFFER_SIZE;	
+	// If the buffer is full: good! That means we are well ahead of the robot. 
+	// Rest here until there is room in the buffer.
+  while(block_buffer_tail == next_buffer_head) { sleep_mode(); }
+  // Prepare to set up new block
+  struct Block *block = &block_buffer[block_buffer_head];
+  // Number of steps for each axis
+  block->steps_x = labs(steps_x);
+  block->steps_y = labs(steps_y);
+  block->steps_z = labs(steps_z);   
+  block->step_event_count = max(block->steps_x, max(block->steps_y, block->steps_z));
+  // Bail if this is a zero-length block
+  if (block->step_event_count == 0) { return; };
+  // Calculate speed in mm/minute for each axis
+  double multiplier = 60.0*1000000.0/microseconds;
+  block->speed_x = block->steps_x*multiplier/settings.steps_per_mm[0];
+  block->speed_y = block->steps_y*multiplier/settings.steps_per_mm[1];
+  block->speed_z = block->steps_z*multiplier/settings.steps_per_mm[2];
+  block->nominal_rate = round(block->step_event_count*multiplier);
+  
+  // Compute the acceleration rate for the trapezoid generator. Depending on the slope of the line
+  // average travel per step event changes. For a line along one axis the travel per step event
+  // is equal to the travel/step in the particular axis. For a 45 degree line the steppers of both
+  // axes might step for every step event. Travel per step event is then sqrt(travel_x^2+travel_y^2).
+  // To generate trapezoids with contant acceleration between blocks the rate_delta must be computed 
+  // specifically for each line to compensate for this phenomenon:
+  double travel_per_step = (1.0*millimeters)/block->step_event_count;
+  block->rate_delta = round(
+    (settings.acceleration/(60.0*ACCELERATION_TICKS_PER_SECOND))/ // acceleration mm/min per acceleration_tick
+    travel_per_step);                                           // convert to: acceleration steps/min/acceleration_tick    
+  calculate_trapezoid_for_block(block,0,0);                     // compute a default trapezoid
+  
+  // Compute direction bits for this block
+  block->direction_bits = 0;
+  if (steps_x < 0) { block->direction_bits |= (1<<X_DIRECTION_BIT); }
+  if (steps_y < 0) { block->direction_bits |= (1<<Y_DIRECTION_BIT); }
+  if (steps_z < 0) { block->direction_bits |= (1<<Z_DIRECTION_BIT); }
+  // Move buffer head
+  block_buffer_head = next_buffer_head;
+  // Ensure that block processing is running by enabling The Stepper Driver Interrupt
+  ENABLE_STEPPER_DRIVER_INTERRUPT();
+}
+

@@ -24,9 +24,6 @@
 #include <avr/io.h>
 #include <avr/sleep.h>
 
-#define ACCELERATION_TICKS_PER_SECOND 10
-#define MINIMAL_STEP_RATE (ACCELERATION_TICKS_PER_SECOND*5)
-
 // Initialize and start the stepper motor subsystem
 void st_init();
 

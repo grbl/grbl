@@ -107,6 +107,8 @@ void store_setting(int parameter, double value);
 // Or bake your own like this adding any step-bits or directions you want to invert:
 // #define STEPPING_INVERT_MASK (STEP_MASK | (1<<X_DIRECTION_BIT) | (1<<Y_DIRECTION_BIT))
 
+// The temporal resolution of the acceleration management subsystem
+#define ACCELERATION_TICKS_PER_SECOND 10                           
 
 // Some useful constants
 #define STEP_MASK ((1<<X_STEP_BIT)|(1<<Y_STEP_BIT)|(1<<Z_STEP_BIT)) // All step bits
