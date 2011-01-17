@@ -34,6 +34,8 @@ OBJECTS    = main.o motion_control.o gcode.o spindle_control.o wiring_serial.o s
              eeprom.o config.o
 # FUSES      = -U hfuse:w:0xd9:m -U lfuse:w:0x24:m
 FUSES      = -U hfuse:w:0xd2:m -U lfuse:w:0xff:m
+# update that line with this when programmer is back up: 
+# FUSES      = -U hfuse:w:0xd7:m -U lfuse:w:0xff:m 
 
 # Tune the lines below only if you know what you are doing:
 
