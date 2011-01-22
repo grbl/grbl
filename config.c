@@ -49,11 +49,10 @@ void dump_settings() {
   printPgmString(PSTR(" (microseconds step pulse)\r\n$4 = ")); printFloat(settings.default_feed_rate);
   printPgmString(PSTR(" (mm/min default feed rate)\r\n$5 = ")); printFloat(settings.default_seek_rate);
   printPgmString(PSTR(" (mm/min default seek rate)\r\n$6 = ")); printFloat(settings.mm_per_arc_segment);
-  printPgmString(PSTR(" (mm/min^2 max acceleration)\r\n$7 = ")); printFloat(settings.acceleration);
-  printPgmString(PSTR(" (mm/arc segment)\r\n$8 = ")); printInteger(settings.invert_mask); 
+  printPgmString(PSTR(" (mm/arc segment)\r\n$7 = ")); printInteger(settings.invert_mask); 
   printPgmString(PSTR(" (step port invert mask. binary = ")); printIntegerInBase(settings.invert_mask, 2);  
-  printPgmString(PSTR(")\r\n$9 = ")); printFloat(settings.acceleration);
-  printPgmString(PSTR(" (acceleration in mm/min^2)\r\n$10 = ")); printFloat(settings.max_jerk);
+  printPgmString(PSTR(")\r\n$8 = ")); printFloat(settings.acceleration);
+  printPgmString(PSTR(" (acceleration in mm/sec^2)\r\n$9 = ")); printFloat(settings.max_jerk);
   printPgmString(PSTR(" (max instant cornering speed change in delta mm/min)"));
   printPgmString(PSTR("\r\n'$x=value' to set parameter or just '$' to dump current settings\r\n"));
 }
@@ -83,9 +82,9 @@ void store_setting(int parameter, double value) {
     case 4: settings.default_feed_rate = value; break;
     case 5: settings.default_seek_rate = value; break;
     case 6: settings.mm_per_arc_segment = value; break;
-    case 7: settings.acceleration = value; break;
-    case 8: settings.invert_mask = trunc(value); break;
-    case 9: settings.acceleration = fabs(value); break;
+    case 7: settings.invert_mask = trunc(value); break;
+    case 8: settings.acceleration = value; break;
+    case 9: settings.max_jerk = fabs(value); break;
     default: 
       printPgmString(PSTR("Unknown parameter\r\n"));
       return;

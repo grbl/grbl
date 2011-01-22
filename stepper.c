@@ -36,7 +36,7 @@ void set_step_events_per_minute(uint32_t steps_per_minute);
 
 #define ENABLE_STEPPER_DRIVER_INTERRUPT()  TIMSK1 |= (1<<OCIE1A)
 #define DISABLE_STEPPER_DRIVER_INTERRUPT() TIMSK1 &= ~(1<<OCIE1A)
-
+#define MINIMUM_STEPS_PER_MINUTE 1200
 #define CYCLES_PER_ACCELERATION_TICK ((TICKS_PER_MICROSECOND*1000000)/ACCELERATION_TICKS_PER_SECOND)
 
 struct Block *current_block;    // A convenience pointer to the block currently being traced
@@ -46,12 +46,16 @@ uint8_t out_bits;               // The next stepping-bits to be output
 int32_t counter_x, 
         counter_y, 
         counter_z;              // counter variables for the bresenham line tracer
-uint32_t iterations;            // The number of iterations left to complete the current_block
+uint32_t step_events_left;      // The number of step events left to complete the current_block
+uint32_t step_event_count;      // The count of step events executed in the current block
 volatile int busy;              // TRUE when SIG_OUTPUT_COMPARE1A is being serviced. Used to avoid retriggering that handler.
-uint32_t cycles_per_step_event;
-uint32_t trapezoid_tick_cycle_counter;
 
-// Values and variables used by the speed trapeziod generator  
+uint32_t cycles_per_step_event;        // The number of machine cycles between each step event
+uint32_t trapezoid_tick_cycle_counter; // The cycles since last trapezoid_tick used to generate ticks without 
+                                       // allocating a separate timer
+uint32_t trapezoid_rate;               // The current rate of step_events according to the trapezoid generator
+
+// Two trapezoids:
 //         __________________________
 //        /|                        |\     _________________         ^
 //       / |                        | \   /|               |\        |
@@ -63,27 +67,17 @@ uint32_t trapezoid_tick_cycle_counter;
 //
 //                           time ----->
 // 
-//  The trapezoid is the shape the speed curve over time. It starts at block->initial_rate, accelerates for 
+//  The trapezoid is the shape the speed curve over time. It starts at block->initial_rate, accelerates until
+//   
 //  block->accelerate_ticks by block->rate_delta each tick, then stays up for block->plateau_ticks and 
 //  decelerates for the rest of the block until the trapezoid generator is reset for the next block. 
 //  The slope of acceleration is always +/- block->rate_delta. Any stage may be skipped by setting the 
 //  duration to 0 ticks. 
      
-#define TRAPEZOID_STAGE_ACCELERATING 0
-#define TRAPEZOID_STAGE_PLATEAU 1
-#define TRAPEZOID_STAGE_DECELERATING 2
-uint8_t trapezoid_stage;
-uint16_t trapezoid_stage_ticks;
-uint32_t trapezoid_rate;
-int16_t trapezoid_delta;
-
 
 // Initializes the trapezoid generator from the current block. Called whenever a new 
 // block begins.
-inline void reset_trapezoid_generator() {      
-  trapezoid_stage = TRAPEZOID_STAGE_ACCELERATING;
-  trapezoid_stage_ticks = current_block->accelerate_ticks;
-  trapezoid_delta = current_block->rate_delta;
+inline void reset_trapezoid_generator() {        
   trapezoid_rate = current_block->initial_rate;  
   set_step_events_per_minute(trapezoid_rate);
 }
@@ -92,37 +86,31 @@ inline void reset_trapezoid_generator() {
 // interrupt. It can be assumed that the trapezoid-generator-parameters and the
 // current_block stays untouched by outside handlers for the duration of this function call.
 inline void trapezoid_generator_tick() {     
-  if (trapezoid_stage_ticks) {
-    trapezoid_stage_ticks--;
-    if (trapezoid_delta) {
-      trapezoid_rate += trapezoid_delta;
+  PORTD ^= (1<<2); 
+  if (current_block) {
+    if (step_event_count < current_block->accelerate_until) {
+      trapezoid_rate += current_block->rate_delta;
       set_step_events_per_minute(trapezoid_rate);
-    }
-  } else {
-    // Is there a block currently in execution?
-    if(!current_block) {return;}    
-    // Trapezoid stage complete, move on
-    if(trapezoid_stage == TRAPEZOID_STAGE_ACCELERATING) {
-      // Progress to plateau stage
-      trapezoid_delta = 0;
-      trapezoid_stage_ticks = current_block->plateau_ticks;
-      trapezoid_stage = TRAPEZOID_STAGE_PLATEAU;
-    } else if (trapezoid_stage == TRAPEZOID_STAGE_PLATEAU) {
-      // Progress to deceleration stage
-      trapezoid_delta = -current_block->rate_delta;
-      trapezoid_stage_ticks = 0xffff; // "forever" until the block is complete
-      trapezoid_stage = TRAPEZOID_STAGE_DECELERATING;
+    } else if (step_event_count > current_block->decelerate_after) {
+      trapezoid_rate -= current_block->rate_delta;
+      set_step_events_per_minute(trapezoid_rate);
+    } else {
+      printInteger(trapezoid_rate);
+      while(1){};
     }
   }
+  PORTD ^= (1<<2);
 }
 
 // Add a new linear movement to the buffer. steps_x, _y and _z is the signed, relative motion in 
 // steps. Microseconds specify how many microseconds the move should take to perform. To aid acceleration
 // calculation the caller must also provide the physical length of the line in millimeters.
 void st_buffer_line(int32_t steps_x, int32_t steps_y, int32_t steps_z, uint32_t microseconds, double millimeters) {
+  PORTD ^= (1<<2);
   plan_buffer_line(steps_x, steps_y, steps_z, microseconds, millimeters);
   // Ensure that block processing is running by enabling The Stepper Driver Interrupt
   ENABLE_STEPPER_DRIVER_INTERRUPT();
+  PORTD ^= (1<<2);
 }
 
 // "The Stepper Driver Interrupt" - This timer interrupt is the workhorse of Grbl. It is  executed at the rate set with
@@ -135,7 +123,6 @@ SIGNAL(SIG_OUTPUT_COMPARE1A)
 #endif
 {
   if(busy){ return; } // The busy-flag is used to avoid reentering this interrupt
-  
   // Set the direction pins a cuple of nanoseconds before we step the steppers
   STEPPING_PORT = (STEPPING_PORT & ~DIRECTION_MASK) | (out_bits & DIRECTION_MASK);
   // Then pulse the stepping pins
@@ -159,7 +146,8 @@ SIGNAL(SIG_OUTPUT_COMPARE1A)
       counter_x = -(current_block->step_event_count >> 1);
       counter_y = counter_x;
       counter_z = counter_x;
-      iterations = current_block->step_event_count;
+      step_events_left = current_block->step_event_count;
+      step_event_count = 0;
     } else {
       DISABLE_STEPPER_DRIVER_INTERRUPT();
     }    
@@ -183,8 +171,8 @@ SIGNAL(SIG_OUTPUT_COMPARE1A)
       counter_z -= current_block->step_event_count;
     }
     // If current block is finished, reset pointer 
-    iterations -= 1;
-    if (iterations <= 0) {
+    step_events_left -= 1; step_event_count += 1;
+    if (step_events_left <= 0) {
       current_block = NULL;
       // move the block buffer tail to the next instruction
       block_buffer_tail = (block_buffer_tail + 1) % BLOCK_BUFFER_SIZE;      
@@ -241,12 +229,17 @@ void st_init()
   TCCR2A = 0;         // Normal operation
   TCCR2B = (1<<CS21); // Full speed, 1/8 prescaler
   TIMSK2 |= (1<<TOIE2);      
-
-  DISABLE_STEPPER_DRIVER_INTERRUPT();
+  
+  set_step_events_per_minute(6000);
+  DISABLE_STEPPER_DRIVER_INTERRUPT();  
+  trapezoid_tick_cycle_counter = 0;
   
   // set enable pin     
   STEPPERS_ENABLE_PORT |= 1<<STEPPERS_ENABLE_BIT;
   
+  DDRD |= (1<<2);
+  PORTD |= (1<<2);
+   
   sei();
 }
 
@@ -279,19 +272,19 @@ uint32_t config_step_timer(uint32_t cycles)
 	} else if (cycles <= 0x7ffffL) {
     ceiling = cycles >> 3;
     prescaler = 1; // prescaler: 8
-    actual_cycles = ceiling * 8;
+    actual_cycles = ceiling * 8L;
 	} else if (cycles <= 0x3fffffL) {
 		ceiling =  cycles >> 6;
     prescaler = 2; // prescaler: 64
-    actual_cycles = ceiling * 64;
+    actual_cycles = ceiling * 64L;
 	} else if (cycles <= 0xffffffL) {
 		ceiling =  (cycles >> 8);
     prescaler = 3; // prescaler: 256
-    actual_cycles = ceiling * 256;
+    actual_cycles = ceiling * 256L;
 	} else if (cycles <= 0x3ffffffL) {
 		ceiling = (cycles >> 10);
     prescaler = 4; // prescaler: 1024
-    actual_cycles = ceiling * 1024;    
+    actual_cycles = ceiling * 1024L;    
 	} else {
 	  // Okay, that was slower than we actually go. Just set the slowest speed
 		ceiling = 0xffff;
@@ -306,6 +299,7 @@ uint32_t config_step_timer(uint32_t cycles)
 }
 
 void set_step_events_per_minute(uint32_t steps_per_minute) {
+  if (steps_per_minute < MINIMUM_STEPS_PER_MINUTE) { steps_per_minute = MINIMUM_STEPS_PER_MINUTE; }
   cycles_per_step_event = config_step_timer((TICKS_PER_MICROSECOND*1000000*60)/steps_per_minute);
 }
 

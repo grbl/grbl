@@ -33,15 +33,13 @@
 
 int main(void)
 {
-  beginSerial(BAUD_RATE);
-  printString("A");
+  sp_init(); // initialize the serial protocol
   config_init();
   plan_init(); // initialize the stepper plan subsystem
   st_init(); // initialize the stepper subsystem
   mc_init(); // initialize motion control subsystem
   spindle_init(); // initialize spindle controller
   gc_init(); // initialize gcode-parser
-  sp_init(); // initialize the serial protocol
   
   DDRD |= (1<<3)|(1<<4)|(1<<5);
   

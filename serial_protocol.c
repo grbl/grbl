@@ -37,8 +37,7 @@ void prompt() {
 
 void sp_init() 
 {
-  beginSerial(BAUD_RATE);
-  
+  beginSerial(BAUD_RATE);  
   printPgmString(PSTR("\r\nGrbl "));
   printPgmString(PSTR(VERSION));
   printPgmString(PSTR("\r\n"));  

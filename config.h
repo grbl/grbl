@@ -21,7 +21,7 @@
 #ifndef config_h
 #define config_h
 
-#define VERSION "0.51"
+#define VERSION "0.6b"
 #include <math.h>
 #include <inttypes.h>
 
@@ -110,7 +110,7 @@ void store_setting(int parameter, double value);
 // #define STEPPING_INVERT_MASK (STEP_MASK | (1<<X_DIRECTION_BIT) | (1<<Y_DIRECTION_BIT))
 
 // The temporal resolution of the acceleration management subsystem
-#define ACCELERATION_TICKS_PER_SECOND 10                           
+#define ACCELERATION_TICKS_PER_SECOND 10L
 
 // Some useful constants
 #define STEP_MASK ((1<<X_STEP_BIT)|(1<<Y_STEP_BIT)|(1<<Z_STEP_BIT)) // All step bits

@@ -44,10 +44,12 @@ struct Block {
   double nominal_speed;               // The nominal speed for this block in mm/min
   double millimeters;
   double entry_factor;                // The factors representing the change in speed at the start of the trapezoid
-  uint32_t initial_rate;              // The jerk-adjusted step rate at start of block
-  int16_t rate_delta;                 // The steps/minute to add or subtract when changing speed (must be positive)
-  uint16_t accelerate_ticks;          // The number of acceleration-ticks to accelerate 
-  uint16_t plateau_ticks;             // The number of acceleration-ticks to maintain top speed
+  
+  // Settings for the trapezoid generator
+  uint32_t initial_rate;              // The jerk-adjusted step rate at start of block  
+  int32_t rate_delta;                 // The steps/minute to add or subtract when changing speed (must be positive)
+  uint32_t accelerate_until;          // The index of the step event on which to stop acceleration
+  uint32_t decelerate_after;          // The index of the step event on which to start decelerating
 };
       
 extern struct Block block_buffer[BLOCK_BUFFER_SIZE]; // A ring buffer for motion instructions

@@ -26,22 +26,42 @@
 #include "nuts_bolts.h"
 #include "stepper.h"
 #include "config.h"
+#include "wiring_serial.h"
 
 struct Block block_buffer[BLOCK_BUFFER_SIZE]; // A ring buffer for motion instructions
 volatile int block_buffer_head;           // Index of the next block to be pushed
 volatile int block_buffer_tail;           // Index of the block to process now
 uint8_t acceleration_management;              // Acceleration management active?
 
-inline uint32_t estimate_acceleration_distance(int32_t current_rate, int32_t target_rate, int32_t acceleration) {
-  return((target_rate*target_rate-current_rate*current_rate)/(2*acceleration));
+
+
+// The distance it takes to accelerate from initial_rate to target_rate using the given acceleration
+inline double estimate_acceleration_distance(double initial_rate, double target_rate, double acceleration) {
+  return((target_rate*target_rate-initial_rate*initial_rate)/(2L*acceleration));
 }
 
-inline uint32_t estimate_acceleration_ticks(int32_t start_rate, int32_t acceleration_per_tick, int32_t step_events) {
-  return(
-    round(
-      (sqrt(2*acceleration_per_tick*step_events+(start_rate*start_rate))-start_rate)/
-      acceleration_per_tick));
+// This function gives you the point at which you must start braking (at the rate of -acceleration) if 
+// you started at speed initial_rate and accelerated until this point and want to end at the final_rate after
+// a total travel of distance. This can be used to compute the intersection point between acceleration and
+// deceleration in the cases where the trapezoid has no plateau (i.e. never reaches maximum speed)
+/*                          
+
+                          +    <- some rate that must be < maximum allowable rate
+                         /|\
+                        / | \
+                       /  |  + <- final_rate
+                      /   |  |
+     initial_rate -> +----+--+  
+                     0    ^  ^ 
+                          |  |
+                     result  distance
+*/                   
+inline double intersection_distance(double initial_rate, double final_rate, double acceleration, double distance) {
+  return((2*acceleration*distance-initial_rate*initial_rate+final_rate*final_rate)/(4*acceleration));
 }
+
+// See bottom of this module for a comment outlining the reasoning behind the mathematics behind the
+// preceding functions.
 
 // Calculates trapezoid parameters so that the entry- and exit-speed is compensated by the provided factors.
 // In practice both factors must be in the range 0 ... 1.0
@@ -49,27 +69,30 @@ void calculate_trapezoid_for_block(struct Block *block, double entry_factor, dou
   block->initial_rate = round(block->nominal_rate*entry_factor);
   int32_t final_rate = round(block->nominal_rate*entry_factor);
   int32_t acceleration_per_second = block->rate_delta*ACCELERATION_TICKS_PER_SECOND;
-  int32_t acceleration_steps = 
-    estimate_acceleration_distance(block->initial_rate, block->nominal_rate, acceleration_per_second);
-  int32_t decelleration_steps = 
+  int32_t accelerate_steps = 
+    round(estimate_acceleration_distance(block->initial_rate, block->nominal_rate, acceleration_per_second));
+  int32_t decelerate_steps = 
     estimate_acceleration_distance(block->nominal_rate, final_rate, -acceleration_per_second);
+  printString("ir="); printInteger(block->initial_rate); printString("\n\r");
+  printString("nr="); printInteger(block->nominal_rate); printString("\n\r");
+  printString("rd="); printInteger(block->rate_delta); printString("\n\r");
+  printString("aps="); printInteger(acceleration_per_second); printString("\n\r");
+  printString("acs="); printInteger(accelerate_steps); printString("\n\r");
+  printString("dcs="); printInteger(decelerate_steps); printString("\n\r");
+  printString("ts="); printInteger(block->step_event_count); printString("\n\r");
   // Check if the acceleration and decelleration periods overlap. In that case nominal_speed will
   // never be reached but that's okay. Just truncate both periods proportionally so that they
   // fit within the allotted step events.
-  int32_t plateau_steps = block->step_event_count-acceleration_steps-decelleration_steps;
-  if (plateau_steps < 0) {
-    int32_t half_overlap_region = fabs(plateau_steps)/2;
+  int32_t plateau_steps = block->step_event_count-accelerate_steps-decelerate_steps;
+  if (plateau_steps < 0) {  
+    accelerate_steps = round(
+      intersection_distance(block->initial_rate, final_rate, acceleration_per_second, block->step_event_count));
     plateau_steps = 0;
-    acceleration_steps = max(acceleration_steps-half_overlap_region,0);
-    decelleration_steps = max(decelleration_steps-half_overlap_region,0);
-  }
-  block->accelerate_ticks = estimate_acceleration_ticks(block->initial_rate, block->rate_delta, acceleration_steps);
-  if (plateau_steps) {
-    block->plateau_ticks = round(1.0*plateau_steps/(block->nominal_rate*ACCELERATION_TICKS_PER_SECOND));
-  } else {
-    block->plateau_ticks = 0;
-  }
-}
+    printString("No plateau, so: acs="); printInteger(accelerate_steps); printString("\n\r");
+  }  
+  block->accelerate_until = accelerate_steps;
+  block->decelerate_after = accelerate_steps+plateau_steps;
+}                    
 
 inline double estimate_max_speed(double max_acceleration, double target_velocity, double distance) {
   return(sqrt(-2*max_acceleration*distance+target_velocity*target_velocity));
@@ -185,15 +208,17 @@ void plan_buffer_line(int32_t steps_x, int32_t steps_y, int32_t steps_z, uint32_
   // axes might step for every step event. Travel per step event is then sqrt(travel_x^2+travel_y^2).
   // To generate trapezoids with contant acceleration between blocks the rate_delta must be computed 
   // specifically for each line to compensate for this phenomenon:
-  double travel_per_step = (1.0*millimeters)/block->step_event_count;
+  double travel_per_step = millimeters/block->step_event_count;
+  printString("travel_per_step*10000=");
+  printInteger(travel_per_step*10000);printString("\n\r");
   block->rate_delta = round(
-    (settings.acceleration/(60.0*ACCELERATION_TICKS_PER_SECOND))/ // acceleration mm/min per acceleration_tick
+    ((settings.acceleration*60.0)/(ACCELERATION_TICKS_PER_SECOND))/ // acceleration mm/sec/sec per acceleration_tick
     travel_per_step);                                           // convert to: acceleration steps/min/acceleration_tick    
   if (acceleration_management) {
     calculate_trapezoid_for_block(block,0,0);                     // compute a conservative acceleration trapezoid for now
   } else {
-    block->accelerate_ticks = 0;
-    block->plateau_ticks = 0;
+    block->accelerate_until = 0;
+    block->decelerate_after = 0;
     block->rate_delta = 0;
   }
   
@@ -206,3 +231,35 @@ void plan_buffer_line(int32_t steps_x, int32_t steps_y, int32_t steps_z, uint32_
   block_buffer_head = next_buffer_head;
 }
 
+
+/*  
+  Mathematica reasoning behind the mathematics in this module:
+  
+  s == speed, a == acceleration, t == time, d == distance
+
+  Basic definitions:
+
+    Speed[s_, a_, t_] := s + (a*t) 
+    Travel[s_, a_, t_] := Integrate[Speed[s, a, t], t]
+
+  Distance to reach a specific speed with a constant acceleration:
+
+    Solve[{Speed[s, a, t] == m, Travel[s, a, t] == d}, d, t]
+      d -> (m^2 - s^2)/(2 a) --> estimate_acceleration_distance()
+
+  Speed after a given distance of travel with constant acceleration:
+
+    Solve[{Speed[s, a, t] == m, Travel[s, a, t] == d}, m, t]
+      m -> Sqrt[2 a d + s^2]    
+
+    DestinationSpeed[s_, a_, d_] := Sqrt[2 a d + s^2]
+
+  When to start braking (di) to reach a specified destionation speed (s2) after accelerating
+  from initial speed s1 without ever stopping at a plateau:
+
+    Solve[{DestinationSpeed[s1, a, di] == DestinationSpeed[s2, a, d - di]}, di]
+      di -> (2 a d - s1^2 + s2^2)/(4 a) --> intersection_distance()
+
+    IntersectionDistance[s1_, s2_, a_, d_] := (2 a d - s1^2 + s2^2)/(4 a)
+*/
+                                                                                                            
