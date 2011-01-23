@@ -92,11 +92,12 @@ inline void trapezoid_generator_tick() {
       trapezoid_rate += current_block->rate_delta;
       set_step_events_per_minute(trapezoid_rate);
     } else if (step_event_count > current_block->decelerate_after) {
-      trapezoid_rate -= current_block->rate_delta;
+      // NOTE: We will only reduce speed if the result will be > 0. This catches small
+      // rounding errors that might leave steps hanging after the last trapezoid tick.
+      if(current_block->rate_delta < trapezoid_rate) {
+        trapezoid_rate -= current_block->rate_delta;
+      }
       set_step_events_per_minute(trapezoid_rate);
-    } else {
-      printInteger(trapezoid_rate);
-      while(1){};
     }
   }
   PORTD ^= (1<<2);
