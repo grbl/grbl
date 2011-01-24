@@ -101,7 +101,7 @@ void calculate_trapezoid_for_block(struct Block *block, double entry_factor, dou
   block->decelerate_after = accelerate_steps+plateau_steps;
 }                    
 
-// Calculates the maximum allowable speed when you must be able to reach target_velocity using the 
+// Calculates the maximum allowable speed at this point when you must be able to reach target_velocity using the 
 // acceleration within the allotted distance.
 inline double max_allowable_speed(double acceleration, double target_velocity, double distance) {
   return(sqrt(target_velocity*target_velocity-2*acceleration*distance));
@@ -119,8 +119,8 @@ inline double junction_jerk(struct Block *before, struct Block *after) {
 }
 
 // The kernel called by recalculate_plan() when scanning the plan from last to first
-int8_t planner_reverse_pass_kernel(struct Block *previous, struct Block *current, struct Block *next) {
-  if(!current){return(TRUE);}
+void planner_reverse_pass_kernel(struct Block *previous, struct Block *current, struct Block *next) {
+  if(!current){return;}
 
   double entry_factor = 1.0;
   double exit_factor;
@@ -138,7 +138,7 @@ int8_t planner_reverse_pass_kernel(struct Block *previous, struct Block *current
       entry_factor = (settings.max_jerk/jerk);
     } 
     // If the required deceleration across the block is too rapid, reduce the entry_factor accordingly.
-    if (exit_factor<entry_factor) {
+    if (entry_factor > exit_factor) {
       double max_entry_speed = max_allowable_speed(-settings.acceleration,current->nominal_speed*exit_factor, 
         current->millimeters);
       double max_entry_factor = max_entry_speed/current->nominal_speed;
@@ -150,40 +150,75 @@ int8_t planner_reverse_pass_kernel(struct Block *previous, struct Block *current
     entry_factor = 0.0;
   }
   
-  // Check if we made a difference for this block. If we didn't, the planner can call it quits
-  // here. No need to process any earlier blocks.
-  int8_t keep_going = (entry_factor > current->entry_factor ? TRUE : FALSE);  
-  // Store result and recalculate trapezoid parameters
+  // Store result
   current->entry_factor = entry_factor;
-  calculate_trapezoid_for_block(current, entry_factor, exit_factor);
-  return(keep_going);
 }
 
 // recalculate_plan() needs to go over the current plan twice. Once in reverse and once forward. This 
 // implements the reverse pass.
-void reverse_pass() {
-  int8_t block_index = block_buffer_head;
+void planner_reverse_pass() {
+  auto int8_t block_index = block_buffer_head;
   struct Block *block[3] = {NULL, NULL, NULL};
   while(block_index != block_buffer_tail) {
     block[2]= block[1];
     block[1]= block[0];
     block[0] = &block_buffer[block_index];
-    if (!planner_reverse_pass_kernel(block[0], block[1], block[2])) {return;}
+    planner_reverse_pass_kernel(block[0], block[1], block[2]);
     block_index = (block_index-1) % BLOCK_BUFFER_SIZE;
   }
   planner_reverse_pass_kernel(NULL, block[0], block[1]);
 }
 
-void forward_pass() {
-  int8_t block_index = block_buffer_tail;
-  while(block_index != block_buffer_head) {    
-    block_index = (block_index+1) % BLOCK_BUFFER_SIZE;
+void planner_forward_pass_kernel(struct Block *previous, struct Block *current, struct Block *next) {
+  if(!current){return;}
+  // If the previous block is an acceleration block, but it is not long enough to 
+  // complete the full speed change within the block, we need to adjust out entry
+  // speed accordingly. Remember current->entry_factor equals the exit factor of 
+  // the previous block.
+  if(previous->entry_factor < current->entry_factor) {
+    double max_entry_speed = max_allowable_speed(-settings.acceleration,
+      current->nominal_speed*previous->entry_factor, previous->millimeters);
+    double max_entry_factor = max_entry_speed/current->nominal_speed;
+    if (max_entry_factor < current->entry_factor) {
+      current->entry_factor = max_entry_factor;
+    }
   }
 }
 
-void recalculate_plan() {     
-  reverse_pass();
-  forward_pass();
+void planner_forward_pass() {
+  int8_t block_index = block_buffer_tail;
+  struct Block *block[3] = {NULL, NULL, NULL};
+  
+  while(block_index != block_buffer_head) {
+    block[0] = block[1];
+    block[1] = block[2];
+    block[2] = &block_buffer[block_index];
+    planner_forward_pass_kernel(block[0],block[1],block[2]);
+    block_index = (block_index+1) % BLOCK_BUFFER_SIZE;
+  }
+  planner_forward_pass_kernel(block[1], block[2], NULL);
+}
+
+void planner_recalculate_trapezoids() {
+  int8_t block_index = block_buffer_tail;
+  struct Block *current;
+  struct Block *next = NULL;
+  
+  while(block_index != block_buffer_head) {
+    current = next;
+    next = &block_buffer[block_index];
+    if (current) {
+      calculate_trapezoid_for_block(current, current->entry_factor, next->entry_factor);      
+    }
+    block_index = (block_index+1) % BLOCK_BUFFER_SIZE;
+  }
+  calculate_trapezoid_for_block(next, next->entry_factor, 0.0);
+}
+
+void planner_recalculate() {     
+  planner_reverse_pass();
+  planner_forward_pass();
+  planner_recalculate_trapezoids();
 }
 
 void plan_enable_acceleration_management() {
@@ -257,9 +292,8 @@ void plan_buffer_line(int32_t steps_x, int32_t steps_y, int32_t steps_z, uint32_
   if (steps_z < 0) { block->direction_bits |= (1<<Z_DIRECTION_BIT); }
   // Move buffer head
   block_buffer_head = next_buffer_head;
-  recalculate_plan();
+  planner_recalculate();
 }
-
 
 /*  
   Reasoning behind the mathematics in this module (in the key of 'Mathematica'):
