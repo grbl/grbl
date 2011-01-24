@@ -31,11 +31,15 @@
 struct Block block_buffer[BLOCK_BUFFER_SIZE]; // A ring buffer for motion instructions
 volatile int block_buffer_head;           // Index of the next block to be pushed
 volatile int block_buffer_tail;           // Index of the block to process now
-uint8_t acceleration_management;              // Acceleration management active?
+uint8_t acceleration_management;          // Acceleration management active?
 
 
+// NOTE: See bottom of this module for a comment outlining the reasoning behind the mathematics of the
+// following functions.
 
-// The distance it takes to accelerate from initial_rate to target_rate using the given acceleration
+
+// Calculates the distance (not time) it takes to accelerate from initial_rate to target_rate using the 
+// given acceleration:
 inline double estimate_acceleration_distance(double initial_rate, double target_rate, double acceleration) {
   return((target_rate*target_rate-initial_rate*initial_rate)/(2L*acceleration));
 }
@@ -45,7 +49,7 @@ inline double estimate_acceleration_distance(double initial_rate, double target_
 // a total travel of distance. This can be used to compute the intersection point between acceleration and
 // deceleration in the cases where the trapezoid has no plateau (i.e. never reaches maximum speed)
 
-/*                        + <- some rate that the client must be certain will not exceed the maximum allowable
+/*                        + <- some maximum rate we don't care about
                          /|\
                         / | \                    
                        /  |  + <- final_rate     
@@ -59,11 +63,19 @@ inline double intersection_distance(double initial_rate, double final_rate, doub
   return((2*acceleration*distance-initial_rate*initial_rate+final_rate*final_rate)/(4*acceleration));
 }
 
-// See bottom of this module for a comment outlining the reasoning behind the mathematics behind the
-// preceding functions.
 
 // Calculates trapezoid parameters so that the entry- and exit-speed is compensated by the provided factors.
-// In practice both factors must be in the range 0 ... 1.0
+// The factors represent a factor of braking and must be in the range 0.0-1.0.
+
+/*                                                                              
+                                     +--------+   <- nominal_rate
+                                    /          \                                
+    nominal_rate*entry_factor ->   +            \                               
+                                   |             + <- nominal_rate*exit_factor  
+                                   +-------------+                              
+                                       time -->                                 
+*/                                                                              
+
 void calculate_trapezoid_for_block(struct Block *block, double entry_factor, double exit_factor) {
   block->initial_rate = ceil(block->nominal_rate*entry_factor);
   int32_t final_rate = ceil(block->nominal_rate*entry_factor);
@@ -71,57 +83,63 @@ void calculate_trapezoid_for_block(struct Block *block, double entry_factor, dou
   int32_t accelerate_steps = 
     ceil(estimate_acceleration_distance(block->initial_rate, block->nominal_rate, acceleration_per_minute));
   int32_t decelerate_steps = 
-    estimate_acceleration_distance(block->nominal_rate, final_rate, -acceleration_per_minute);
-  printString("ir="); printInteger(block->initial_rate); printString("\n\r");
-  printString("nr="); printInteger(block->nominal_rate); printString("\n\r");
-  printString("rd="); printInteger(block->rate_delta); printString("\n\r");
-  printString("aps="); printInteger(acceleration_per_minute); printString("\n\r");
-  printString("acs="); printInteger(accelerate_steps); printString("\n\r");
-  printString("dcs="); printInteger(decelerate_steps); printString("\n\r");
-  printString("ts="); printInteger(block->step_event_count); printString("\n\r");
-  // Check if the acceleration and decelleration periods overlap. In that case nominal_speed will
-  // never be reached but that's okay. Just truncate both periods proportionally so that they
-  // fit within the allotted step events.
+    ceil(estimate_acceleration_distance(block->nominal_rate, final_rate, -acceleration_per_minute));
+
+  // Calculate the size of Plateau of Nominal Rate. 
   int32_t plateau_steps = block->step_event_count-accelerate_steps-decelerate_steps;
+  
+  // Is the Plateau of Nominal Rate smaller than nothing? That means no cruising, and we will
+  // have to use intersection_distance() to calculate when to abort acceleration and start braking 
+  // in order to reach the final_rate exactly at the end of this block.
   if (plateau_steps < 0) {  
+    plateau_steps = 0;
     accelerate_steps = ceil(
       intersection_distance(block->initial_rate, final_rate, acceleration_per_minute, block->step_event_count));
-    plateau_steps = 0;
-    printString("No plateau, so: acs="); printInteger(accelerate_steps); printString("\n\r");
   }  
+  
   block->accelerate_until = accelerate_steps;
   block->decelerate_after = accelerate_steps+plateau_steps;
 }                    
 
-inline double estimate_max_speed(double max_acceleration, double target_velocity, double distance) {
-  return(sqrt(-2*max_acceleration*distance+target_velocity*target_velocity));
+// Calculates the maximum allowable speed when you must be able to reach target_velocity using the 
+// acceleration within the allotted distance.
+inline double max_allowable_speed(double acceleration, double target_velocity, double distance) {
+  return(sqrt(target_velocity*target_velocity-2*acceleration*distance));
 }
 
-inline double estimate_jerk(struct Block *before, struct Block *after) {
-  return(max(fabs(before->speed_x-after->speed_x),
-    max(fabs(before->speed_y-after->speed_y), 
-    fabs(before->speed_z-after->speed_z))));
+// "Junction jerk" in this context is the immediate change in speed at the junction of two blocks.
+// This method will calculate the junction jerk as the euclidean distance between the nominal 
+// velocities of the respective blocks.
+inline double junction_jerk(struct Block *before, struct Block *after) {
+  return(sqrt(
+    pow(before->speed_x-after->speed_x, 2)+
+    pow(before->speed_y-after->speed_y, 2)+
+    pow(before->speed_z-after->speed_z, 2))
+  );
 }
 
-// Builds plan for a single block provided. Returns TRUE if changes were made to this block
-// that requires any earlier blocks to be recalculated too.
-int8_t build_plan_for_single_block(struct Block *previous, struct Block *current, struct Block *next) {
+// The kernel called by recalculate_plan() when scanning the plan from last to first
+int8_t planner_reverse_pass_kernel(struct Block *previous, struct Block *current, struct Block *next) {
   if(!current){return(TRUE);}
-  double exit_factor;
+
   double entry_factor = 1.0;
+  double exit_factor;
   if (next) {
     exit_factor = next->entry_factor;
   } else {
     exit_factor = 0.0;
   }
   
+  // Calculate the entry_factor for the current block. 
   if (previous) {
-    double jerk = estimate_jerk(previous, current);
+    // Reduce speed so that junction_jerk is within the maximum allowed
+    double jerk = junction_jerk(previous, current);
     if (jerk > settings.max_jerk) {
       entry_factor = (settings.max_jerk/jerk);
     } 
+    // If the required deceleration across the block is too rapid, reduce the entry_factor accordingly.
     if (exit_factor<entry_factor) {
-      double max_entry_speed = estimate_max_speed(-settings.acceleration,current->nominal_speed*exit_factor, 
+      double max_entry_speed = max_allowable_speed(-settings.acceleration,current->nominal_speed*exit_factor, 
         current->millimeters);
       double max_entry_factor = max_entry_speed/current->nominal_speed;
       if (max_entry_factor < entry_factor) {
@@ -131,6 +149,7 @@ int8_t build_plan_for_single_block(struct Block *previous, struct Block *current
   } else {
     entry_factor = 0.0;
   }
+  
   // Check if we made a difference for this block. If we didn't, the planner can call it quits
   // here. No need to process any earlier blocks.
   int8_t keep_going = (entry_factor > current->entry_factor ? TRUE : FALSE);  
@@ -140,19 +159,31 @@ int8_t build_plan_for_single_block(struct Block *previous, struct Block *current
   return(keep_going);
 }
 
-void recalculate_plan() {
+// recalculate_plan() needs to go over the current plan twice. Once in reverse and once forward. This 
+// implements the reverse pass.
+void reverse_pass() {
   int8_t block_index = block_buffer_head;
   struct Block *block[3] = {NULL, NULL, NULL};
   while(block_index != block_buffer_tail) {
     block[2]= block[1];
     block[1]= block[0];
     block[0] = &block_buffer[block_index];
-    if (!build_plan_for_single_block(block[0], block[1], block[2])) {return;}
+    if (!planner_reverse_pass_kernel(block[0], block[1], block[2])) {return;}
     block_index = (block_index-1) % BLOCK_BUFFER_SIZE;
   }
-  if (block[1]) {
-    calculate_trapezoid_for_block(block[0], block[0]->entry_factor, block[1]->entry_factor);
+  planner_reverse_pass_kernel(NULL, block[0], block[1]);
+}
+
+void forward_pass() {
+  int8_t block_index = block_buffer_tail;
+  while(block_index != block_buffer_head) {    
+    block_index = (block_index+1) % BLOCK_BUFFER_SIZE;
   }
+}
+
+void recalculate_plan() {     
+  reverse_pass();
+  forward_pass();
 }
 
 void plan_enable_acceleration_management() {
@@ -208,11 +239,9 @@ void plan_buffer_line(int32_t steps_x, int32_t steps_y, int32_t steps_z, uint32_
   // To generate trapezoids with contant acceleration between blocks the rate_delta must be computed 
   // specifically for each line to compensate for this phenomenon:
   double travel_per_step = millimeters/block->step_event_count;
-  printString("travel_per_step*10000=");
-  printInteger(travel_per_step*10000);printString("\n\r");
   block->rate_delta = ceil(
     ((settings.acceleration*60.0)/(ACCELERATION_TICKS_PER_SECOND))/ // acceleration mm/sec/sec per acceleration_tick
-    travel_per_step);                                           // convert to: acceleration steps/min/acceleration_tick    
+    travel_per_step);                                               // convert to: acceleration steps/min/acceleration_tick    
   if (acceleration_management) {
     calculate_trapezoid_for_block(block,0,0);                     // compute a conservative acceleration trapezoid for now
   } else {
@@ -228,11 +257,12 @@ void plan_buffer_line(int32_t steps_x, int32_t steps_y, int32_t steps_z, uint32_
   if (steps_z < 0) { block->direction_bits |= (1<<Z_DIRECTION_BIT); }
   // Move buffer head
   block_buffer_head = next_buffer_head;
+  recalculate_plan();
 }
 
 
 /*  
-  Mathematica reasoning behind the mathematics in this module:
+  Reasoning behind the mathematics in this module (in the key of 'Mathematica'):
   
   s == speed, a == acceleration, t == time, d == distance
 

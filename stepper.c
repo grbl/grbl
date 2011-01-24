@@ -67,17 +67,15 @@ uint32_t trapezoid_rate;               // The current rate of step_events accord
 //
 //                           time ----->
 // 
-//  The trapezoid is the shape the speed curve over time. It starts at block->initial_rate, accelerates until
-//   
-//  block->accelerate_ticks by block->rate_delta each tick, then stays up for block->plateau_ticks and 
-//  decelerates for the rest of the block until the trapezoid generator is reset for the next block. 
-//  The slope of acceleration is always +/- block->rate_delta. Any stage may be skipped by setting the 
-//  duration to 0 ticks. 
-     
+//  The trapezoid is the shape the speed curve over time. It starts at block->initial_rate, accelerates by block->rate_delta
+//  during the first block->accelerate_until step_events then keeps going at constant speed until the step-evet count reaches
+//  block->decelerate_after until the trapezoid generator is reset for the next block. 
+//  The slope of acceleration is always +/- block->rate_delta and is applied at a constant rate by trapezoid_generator_tick()
+//  that is called ACCELERATION_TICKS_PER_SECOND times per second.
 
 // Initializes the trapezoid generator from the current block. Called whenever a new 
 // block begins.
-inline void reset_trapezoid_generator() {        
+inline void trapezoid_generator_reset() {
   trapezoid_rate = current_block->initial_rate;  
   set_step_events_per_minute(trapezoid_rate);
 }
@@ -122,7 +120,9 @@ SIGNAL(TIMER1_COMPA_vect)
 #else
 SIGNAL(SIG_OUTPUT_COMPARE1A)
 #endif
-{
+{        
+  // TODO: Check if the busy-flag can be eliminated by just disabeling this interrupt while we are in it
+  
   if(busy){ return; } // The busy-flag is used to avoid reentering this interrupt
   // Set the direction pins a cuple of nanoseconds before we step the steppers
   STEPPING_PORT = (STEPPING_PORT & ~DIRECTION_MASK) | (out_bits & DIRECTION_MASK);
@@ -143,7 +143,7 @@ SIGNAL(SIG_OUTPUT_COMPARE1A)
     if (block_buffer_head != block_buffer_tail) {
       // Retrieve a new line and get ready to step it
       current_block = &block_buffer[block_buffer_tail]; 
-      reset_trapezoid_generator();
+      trapezoid_generator_reset();
       counter_x = -(current_block->step_event_count >> 1);
       counter_y = counter_x;
       counter_z = counter_x;
