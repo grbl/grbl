@@ -59,7 +59,7 @@ void dump_settings() {
 
 int read_settings() {
   // Check version-byte of eeprom
-  uint8_t version = eeprom_get_char(0);  
+  uint8_t version = eeprom_get_char(0);
   if (version != SETTINGS_VERSION) { return(FALSE); }
   // Read settings-record and check checksum
   if (!(memcpy_from_eeprom_with_checksum((char*)&settings, 1, sizeof(struct Settings)))) {
