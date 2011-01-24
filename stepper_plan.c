@@ -37,7 +37,6 @@ uint8_t acceleration_management;          // Acceleration management active?
 // NOTE: See bottom of this module for a comment outlining the reasoning behind the mathematics of the
 // following functions.
 
-
 // Calculates the distance (not time) it takes to accelerate from initial_rate to target_rate using the 
 // given acceleration:
 inline double estimate_acceleration_distance(double initial_rate, double target_rate, double acceleration) {
@@ -118,7 +117,7 @@ inline double junction_jerk(struct Block *before, struct Block *after) {
   );
 }
 
-// The kernel called by recalculate_plan() when scanning the plan from last to first
+// The kernel called by planner_recalculate() when scanning the plan from last to first entry.
 void planner_reverse_pass_kernel(struct Block *previous, struct Block *current, struct Block *next) {
   if(!current){return;}
 
@@ -169,6 +168,7 @@ void planner_reverse_pass() {
   planner_reverse_pass_kernel(NULL, block[0], block[1]);
 }
 
+// The kernel called by planner_recalculate() when scanning the plan from first to last entry.
 void planner_forward_pass_kernel(struct Block *previous, struct Block *current, struct Block *next) {
   if(!current){return;}
   // If the previous block is an acceleration block, but it is not long enough to 
@@ -185,6 +185,8 @@ void planner_forward_pass_kernel(struct Block *previous, struct Block *current, 
   }
 }
 
+// recalculate_plan() needs to go over the current plan twice. Once in reverse and once forward. This 
+// implements the forward pass.
 void planner_forward_pass() {
   int8_t block_index = block_buffer_tail;
   struct Block *block[3] = {NULL, NULL, NULL};
@@ -199,6 +201,9 @@ void planner_forward_pass() {
   planner_forward_pass_kernel(block[1], block[2], NULL);
 }
 
+// Recalculates the trapezoid speed profiles for all blocks in the plan according to the 
+// entry_factor for each junction. Must be called by planner_recalculate() after 
+// updating the blocks.
 void planner_recalculate_trapezoids() {
   int8_t block_index = block_buffer_tail;
   struct Block *current;
@@ -215,11 +220,26 @@ void planner_recalculate_trapezoids() {
   calculate_trapezoid_for_block(next, next->entry_factor, 0.0);
 }
 
+// Recalculates the motion plan according to the following algorithm:
+// 1. Go over every block in reverse order and calculate a junction speed reduction (i.e. Block.entry_factor) 
+//    so that:
+//   a. The junction jerk is within the set limit
+//   b. No speed reduction within one block requires faster accelleration than the one, true constant 
+//      acceleration.
+// 2. Go over every block in chronological order and dial down junction speed reduction values if 
+//   a. The speed increase within one block would require faster accelleration than the one, true 
+//      constant acceleration.
+// When these stages are complete all blocks have an entry_factor that will allow all speed changes to 
+// be performed using only the one, true constant acceleration, and where no junction jerk is jerkier than 
+// the set limit. Finally it will:
+// 3. Recalculate trapezoids for all blocks.
+
 void planner_recalculate() {     
   planner_reverse_pass();
   planner_forward_pass();
   planner_recalculate_trapezoids();
 }
+
 
 void plan_enable_acceleration_management() {
   if (!acceleration_management) {
@@ -278,7 +298,7 @@ void plan_buffer_line(int32_t steps_x, int32_t steps_y, int32_t steps_z, uint32_
     ((settings.acceleration*60.0)/(ACCELERATION_TICKS_PER_SECOND))/ // acceleration mm/sec/sec per acceleration_tick
     travel_per_step);                                               // convert to: acceleration steps/min/acceleration_tick    
   if (acceleration_management) {
-    calculate_trapezoid_for_block(block,0,0);                     // compute a conservative acceleration trapezoid for now
+    calculate_trapezoid_for_block(block,0,0);                       // compute a conservative acceleration trapezoid for now
   } else {
     block->accelerate_until = 0;
     block->decelerate_after = 0;
@@ -292,7 +312,12 @@ void plan_buffer_line(int32_t steps_x, int32_t steps_y, int32_t steps_z, uint32_
   if (steps_z < 0) { block->direction_bits |= (1<<Z_DIRECTION_BIT); }
   // Move buffer head
   block_buffer_head = next_buffer_head;
-  planner_recalculate();
+  
+  if (acceleration_management) {
+    planner_recalculate();  
+  } else {    
+    calculate_trapezoid_for_block(block, 1.0, 1.0);
+  }  
 }
 
 /*  

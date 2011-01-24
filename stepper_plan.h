@@ -40,9 +40,9 @@ struct Block {
   uint32_t nominal_rate;              // The nominal step rate for this block in step_events/minute
   
   // Fields used by the motion planner to manage acceleration
-  double  speed_x, speed_y, speed_z;  // Nominal mm/minute for each axis
+  double speed_x, speed_y, speed_z;  // Nominal mm/minute for each axis
   double nominal_speed;               // The nominal speed for this block in mm/min
-  double millimeters;
+  double millimeters;                 // The total travel of this block in mm
   double entry_factor;                // The factors representing the change in speed at the start of the trapezoid
   
   // Settings for the trapezoid generator
