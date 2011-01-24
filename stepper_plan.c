@@ -235,9 +235,11 @@ void planner_recalculate_trapezoids() {
 // 3. Recalculate trapezoids for all blocks.
 
 void planner_recalculate() {     
+  PORTD ^= (1<<2);
   planner_reverse_pass();
   planner_forward_pass();
   planner_recalculate_trapezoids();
+  PORTD ^= (1<<2);
 }
 
 

@@ -84,7 +84,6 @@ inline void trapezoid_generator_reset() {
 // interrupt. It can be assumed that the trapezoid-generator-parameters and the
 // current_block stays untouched by outside handlers for the duration of this function call.
 inline void trapezoid_generator_tick() {     
-  PORTD ^= (1<<2); 
   if (current_block) {
     if (step_event_count < current_block->accelerate_until) {
       trapezoid_rate += current_block->rate_delta;
@@ -98,18 +97,15 @@ inline void trapezoid_generator_tick() {
       set_step_events_per_minute(trapezoid_rate);
     }
   }
-  PORTD ^= (1<<2);
 }
 
 // Add a new linear movement to the buffer. steps_x, _y and _z is the signed, relative motion in 
 // steps. Microseconds specify how many microseconds the move should take to perform. To aid acceleration
 // calculation the caller must also provide the physical length of the line in millimeters.
 void st_buffer_line(int32_t steps_x, int32_t steps_y, int32_t steps_z, uint32_t microseconds, double millimeters) {
-  PORTD ^= (1<<2);
   plan_buffer_line(steps_x, steps_y, steps_z, microseconds, millimeters);
   // Ensure that block processing is running by enabling The Stepper Driver Interrupt
   ENABLE_STEPPER_DRIVER_INTERRUPT();
-  PORTD ^= (1<<2);
 }
 
 // "The Stepper Driver Interrupt" - This timer interrupt is the workhorse of Grbl. It is  executed at the rate set with
@@ -239,7 +235,7 @@ void st_init()
   STEPPERS_ENABLE_PORT |= 1<<STEPPERS_ENABLE_BIT;
   
   DDRD |= (1<<2);
-  PORTD |= (1<<2);
+  PORTD &= ~(1<<2);
    
   sei();
 }
