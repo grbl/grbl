@@ -23,8 +23,12 @@
 
 #include <avr/io.h>
 
+
 // Initializes the motion_control subsystem resources
 void mc_init();
+
+// Enables or disables the look ahead acceleration manager. (Default: on)
+void mc_set_acceleration_manager_enabled(uint8_t enabled);
 
 // Execute linear motion in absolute millimeter coordinates. Feed rate given in millimeters/second
 // unless invert_feed_rate is true. Then the feed_rate means that the motion should be completed in

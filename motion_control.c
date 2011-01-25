@@ -26,7 +26,7 @@
 #include <stdlib.h>
 #include "nuts_bolts.h"
 #include "stepper.h"
-
+#include "stepper_plan.h"
 #include "wiring_serial.h"
 
 int32_t position[3];    // The current position of the tool in absolute steps
@@ -40,6 +40,14 @@ void mc_dwell(uint32_t milliseconds)
 {
   st_synchronize();
   _delay_ms(milliseconds);
+}
+
+void mc_set_acceleration_manager_enabled(uint8_t enabled) {
+  if (enabled) {
+    plan_enable_acceleration_management();
+  } else {
+    plan_disable_acceleration_management();
+  }
 }
 
 // Execute linear motion in absolute millimeter coordinates. Feed rate given in millimeters/second

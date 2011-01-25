@@ -303,7 +303,6 @@ void plan_disable_acceleration_management() {
   }
 }
 
-
 // Add a new linear movement to the buffer. steps_x, _y and _z is the signed, relative motion in 
 // steps. Microseconds specify how many microseconds the move should take to perform. To aid acceleration
 // calculation the caller must also provide the physical length of the line in millimeters.
