@@ -89,7 +89,7 @@ typedef struct {
   int16_t spindle_speed;         /* RPM/100 */
   uint8_t plane_axis_0, plane_axis_1, plane_axis_2; // The axes of the selected plane  
 } parser_state_t;
-parser_state_t gc;
+static parser_state_t gc;
 
 #define FAIL(status) gc.status_code = status;
 

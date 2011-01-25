@@ -60,10 +60,11 @@
 #include "config.h"
 #include "wiring_serial.h"
 
-block_t block_buffer[BLOCK_BUFFER_SIZE]; // A ring buffer for motion instructions
+block_t block_buffer[BLOCK_BUFFER_SIZE];  // A ring buffer for motion instructions
 volatile int block_buffer_head;           // Index of the next block to be pushed
 volatile int block_buffer_tail;           // Index of the block to process now
-uint8_t acceleration_management;          // Acceleration management active?
+
+static uint8_t acceleration_management;   // Acceleration management active?
 
 
 // NOTE: See bottom of this module for a comment outlining the reasoning behind the mathematics of the

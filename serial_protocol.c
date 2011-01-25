@@ -28,8 +28,8 @@
 #include <avr/pgmspace.h>
 #define LINE_BUFFER_SIZE 50
 
-char line[LINE_BUFFER_SIZE];
-uint8_t char_counter;
+static char line[LINE_BUFFER_SIZE];
+static uint8_t char_counter;
 
 void prompt() {
   printPgmString(PSTR("ok\r\n"));

@@ -39,21 +39,21 @@ void set_step_events_per_minute(uint32_t steps_per_minute);
 #define MINIMUM_STEPS_PER_MINUTE 1200
 #define CYCLES_PER_ACCELERATION_TICK ((TICKS_PER_MICROSECOND*1000000)/ACCELERATION_TICKS_PER_SECOND)
 
-block_t *current_block;    // A convenience pointer to the block currently being traced
+static block_t *current_block;  // A convenience pointer to the block currently being traced
 
 // Variables used by The Stepper Driver Interrupt
-uint8_t out_bits;               // The next stepping-bits to be output
-int32_t counter_x, 
-        counter_y, 
-        counter_z;              // counter variables for the bresenham line tracer
-uint32_t step_events_completed; // The number of step events executed in the current block
-volatile int busy;              // TRUE when SIG_OUTPUT_COMPARE1A is being serviced. Used to avoid retriggering that handler.
+static uint8_t out_bits;        // The next stepping-bits to be output
+static int32_t counter_x,       // Counter variables for the bresenham line tracer
+               counter_y, 
+               counter_z;       
+static uint32_t step_events_completed; // The number of step events executed in the current block
+volatile int busy; // TRUE when SIG_OUTPUT_COMPARE1A is being serviced. Used to avoid retriggering that handler.
 
 // Variables used by the trapezoid generation
-uint32_t cycles_per_step_event;        // The number of machine cycles between each step event
-uint32_t trapezoid_tick_cycle_counter; // The cycles since last trapezoid_tick. Used to generate ticks at a steady
-                                       // pace without allocating a separate timer
-uint32_t trapezoid_adjusted_rate;      // The current rate of step_events according to the trapezoid generator
+static uint32_t cycles_per_step_event;        // The number of machine cycles between each step event
+static uint32_t trapezoid_tick_cycle_counter; // The cycles since last trapezoid_tick. Used to generate ticks at a steady
+                                              // pace without allocating a separate timer
+static uint32_t trapezoid_adjusted_rate;      // The current rate of step_events according to the trapezoid generator
 
 // Two trapezoids:
 //         __________________________
