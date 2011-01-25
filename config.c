@@ -26,7 +26,7 @@
 #include "wiring_serial.h"
 #include <avr/pgmspace.h>
 
-struct Settings settings;
+settings_t settings;
 
 void reset_settings() {
   settings.steps_per_mm[0] = X_STEPS_PER_MM;
@@ -62,7 +62,7 @@ int read_settings() {
   uint8_t version = eeprom_get_char(0);
   if (version != SETTINGS_VERSION) { return(FALSE); }
   // Read settings-record and check checksum
-  if (!(memcpy_from_eeprom_with_checksum((char*)&settings, 1, sizeof(struct Settings)))) {
+  if (!(memcpy_from_eeprom_with_checksum((char*)&settings, 1, sizeof(settings_t)))) {
     return(FALSE);
   }
   return(TRUE);
@@ -70,7 +70,7 @@ int read_settings() {
 
 void write_settings() {
   eeprom_put_char(0, SETTINGS_VERSION);
-  memcpy_to_eeprom_with_checksum(1, (char*)&settings, sizeof(struct Settings));
+  memcpy_to_eeprom_with_checksum(1, (char*)&settings, sizeof(settings_t));
 }
 
 // A helper method to set settings from command line

@@ -39,7 +39,7 @@ void set_step_events_per_minute(uint32_t steps_per_minute);
 #define MINIMUM_STEPS_PER_MINUTE 1200
 #define CYCLES_PER_ACCELERATION_TICK ((TICKS_PER_MICROSECOND*1000000)/ACCELERATION_TICKS_PER_SECOND)
 
-struct Block *current_block;    // A convenience pointer to the block currently being traced
+block_t *current_block;    // A convenience pointer to the block currently being traced
 
 // Variables used by The Stepper Driver Interrupt
 uint8_t out_bits;               // The next stepping-bits to be output

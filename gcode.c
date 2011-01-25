@@ -74,7 +74,7 @@
 #define SPINDLE_DIRECTION_CW 0
 #define SPINDLE_DIRECTION_CCW 1
 
-struct ParserState {
+typedef struct {
   uint8_t status_code;
 
   uint8_t motion_mode;         /* {G0, G1, G2, G3, G38.2, G80, G81, G82, G83, G84, G85, G86, G87, G88, G89} */
@@ -87,10 +87,9 @@ struct ParserState {
   double position[3];    /* Where the interpreter considers the tool to be at this point in the code */
   uint8_t tool;
   int16_t spindle_speed;         /* RPM/100 */
-  uint8_t plane_axis_0, plane_axis_1, plane_axis_2; // The axes of the selected plane
-  
-};
-struct ParserState gc;
+  uint8_t plane_axis_0, plane_axis_1, plane_axis_2; // The axes of the selected plane  
+} parser_state_t;
+parser_state_t gc;
 
 #define FAIL(status) gc.status_code = status;
 

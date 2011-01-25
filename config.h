@@ -63,7 +63,7 @@
 #define SETTINGS_VERSION 2
 
 // Current global settings (persisted in EEPROM from byte 1 onwards)
-struct Settings {
+typedef struct {
   double steps_per_mm[3];
   uint8_t microsteps;
   uint8_t pulse_microseconds;
@@ -73,8 +73,8 @@ struct Settings {
   double mm_per_arc_segment;
   double acceleration;
   double max_jerk;
-};
-extern struct Settings settings;
+} settings_t;
+extern settings_t settings;
 
 // Initialize the configuration subsystem (load settings from EEPROM)
 void config_init();

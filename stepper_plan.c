@@ -60,7 +60,7 @@
 #include "config.h"
 #include "wiring_serial.h"
 
-struct Block block_buffer[BLOCK_BUFFER_SIZE]; // A ring buffer for motion instructions
+block_t block_buffer[BLOCK_BUFFER_SIZE]; // A ring buffer for motion instructions
 volatile int block_buffer_head;           // Index of the next block to be pushed
 volatile int block_buffer_tail;           // Index of the block to process now
 uint8_t acceleration_management;          // Acceleration management active?
@@ -113,7 +113,7 @@ inline double intersection_distance(double initial_rate, double final_rate, doub
                                        time -->                                 
 */                                                                              
 
-void calculate_trapezoid_for_block(struct Block *block, double entry_factor, double exit_factor) {
+void calculate_trapezoid_for_block(block_t *block, double entry_factor, double exit_factor) {
   block->initial_rate = ceil(block->nominal_rate*entry_factor);
   int32_t final_rate = ceil(block->nominal_rate*entry_factor);
   int32_t acceleration_per_minute = block->rate_delta*ACCELERATION_TICKS_PER_SECOND*60.0;
@@ -149,7 +149,7 @@ inline double max_allowable_speed(double acceleration, double target_velocity, d
 // "Junction jerk" in this context is the immediate change in speed at the junction of two blocks.
 // This method will calculate the junction jerk as the euclidean distance between the nominal 
 // velocities of the respective blocks.
-inline double junction_jerk(struct Block *before, struct Block *after) {
+inline double junction_jerk(block_t *before, block_t *after) {
   return(sqrt(
     pow(before->speed_x-after->speed_x, 2)+
     pow(before->speed_y-after->speed_y, 2)+
@@ -158,7 +158,7 @@ inline double junction_jerk(struct Block *before, struct Block *after) {
 }
 
 // The kernel called by planner_recalculate() when scanning the plan from last to first entry.
-void planner_reverse_pass_kernel(struct Block *previous, struct Block *current, struct Block *next) {
+void planner_reverse_pass_kernel(block_t *previous, block_t *current, block_t *next) {
   if(!current) { return; }
 
   double entry_factor = 1.0;
@@ -197,7 +197,7 @@ void planner_reverse_pass_kernel(struct Block *previous, struct Block *current, 
 // implements the reverse pass.
 void planner_reverse_pass() {
   auto int8_t block_index = block_buffer_head;
-  struct Block *block[3] = {NULL, NULL, NULL};
+  block_t *block[3] = {NULL, NULL, NULL};
   while(block_index != block_buffer_tail) {
     block[2]= block[1];
     block[1]= block[0];
@@ -209,7 +209,7 @@ void planner_reverse_pass() {
 }
 
 // The kernel called by planner_recalculate() when scanning the plan from first to last entry.
-void planner_forward_pass_kernel(struct Block *previous, struct Block *current, struct Block *next) {
+void planner_forward_pass_kernel(block_t *previous, block_t *current, block_t *next) {
   if(!current) { return; }
   // If the previous block is an acceleration block, but it is not long enough to 
   // complete the full speed change within the block, we need to adjust out entry
@@ -229,7 +229,7 @@ void planner_forward_pass_kernel(struct Block *previous, struct Block *current, 
 // implements the forward pass.
 void planner_forward_pass() {
   int8_t block_index = block_buffer_tail;
-  struct Block *block[3] = {NULL, NULL, NULL};
+  block_t *block[3] = {NULL, NULL, NULL};
   
   while(block_index != block_buffer_head) {
     block[0] = block[1];
@@ -246,8 +246,8 @@ void planner_forward_pass() {
 // updating the blocks.
 void planner_recalculate_trapezoids() {
   int8_t block_index = block_buffer_tail;
-  struct Block *current;
-  struct Block *next = NULL;
+  block_t *current;
+  block_t *next = NULL;
   
   while(block_index != block_buffer_head) {
     current = next;
@@ -262,7 +262,7 @@ void planner_recalculate_trapezoids() {
 
 // Recalculates the motion plan according to the following algorithm:
 //
-//   1. Go over every block in reverse order and calculate a junction speed reduction (i.e. Block.entry_factor) 
+//   1. Go over every block in reverse order and calculate a junction speed reduction (i.e. block_t.entry_factor) 
 //      so that:
 //     a. The junction jerk is within the set limit
 //     b. No speed reduction within one block requires faster deceleration than the one, true constant 
@@ -313,7 +313,7 @@ void plan_buffer_line(int32_t steps_x, int32_t steps_y, int32_t steps_z, uint32_
 	// Rest here until there is room in the buffer.
   while(block_buffer_tail == next_buffer_head) { sleep_mode(); }
   // Prepare to set up new block
-  struct Block *block = &block_buffer[block_buffer_head];
+  block_t *block = &block_buffer[block_buffer_head];
   // Number of steps for each axis
   block->steps_x = labs(steps_x);
   block->steps_y = labs(steps_y);

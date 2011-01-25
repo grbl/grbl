@@ -32,7 +32,7 @@
 
 // This struct is used when buffering the setup for each linear movement "nominal" values are as specified in 
 // the source g-code and may never actually be reached if acceleration management is active.
-struct Block {
+typedef struct {
   // Fields used by the bresenham algorithm for tracing the line
   uint32_t steps_x, steps_y, steps_z; // Step count along each axis
   uint8_t  direction_bits;            // The direction bit set for this block (refers to *_DIRECTION_BIT in config.h)
@@ -52,9 +52,9 @@ struct Block {
   int32_t rate_delta;                 // The steps/minute to add or subtract when changing speed (must be positive)
   uint32_t accelerate_until;          // The index of the step event on which to stop acceleration
   uint32_t decelerate_after;          // The index of the step event on which to start decelerating
-};
+} block_t;
       
-extern struct Block block_buffer[BLOCK_BUFFER_SIZE]; // A ring buffer for motion instructions
+extern block_t block_buffer[BLOCK_BUFFER_SIZE]; // A ring buffer for motion instructions
 extern volatile int block_buffer_head;           // Index of the next block to be pushed
 extern volatile int block_buffer_tail;           // Index of the block to process now
 
