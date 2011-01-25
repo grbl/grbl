@@ -46,8 +46,7 @@ uint8_t out_bits;               // The next stepping-bits to be output
 int32_t counter_x, 
         counter_y, 
         counter_z;              // counter variables for the bresenham line tracer
-uint32_t step_events_left;      // The number of step events left to complete the current_block
-uint32_t step_event_count;      // The count of step events executed in the current block
+uint32_t step_events_completed;      // The count of step events executed in the current block
 volatile int busy;              // TRUE when SIG_OUTPUT_COMPARE1A is being serviced. Used to avoid retriggering that handler.
 
 uint32_t cycles_per_step_event;        // The number of machine cycles between each step event
@@ -85,10 +84,10 @@ inline void trapezoid_generator_reset() {
 // current_block stays untouched by outside handlers for the duration of this function call.
 inline void trapezoid_generator_tick() {     
   if (current_block) {
-    if (step_event_count < current_block->accelerate_until) {
+    if (step_events_completed < current_block->accelerate_until) {
       trapezoid_rate += current_block->rate_delta;
       set_step_events_per_minute(trapezoid_rate);
-    } else if (step_event_count > current_block->decelerate_after) {
+    } else if (step_events_completed > current_block->decelerate_after) {
       // NOTE: We will only reduce speed if the result will be > 0. This catches small
       // rounding errors that might leave steps hanging after the last trapezoid tick.
       if(current_block->rate_delta < trapezoid_rate) {
@@ -143,8 +142,7 @@ SIGNAL(SIG_OUTPUT_COMPARE1A)
       counter_x = -(current_block->step_event_count >> 1);
       counter_y = counter_x;
       counter_z = counter_x;
-      step_events_left = current_block->step_event_count;
-      step_event_count = 0;
+      step_events_completed = 0;
     } else {
       DISABLE_STEPPER_DRIVER_INTERRUPT();
     }    
@@ -168,8 +166,8 @@ SIGNAL(SIG_OUTPUT_COMPARE1A)
       counter_z -= current_block->step_event_count;
     }
     // If current block is finished, reset pointer 
-    step_events_left -= 1; step_event_count += 1;
-    if (step_events_left <= 0) {
+    step_events_completed += 1;
+    if (step_events_completed >= current_block->step_event_count) {
       current_block = NULL;
       // move the block buffer tail to the next instruction
       block_buffer_tail = (block_buffer_tail + 1) % BLOCK_BUFFER_SIZE;      
