@@ -24,11 +24,7 @@
 #include <inttypes.h>
 
 // Pick a suitable block-buffer size
-#ifdef __AVR_ATmega328P__
 #define BLOCK_BUFFER_SIZE 20   // Atmega 328 has one full kilobyte of extra RAM!
-#else
-#define BLOCK_BUFFER_SIZE 10
-#endif
 
 // This struct is used when buffering the setup for each linear movement "nominal" values are as specified in 
 // the source g-code and may never actually be reached if acceleration management is active.

@@ -87,11 +87,7 @@ void serialFlush()
 	rx_buffer_head = rx_buffer_tail;
 }
 
-#ifdef USART_RX_vect
 SIGNAL(USART_RX_vect)
-#else
-SIGNAL(SIG_USART_RECV)
-#endif
 {
 	unsigned char c = UDR0;
 	int i = (rx_buffer_head + 1) % RX_BUFFER_SIZE;

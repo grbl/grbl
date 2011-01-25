@@ -111,11 +111,7 @@ void st_buffer_line(int32_t steps_x, int32_t steps_y, int32_t steps_z, uint32_t 
 // "The Stepper Driver Interrupt" - This timer interrupt is the workhorse of Grbl. It is  executed at the rate set with
 // config_step_timer. It pops blocks from the block_buffer and executes them by pulsing the stepper pins appropriately. 
 // It is supported by The Stepper Port Reset Interrupt which it uses to reset the stepper port after each pulse.
-#ifdef TIMER1_COMPA_vect
 SIGNAL(TIMER1_COMPA_vect)
-#else
-SIGNAL(SIG_OUTPUT_COMPARE1A)
-#endif
 {        
   // TODO: Check if the busy-flag can be eliminated by just disabeling this interrupt while we are in it
   
@@ -192,11 +188,7 @@ SIGNAL(SIG_OUTPUT_COMPARE1A)
 
 // This interrupt is set up by SIG_OUTPUT_COMPARE1A when it sets the motor port bits. It resets
 // the motor port after a short period (settings.pulse_microseconds) completing one step cycle.
-#ifdef TIMER2_OVF_vect
 SIGNAL(TIMER2_OVF_vect)
-#else
-SIGNAL(SIG_OVERFLOW2)
-#endif
 {
   // reset stepping pins (leave the direction pins)
   STEPPING_PORT = (STEPPING_PORT & ~STEP_MASK) | (settings.invert_mask & STEP_MASK); 
