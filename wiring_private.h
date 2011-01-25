@@ -47,8 +47,6 @@ extern "C"{
 
 #define EXTERNAL_NUM_INTERRUPTS 2
 
-typedef void (*voidFuncPtr)(void);
-
 #ifdef __cplusplus
 } // extern "C"
 #endif
