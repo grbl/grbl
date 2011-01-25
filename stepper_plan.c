@@ -242,6 +242,11 @@ void planner_recalculate() {
   PORTD ^= (1<<2);
 }
 
+void plan_init() {
+  block_buffer_head = 0;
+  block_buffer_tail = 0;
+  plan_enable_acceleration_management();
+}
 
 void plan_enable_acceleration_management() {
   if (!acceleration_management) {
@@ -257,11 +262,6 @@ void plan_disable_acceleration_management() {
   }
 }
 
-void plan_init() {
-  block_buffer_head = 0;
-  block_buffer_tail = 0;
-  plan_enable_acceleration_management();
-}
 
 // Add a new linear movement to the buffer. steps_x, _y and _z is the signed, relative motion in 
 // steps. Microseconds specify how many microseconds the move should take to perform. To aid acceleration
