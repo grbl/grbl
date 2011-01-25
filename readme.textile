@@ -1,0 +1,26 @@
+h1. Grbl - An embedded g-code interpreter and motion-controller for the Arduino/AVR328 microcontroller
+
+h2. The goal: A no-compromise, high performance, low cost alternative to parallel-port based motion control for CNC milling
+
+h2. Status:
+
+* Ready for production, used regularly for countless CNC jobs
+* Highly optimized C utilizing the hardware-timers of the AVR-chip for all critical timing
+* Able to maintain more than 30kHz step rate, generating an ultra clean, jitter free step-signal
+* Robust G-code interpreter, tested with output from several CAM tools
+* Standards-compliant g-code arcs/circles fully supported
+* Buffered, non blocking, asynchronous step generation so the rest of the system is free to process
+  g-code while the steppers are steppin'
+* Configuration parameters stored in EEPROM and set via simple commands
+* Full acceleration management with look-ahead
+** Smooth acceleration and deceleration lets stepper motors run at higher nominal speeds
+** Smooth cornering within the set jerk-limit of your choosing will brake for sharp turns, but keep speed at slight direction changes                                                                                                                                    
+
+Prioritized to-do:
+* Backlash compensation
+* Autodetect baud rate
+* Spindle control
+* Arduino IDE compatible (build and flash)
+* Support "headless" fabrication by buffering all code to SD-card or similar
+
+The project was initially inspired by the Arduino GCode Interpreter by Mike Ellery
