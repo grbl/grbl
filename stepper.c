@@ -55,7 +55,6 @@ static uint32_t trapezoid_tick_cycle_counter; // The cycles since last trapezoid
                                               // pace without allocating a separate timer
 static uint32_t trapezoid_adjusted_rate;      // The current rate of step_events according to the trapezoid generator
 
-// Two trapezoids:
 //         __________________________
 //        /|                        |\     _________________         ^
 //       / |                        | \   /|               |\        |
