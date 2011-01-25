@@ -18,6 +18,38 @@
   along with Grbl.  If not, see <http://www.gnu.org/licenses/>.
 */
 
+/*  
+  Reasoning behind the mathematics in this module (in the key of 'Mathematica'):
+  
+  s == speed, a == acceleration, t == time, d == distance
+
+  Basic definitions:
+
+    Speed[s_, a_, t_] := s + (a*t) 
+    Travel[s_, a_, t_] := Integrate[Speed[s, a, t], t]
+
+  Distance to reach a specific speed with a constant acceleration:
+
+    Solve[{Speed[s, a, t] == m, Travel[s, a, t] == d}, d, t]
+      d -> (m^2 - s^2)/(2 a) --> estimate_acceleration_distance()
+
+  Speed after a given distance of travel with constant acceleration:
+
+    Solve[{Speed[s, a, t] == m, Travel[s, a, t] == d}, m, t]
+      m -> Sqrt[2 a d + s^2]    
+
+    DestinationSpeed[s_, a_, d_] := Sqrt[2 a d + s^2]
+
+  When to start braking (di) to reach a specified destionation speed (s2) after accelerating
+  from initial speed s1 without ever stopping at a plateau:
+
+    Solve[{DestinationSpeed[s1, a, di] == DestinationSpeed[s2, a, d - di]}, di]
+      di -> (2 a d - s1^2 + s2^2)/(4 a) --> intersection_distance()
+
+    IntersectionDistance[s1_, s2_, a_, d_] := (2 a d - s1^2 + s2^2)/(4 a)
+*/
+                                                                                                            
+
 #include <inttypes.h>
 #include <math.h>       
 #include <stdlib.h>
@@ -40,7 +72,10 @@ uint8_t acceleration_management;          // Acceleration management active?
 // Calculates the distance (not time) it takes to accelerate from initial_rate to target_rate using the 
 // given acceleration:
 inline double estimate_acceleration_distance(double initial_rate, double target_rate, double acceleration) {
-  return((target_rate*target_rate-initial_rate*initial_rate)/(2L*acceleration));
+  return(
+    (target_rate*target_rate-initial_rate*initial_rate)/
+    (2L*acceleration)
+  );
 }
 
 // This function gives you the point at which you must start braking (at the rate of -acceleration) if 
@@ -59,7 +94,10 @@ inline double estimate_acceleration_distance(double initial_rate, double target_
       intersection_distance  distance                                                                           */
 
 inline double intersection_distance(double initial_rate, double final_rate, double acceleration, double distance) {
-  return((2*acceleration*distance-initial_rate*initial_rate+final_rate*final_rate)/(4*acceleration));
+  return(
+    (2*acceleration*distance-initial_rate*initial_rate+final_rate*final_rate)/
+    (4*acceleration)
+  );
 }
 
 
@@ -103,7 +141,9 @@ void calculate_trapezoid_for_block(struct Block *block, double entry_factor, dou
 // Calculates the maximum allowable speed at this point when you must be able to reach target_velocity using the 
 // acceleration within the allotted distance.
 inline double max_allowable_speed(double acceleration, double target_velocity, double distance) {
-  return(sqrt(target_velocity*target_velocity-2*acceleration*distance));
+  return(
+    sqrt(target_velocity*target_velocity-2*acceleration*distance)
+  );
 }
 
 // "Junction jerk" in this context is the immediate change in speed at the junction of two blocks.
@@ -119,7 +159,7 @@ inline double junction_jerk(struct Block *before, struct Block *after) {
 
 // The kernel called by planner_recalculate() when scanning the plan from last to first entry.
 void planner_reverse_pass_kernel(struct Block *previous, struct Block *current, struct Block *next) {
-  if(!current){return;}
+  if(!current) { return; }
 
   double entry_factor = 1.0;
   double exit_factor;
@@ -153,7 +193,7 @@ void planner_reverse_pass_kernel(struct Block *previous, struct Block *current, 
   current->entry_factor = entry_factor;
 }
 
-// recalculate_plan() needs to go over the current plan twice. Once in reverse and once forward. This 
+// planner_recalculate() needs to go over the current plan twice. Once in reverse and once forward. This 
 // implements the reverse pass.
 void planner_reverse_pass() {
   auto int8_t block_index = block_buffer_head;
@@ -170,7 +210,7 @@ void planner_reverse_pass() {
 
 // The kernel called by planner_recalculate() when scanning the plan from first to last entry.
 void planner_forward_pass_kernel(struct Block *previous, struct Block *current, struct Block *next) {
-  if(!current){return;}
+  if(!current) { return; }
   // If the previous block is an acceleration block, but it is not long enough to 
   // complete the full speed change within the block, we need to adjust out entry
   // speed accordingly. Remember current->entry_factor equals the exit factor of 
@@ -185,7 +225,7 @@ void planner_forward_pass_kernel(struct Block *previous, struct Block *current, 
   }
 }
 
-// recalculate_plan() needs to go over the current plan twice. Once in reverse and once forward. This 
+// planner_recalculate() needs to go over the current plan twice. Once in reverse and once forward. This 
 // implements the forward pass.
 void planner_forward_pass() {
   int8_t block_index = block_buffer_tail;
@@ -221,25 +261,26 @@ void planner_recalculate_trapezoids() {
 }
 
 // Recalculates the motion plan according to the following algorithm:
-// 1. Go over every block in reverse order and calculate a junction speed reduction (i.e. Block.entry_factor) 
-//    so that:
-//   a. The junction jerk is within the set limit
-//   b. No speed reduction within one block requires faster accelleration than the one, true constant 
-//      acceleration.
-// 2. Go over every block in chronological order and dial down junction speed reduction values if 
-//   a. The speed increase within one block would require faster accelleration than the one, true 
-//      constant acceleration.
+//
+//   1. Go over every block in reverse order and calculate a junction speed reduction (i.e. Block.entry_factor) 
+//      so that:
+//     a. The junction jerk is within the set limit
+//     b. No speed reduction within one block requires faster deceleration than the one, true constant 
+//        acceleration.
+//   2. Go over every block in chronological order and dial down junction speed reduction values if 
+//     a. The speed increase within one block would require faster accelleration than the one, true 
+//        constant acceleration.
+//
 // When these stages are complete all blocks have an entry_factor that will allow all speed changes to 
 // be performed using only the one, true constant acceleration, and where no junction jerk is jerkier than 
 // the set limit. Finally it will:
-// 3. Recalculate trapezoids for all blocks.
+//
+//   3. Recalculate trapezoids for all blocks.
 
 void planner_recalculate() {     
-  PORTD ^= (1<<2);
   planner_reverse_pass();
   planner_forward_pass();
   planner_recalculate_trapezoids();
-  PORTD ^= (1<<2);
 }
 
 void plan_init() {
@@ -322,34 +363,3 @@ void plan_buffer_line(int32_t steps_x, int32_t steps_y, int32_t steps_z, uint32_
   }  
 }
 
-/*  
-  Reasoning behind the mathematics in this module (in the key of 'Mathematica'):
-  
-  s == speed, a == acceleration, t == time, d == distance
-
-  Basic definitions:
-
-    Speed[s_, a_, t_] := s + (a*t) 
-    Travel[s_, a_, t_] := Integrate[Speed[s, a, t], t]
-
-  Distance to reach a specific speed with a constant acceleration:
-
-    Solve[{Speed[s, a, t] == m, Travel[s, a, t] == d}, d, t]
-      d -> (m^2 - s^2)/(2 a) --> estimate_acceleration_distance()
-
-  Speed after a given distance of travel with constant acceleration:
-
-    Solve[{Speed[s, a, t] == m, Travel[s, a, t] == d}, m, t]
-      m -> Sqrt[2 a d + s^2]    
-
-    DestinationSpeed[s_, a_, d_] := Sqrt[2 a d + s^2]
-
-  When to start braking (di) to reach a specified destionation speed (s2) after accelerating
-  from initial speed s1 without ever stopping at a plateau:
-
-    Solve[{DestinationSpeed[s1, a, di] == DestinationSpeed[s2, a, d - di]}, di]
-      di -> (2 a d - s1^2 + s2^2)/(4 a) --> intersection_distance()
-
-    IntersectionDistance[s1_, s2_, a_, d_] := (2 a d - s1^2 + s2^2)/(4 a)
-*/
-                                                                                                            
