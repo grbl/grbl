@@ -1,26 +1,19 @@
 h1. Grbl - An embedded g-code interpreter and motion-controller for the Arduino/AVR328 microcontroller
+    
+Grbl is a no-compromise, high performance, low cost alternative to parallel-port-based motion control for CNC milling. It will run on a vanilla Arduino (Duemillanove/Uno) as long as it sports an Atmega 328. 
 
-h2. The goal: A no-compromise, high performance, low cost alternative to parallel-port based motion control for CNC milling
+The controller is written in highly optimized C utilizing every clever feature of the AVR-chips to achieve precise timing and asynchronous operation. It is able to maintain more than 30kHz of stable, jitter free control pulses.
 
-h2. Status:
+It accepts standards-compliant G-code and has been tested with the output of several CAM tools with no problems. Arcs, circles and helical motion are fully supported - but no support for tool offsets, functions or variables as these are apocryphal and fell into disuse after humans left G-code authoring to machines some time in the 80s.
 
-* Ready for production, used regularly for countless CNC jobs
-* Highly optimized C utilizing the hardware-timers of the AVR-chip for all critical timing
-* Able to maintain more than 30kHz step rate, generating an ultra clean, jitter free step-signal
-* Robust G-code interpreter, tested with output from several CAM tools
-* Standards-compliant g-code arcs/circles fully supported
-* Buffered, non blocking, asynchronous step generation so the rest of the system is free to process
-  g-code while the steppers are steppin'
-* Configuration parameters stored in EEPROM and set via simple commands
-* Full acceleration management with look-ahead
-** Smooth acceleration and deceleration lets stepper motors run at higher nominal speeds
-** Smooth cornering within the set jerk-limit of your choosing will brake for sharp turns, but keep speed at slight direction changes                                                                                                                                    
+Grbl includes full acceleration management with look ahead. That means the controller will look up to 20 motions into the future and plan its velocities ahead to deliver smooth acceleration and jerk-free cornering.
 
-Prioritized to-do:
+h2. Prioritized to-do:
+
 * Backlash compensation
 * Autodetect baud rate
 * Spindle control
 * Arduino IDE compatible (build and flash)
 * Support "headless" fabrication by buffering all code to SD-card or similar
 
-The project was initially inspired by the Arduino GCode Interpreter by Mike Ellery
+_The project was initially inspired by the Arduino GCode Interpreter by Mike Ellery_
