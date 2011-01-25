@@ -46,13 +46,14 @@ uint8_t out_bits;               // The next stepping-bits to be output
 int32_t counter_x, 
         counter_y, 
         counter_z;              // counter variables for the bresenham line tracer
-uint32_t step_events_completed;      // The count of step events executed in the current block
+uint32_t step_events_completed; // The number of step events executed in the current block
 volatile int busy;              // TRUE when SIG_OUTPUT_COMPARE1A is being serviced. Used to avoid retriggering that handler.
 
+// Variables used by the trapezoid generation
 uint32_t cycles_per_step_event;        // The number of machine cycles between each step event
-uint32_t trapezoid_tick_cycle_counter; // The cycles since last trapezoid_tick used to generate ticks without 
-                                       // allocating a separate timer
-uint32_t trapezoid_rate;               // The current rate of step_events according to the trapezoid generator
+uint32_t trapezoid_tick_cycle_counter; // The cycles since last trapezoid_tick. Used to generate ticks at a steady
+                                       // pace without allocating a separate timer
+uint32_t trapezoid_adjusted_rate;      // The current rate of step_events according to the trapezoid generator
 
 // Two trapezoids:
 //         __________________________
@@ -67,16 +68,16 @@ uint32_t trapezoid_rate;               // The current rate of step_events accord
 //                           time ----->
 // 
 //  The trapezoid is the shape the speed curve over time. It starts at block->initial_rate, accelerates by block->rate_delta
-//  during the first block->accelerate_until step_events then keeps going at constant speed until the step-evet count reaches
-//  block->decelerate_after until the trapezoid generator is reset for the next block. 
+//  during the first block->accelerate_until step_events_completed, then keeps going at constant speed until 
+//  step_events_completed reaches block->decelerate_after after which it decelerates until the trapezoid generator is reset.
 //  The slope of acceleration is always +/- block->rate_delta and is applied at a constant rate by trapezoid_generator_tick()
 //  that is called ACCELERATION_TICKS_PER_SECOND times per second.
 
 // Initializes the trapezoid generator from the current block. Called whenever a new 
 // block begins.
 inline void trapezoid_generator_reset() {
-  trapezoid_rate = current_block->initial_rate;  
-  set_step_events_per_minute(trapezoid_rate);
+  trapezoid_adjusted_rate = current_block->initial_rate;  
+  set_step_events_per_minute(trapezoid_adjusted_rate);
 }
 
 // This is called ACCELERATION_TICKS_PER_SECOND times per second by the step_event
@@ -85,15 +86,15 @@ inline void trapezoid_generator_reset() {
 inline void trapezoid_generator_tick() {     
   if (current_block) {
     if (step_events_completed < current_block->accelerate_until) {
-      trapezoid_rate += current_block->rate_delta;
-      set_step_events_per_minute(trapezoid_rate);
+      trapezoid_adjusted_rate += current_block->rate_delta;
+      set_step_events_per_minute(trapezoid_adjusted_rate);
     } else if (step_events_completed > current_block->decelerate_after) {
       // NOTE: We will only reduce speed if the result will be > 0. This catches small
       // rounding errors that might leave steps hanging after the last trapezoid tick.
-      if(current_block->rate_delta < trapezoid_rate) {
-        trapezoid_rate -= current_block->rate_delta;
+      if(current_block->rate_delta < trapezoid_adjusted_rate) {
+        trapezoid_adjusted_rate -= current_block->rate_delta;
       }
-      set_step_events_per_minute(trapezoid_rate);
+      set_step_events_per_minute(trapezoid_adjusted_rate);
     }
   }
 }
