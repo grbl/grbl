@@ -48,7 +48,7 @@ void mc_dwell(uint32_t milliseconds, int32_t line_number)
   acting_line_number=line_number;
 */
 
-  st_buffer_delay(milliseconds);
+  st_buffer_delay(milliseconds, line_number);
   acting_line_number=line_number;
 
 }
@@ -58,7 +58,7 @@ void mc_halt(int32_t line_number)
 {
   uint32_t delay = 5;
 
-  st_buffer_delay(delay);               // A value of zero stops immediately
+  st_buffer_delay(delay, line_number);               // A value of zero stops immediately
                                         // A constant value of 5 leads to
                                         // some sort of type error, hence the
                                         // use of the variable.

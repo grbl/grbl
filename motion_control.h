@@ -54,6 +54,9 @@ void mc_go_home(int32_t line_number);
 // Stop any current motions
 void mc_stop();
 
+// Stop motion at the end of the current command
+void mc_halt();
+
 // Stop executing the current motion and go to the next one:
 //void mc_next(int line_number);
 

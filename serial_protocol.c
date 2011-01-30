@@ -144,7 +144,7 @@ void sp_quick_position()
 {
 	// Byte 1: steppers are running under 'M'anual control, 'A'uto control, or are 'O'ff
     if (mc_running) {
-    	if (buttons_in_use) printPgmString(PSTR("M")); 
+    	if (buttons_in_use) printPgmString(PSTR("M")); // b_in_u defined in stepper.c
     	else if (st_current_mode==SM_RUN) printPgmString(PSTR("A"));
     	else printPgmString(PSTR("S"));
     } else {

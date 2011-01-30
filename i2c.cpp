@@ -17,7 +17,6 @@
   You should have received a copy of the GNU General Public License
   along with Grbl.  If not, see <http://www.gnu.org/licenses/>.
 */
-
 #include <WProgram.h>  //all things wiring / arduino
 #include <Wire.h>
 
@@ -69,6 +68,8 @@ void i2c_get_buttons(void)
   for(i=0;i<4;i++){
 	if (Wire.available()) {
   		buttons[i] = Wire.receive();
+  	} else{
+  		buttons[4] = 255;
   	}
   }
 }

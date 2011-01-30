@@ -61,12 +61,15 @@ extern char buttons_in_use;
 void st_stop();
 
 // Execute the homing cycle
-// void st_go_home();
+void st_go_home();
 
 // End current instruction and go to next one:
 // void st_next();
 
 // Continue stopped command:
 // void st_continue();
+
+//Put a delay of milliseconds onto the command stack.
+int st_buffer_delay(uint32_t milliseconds, int16_t line_number);
 
 #endif
