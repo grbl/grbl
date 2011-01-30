@@ -204,7 +204,8 @@ void planner_reverse_pass() {
     block[1]= block[0];
     block[0] = &block_buffer[block_index];
     planner_reverse_pass_kernel(block[0], block[1], block[2]);
-    block_index = (block_index-1) % BLOCK_BUFFER_SIZE;
+    block_index--;
+    if(block_index < 0) {block_index = BLOCK_BUFFER_SIZE-1;}
   }
   planner_reverse_pass_kernel(NULL, block[0], block[1]);
 }
