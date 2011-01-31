@@ -29,7 +29,8 @@
 #include "stepper_plan.h"
 #include "wiring_serial.h"
 
-int32_t position[3];    // The current position of the tool in absolute steps
+// The current position of the tool in absolute steps
+int32_t position[3]; 
 
 void mc_init()
 {

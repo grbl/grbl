@@ -66,10 +66,6 @@ volatile int block_buffer_tail;           // Index of the block to process now
 
 static uint8_t acceleration_management;   // Acceleration management active?
 
-
-// NOTE: See bottom of this module for a comment outlining the reasoning behind the mathematics of the
-// following functions.
-
 // Calculates the distance (not time) it takes to accelerate from initial_rate to target_rate using the 
 // given acceleration:
 inline double estimate_acceleration_distance(double initial_rate, double target_rate, double acceleration) {

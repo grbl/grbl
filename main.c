@@ -44,8 +44,8 @@ int main(void)
   DDRD |= (1<<3)|(1<<4)|(1<<5);
   
   for(;;){
-    sleep_mode();
-    sp_process(); // process the serial protocol
+    sleep_mode(); // Wait for it ...
+    sp_process(); // ... process the serial protocol
   }
   return 0;   /* never reached */
 }

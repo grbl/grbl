@@ -25,7 +25,6 @@
 #define ONE_MINUTE_OF_MICROSECONDS 60000000.0
 #define TICKS_PER_MICROSECOND (F_CPU/1000000)
 
-
 #define max(a,b) (((a) > (b)) ? (a) : (b))
 #define min(a,b) (((a) < (b)) ? (a) : (b))
 
@@ -40,11 +39,5 @@
 #define X_AXIS 0
 #define Y_AXIS 1
 #define Z_AXIS 2
-
-// void scale_vector(double *target, double *source, double multiplier) {
-//   target[0] = source[0]*multiplier;
-//   target[1] = source[1]*multiplier;
-//   target[2] = source[2]*multiplier;
-// }
 
 #endif

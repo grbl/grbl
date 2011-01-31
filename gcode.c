@@ -394,7 +394,7 @@ uint8_t gc_execute_line(char *line) {
   // As far as the parser is concerned, the position is now == target. In reality the
   // motion control system might still be processing the action and the real tool position
   // in any intermediate location.
-  memcpy(gc.position, target, sizeof(double)*3); // equivalent of: gc.position = target;
+  memcpy(gc.position, target, sizeof(double)*3); // gc.position[] = target[];
   return(gc.status_code);
 }
 

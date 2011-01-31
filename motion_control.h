@@ -45,7 +45,7 @@ void mc_arc(double theta, double angular_travel, double radius, double linear_tr
 // Dwell for a couple of time units
 void mc_dwell(uint32_t milliseconds);
 
-// Send the tool home
+// Send the tool home (not implemented)
 void mc_go_home();
 
 #endif
