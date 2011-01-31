@@ -28,6 +28,17 @@
 
 settings_t settings;
 
+// Version 1 outdated settings record
+typedef struct {
+  double steps_per_mm[3];
+  uint8_t microsteps;
+  uint8_t pulse_microseconds;
+  double default_feed_rate;
+  double default_seek_rate;
+  uint8_t invert_mask;
+  double mm_per_arc_segment;
+} settings_v1_t;
+
 void reset_settings() {
   settings.steps_per_mm[0] = X_STEPS_PER_MM;
   settings.steps_per_mm[1] = Y_STEPS_PER_MM;
@@ -37,7 +48,7 @@ void reset_settings() {
   settings.default_seek_rate = RAPID_FEEDRATE;
   settings.acceleration = DEFAULT_ACCELERATION;
   settings.mm_per_arc_segment = MM_PER_ARC_SEGMENT;
-  settings.invert_mask = STEPPING_INVERT_MASK;
+  settings.invert_mask = DEFAULT_STEPPING_INVERT_MASK;
   settings.max_jerk = DEFAULT_MAX_JERK;
 }
 
@@ -57,20 +68,31 @@ void dump_settings() {
   printPgmString(PSTR("\r\n'$x=value' to set parameter or just '$' to dump current settings\r\n"));
 }
 
-int read_settings() {
-  // Check version-byte of eeprom
-  uint8_t version = eeprom_get_char(0);
-  if (version != SETTINGS_VERSION) { return(FALSE); }
-  // Read settings-record and check checksum
-  if (!(memcpy_from_eeprom_with_checksum((char*)&settings, 1, sizeof(settings_t)))) {
-    return(FALSE);
-  }
-  return(TRUE);
-}
-
 void write_settings() {
   eeprom_put_char(0, SETTINGS_VERSION);
   memcpy_to_eeprom_with_checksum(1, (char*)&settings, sizeof(settings_t));
+}
+
+int read_settings() {
+  // Check version-byte of eeprom
+  uint8_t version = eeprom_get_char(0);
+  
+  if (version == SETTINGS_VERSION) {
+    // Read settings-record and check checksum
+    if (!(memcpy_from_eeprom_with_checksum((char*)&settings, 1, sizeof(settings_t)))) {
+      return(FALSE);
+    }
+  } else if (version == 1) {
+    // Migrate from old settings version
+    if (!(memcpy_from_eeprom_with_checksum((char*)&settings, 1, sizeof(settings_v1_t)))) {
+      return(FALSE);
+    }
+    settings.acceleration = DEFAULT_ACCELERATION;
+    settings.max_jerk = DEFAULT_MAX_JERK;
+  } else {      
+    return(FALSE);
+  }
+  return(TRUE);
 }
 
 // A helper method to set settings from command line
@@ -93,6 +115,7 @@ void store_setting(int parameter, double value) {
   printPgmString(PSTR("Stored new setting\r\n"));
 }
 
+// Initialize the config subsystem
 void config_init() {
   if(read_settings()) {
     printPgmString(PSTR("'$' to dump current settings\r\n"));

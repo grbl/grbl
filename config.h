@@ -85,37 +85,20 @@ void dump_settings();
 // A helper method to set new settings from command line
 void store_setting(int parameter, double value);
 
-
 // Default settings (used when resetting eeprom-settings)
 #define MICROSTEPS 8
 #define X_STEPS_PER_MM (94.488188976378*MICROSTEPS)
 #define Y_STEPS_PER_MM (94.488188976378*MICROSTEPS)
 #define Z_STEPS_PER_MM (94.488188976378*MICROSTEPS)
 #define STEP_PULSE_MICROSECONDS 30
-
 #define MM_PER_ARC_SEGMENT 0.1
-
 #define RAPID_FEEDRATE 480.0 // in millimeters per minute
 #define DEFAULT_FEEDRATE 480.0
 #define DEFAULT_ACCELERATION (DEFAULT_FEEDRATE/100.0)
 #define DEFAULT_MAX_JERK 50.0
-
-// Use this line for default operation (step-pulses high)
-#define STEPPING_INVERT_MASK 0
-// Uncomment this line for inverted stepping (step-pulses low, rest high)
-// #define STEPPING_INVERT_MASK (STEP_MASK)
-// Uncomment this line to invert all step- and direction bits
-// #define STEPPING_INVERT_MASK (STEPPING_MASK)
-// Or bake your own like this adding any step-bits or directions you want to invert:
-// #define STEPPING_INVERT_MASK (STEP_MASK | (1<<X_DIRECTION_BIT) | (1<<Y_DIRECTION_BIT))
+#define DEFAULT_STEPPING_INVERT_MASK 0
 
 // The temporal resolution of the acceleration management subsystem
 #define ACCELERATION_TICKS_PER_SECOND 10L
-
-// Some useful constants
-#define STEP_MASK ((1<<X_STEP_BIT)|(1<<Y_STEP_BIT)|(1<<Z_STEP_BIT)) // All step bits
-#define DIRECTION_MASK ((1<<X_DIRECTION_BIT)|(1<<Y_DIRECTION_BIT)|(1<<Z_DIRECTION_BIT)) // All direction bits
-#define STEPPING_MASK (STEP_MASK | DIRECTION_MASK) // All stepping-related bits (step/direction)
-#define LIMIT_MASK ((1<<X_LIMIT_BIT)|(1<<Y_LIMIT_BIT)|(1<<Z_LIMIT_BIT)) // All limit bits
 
 #endif
