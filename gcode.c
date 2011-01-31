@@ -58,17 +58,19 @@
 typedef struct {
   uint8_t status_code;
 
-  uint8_t motion_mode;         /* {G0, G1, G2, G3, G80} */
-  uint8_t inverse_feed_rate_mode; /* G93, G94 */
-  uint8_t inches_mode;         /* 0 = millimeter mode, 1 = inches mode {G20, G21} */
-  uint8_t absolute_mode;       /* 0 = relative motion, 1 = absolute motion {G90, G91} */
+  uint8_t motion_mode;             /* {G0, G1, G2, G3, G80} */
+  uint8_t inverse_feed_rate_mode;  /* G93, G94 */
+  uint8_t inches_mode;             /* 0 = millimeter mode, 1 = inches mode {G20, G21} */
+  uint8_t absolute_mode;           /* 0 = relative motion, 1 = absolute motion {G90, G91} */
   uint8_t program_flow;
   int spindle_direction;
-  double feed_rate, seek_rate;              /* Millimeters/second */
-  double position[3];    /* Where the interpreter considers the tool to be at this point in the code */
+  double feed_rate, seek_rate;     /* Millimeters/second */
+  double position[3];              /* Where the interpreter considers the tool to be at this point in the code */
   uint8_t tool;
-  int16_t spindle_speed;         /* RPM/100 */
-  uint8_t plane_axis_0, plane_axis_1, plane_axis_2; // The axes of the selected plane  
+  int16_t spindle_speed;           /* RPM/100 */
+  uint8_t plane_axis_0, 
+          plane_axis_1, 
+          plane_axis_2;            // The axes of the selected plane  
 } parser_state_t;
 static parser_state_t gc;
 
@@ -127,7 +129,7 @@ uint8_t gc_execute_line(char *line) {
   double inverse_feed_rate = -1; // negative inverse_feed_rate means no inverse_feed_rate specified
   int radius_mode = FALSE;
   
-  uint8_t absolute_override = FALSE;       /* 1 = absolute motion for this block only {G53} */
+  uint8_t absolute_override = FALSE;          /* 1 = absolute motion for this block only {G53} */
   uint8_t next_action = NEXT_ACTION_DEFAULT;  /* The action that will be taken by the parsed line */
   
   double target[3], offset[3];  
@@ -142,8 +144,7 @@ uint8_t gc_execute_line(char *line) {
   
   // Disregard comments and block delete
   if (line[0] == '(') { return(gc.status_code); }
-  if (line[0] == '/') { char_counter++; } // ignore block delete
-  
+  if (line[0] == '/') { char_counter++; } // ignore block delete  
   
   // If the line starts with an '$' it is a configuration-command
   if (line[0] == '$') { 
@@ -369,7 +370,6 @@ uint8_t gc_execute_line(char *line) {
       // calculate the theta (angle) of the target point
       double theta_end = theta(target[gc.plane_axis_0] - offset[gc.plane_axis_0] - gc.position[gc.plane_axis_0], 
          target[gc.plane_axis_1] - offset[gc.plane_axis_1] - gc.position[gc.plane_axis_1]);
-      // double theta_end = theta(5,0);
       // ensure that the difference is positive so that we have clockwise travel
       if (theta_end < theta_start) { theta_end += 2*M_PI; }
       double angular_travel = theta_end-theta_start;
@@ -394,7 +394,7 @@ uint8_t gc_execute_line(char *line) {
   // As far as the parser is concerned, the position is now == target. In reality the
   // motion control system might still be processing the action and the real tool position
   // in any intermediate location.
-  memcpy(gc.position, target, sizeof(double)*3);
+  memcpy(gc.position, target, sizeof(double)*3); // equivalent of: gc.position = target;
   return(gc.status_code);
 }
 
@@ -435,7 +435,9 @@ int read_double(char *line,               //!< string: line of RS274/NGC code be
   return(1);
 }
 
-/* Intentionally not supported:
+/* 
+  Intentionally not supported:
+
   - Canned cycles
   - Tool radius compensation
   - A,B,C-axes
@@ -445,10 +447,7 @@ int read_double(char *line,               //!< string: line of RS274/NGC code be
   - Multiple home locations
   - Probing
   - Override control
-*/
 
-/* 
-   Omitted for the time being:
    group 0 = {G10, G28, G30, G92, G92.1, G92.2, G92.3} (Non modal G-codes)
    group 8 = {M7, M8, M9} coolant (special case: M7 and M8 may be active at the same time)
    group 9 = {M48, M49} enable/disable feed and speed override switches
