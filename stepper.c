@@ -32,7 +32,12 @@
 #include "stepper_plan.h"
 #include "wiring_serial.h"
 
-void set_step_events_per_minute(uint32_t steps_per_minute);
+
+// Some useful constants
+#define STEP_MASK ((1<<X_STEP_BIT)|(1<<Y_STEP_BIT)|(1<<Z_STEP_BIT)) // All step bits
+#define DIRECTION_MASK ((1<<X_DIRECTION_BIT)|(1<<Y_DIRECTION_BIT)|(1<<Z_DIRECTION_BIT)) // All direction bits
+#define STEPPING_MASK (STEP_MASK | DIRECTION_MASK) // All stepping-related bits (step/direction)
+#define LIMIT_MASK ((1<<X_LIMIT_BIT)|(1<<Y_LIMIT_BIT)|(1<<Z_LIMIT_BIT)) // All limit bits
 
 #define ENABLE_STEPPER_DRIVER_INTERRUPT()  TIMSK1 |= (1<<OCIE1A)
 #define DISABLE_STEPPER_DRIVER_INTERRUPT() TIMSK1 &= ~(1<<OCIE1A)
@@ -71,6 +76,8 @@ static uint32_t trapezoid_adjusted_rate;      // The current rate of step_events
 //  step_events_completed reaches block->decelerate_after after which it decelerates until the trapezoid generator is reset.
 //  The slope of acceleration is always +/- block->rate_delta and is applied at a constant rate by trapezoid_generator_tick()
 //  that is called ACCELERATION_TICKS_PER_SECOND times per second.
+
+void set_step_events_per_minute(uint32_t steps_per_minute);
 
 // Initializes the trapezoid generator from the current block. Called whenever a new 
 // block begins.
