@@ -118,6 +118,4 @@ void store_setting(int parameter, double value);
 #define STEPPING_MASK (STEP_MASK | DIRECTION_MASK) // All stepping-related bits (step/direction)
 #define LIMIT_MASK ((1<<X_LIMIT_BIT)|(1<<Y_LIMIT_BIT)|(1<<Z_LIMIT_BIT)) // All limit bits
 
-#define INCHES_PER_MM (1.0/25.4) // A conversion rate
-
 #endif

@@ -49,7 +49,7 @@ void sp_process()
   char c;
   while((c = serialRead()) != -1) 
   {
-    if((c == '\n')) {  // Line is complete. Then execute!
+    if((char_counter > 0) && ((c == '\n') || (c == '\r'))) {  // Line is complete. Then execute!
       line[char_counter] = 0;
       printString(line); printPgmString(PSTR("\r\n"));        
       gc_execute_line(line);
