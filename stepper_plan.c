@@ -111,16 +111,21 @@ inline double intersection_distance(double initial_rate, double final_rate, doub
 */                                                                              
 
 void calculate_trapezoid_for_block(block_t *block, double entry_factor, double exit_factor) {
+  // printString("---/-\\---\n\r");
+  // printInteger(entry_factor*1000); printString(" -> "); printInteger(exit_factor*1000); printString("\n\r");
   block->initial_rate = ceil(block->nominal_rate*entry_factor);
-  int32_t final_rate = ceil(block->nominal_rate*entry_factor);
+  int32_t final_rate = ceil(block->nominal_rate*exit_factor);
   int32_t acceleration_per_minute = block->rate_delta*ACCELERATION_TICKS_PER_SECOND*60.0;
   int32_t accelerate_steps = 
     ceil(estimate_acceleration_distance(block->initial_rate, block->nominal_rate, acceleration_per_minute));
   int32_t decelerate_steps = 
     ceil(estimate_acceleration_distance(block->nominal_rate, final_rate, -acceleration_per_minute));
+  // printInteger(accelerate_steps);printString("<-accelerate_steps\n\r");
+  // printInteger(decelerate_steps);printString("<-decelerate_steps\n\r");
 
   // Calculate the size of Plateau of Nominal Rate. 
   int32_t plateau_steps = block->step_event_count-accelerate_steps-decelerate_steps;
+  // printInteger(plateau_steps);printString("<-plateau_steps\n\r");
   
   // Is the Plateau of Nominal Rate smaller than nothing? That means no cruising, and we will
   // have to use intersection_distance() to calculate when to abort acceleration and start braking 
@@ -129,17 +134,21 @@ void calculate_trapezoid_for_block(block_t *block, double entry_factor, double e
     accelerate_steps = ceil(
       intersection_distance(block->initial_rate, final_rate, acceleration_per_minute, block->step_event_count));
     plateau_steps = block->step_event_count-(2*accelerate_steps);
+    // printString("no plateau\n\r");
   }  
   
   block->accelerate_until = accelerate_steps;
   block->decelerate_after = accelerate_steps+plateau_steps;
+  // printInteger(block->accelerate_until);printString(",");
+  // printInteger(block->decelerate_after);printString(" of ");
+  // printInteger(block->step_event_count); printString(" <- profile\n\r");
 }                    
 
 // Calculates the maximum allowable speed at this point when you must be able to reach target_velocity using the 
 // acceleration within the allotted distance.
 inline double max_allowable_speed(double acceleration, double target_velocity, double distance) {
   return(
-    sqrt(target_velocity*target_velocity-2*acceleration*distance)
+    sqrt(target_velocity*target_velocity-2*acceleration*60*60*distance)
   );
 }
 
@@ -147,6 +156,16 @@ inline double max_allowable_speed(double acceleration, double target_velocity, d
 // This method will calculate the junction jerk as the euclidean distance between the nominal 
 // velocities of the respective blocks.
 inline double junction_jerk(block_t *before, block_t *after) {
+  // printString("x: ");
+  // printInteger(before->speed_x);
+  // printString(", ");
+  // printInteger(after->speed_x);
+  // printString("\n\r");
+  // printString("y: ");
+  // printInteger(before->speed_y);
+  // printString(", ");
+  // printInteger(after->speed_y);
+  // printString("\n\r");
   return(sqrt(
     pow(before->speed_x-after->speed_x, 2)+
     pow(before->speed_y-after->speed_y, 2)+
@@ -157,6 +176,7 @@ inline double junction_jerk(block_t *before, block_t *after) {
 // The kernel called by planner_recalculate() when scanning the plan from last to first entry.
 void planner_reverse_pass_kernel(block_t *previous, block_t *current, block_t *next) {
   if(!current) { return; }
+  // printString("----------\n\r");
 
   double entry_factor = 1.0;
   double exit_factor;
@@ -170,17 +190,29 @@ void planner_reverse_pass_kernel(block_t *previous, block_t *current, block_t *n
   if (previous) {
     // Reduce speed so that junction_jerk is within the maximum allowed
     double jerk = junction_jerk(previous, current);
+    // printInteger(jerk*1000.0);
+    // printString("j\n");
     if (jerk > settings.max_jerk) {
       entry_factor = (settings.max_jerk/jerk);
     } 
+    // printInteger(entry_factor*1000.0);
+    // printString("e\n");
     // If the required deceleration across the block is too rapid, reduce the entry_factor accordingly.
     if (entry_factor > exit_factor) {
       double max_entry_speed = max_allowable_speed(-settings.acceleration,current->nominal_speed*exit_factor, 
         current->millimeters);
+      // printInteger(current->nominal_speed*exit_factor*1000.0);
+      // printString("exit_v\n");
+      // printInteger(current->millimeters*1000.0);
+      // printString("mm\n");
+      // printInteger(max_entry_speed*1000.0);
+      // printString("max_v\n");
       double max_entry_factor = max_entry_speed/current->nominal_speed;
       if (max_entry_factor < entry_factor) {
         entry_factor = max_entry_factor;
       }
+      // printInteger(entry_factor*1000.0);
+      // printString("e2\n");
     }    
   } else {
     entry_factor = 0.0;
@@ -276,9 +308,11 @@ void planner_recalculate_trapezoids() {
 //   3. Recalculate trapezoids for all blocks.
 
 void planner_recalculate() {     
+  // printString("replan\n\r");
   planner_reverse_pass();
   planner_forward_pass();
   planner_recalculate_trapezoids();
+  // printString("replan done\n\r");
 }
 
 void plan_init() {
@@ -321,9 +355,9 @@ void plan_buffer_line(int32_t steps_x, int32_t steps_y, int32_t steps_z, uint32_
   if (block->step_event_count == 0) { return; };
   // Calculate speed in mm/minute for each axis
   double multiplier = 60.0*1000000.0/microseconds;
-  block->speed_x = block->steps_x*multiplier/settings.steps_per_mm[0];
-  block->speed_y = block->steps_y*multiplier/settings.steps_per_mm[1];
-  block->speed_z = block->steps_z*multiplier/settings.steps_per_mm[2];
+  block->speed_x = steps_x*multiplier/settings.steps_per_mm[0];
+  block->speed_y = steps_y*multiplier/settings.steps_per_mm[1];
+  block->speed_z = steps_z*multiplier/settings.steps_per_mm[2];
   block->nominal_speed = millimeters*multiplier;
   block->nominal_rate = ceil(block->step_event_count*multiplier);  
   block->millimeters = millimeters;
