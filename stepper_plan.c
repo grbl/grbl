@@ -133,7 +133,7 @@ void calculate_trapezoid_for_block(block_t *block, double entry_factor, double e
   if (plateau_steps < 0) {  
     accelerate_steps = ceil(
       intersection_distance(block->initial_rate, final_rate, acceleration_per_minute, block->step_event_count));
-    plateau_steps = block->step_event_count-(2*accelerate_steps);
+    plateau_steps = 0;
     // printString("no plateau\n\r");
   }  
   
