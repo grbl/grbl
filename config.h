@@ -133,6 +133,6 @@ void store_setting(int parameter, double value);
 #define DEFAULT_STEPPING_INVERT_MASK 0
 
 // The temporal resolution of the acceleration management subsystem
-#define ACCELERATION_TICKS_PER_SECOND 10L
+#define ACCELERATION_TICKS_PER_SECOND 20L
 
 #endif

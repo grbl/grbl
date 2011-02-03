@@ -30,11 +30,13 @@
 #include "wiring_serial.h"
 
 // The current position of the tool in absolute steps
-int32_t position[3]; 
+int32_t position[3];   
+int8_t acceleration_management_enabled;
 
 void mc_init()
 {
   clear_vector(position);
+  acceleration_management_enabled = TRUE;
 }
 
 void mc_dwell(uint32_t milliseconds) 
@@ -49,6 +51,7 @@ void mc_set_acceleration_manager_enabled(uint8_t enabled) {
   } else {
     plan_disable_acceleration_management();
   }
+  acceleration_management_enabled = enabled;
 }
 
 // Execute linear motion in absolute millimeter coordinates. Feed rate given in millimeters/second
@@ -92,7 +95,8 @@ void mc_line(double x, double y, double z, double feed_rate, int invert_feed_rat
 // segment is configured in settings.mm_per_arc_segment.  
 void mc_arc(double theta, double angular_travel, double radius, double linear_travel, int axis_1, int axis_2, 
   int axis_linear, double feed_rate, int invert_feed_rate)
-{
+{      
+  //plan_disable_acceleration_management(); // disable acceleration management for the duration of the arc
   double millimeters_of_travel = hypot(angular_travel*radius, labs(linear_travel));
   if (millimeters_of_travel == 0.0) { return; }
   uint16_t segments = ceil(millimeters_of_travel/settings.mm_per_arc_segment);
@@ -118,7 +122,8 @@ void mc_arc(double theta, double angular_travel, double radius, double linear_tr
     target[axis_1] = center_x+sin(theta)*radius;
     target[axis_2] = center_y+cos(theta)*radius;
     mc_line(target[X_AXIS], target[Y_AXIS], target[Z_AXIS], feed_rate, invert_feed_rate);
-  }
+  }     
+  //mc_set_acceleration_manager_enabled(acceleration_management_enabled); // restore acceleration management setting
 }
 
 void mc_go_home()

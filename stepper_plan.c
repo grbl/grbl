@@ -326,6 +326,8 @@ void plan_buffer_line(int32_t steps_x, int32_t steps_y, int32_t steps_z, uint32_
   block->speed_z = block->steps_z*multiplier/settings.steps_per_mm[2];
   block->nominal_speed = millimeters*multiplier;
   block->nominal_rate = ceil(block->step_event_count*multiplier);  
+  block->millimeters = millimeters;
+  block->entry_factor = 0.0;
   
   // Compute the acceleration rate for the trapezoid generator. Depending on the slope of the line
   // average travel per step event changes. For a line along one axis the travel per step event
@@ -340,8 +342,9 @@ void plan_buffer_line(int32_t steps_x, int32_t steps_y, int32_t steps_z, uint32_
   if (acceleration_management) {
     calculate_trapezoid_for_block(block,0,0);                       // compute a conservative acceleration trapezoid for now
   } else {
+    block->initial_rate = block->nominal_rate;
     block->accelerate_until = 0;
-    block->decelerate_after = 0;
+    block->decelerate_after = block->step_event_count;
     block->rate_delta = 0;
   }
   
