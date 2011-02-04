@@ -23,6 +23,7 @@
 #include "gcode.h"
 #include "wiring_serial.h"
 #include "settings.h"
+#include "config.h"
 #include <math.h>
 #include "nuts_bolts.h"
 #include <avr/pgmspace.h>
@@ -54,7 +55,7 @@ void sp_init()
 {
   beginSerial(BAUD_RATE);  
   printPgmString(PSTR("\r\nGrbl "));
-  printPgmString(PSTR(VERSION));
+  printPgmString(PSTR(GRBL_VERSION));
   printPgmString(PSTR("\r\n"));  
   prompt();
 }

@@ -1,5 +1,5 @@
 /*
-  settings.c - eeprom and compile time configuration handling 
+  settings.c - eeprom configuration handling 
   Part of Grbl
 
   Copyright (c) 2009-2011 Simen Svale Skogsrud
@@ -40,14 +40,14 @@ typedef struct {
 } settings_v1_t;
 
 void reset_settings() {
-  settings.steps_per_mm[0] = X_STEPS_PER_MM;
-  settings.steps_per_mm[1] = Y_STEPS_PER_MM;
-  settings.steps_per_mm[2] = Z_STEPS_PER_MM;
-  settings.pulse_microseconds = STEP_PULSE_MICROSECONDS;
+  settings.steps_per_mm[0] = DEFAULT_X_STEPS_PER_MM;
+  settings.steps_per_mm[1] = DEFAULT_Y_STEPS_PER_MM;
+  settings.steps_per_mm[2] = DEFAULT_Z_STEPS_PER_MM;
+  settings.pulse_microseconds = DEFAULT_STEP_PULSE_MICROSECONDS;
   settings.default_feed_rate = DEFAULT_FEEDRATE;
-  settings.default_seek_rate = RAPID_FEEDRATE;
+  settings.default_seek_rate = DEFAULT_RAPID_FEEDRATE;
   settings.acceleration = DEFAULT_ACCELERATION;
-  settings.mm_per_arc_segment = MM_PER_ARC_SEGMENT;
+  settings.mm_per_arc_segment = DEFAULT_MM_PER_ARC_SEGMENT;
   settings.invert_mask = DEFAULT_STEPPING_INVERT_MASK;
   settings.max_jerk = DEFAULT_MAX_JERK;
 }
