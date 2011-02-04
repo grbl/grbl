@@ -217,8 +217,12 @@ uint8_t gc_execute_line(char *line) {
       case 'F': 
       if (gc.inverse_feed_rate_mode) {
         inverse_feed_rate = unit_converted_value; // seconds per motion for this motion only
-      } else {
-        gc.feed_rate = unit_converted_value/60; // millimeters pr second
+      } else {          
+        if (gc.motion_mode == MOTION_MODE_SEEK) {
+          gc.seek_rate = unit_converted_value/60;
+        } else {
+          gc.feed_rate = unit_converted_value/60; // millimeters pr second
+        }
       }
       break;
       case 'I': case 'J': case 'K': offset[letter-'I'] = unit_converted_value; break;
