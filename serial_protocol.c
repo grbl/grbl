@@ -31,6 +31,21 @@
 static char line[LINE_BUFFER_SIZE];
 static uint8_t char_counter;
 
+void status_message(int status_code) {
+  if (status_code) {
+    switch(status_code) {          
+      case GCSTATUS_BAD_NUMBER_FORMAT:
+      printPgmString(PSTR("error: Bad number format\n\r")); break;
+      case GCSTATUS_EXPECTED_COMMAND_LETTER:
+      printPgmString(PSTR("error: Expected command letter\n\r")); break;
+      case GCSTATUS_UNSUPPORTED_STATEMENT:
+      printPgmString(PSTR("error: Unsupported statement\n\r")); break;
+      case GCSTATUS_FLOATING_POINT_ERROR:
+      printPgmString(PSTR("error: Floating point error\n\r")); break;
+    }
+  }
+}
+
 void prompt() {
   printPgmString(PSTR("ok\r\n"));
 }
@@ -50,10 +65,9 @@ void sp_process()
   while((c = serialRead()) != -1) 
   {
     if((char_counter > 0) && ((c == '\n') || (c == '\r'))) {  // Line is complete. Then execute!
-      line[char_counter] = 0;
-      printString(line); printPgmString(PSTR("\r\n"));        
-      gc_execute_line(line);
-      char_counter = 0;
+      line[char_counter] = 0; // treminate string
+      status_message(gc_execute_line(line));
+      char_counter = 0; // reset line buffer index
       prompt();
     } else if (c <= ' ') { // Throw away whitepace and control characters
     } else if (c >= 'a' && c <= 'z') { // Upcase lowercase
