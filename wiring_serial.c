@@ -22,9 +22,10 @@
   $Id: wiring.c 248 2007-02-03 15:36:30Z mellis $
 */
 
-#include "wiring_private.h"
+//#include "wiring_private.h"
 #include <math.h>
 #include <avr/pgmspace.h>
+#include <avr/interrupt.h>
 
 // Define constants and variables for buffering incoming serial data.  We're
 // using a ring buffer (I think), in which rx_buffer_head is the index of the
@@ -43,11 +44,11 @@ void beginSerial(long baud)
 	UBRR0L = ((F_CPU / 16 + baud / 2) / baud - 1);
 	
 	// enable rx and tx
-	sbi(UCSR0B, RXEN0);
-	sbi(UCSR0B, TXEN0);
+  UCSR0B |= 1<<RXEN0;
+  UCSR0B |= 1<<TXEN0;
 	
 	// enable interrupt on complete reception of a byte
-	sbi(UCSR0B, RXCIE0);
+  UCSR0B |= 1<<RXCIE0;
 	
 	// defaults to 8-bit, no parity, 1 stop bit
 }
