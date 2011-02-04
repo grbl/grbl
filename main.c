@@ -28,13 +28,13 @@
 #include "gcode.h"
 #include "serial_protocol.h"
 
-#include "config.h"
+#include "settings.h"
 #include "wiring_serial.h"
 
 int main(void)
 {
   sp_init(); // initialize the serial protocol
-  config_init();
+  settings_init();
   plan_init(); // initialize the stepper plan subsystem
   st_init(); // initialize the stepper subsystem
   mc_init(); // initialize motion control subsystem

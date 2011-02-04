@@ -1,5 +1,5 @@
 /*
-  config.h - eeprom and compile time configuration handling 
+  settings.h - eeprom and compile time configuration handling 
   Part of Grbl
 
   Copyright (c) 2009-2011 Simen Svale Skogsrud
@@ -18,8 +18,8 @@
   along with Grbl.  If not, see <http://www.gnu.org/licenses/>.
 */
 
-#ifndef config_h
-#define config_h
+#ifndef settings_h
+#define settings_h
 
 #define VERSION "0.6b"
 #include <math.h>
@@ -111,7 +111,7 @@ typedef struct {
 extern settings_t settings;
 
 // Initialize the configuration subsystem (load settings from EEPROM)
-void config_init();
+void settings_init();
 
 // Print current settings
 void dump_settings();

@@ -1,5 +1,5 @@
 /*
-  config.c - eeprom and compile time configuration handling 
+  settings.c - eeprom and compile time configuration handling 
   Part of Grbl
 
   Copyright (c) 2009-2011 Simen Svale Skogsrud
@@ -21,7 +21,7 @@
 #include <avr/io.h>
 #include <math.h>
 #include "nuts_bolts.h"
-#include "config.h"
+#include "settings.h"
 #include "eeprom.h"
 #include "wiring_serial.h"
 #include <avr/pgmspace.h>
@@ -116,7 +116,7 @@ void store_setting(int parameter, double value) {
 }
 
 // Initialize the config subsystem
-void config_init() {
+void settings_init() {
   if(read_settings()) {
     printPgmString(PSTR("'$' to dump current settings\r\n"));
   } else {

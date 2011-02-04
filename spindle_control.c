@@ -19,7 +19,7 @@
 */
 
 #include "spindle_control.h"
-#include "config.h"
+#include "settings.h"
 
 #include <avr/io.h>
 

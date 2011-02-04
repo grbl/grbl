@@ -57,7 +57,7 @@
 #include "stepper_plan.h"
 #include "nuts_bolts.h"
 #include "stepper.h"
-#include "config.h"
+#include "settings.h"
 #include "wiring_serial.h"
 
 block_t block_buffer[BLOCK_BUFFER_SIZE];  // A ring buffer for motion instructions

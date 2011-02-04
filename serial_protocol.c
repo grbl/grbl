@@ -22,7 +22,7 @@
 #include "serial_protocol.h"
 #include "gcode.h"
 #include "wiring_serial.h"
-#include "config.h"
+#include "settings.h"
 #include <math.h>
 #include "nuts_bolts.h"
 #include <avr/pgmspace.h>

@@ -26,7 +26,7 @@
 #include <string.h>
 #include "nuts_bolts.h"
 #include <math.h>
-#include "config.h"
+#include "settings.h"
 #include "motion_control.h"
 #include "spindle_control.h"
 #include "errno.h"
