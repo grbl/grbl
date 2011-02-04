@@ -39,10 +39,11 @@
 #define STEPPING_MASK (STEP_MASK | DIRECTION_MASK) // All stepping-related bits (step/direction)
 #define LIMIT_MASK ((1<<X_LIMIT_BIT)|(1<<Y_LIMIT_BIT)|(1<<Z_LIMIT_BIT)) // All limit bits
 
+#define MINIMUM_STEPS_PER_MINUTE 1200 // The stepper subsystem will never run slower than this, exept when sleeping
+#define CYCLES_PER_ACCELERATION_TICK ((TICKS_PER_MICROSECOND*1000000)/ACCELERATION_TICKS_PER_SECOND)
+
 #define ENABLE_STEPPER_DRIVER_INTERRUPT()  TIMSK1 |= (1<<OCIE1A)
 #define DISABLE_STEPPER_DRIVER_INTERRUPT() TIMSK1 &= ~(1<<OCIE1A)
-#define MINIMUM_STEPS_PER_MINUTE 1200
-#define CYCLES_PER_ACCELERATION_TICK ((TICKS_PER_MICROSECOND*1000000)/ACCELERATION_TICKS_PER_SECOND)
 
 static block_t *current_block;  // A convenience pointer to the block currently being traced
 
@@ -171,6 +172,12 @@ SIGNAL(TIMER1_COMPA_vect)
     // If current block is finished, reset pointer 
     step_events_completed += 1;
     if (step_events_completed >= current_block->step_event_count) {
+      // printInteger(current_block->exit_rate);
+      // printString(" == ");
+      // printInteger(trapezoid_adjusted_rate);
+      // printString(" <-- exit, actual\n\r");
+      // printInteger(current_block->rate_delta);
+      // printString(" <-- delta\n\r");
       current_block = NULL;
       // move the block buffer tail to the next instruction
       block_buffer_tail = (block_buffer_tail + 1) % BLOCK_BUFFER_SIZE;      

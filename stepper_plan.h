@@ -37,7 +37,7 @@ typedef struct {
   
   // Fields used by the motion planner to manage acceleration
   double speed_x, speed_y, speed_z;   // Nominal mm/minute for each axis
-  double nominal_speed;               // The nominal speed for this block in mm/min
+  double nominal_speed;               // The nominal speed for this block in mm/min  
   double millimeters;                 // The total travel of this block in mm
   double entry_factor;                // The factor representing the change in speed at the start of this trapezoid.
                                       // (The end of the curren speed trapezoid is defined by the entry_factor of the
@@ -48,6 +48,9 @@ typedef struct {
   int32_t rate_delta;                 // The steps/minute to add or subtract when changing speed (must be positive)
   uint32_t accelerate_until;          // The index of the step event on which to stop acceleration
   uint32_t decelerate_after;          // The index of the step event on which to start decelerating
+  
+  // Debug fields, PLEASE REMOVE
+  uint32_t exit_rate;
 } block_t;
       
 extern block_t block_buffer[BLOCK_BUFFER_SIZE]; // A ring buffer for motion instructions

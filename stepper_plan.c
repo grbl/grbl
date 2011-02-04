@@ -139,6 +139,7 @@ void calculate_trapezoid_for_block(block_t *block, double entry_factor, double e
   
   block->accelerate_until = accelerate_steps;
   block->decelerate_after = accelerate_steps+plateau_steps;
+  block->exit_rate = lround(block->nominal_rate*exit_factor); // Debug line please delete me soon
   // printInteger(block->accelerate_until);printString(",");
   // printInteger(block->decelerate_after);printString(" of ");
   // printInteger(block->step_event_count); printString(" <- profile\n\r");
@@ -173,6 +174,12 @@ inline double junction_jerk(block_t *before, block_t *after) {
   );
 }
 
+// Calculate a braking factor to reach baseline speed which is max_jerk/2, e.g. the 
+// speed under which you cannot exceed max_jerk no matter what you do.
+double factor_for_safe_speed(block_t *block) {
+  return(settings.max_jerk/block->nominal_speed);  
+}
+
 // The kernel called by planner_recalculate() when scanning the plan from last to first entry.
 void planner_reverse_pass_kernel(block_t *previous, block_t *current, block_t *next) {
   if(!current) { return; }
@@ -183,7 +190,7 @@ void planner_reverse_pass_kernel(block_t *previous, block_t *current, block_t *n
   if (next) {
     exit_factor = next->entry_factor;
   } else {
-    exit_factor = 0.0;
+    exit_factor = factor_for_safe_speed(current);
   }
   
   // Calculate the entry_factor for the current block. 
@@ -215,8 +222,12 @@ void planner_reverse_pass_kernel(block_t *previous, block_t *current, block_t *n
       // printString("e2\n");
     }    
   } else {
-    entry_factor = 0.0;
+    entry_factor = factor_for_safe_speed(current);
   }
+  // printInteger(current->nominal_speed*1000);printString("<- ns\n\r");
+  // printInteger(entry_factor*1000); printString("<- entry-f\n\r");
+  // printInteger(exit_factor*1000); printString("<- exit-f\n\r");
+  // printInteger((uint16_t)current); printString("<-addr\n\r");
   
   // Store result
   current->entry_factor = entry_factor;
@@ -227,13 +238,16 @@ void planner_reverse_pass_kernel(block_t *previous, block_t *current, block_t *n
 void planner_reverse_pass() {
   auto int8_t block_index = block_buffer_head;
   block_t *block[3] = {NULL, NULL, NULL};
-  while(block_index != block_buffer_tail) {
+  while(block_index != block_buffer_tail) {    
+    block_index--;
+    if(block_index < 0) {
+      block_index = BLOCK_BUFFER_SIZE-1;
+    }
+    // printInteger(block_index); printString(" <-- index");
     block[2]= block[1];
     block[1]= block[0];
     block[0] = &block_buffer[block_index];
     planner_reverse_pass_kernel(block[0], block[1], block[2]);
-    block_index--;
-    if(block_index < 0) {block_index = BLOCK_BUFFER_SIZE-1;}
   }
   planner_reverse_pass_kernel(NULL, block[0], block[1]);
 }
@@ -287,7 +301,7 @@ void planner_recalculate_trapezoids() {
     }
     block_index = (block_index+1) % BLOCK_BUFFER_SIZE;
   }
-  calculate_trapezoid_for_block(next, next->entry_factor, 0.0);
+  calculate_trapezoid_for_block(next, next->entry_factor, factor_for_safe_speed(next));
 }
 
 // Recalculates the motion plan according to the following algorithm:
@@ -355,11 +369,16 @@ void plan_buffer_line(int32_t steps_x, int32_t steps_y, int32_t steps_z, uint32_
   if (block->step_event_count == 0) { return; };
   // Calculate speed in mm/minute for each axis
   double multiplier = 60.0*1000000.0/microseconds;
+  // printInteger(multiplier*1000); printString("<-multi\n\r");
   block->speed_x = steps_x*multiplier/settings.steps_per_mm[0];
   block->speed_y = steps_y*multiplier/settings.steps_per_mm[1];
   block->speed_z = steps_z*multiplier/settings.steps_per_mm[2];
   block->nominal_speed = millimeters*multiplier;
+  // printInteger(millimeters*1000); printString("<-mm\n\r");
+  // printInteger(block->nominal_speed*1000); printString("<-ns\n\r");
   block->nominal_rate = ceil(block->step_event_count*multiplier);  
+  // printInteger(block->nominal_rate*1000); printString("<-nr\n\r");   
+  // printInteger((uint16_t)block); printString("<-addr\n\r");
   block->millimeters = millimeters;
   block->entry_factor = 0.0;
   
@@ -374,7 +393,8 @@ void plan_buffer_line(int32_t steps_x, int32_t steps_y, int32_t steps_z, uint32_
     ((settings.acceleration*60.0)/(ACCELERATION_TICKS_PER_SECOND))/ // acceleration mm/sec/sec per acceleration_tick
     travel_per_step);                                               // convert to: acceleration steps/min/acceleration_tick    
   if (acceleration_management) {
-    calculate_trapezoid_for_block(block,0,0);                       // compute a conservative acceleration trapezoid for now
+    double safe_speed_factor = factor_for_safe_speed(block);
+    calculate_trapezoid_for_block(block, safe_speed_factor, safe_speed_factor);                       // compute a conservative acceleration trapezoid for now
   } else {
     block->initial_rate = block->nominal_rate;
     block->accelerate_until = 0;
