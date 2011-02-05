@@ -49,10 +49,10 @@ extern settings_t settings;
 void settings_init();
 
 // Print current settings
-void dump_settings();
+void settings_dump();
 
 // A helper method to set new settings from command line
-void store_setting(int parameter, double value);
+void settings_store_setting(int parameter, double value);
 
 // Default settings (used when resetting eeprom-settings)
 #define MICROSTEPS 8

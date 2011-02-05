@@ -39,7 +39,7 @@ typedef struct {
   double mm_per_arc_segment;
 } settings_v1_t;
 
-void reset_settings() {
+void settings_reset() {
   settings.steps_per_mm[0] = DEFAULT_X_STEPS_PER_MM;
   settings.steps_per_mm[1] = DEFAULT_Y_STEPS_PER_MM;
   settings.steps_per_mm[2] = DEFAULT_Z_STEPS_PER_MM;
@@ -52,7 +52,7 @@ void reset_settings() {
   settings.max_jerk = DEFAULT_MAX_JERK;
 }
 
-void dump_settings() {
+void settings_dump() {
   printPgmString(PSTR("$0 = ")); printFloat(settings.steps_per_mm[0]);
   printPgmString(PSTR(" (steps/mm x)\r\n$1 = ")); printFloat(settings.steps_per_mm[1]);
   printPgmString(PSTR(" (steps/mm y)\r\n$2 = ")); printFloat(settings.steps_per_mm[2]);
@@ -96,7 +96,7 @@ int read_settings() {
 }
 
 // A helper method to set settings from command line
-void store_setting(int parameter, double value) {
+void settings_store_setting(int parameter, double value) {
   switch(parameter) {
     case 0: case 1: case 2:
     settings.steps_per_mm[parameter] = value; break;
@@ -121,8 +121,8 @@ void settings_init() {
     printPgmString(PSTR("'$' to dump current settings\r\n"));
   } else {
     printPgmString(PSTR("Warning: Failed to read EEPROM settings. Using defaults.\r\n"));
-    reset_settings();
+    settings_reset();
     write_settings();
-    dump_settings();
+    settings_dump();
   }
 }

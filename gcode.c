@@ -150,12 +150,12 @@ uint8_t gc_execute_line(char *line) {
   if (line[0] == '$') { 
     // Parameter lines are on the form '$4=374.3' or '$' to dump current settings
     char_counter = 1;
-    if(line[char_counter] == 0) { dump_settings(); return(GCSTATUS_OK); }
+    if(line[char_counter] == 0) { settings_dump(); return(GCSTATUS_OK); }
     read_double(line, &char_counter, &p);
     if(line[char_counter++] != '=') { return(GCSTATUS_UNSUPPORTED_STATEMENT); }
     read_double(line, &char_counter, &value);
     if(line[char_counter] != 0) { return(GCSTATUS_UNSUPPORTED_STATEMENT); }
-    store_setting(p, value);
+    settings_store_setting(p, value);
   }
   
   /* We'll handle this as g-code. First: parse all statements */
