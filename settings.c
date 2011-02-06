@@ -40,9 +40,9 @@ typedef struct {
 } settings_v1_t;
 
 void settings_reset() {
-  settings.steps_per_mm[0] = DEFAULT_X_STEPS_PER_MM;
-  settings.steps_per_mm[1] = DEFAULT_Y_STEPS_PER_MM;
-  settings.steps_per_mm[2] = DEFAULT_Z_STEPS_PER_MM;
+  settings.steps_per_mm[X_AXIS] = DEFAULT_X_STEPS_PER_MM;
+  settings.steps_per_mm[Y_AXIS] = DEFAULT_Y_STEPS_PER_MM;
+  settings.steps_per_mm[Z_AXIS] = DEFAULT_Z_STEPS_PER_MM;
   settings.pulse_microseconds = DEFAULT_STEP_PULSE_MICROSECONDS;
   settings.default_feed_rate = DEFAULT_FEEDRATE;
   settings.default_seek_rate = DEFAULT_RAPID_FEEDRATE;
@@ -53,9 +53,9 @@ void settings_reset() {
 }
 
 void settings_dump() {
-  printPgmString(PSTR("$0 = ")); printFloat(settings.steps_per_mm[0]);
-  printPgmString(PSTR(" (steps/mm x)\r\n$1 = ")); printFloat(settings.steps_per_mm[1]);
-  printPgmString(PSTR(" (steps/mm y)\r\n$2 = ")); printFloat(settings.steps_per_mm[2]);
+  printPgmString(PSTR("$0 = ")); printFloat(settings.steps_per_mm[X_AXIS]);
+  printPgmString(PSTR(" (steps/mm x)\r\n$1 = ")); printFloat(settings.steps_per_mm[Y_AXIS]);
+  printPgmString(PSTR(" (steps/mm y)\r\n$2 = ")); printFloat(settings.steps_per_mm[Z_AXIS]);
   printPgmString(PSTR(" (steps/mm z)\r\n$3 = ")); printInteger(settings.pulse_microseconds);
   printPgmString(PSTR(" (microseconds step pulse)\r\n$4 = ")); printFloat(settings.default_feed_rate);
   printPgmString(PSTR(" (mm/min default feed rate)\r\n$5 = ")); printFloat(settings.default_seek_rate);

@@ -359,9 +359,9 @@ void plan_buffer_line(double x, double y, double z, double feed_rate, int invert
   
   // Calculate target position in absolute steps
   int32_t target[3];
-  target[0] = lround(x*settings.steps_per_mm[0]);
-  target[1] = lround(y*settings.steps_per_mm[1]);
-  target[2] = lround(y*settings.steps_per_mm[2]);     
+  target[X_AXIS] = lround(x*settings.steps_per_mm[X_AXIS]);
+  target[Y_AXIS] = lround(y*settings.steps_per_mm[Y_AXIS]);
+  target[Z_AXIS] = lround(y*settings.steps_per_mm[Z_AXIS]);     
   
   // Calculate the buffer head after we push this byte
 	int next_buffer_head = (block_buffer_head + 1) % BLOCK_BUFFER_SIZE;	
@@ -371,13 +371,13 @@ void plan_buffer_line(double x, double y, double z, double feed_rate, int invert
   // Prepare to set up new block
   block_t *block = &block_buffer[block_buffer_head];
   // Number of steps for each axis
-  block->steps_x = labs(position[0]-target[0]);
-  block->steps_y = labs(position[1]-target[1]);
-  block->steps_z = labs(position[2]-target[2]);
+  block->steps_x = labs(position[X_AXIS]-target[X_AXIS]);
+  block->steps_y = labs(position[Y_AXIS]-target[Y_AXIS]);
+  block->steps_z = labs(position[Z_AXIS]-target[Z_AXIS]);
   block->millimeters = sqrt(
-    square(block->steps_x/settings.steps_per_mm[0])+
-    square(block->steps_y/settings.steps_per_mm[1])+
-    square(block->steps_z/settings.steps_per_mm[2]));
+    square(block->steps_x/settings.steps_per_mm[X_AXIS])+
+    square(block->steps_y/settings.steps_per_mm[Y_AXIS])+
+    square(block->steps_z/settings.steps_per_mm[Z_AXIS]));
 	
   block->step_event_count = max(block->steps_x, max(block->steps_y, block->steps_z));
   // Bail if this is a zero-length block
@@ -427,9 +427,9 @@ void plan_buffer_line(double x, double y, double z, double feed_rate, int invert
   
   // Compute direction bits for this block
   block->direction_bits = 0;
-  if (target[0] < position[0]) { block->direction_bits |= (1<<X_DIRECTION_BIT); }
-  if (target[1] < position[1]) { block->direction_bits |= (1<<Y_DIRECTION_BIT); }
-  if (target[2] < position[2]) { block->direction_bits |= (1<<Z_DIRECTION_BIT); }
+  if (target[X_AXIS] < position[X_AXIS]) { block->direction_bits |= (1<<X_DIRECTION_BIT); }
+  if (target[Y_AXIS] < position[Y_AXIS]) { block->direction_bits |= (1<<Y_DIRECTION_BIT); }
+  if (target[Z_AXIS] < position[Z_AXIS]) { block->direction_bits |= (1<<Z_DIRECTION_BIT); }
   
   // Move buffer head
   block_buffer_head = next_buffer_head;     
