@@ -52,8 +52,6 @@ typedef struct {
   uint32_t accelerate_until;          // The index of the step event on which to stop acceleration
   uint32_t decelerate_after;          // The index of the step event on which to start decelerating
   
-  // Debug fields, PLEASE REMOVE
-  uint32_t exit_rate;
 } block_t;
       
 extern int32_t position[3];
