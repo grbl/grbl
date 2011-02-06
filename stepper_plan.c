@@ -65,6 +65,9 @@ block_t block_buffer[BLOCK_BUFFER_SIZE];  // A ring buffer for motion instructio
 volatile int block_buffer_head;           // Index of the next block to be pushed
 volatile int block_buffer_tail;           // Index of the block to process now
 
+// The current position of the tool in absolute steps
+int32_t position[3];   
+
 static uint8_t acceleration_manager_enabled;   // Acceleration management active?
 
 // Calculates the distance (not time) it takes to accelerate from initial_rate to target_rate using the 
@@ -334,6 +337,7 @@ void plan_init() {
   block_buffer_head = 0;
   block_buffer_tail = 0;
   plan_set_acceleration_manager_enabled(TRUE);
+  clear_vector(position);
 }
 
 void plan_set_acceleration_manager_enabled(int enabled) {
@@ -347,10 +351,18 @@ int plan_is_acceleration_manager_enabled() {
   return(acceleration_manager_enabled);
 }
 
-// Add a new linear movement to the buffer. steps_x, _y and _z is the signed, relative motion in 
-// steps. Microseconds specify how many microseconds the move should take to perform. To aid acceleration
+// Add a new linear movement to the buffer. steps_x, _y and _z is the absolute position in 
+// mm. Microseconds specify how many microseconds the move should take to perform. To aid acceleration
 // calculation the caller must also provide the physical length of the line in millimeters.
-void plan_buffer_line(int32_t steps_x, int32_t steps_y, int32_t steps_z, uint32_t microseconds, double millimeters) {
+void plan_buffer_line(double x, double y, double z, double feed_rate, int invert_feed_rate) {
+  // The target position of the tool in absolute steps
+  
+  // Calculate target position in absolute steps
+  int32_t target[3];
+  target[0] = lround(x*settings.steps_per_mm[0]);
+  target[1] = lround(y*settings.steps_per_mm[1]);
+  target[2] = lround(y*settings.steps_per_mm[2]);     
+  
   // Calculate the buffer head after we push this byte
 	int next_buffer_head = (block_buffer_head + 1) % BLOCK_BUFFER_SIZE;	
 	// If the buffer is full: good! That means we are well ahead of the robot. 
@@ -359,25 +371,37 @@ void plan_buffer_line(int32_t steps_x, int32_t steps_y, int32_t steps_z, uint32_
   // Prepare to set up new block
   block_t *block = &block_buffer[block_buffer_head];
   // Number of steps for each axis
-  block->steps_x = labs(steps_x);
-  block->steps_y = labs(steps_y);
-  block->steps_z = labs(steps_z);   
+  block->steps_x = labs(position[0]-target[0]);
+  block->steps_y = labs(position[1]-target[1]);
+  block->steps_z = labs(position[2]-target[2]);
+  block->millimeters = sqrt(
+    square(block->steps_x/settings.steps_per_mm[0])+
+    square(block->steps_y/settings.steps_per_mm[1])+
+    square(block->steps_z/settings.steps_per_mm[2]));
+	
   block->step_event_count = max(block->steps_x, max(block->steps_y, block->steps_z));
   // Bail if this is a zero-length block
   if (block->step_event_count == 0) { return; };
+  
+  uint32_t microseconds;
+  if (!invert_feed_rate) {
+    microseconds = lround((block->millimeters/feed_rate)*1000000);
+  } else {
+    microseconds = lround(ONE_MINUTE_OF_MICROSECONDS/feed_rate);
+  }
+  
   // Calculate speed in mm/minute for each axis
   double multiplier = 60.0*1000000.0/microseconds;
   // printInteger(multiplier*1000); printString("<-multi\n\r");
-  block->speed_x = steps_x*multiplier/settings.steps_per_mm[0];
-  block->speed_y = steps_y*multiplier/settings.steps_per_mm[1];
-  block->speed_z = steps_z*multiplier/settings.steps_per_mm[2];
-  block->nominal_speed = millimeters*multiplier;
+  block->speed_x = x*multiplier;
+  block->speed_y = y*multiplier;
+  block->speed_z = z*multiplier;
+  block->nominal_speed = block->millimeters*multiplier;
   // printInteger(millimeters*1000); printString("<-mm\n\r");
   // printInteger(block->nominal_speed*1000); printString("<-ns\n\r");
   block->nominal_rate = ceil(block->step_event_count*multiplier);  
   // printInteger(block->nominal_rate*1000); printString("<-nr\n\r");   
   // printInteger((uint16_t)block); printString("<-addr\n\r");
-  block->millimeters = millimeters;
   block->entry_factor = 0.0;
   
   // Compute the acceleration rate for the trapezoid generator. Depending on the slope of the line
@@ -386,13 +410,14 @@ void plan_buffer_line(int32_t steps_x, int32_t steps_y, int32_t steps_z, uint32_
   // axes might step for every step event. Travel per step event is then sqrt(travel_x^2+travel_y^2).
   // To generate trapezoids with contant acceleration between blocks the rate_delta must be computed 
   // specifically for each line to compensate for this phenomenon:
-  double travel_per_step = millimeters/block->step_event_count;
+  double travel_per_step = block->millimeters/block->step_event_count;
   block->rate_delta = ceil(
     ((settings.acceleration*60.0)/(ACCELERATION_TICKS_PER_SECOND))/ // acceleration mm/sec/sec per acceleration_tick
     travel_per_step);                                               // convert to: acceleration steps/min/acceleration_tick    
   if (acceleration_manager_enabled) {
+    // compute a preliminary conservative acceleration trapezoid
     double safe_speed_factor = factor_for_safe_speed(block);
-    calculate_trapezoid_for_block(block, safe_speed_factor, safe_speed_factor);                       // compute a conservative acceleration trapezoid for now
+    calculate_trapezoid_for_block(block, safe_speed_factor, safe_speed_factor); 
   } else {
     block->initial_rate = block->nominal_rate;
     block->accelerate_until = 0;
@@ -402,16 +427,15 @@ void plan_buffer_line(int32_t steps_x, int32_t steps_y, int32_t steps_z, uint32_
   
   // Compute direction bits for this block
   block->direction_bits = 0;
-  if (steps_x < 0) { block->direction_bits |= (1<<X_DIRECTION_BIT); }
-  if (steps_y < 0) { block->direction_bits |= (1<<Y_DIRECTION_BIT); }
-  if (steps_z < 0) { block->direction_bits |= (1<<Z_DIRECTION_BIT); }
-  // Move buffer head
-  block_buffer_head = next_buffer_head;
+  if (target[0] < position[0]) { block->direction_bits |= (1<<X_DIRECTION_BIT); }
+  if (target[1] < position[1]) { block->direction_bits |= (1<<Y_DIRECTION_BIT); }
+  if (target[2] < position[2]) { block->direction_bits |= (1<<Z_DIRECTION_BIT); }
   
-  if (acceleration_manager_enabled) {
-    planner_recalculate();  
-  } else {    
-    calculate_trapezoid_for_block(block, 1.0, 1.0);
-  }  
+  // Move buffer head
+  block_buffer_head = next_buffer_head;     
+  // Update position 
+  memcpy(position, target, sizeof(target)); // position[] = target[]
+  
+  if (acceleration_manager_enabled) { planner_recalculate(); }
 }
 

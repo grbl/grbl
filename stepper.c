@@ -110,10 +110,14 @@ inline void trapezoid_generator_tick() {
 // Add a new linear movement to the buffer. steps_x, _y and _z is the signed, relative motion in 
 // steps. Microseconds specify how many microseconds the move should take to perform. To aid acceleration
 // calculation the caller must also provide the physical length of the line in millimeters.
-void st_buffer_line(int32_t steps_x, int32_t steps_y, int32_t steps_z, uint32_t microseconds, double millimeters) {
-  plan_buffer_line(steps_x, steps_y, steps_z, microseconds, millimeters);
+void st_buffer_line(double x, double y, double z, double feed_rate, int invert_feed_rate) {
+  plan_buffer_line(x, y, z, feed_rate, invert_feed_rate);
   // Ensure that block processing is running by enabling The Stepper Driver Interrupt
   ENABLE_STEPPER_DRIVER_INTERRUPT();
+}
+
+void st_get_position_steps(int32_t (*vector)[3]) {
+  memcpy(vector, position, sizeof(position)); // vector[] = position[]
 }
 
 // "The Stepper Driver Interrupt" - This timer interrupt is the workhorse of Grbl. It is  executed at the rate set with

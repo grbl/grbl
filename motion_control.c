@@ -29,13 +29,6 @@
 #include "stepper_plan.h"
 #include "wiring_serial.h"
 
-// The current position of the tool in absolute steps
-int32_t position[3];   
-
-void mc_init()
-{
-  clear_vector(position);
-}
 
 void mc_dwell(uint32_t milliseconds) 
 {
@@ -48,31 +41,7 @@ void mc_dwell(uint32_t milliseconds)
 // 1/feed_rate minutes.
 void mc_line(double x, double y, double z, double feed_rate, int invert_feed_rate)
 {
-  uint8_t axis; // loop variable
-  int32_t target[3]; // The target position in absolute steps
-  int32_t steps[3]; // The target line in relative steps
-  
-  target[X_AXIS] = lround(x*settings.steps_per_mm[0]);
-  target[Y_AXIS] = lround(y*settings.steps_per_mm[1]);
-  target[Z_AXIS] = lround(z*settings.steps_per_mm[2]); 
-
-  for(axis = X_AXIS; axis <= Z_AXIS; axis++) {
-    steps[axis] = target[axis]-position[axis];
-  }
-  
-	// Ask old Phytagoras to estimate how many mm our next move is going to take us
-	double millimeters_of_travel = sqrt(
-	  square(steps[X_AXIS]/settings.steps_per_mm[0]) + 
-	  square(steps[Y_AXIS]/settings.steps_per_mm[1]) + 
-	  square(steps[Z_AXIS]/settings.steps_per_mm[2]));
-	if (invert_feed_rate) {
-    st_buffer_line(steps[X_AXIS], steps[Y_AXIS], steps[Z_AXIS], lround(ONE_MINUTE_OF_MICROSECONDS/feed_rate), 
-      millimeters_of_travel);
-	} else {
-    st_buffer_line(steps[X_AXIS], steps[Y_AXIS], steps[Z_AXIS],
-      lround((millimeters_of_travel/feed_rate)*1000000), millimeters_of_travel);
-	}
-	memcpy(position, target, sizeof(target)); // position[] = target[] 
+  st_buffer_line(x, y, z, feed_rate, invert_feed_rate);
 }
 
 // Execute an arc. theta == start angle, angular_travel == number of radians to go along the arc,
@@ -85,6 +54,8 @@ void mc_line(double x, double y, double z, double feed_rate, int invert_feed_rat
 void mc_arc(double theta, double angular_travel, double radius, double linear_travel, int axis_1, int axis_2, 
   int axis_linear, double feed_rate, int invert_feed_rate)
 {      
+  int32_t position[3];
+  st_get_position_steps(&position);
   int acceleration_manager_was_enabled = plan_is_acceleration_manager_enabled();
   plan_set_acceleration_manager_enabled(FALSE); // disable acceleration management for the duration of the arc
   double millimeters_of_travel = hypot(angular_travel*radius, labs(linear_travel));
@@ -119,5 +90,4 @@ void mc_arc(double theta, double angular_travel, double radius, double linear_tr
 void mc_go_home()
 {
   st_go_home();
-  clear_vector(position); // By definition this is location [0, 0, 0]
 }

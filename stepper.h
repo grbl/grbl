@@ -29,7 +29,10 @@ void st_init();
 
 // Add a new linear movement to the buffer. steps_x, _y and _z is the signed, relative motion in 
 // steps. Microseconds specify how many microseconds the move should take to perform.
-void st_buffer_line(int32_t steps_x, int32_t steps_y, int32_t steps_z, uint32_t rate, double millimeters);
+void st_buffer_line(double x, double y, double z, double feed_rate, int invert_feed_rate);
+
+// Copy the current absolute position in steps into the provided vector
+void st_get_position_steps(int32_t (*vector)[3]);
 
 // Block until all buffered steps are executed
 void st_synchronize();

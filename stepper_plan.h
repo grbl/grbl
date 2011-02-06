@@ -18,6 +18,9 @@
   along with Grbl.  If not, see <http://www.gnu.org/licenses/>.
 */
 
+// This module is to be considered a sub-module of stepper.c. Please don't include 
+// this file from any other module.
+
 #ifndef stepper_plan_h
 #define stepper_plan_h
                  
@@ -56,6 +59,7 @@ typedef struct {
 extern block_t block_buffer[BLOCK_BUFFER_SIZE]; // A ring buffer for motion instructions
 extern volatile int block_buffer_head;           // Index of the next block to be pushed
 extern volatile int block_buffer_tail;           // Index of the block to process now
+extern int32_t position[3];
 
 // Initialize the motion plan subsystem      
 void plan_init();
@@ -65,7 +69,7 @@ void plan_init();
 // Add a new linear movement to the buffer. steps_x, _y and _z is the signed, relative motion in 
 // steps. Microseconds specify how many microseconds the move should take to perform. To aid acceleration
 // calculation the caller must also provide the physical length of the line in millimeters.
-void plan_buffer_line(int32_t steps_x, int32_t steps_y, int32_t steps_z, uint32_t microseconds, double millimeters);
+void plan_buffer_line(double x, double y, double z, double feed_rate, int invert_feed_rate);
 
 // Enables acceleration-management for upcoming blocks
 void plan_set_acceleration_manager_enabled(int enabled);
