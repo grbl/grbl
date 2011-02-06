@@ -56,9 +56,6 @@ typedef struct {
   uint32_t exit_rate;
 } block_t;
       
-extern block_t block_buffer[BLOCK_BUFFER_SIZE]; // A ring buffer for motion instructions
-extern volatile int block_buffer_head;           // Index of the next block to be pushed
-extern volatile int block_buffer_tail;           // Index of the block to process now
 extern int32_t position[3];
 
 // Initialize the motion plan subsystem      
@@ -70,6 +67,13 @@ void plan_init();
 // steps. Microseconds specify how many microseconds the move should take to perform. To aid acceleration
 // calculation the caller must also provide the physical length of the line in millimeters.
 void plan_buffer_line(double x, double y, double z, double feed_rate, int invert_feed_rate);
+
+// Call when the current block is no longer needed. Discards the block and makes the memory
+// availible for new blocks.
+inline void plan_discard_current_block();
+
+// Gets the current block. Returns NULL if buffer empty
+inline block_t *plan_get_current_block();
 
 // Enables acceleration-management for upcoming blocks
 void plan_set_acceleration_manager_enabled(int enabled);

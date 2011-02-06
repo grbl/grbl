@@ -351,6 +351,17 @@ int plan_is_acceleration_manager_enabled() {
   return(acceleration_manager_enabled);
 }
 
+inline void plan_discard_current_block() {
+  if (block_buffer_head != block_buffer_tail) {
+    block_buffer_tail = (block_buffer_tail + 1) % BLOCK_BUFFER_SIZE;  
+  }
+}
+
+inline block_t *plan_get_current_block() {
+  if (block_buffer_head == block_buffer_tail) { return(NULL); }
+  return(&block_buffer[block_buffer_tail]);
+}
+
 // Add a new linear movement to the buffer. steps_x, _y and _z is the absolute position in 
 // mm. Microseconds specify how many microseconds the move should take to perform. To aid acceleration
 // calculation the caller must also provide the physical length of the line in millimeters.

@@ -144,9 +144,8 @@ SIGNAL(TIMER1_COMPA_vect)
   // If there is no current block, attempt to pop one from the buffer
   if (current_block == NULL) {
     // Anything in the buffer?
-    if (block_buffer_head != block_buffer_tail) {
-      // Retrieve a new line and get ready to step it
-      current_block = &block_buffer[block_buffer_tail]; 
+    current_block = plan_get_current_block();
+    if (current_block != NULL) {
       trapezoid_generator_reset();
       counter_x = -(current_block->step_event_count >> 1);
       counter_y = counter_x;
@@ -184,8 +183,7 @@ SIGNAL(TIMER1_COMPA_vect)
       // printInteger(current_block->rate_delta);
       // printString(" <-- delta\n\r");
       current_block = NULL;
-      // move the block buffer tail to the next instruction
-      block_buffer_tail = (block_buffer_tail + 1) % BLOCK_BUFFER_SIZE;
+      plan_discard_current_block();
     }
   } else {
     out_bits = 0;
@@ -252,7 +250,7 @@ void st_init()
 // Block until all buffered steps are executed
 void st_synchronize()
 {
-  while(block_buffer_tail != block_buffer_head) { sleep_mode(); }    
+  while(plan_get_current_block()) { sleep_mode(); }    
 }
 
 // Configures the prescaler and ceiling of timer 1 to produce the given rate as accurately as possible.
