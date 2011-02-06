@@ -143,7 +143,6 @@ void calculate_trapezoid_for_block(block_t *block, double entry_factor, double e
   
   block->accelerate_until = accelerate_steps;
   block->decelerate_after = accelerate_steps+plateau_steps;
-  block->exit_rate = lround(block->nominal_rate*exit_factor); // Debug line please delete me soon
   // printInteger(block->accelerate_until);printString(",");
   // printInteger(block->decelerate_after);printString(" of ");
   // printInteger(block->step_event_count); printString(" <- profile\n\r");
