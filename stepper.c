@@ -176,12 +176,6 @@ SIGNAL(TIMER1_COMPA_vect)
     // If current block is finished, reset pointer 
     step_events_completed += 1;
     if (step_events_completed >= current_block->step_event_count) {
-      // printInteger(current_block->exit_rate);
-      // printString(" == ");
-      // printInteger(trapezoid_adjusted_rate);
-      // printString(" <-- exit, actual\n\r");
-      // printInteger(current_block->rate_delta);
-      // printString(" <-- delta\n\r");
       current_block = NULL;
       plan_discard_current_block();
     }
