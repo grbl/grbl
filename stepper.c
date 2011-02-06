@@ -185,7 +185,7 @@ SIGNAL(TIMER1_COMPA_vect)
       // printString(" <-- delta\n\r");
       current_block = NULL;
       // move the block buffer tail to the next instruction
-      block_buffer_tail = (block_buffer_tail + 1) % BLOCK_BUFFER_SIZE;      
+      block_buffer_tail = (block_buffer_tail + 1) % BLOCK_BUFFER_SIZE;
     }
   } else {
     out_bits = 0;
@@ -253,15 +253,6 @@ void st_init()
 void st_synchronize()
 {
   while(block_buffer_tail != block_buffer_head) { sleep_mode(); }    
-}
-
-// Cancel all buffered steps
-void st_flush()
-{
-  cli();
-  block_buffer_tail = block_buffer_head;
-  current_block = NULL;
-  sei();
 }
 
 // Configures the prescaler and ceiling of timer 1 to produce the given rate as accurately as possible.

@@ -37,9 +37,6 @@ void st_get_position_steps(int32_t (*vector)[3]);
 // Block until all buffered steps are executed
 void st_synchronize();
 
-// Cancel all pending steps
-void st_flush();
-
 // Execute the homing cycle
 void st_go_home();
 
