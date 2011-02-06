@@ -65,7 +65,7 @@ block_t block_buffer[BLOCK_BUFFER_SIZE];  // A ring buffer for motion instructio
 volatile int block_buffer_head;           // Index of the next block to be pushed
 volatile int block_buffer_tail;           // Index of the block to process now
 
-static uint8_t acceleration_management;   // Acceleration management active?
+static uint8_t acceleration_manager_enabled;   // Acceleration management active?
 
 // Calculates the distance (not time) it takes to accelerate from initial_rate to target_rate using the 
 // given acceleration:
@@ -333,21 +333,18 @@ void planner_recalculate() {
 void plan_init() {
   block_buffer_head = 0;
   block_buffer_tail = 0;
-  plan_enable_acceleration_management();
+  plan_set_acceleration_manager_enabled(TRUE);
 }
 
-void plan_enable_acceleration_management() {
-  if (!acceleration_management) {
+void plan_set_acceleration_manager_enabled(int enabled) {
+  if ((!!acceleration_manager_enabled) != (!!enabled)) {
     st_synchronize();
-    acceleration_management = TRUE;
+    acceleration_manager_enabled = !!enabled;
   }
 }
 
-void plan_disable_acceleration_management() {
-  if(acceleration_management) {
-    st_synchronize();
-    acceleration_management = FALSE;
-  }
+int plan_is_acceleration_manager_enabled() {
+  return(acceleration_manager_enabled);
 }
 
 // Add a new linear movement to the buffer. steps_x, _y and _z is the signed, relative motion in 
@@ -393,7 +390,7 @@ void plan_buffer_line(int32_t steps_x, int32_t steps_y, int32_t steps_z, uint32_
   block->rate_delta = ceil(
     ((settings.acceleration*60.0)/(ACCELERATION_TICKS_PER_SECOND))/ // acceleration mm/sec/sec per acceleration_tick
     travel_per_step);                                               // convert to: acceleration steps/min/acceleration_tick    
-  if (acceleration_management) {
+  if (acceleration_manager_enabled) {
     double safe_speed_factor = factor_for_safe_speed(block);
     calculate_trapezoid_for_block(block, safe_speed_factor, safe_speed_factor);                       // compute a conservative acceleration trapezoid for now
   } else {
@@ -411,7 +408,7 @@ void plan_buffer_line(int32_t steps_x, int32_t steps_y, int32_t steps_z, uint32_
   // Move buffer head
   block_buffer_head = next_buffer_head;
   
-  if (acceleration_management) {
+  if (acceleration_manager_enabled) {
     planner_recalculate();  
   } else {    
     calculate_trapezoid_for_block(block, 1.0, 1.0);

@@ -68,8 +68,8 @@ void plan_init();
 void plan_buffer_line(int32_t steps_x, int32_t steps_y, int32_t steps_z, uint32_t microseconds, double millimeters);
 
 // Enables acceleration-management for upcoming blocks
-void plan_enable_acceleration_management();
-// Disables acceleration-management for upcoming blocks
-void plan_disable_acceleration_management();
+void plan_set_acceleration_manager_enabled(int enabled);
+// Is acceleration-management currently enabled?
+int plan_is_acceleration_manager_enabled();
 
 #endif
