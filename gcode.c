@@ -156,6 +156,7 @@ uint8_t gc_execute_line(char *line) {
     read_double(line, &char_counter, &value);
     if(line[char_counter] != 0) { return(GCSTATUS_UNSUPPORTED_STATEMENT); }
     settings_store_setting(p, value);
+    return(gc.status_code);
   }
   
   /* We'll handle this as g-code. First: parse all statements */
