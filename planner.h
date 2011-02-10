@@ -26,9 +26,6 @@
                  
 #include <inttypes.h>
 
-// Pick a suitable block-buffer size
-#define BLOCK_BUFFER_SIZE 20   // Atmega 328 has one full kilobyte of extra RAM!
-
 // This struct is used when buffering the setup for each linear movement "nominal" values are as specified in 
 // the source g-code and may never actually be reached if acceleration management is active.
 typedef struct {
@@ -64,16 +61,20 @@ void plan_init();
 // rate is taken to mean "frequency" and would complete the operation in 1/feed_rate minutes.
 void plan_buffer_line(double x, double y, double z, double feed_rate, int invert_feed_rate);
 
-// Call when the current block is no longer needed. Discards the block and makes the memory
+// Called when the current block is no longer needed. Discards the block and makes the memory
 // availible for new blocks.
 inline void plan_discard_current_block();
 
 // Gets the current block. Returns NULL if buffer empty
 inline block_t *plan_get_current_block();
 
-// Enables acceleration-management for upcoming blocks
+// Enables or disables acceleration-management for upcoming blocks
 void plan_set_acceleration_manager_enabled(int enabled);
+
 // Is acceleration-management currently enabled?
 int plan_is_acceleration_manager_enabled();
+      
+// Copy the current absolute position in steps into the provided vector
+void plan_get_position_steps(int32_t (*vector)[3]);
 
 #endif

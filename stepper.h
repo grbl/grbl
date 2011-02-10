@@ -27,9 +27,6 @@
 // Initialize and start the stepper motor subsystem
 void st_init();
 
-// Copy the current absolute position in steps into the provided vector
-void st_get_position_steps(int32_t (*vector)[3]);
-
 // Block until all buffered steps are executed
 void st_synchronize();
 

@@ -61,6 +61,9 @@
 #include "config.h"
 #include "wiring_serial.h"
 
+// The number of linear motions that can be in the plan at any give time
+#define BLOCK_BUFFER_SIZE 20  
+
 block_t block_buffer[BLOCK_BUFFER_SIZE];  // A ring buffer for motion instructions
 volatile int block_buffer_head;           // Index of the next block to be pushed
 volatile int block_buffer_tail;           // Index of the block to process now
@@ -405,5 +408,9 @@ void plan_buffer_line(double x, double y, double z, double feed_rate, int invert
   
   if (acceleration_manager_enabled) { planner_recalculate(); }  
   st_wake_up();
+}
+
+void plan_get_position_steps(int32_t (*vector)[3]) {
+  memcpy(vector, position, sizeof(position)); // vector[] = position[]
 }
 

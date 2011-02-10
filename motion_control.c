@@ -55,7 +55,7 @@ void mc_arc(double theta, double angular_travel, double radius, double linear_tr
   int axis_linear, double feed_rate, int invert_feed_rate)
 {      
   int32_t position[3];
-  st_get_position_steps(&position);
+  plan_get_position_steps(&position);
   int acceleration_manager_was_enabled = plan_is_acceleration_manager_enabled();
   plan_set_acceleration_manager_enabled(FALSE); // disable acceleration management for the duration of the arc
   double millimeters_of_travel = hypot(angular_travel*radius, labs(linear_travel));

@@ -112,10 +112,6 @@ inline void trapezoid_generator_tick() {
   }
 }
 
-void st_get_position_steps(int32_t (*vector)[3]) {
-  memcpy(vector, position, sizeof(position)); // vector[] = position[]
-}
-
 // "The Stepper Driver Interrupt" - This timer interrupt is the workhorse of Grbl. It is  executed at the rate set with
 // config_step_timer. It pops blocks from the block_buffer and executes them by pulsing the stepper pins appropriately. 
 // It is supported by The Stepper Port Reset Interrupt which it uses to reset the stepper port after each pulse.
