@@ -30,7 +30,7 @@
 #include <util/delay.h>
 #include "nuts_bolts.h"
 #include <avr/interrupt.h>
-#include "stepper_plan.h"
+#include "planner.h"
 #include "wiring_serial.h"
 
 
@@ -40,13 +40,14 @@
 #define STEPPING_MASK (STEP_MASK | DIRECTION_MASK) // All stepping-related bits (step/direction)
 #define LIMIT_MASK ((1<<X_LIMIT_BIT)|(1<<Y_LIMIT_BIT)|(1<<Z_LIMIT_BIT)) // All limit bits
 
-#define MINIMUM_STEPS_PER_MINUTE 1200 // The stepper subsystem will never run slower than this, exept when sleeping
 #define CYCLES_PER_ACCELERATION_TICK ((TICKS_PER_MICROSECOND*1000000)/ACCELERATION_TICKS_PER_SECOND)
+
+#define MINIMUM_STEPS_PER_MINUTE 1200 // The stepper subsystem will never run slower than this, exept when sleeping
 
 #define ENABLE_STEPPER_DRIVER_INTERRUPT()  TIMSK1 |= (1<<OCIE1A)
 #define DISABLE_STEPPER_DRIVER_INTERRUPT() TIMSK1 &= ~(1<<OCIE1A)
 
-static block_t *current_block;  // A convenience pointer to the block currently being traced
+static block_t *current_block;  // A pointer to the block currently being traced
 
 // Variables used by The Stepper Driver Interrupt
 static uint8_t out_bits;        // The next stepping-bits to be output
@@ -81,6 +82,10 @@ static uint32_t trapezoid_adjusted_rate;      // The current rate of step_events
 
 void set_step_events_per_minute(uint32_t steps_per_minute);
 
+void st_wake_up() {
+  ENABLE_STEPPER_DRIVER_INTERRUPT();  
+}
+
 // Initializes the trapezoid generator from the current block. Called whenever a new 
 // block begins.
 inline void trapezoid_generator_reset() {
@@ -105,15 +110,6 @@ inline void trapezoid_generator_tick() {
       set_step_events_per_minute(trapezoid_adjusted_rate);
     }
   }
-}
-
-// Add a new linear movement to the buffer. steps_x, _y and _z is the signed, relative motion in 
-// steps. Microseconds specify how many microseconds the move should take to perform. To aid acceleration
-// calculation the caller must also provide the physical length of the line in millimeters.
-void st_buffer_line(double x, double y, double z, double feed_rate, int invert_feed_rate) {
-  plan_buffer_line(x, y, z, feed_rate, invert_feed_rate);
-  // Ensure that block processing is running by enabling The Stepper Driver Interrupt
-  ENABLE_STEPPER_DRIVER_INTERRUPT();
 }
 
 void st_get_position_steps(int32_t (*vector)[3]) {

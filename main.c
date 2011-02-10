@@ -21,7 +21,7 @@
 #include <avr/io.h>
 #include <avr/sleep.h>
 #include <util/delay.h>
-#include "stepper_plan.h"
+#include "planner.h"
 #include "stepper.h"
 #include "spindle_control.h"
 #include "motion_control.h"

@@ -1,5 +1,5 @@
 /*
-  stepper_plan.c - buffers movement commands and manages the acceleration profile plan
+  planner.c - buffers movement commands and manages the acceleration profile plan
   Part of Grbl
 
   Copyright (c) 2009-2011 Simen Svale Skogsrud
@@ -54,7 +54,7 @@
 #include <math.h>       
 #include <stdlib.h>
 
-#include "stepper_plan.h"
+#include "planner.h"
 #include "nuts_bolts.h"
 #include "stepper.h"
 #include "settings.h"
@@ -404,5 +404,6 @@ void plan_buffer_line(double x, double y, double z, double feed_rate, int invert
   memcpy(position, target, sizeof(target)); // position[] = target[]
   
   if (acceleration_manager_enabled) { planner_recalculate(); }  
+  st_wake_up();
 }
 

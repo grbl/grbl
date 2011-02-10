@@ -1,5 +1,5 @@
 /*
-  stepper_plan.h - buffers movement commands and manages the acceleration profile plan
+  planner.h - buffers movement commands and manages the acceleration profile plan
   Part of Grbl
 
   Copyright (c) 2009-2011 Simen Svale Skogsrud
@@ -21,8 +21,8 @@
 // This module is to be considered a sub-module of stepper.c. Please don't include 
 // this file from any other module.
 
-#ifndef stepper_plan_h
-#define stepper_plan_h
+#ifndef planner_h
+#define planner_h
                  
 #include <inttypes.h>
 
@@ -59,11 +59,9 @@ extern int32_t position[3];
 // Initialize the motion plan subsystem      
 void plan_init();
 
-// Do not call directly unless you are writing a motor driver. In current iteration this is called by 
-// st_buffer_line which also wakes up the stepper subsystem.
-// Add a new linear movement to the buffer. steps_x, _y and _z is the signed, relative motion in 
-// steps. Microseconds specify how many microseconds the move should take to perform. To aid acceleration
-// calculation the caller must also provide the physical length of the line in millimeters.
+// Add a new linear movement to the buffer. x, y and z is the signed, absolute target position in 
+// millimaters. Feed rate specifies the speed of the motion. If feed rate is inverted, the feed
+// rate is taken to mean "frequency" and would complete the operation in 1/feed_rate minutes.
 void plan_buffer_line(double x, double y, double z, double feed_rate, int invert_feed_rate);
 
 // Call when the current block is no longer needed. Discards the block and makes the memory

@@ -1,5 +1,5 @@
 /*
-  stepper.h - stepper motor driver: executes motion plans using stepper motors
+  stepper.h - stepper motor driver: executes motion plans of planner.c using the stepper motors
   Part of Grbl
 
   Copyright (c) 2009-2011 Simen Svale Skogsrud
@@ -27,10 +27,6 @@
 // Initialize and start the stepper motor subsystem
 void st_init();
 
-// Add a new linear movement to the buffer. steps_x, _y and _z is the signed, relative motion in 
-// steps. Microseconds specify how many microseconds the move should take to perform.
-void st_buffer_line(double x, double y, double z, double feed_rate, int invert_feed_rate);
-
 // Copy the current absolute position in steps into the provided vector
 void st_get_position_steps(int32_t (*vector)[3]);
 
@@ -39,5 +35,9 @@ void st_synchronize();
 
 // Execute the homing cycle
 void st_go_home();
+             
+// The stepper subsystem goes to sleep when it runs out of things to execute. Call this
+// to notify the subsystem that it is time to go to work.
+void st_wake_up();
 
 #endif

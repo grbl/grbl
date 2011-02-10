@@ -26,7 +26,7 @@
 #include <stdlib.h>
 #include "nuts_bolts.h"
 #include "stepper.h"
-#include "stepper_plan.h"
+#include "planner.h"
 #include "wiring_serial.h"
 
 
@@ -41,7 +41,7 @@ void mc_dwell(uint32_t milliseconds)
 // 1/feed_rate minutes.
 void mc_line(double x, double y, double z, double feed_rate, int invert_feed_rate)
 {
-  st_buffer_line(x, y, z, feed_rate, invert_feed_rate);
+  plan_buffer_line(x, y, z, feed_rate, invert_feed_rate);
 }
 
 // Execute an arc. theta == start angle, angular_travel == number of radians to go along the arc,
