@@ -195,7 +195,7 @@ void planner_reverse_pass_kernel(block_t *previous, block_t *current, block_t *n
   } else {
     entry_factor = factor_for_safe_speed(current);
   }
-  
+    
   // Store result
   current->entry_factor = entry_factor;
 }
@@ -334,10 +334,6 @@ void plan_buffer_line(double x, double y, double z, double feed_rate, int invert
   target[Y_AXIS] = lround(y*settings.steps_per_mm[Y_AXIS]);
   target[Z_AXIS] = lround(z*settings.steps_per_mm[Z_AXIS]);     
   
-  double delta_x = (target[X_AXIS]-position[X_AXIS]);
-  double delta_y = (target[Y_AXIS]-position[Y_AXIS]);
-  double delta_z = (target[Z_AXIS]-position[Z_AXIS]);
-  
   // Calculate the buffer head after we push this byte
 	int next_buffer_head = (block_buffer_head + 1) % BLOCK_BUFFER_SIZE;	
 	// If the buffer is full: good! That means we are well ahead of the robot. 
@@ -346,17 +342,18 @@ void plan_buffer_line(double x, double y, double z, double feed_rate, int invert
   // Prepare to set up new block
   block_t *block = &block_buffer[block_buffer_head];
   // Number of steps for each axis
-  block->steps_x = labs(delta_x);
-  block->steps_y = labs(delta_y);
-  block->steps_z = labs(delta_z);
-  block->millimeters = sqrt(
-    square(block->steps_x/settings.steps_per_mm[X_AXIS])+
-    square(block->steps_y/settings.steps_per_mm[Y_AXIS])+
-    square(block->steps_z/settings.steps_per_mm[Z_AXIS]));
-	
+  block->steps_x = labs(target[X_AXIS]-position[X_AXIS]);
+  block->steps_y = labs(target[Y_AXIS]-position[Y_AXIS]);
+  block->steps_z = labs(target[Z_AXIS]-position[Z_AXIS]);
   block->step_event_count = max(block->steps_x, max(block->steps_y, block->steps_z));
   // Bail if this is a zero-length block
   if (block->step_event_count == 0) { return; };
+  
+  double delta_x_mm = (target[X_AXIS]-position[X_AXIS])/settings.steps_per_mm[X_AXIS];
+  double delta_y_mm = (target[Y_AXIS]-position[Y_AXIS])/settings.steps_per_mm[Y_AXIS];
+  double delta_z_mm = (target[Z_AXIS]-position[Z_AXIS])/settings.steps_per_mm[Z_AXIS];
+  block->millimeters = sqrt(square(delta_x_mm) + square(delta_y_mm) + square(delta_z_mm));
+	
   
   uint32_t microseconds;
   if (!invert_feed_rate) {
@@ -367,12 +364,11 @@ void plan_buffer_line(double x, double y, double z, double feed_rate, int invert
   
   // Calculate speed in mm/minute for each axis
   double multiplier = 60.0*1000000.0/microseconds;
-  block->speed_x = (delta_x)*multiplier;
-  block->speed_y = (delta_y)*multiplier;
-  block->speed_z = (delta_z)*multiplier; 
-  // HER ER FEILEN. BEREGNINGEN AV HASTIGHETEN ER PÅ TOK
-  block->nominal_speed = block->millimeters*multiplier;
-  block->nominal_rate = ceil(block->step_event_count*multiplier);  
+  block->speed_x = delta_x_mm * multiplier;
+  block->speed_y = delta_y_mm * multiplier;
+  block->speed_z = delta_z_mm * multiplier; 
+  block->nominal_speed = block->millimeters * multiplier;
+  block->nominal_rate = ceil(block->step_event_count * multiplier);  
   block->entry_factor = 0.0;
   
   // Compute the acceleration rate for the trapezoid generator. Depending on the slope of the line

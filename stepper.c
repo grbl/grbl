@@ -101,7 +101,7 @@ inline void trapezoid_generator_tick() {
       // rounding errors that might leave steps hanging after the last trapezoid tick.
       if(current_block->rate_delta < trapezoid_adjusted_rate) {
         trapezoid_adjusted_rate -= current_block->rate_delta;
-      }
+      }          
       set_step_events_per_minute(trapezoid_adjusted_rate);
     }
   }
