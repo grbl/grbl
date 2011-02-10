@@ -332,7 +332,11 @@ void plan_buffer_line(double x, double y, double z, double feed_rate, int invert
   int32_t target[3];
   target[X_AXIS] = lround(x*settings.steps_per_mm[X_AXIS]);
   target[Y_AXIS] = lround(y*settings.steps_per_mm[Y_AXIS]);
-  target[Z_AXIS] = lround(y*settings.steps_per_mm[Z_AXIS]);     
+  target[Z_AXIS] = lround(z*settings.steps_per_mm[Z_AXIS]);     
+  
+  double delta_x = (target[X_AXIS]-position[X_AXIS]);
+  double delta_y = (target[Y_AXIS]-position[Y_AXIS]);
+  double delta_z = (target[Z_AXIS]-position[Z_AXIS]);
   
   // Calculate the buffer head after we push this byte
 	int next_buffer_head = (block_buffer_head + 1) % BLOCK_BUFFER_SIZE;	
@@ -342,9 +346,9 @@ void plan_buffer_line(double x, double y, double z, double feed_rate, int invert
   // Prepare to set up new block
   block_t *block = &block_buffer[block_buffer_head];
   // Number of steps for each axis
-  block->steps_x = labs(position[X_AXIS]-target[X_AXIS]);
-  block->steps_y = labs(position[Y_AXIS]-target[Y_AXIS]);
-  block->steps_z = labs(position[Z_AXIS]-target[Z_AXIS]);
+  block->steps_x = labs(delta_x);
+  block->steps_y = labs(delta_y);
+  block->steps_z = labs(delta_z);
   block->millimeters = sqrt(
     square(block->steps_x/settings.steps_per_mm[X_AXIS])+
     square(block->steps_y/settings.steps_per_mm[Y_AXIS])+
@@ -363,9 +367,10 @@ void plan_buffer_line(double x, double y, double z, double feed_rate, int invert
   
   // Calculate speed in mm/minute for each axis
   double multiplier = 60.0*1000000.0/microseconds;
-  block->speed_x = x*multiplier;
-  block->speed_y = y*multiplier;
-  block->speed_z = z*multiplier;
+  block->speed_x = (delta_x)*multiplier;
+  block->speed_y = (delta_y)*multiplier;
+  block->speed_z = (delta_z)*multiplier; 
+  // HER ER FEILEN. BEREGNINGEN AV HASTIGHETEN ER PÅ TOK
   block->nominal_speed = block->millimeters*multiplier;
   block->nominal_rate = ceil(block->step_event_count*multiplier);  
   block->entry_factor = 0.0;
@@ -402,6 +407,6 @@ void plan_buffer_line(double x, double y, double z, double feed_rate, int invert
   // Update position 
   memcpy(position, target, sizeof(target)); // position[] = target[]
   
-  if (acceleration_manager_enabled) { planner_recalculate(); }
+  if (acceleration_manager_enabled) { planner_recalculate(); }  
 }
 
