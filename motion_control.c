@@ -82,7 +82,7 @@ void mc_arc(double theta, double angular_travel, double radius, double linear_tr
     theta += theta_per_segment;
     target[axis_1] = center_x+sin(theta)*radius;
     target[axis_2] = center_y+cos(theta)*radius;
-    mc_line(target[X_AXIS], target[Y_AXIS], target[Z_AXIS], feed_rate, invert_feed_rate);
+    plan_buffer_line(target[X_AXIS], target[Y_AXIS], target[Z_AXIS], feed_rate, invert_feed_rate);
   }
   plan_set_acceleration_manager_enabled(acceleration_manager_was_enabled);
 }
