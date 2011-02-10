@@ -234,10 +234,7 @@ void st_init()
   
   // set enable pin     
   STEPPERS_ENABLE_PORT |= 1<<STEPPERS_ENABLE_BIT;
-  
-  DDRD |= (1<<2);
-  PORTD &= ~(1<<2);
-   
+     
   sei();
 }
 
