@@ -43,21 +43,17 @@ void status_message(int status_code) {
       printPgmString(PSTR("error: Unsupported statement\n\r")); break;
       case GCSTATUS_FLOATING_POINT_ERROR:
       printPgmString(PSTR("error: Floating point error\n\r")); break;
+      default:
+      printPgmString(PSTR("ok\r\n"));      
     }
   }
-}
-
-void prompt() {
-  printPgmString(PSTR("ok\r\n"));
 }
 
 void sp_init() 
 {
   beginSerial(BAUD_RATE);  
-  printPgmString(PSTR("\r\nGrbl "));
-  printPgmString(PSTR(GRBL_VERSION));
+  printPgmString(PSTR("\r\nGrbl " GRBL_VERSION));
   printPgmString(PSTR("\r\n"));  
-  prompt();
 }
 
 void sp_process()
@@ -69,7 +65,6 @@ void sp_process()
       line[char_counter] = 0; // treminate string
       status_message(gc_execute_line(line));
       char_counter = 0; // reset line buffer index
-      prompt();
     } else if (c <= ' ') { // Throw away whitepace and control characters
     } else if (c >= 'a' && c <= 'z') { // Upcase lowercase
       line[char_counter++] = c-'a'+'A';
