@@ -27,9 +27,8 @@
 // Execute linear motion in absolute millimeter coordinates. Feed rate given in millimeters/second
 // unless invert_feed_rate is true. Then the feed_rate means that the motion should be completed in
 // (1 minute)/feed_rate time.
-// void mc_line(double x, double y, double z, double feed_rate, int invert_feed_rate);                   
-#define mc_line(x, y, z, feed_rate, invert_feed_rate) plan_buffer_line(x,y,z,feed_rate,invert_feed_rate) 
-// Note: Although this function structurally belongs in this module, there is nothing to to but
+#define mc_line(x, y, z, feed_rate, invert_feed_rate) plan_buffer_line(x, y, z, feed_rate, invert_feed_rate) 
+// NOTE: Although this function structurally belongs in this module, there is nothing to to but
 // to forward the request to the planner. For efficiency the function is replaced with a macro that
 // just forwards the call to the planner.
 
