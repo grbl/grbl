@@ -40,8 +40,6 @@ int main(void)
   spindle_init(); // initialize spindle controller
   gc_init(); // initialize gcode-parser
   
-  DDRD |= (1<<3)|(1<<4)|(1<<5);
-  
   for(;;){
     sleep_mode(); // Wait for it ...
     sp_process(); // ... process the serial protocol
