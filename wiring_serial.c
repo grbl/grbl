@@ -44,7 +44,7 @@ void beginSerial(long baud)
 	UBRR0L = ((F_CPU / 16 + baud / 2) / baud - 1);
 	
 	/* baud doubler off  - Only needed on Uno XXX */
-  // UCSR0A &= ~(1 << U2X0);
+  UCSR0A &= ~(1 << U2X0);
           
 	// enable rx and tx
   UCSR0B |= 1<<RXEN0;
