@@ -1,0 +1,39 @@
+The general structure of Grbl
+=============================
+
+The main processing stack:
+
+'serial_protocol' : Accepts command lines from the serial port and passes them to 'gcode' for execution.
+                    Provides status responses for each command.
+                  
+'gcode'           : Recieves gcode from 'serial_protocol', parses it according to the current state
+                    of the parser and issues commands via '..._control' modules
+                  
+'spindle_control' : Commands for controlling the spindle.
+                 
+'motion_control'  : Accepts motion commands from 'gcode' and passes them to the 'planner'. This module
+                    represents the public interface of the planner/stepper duo.
+
+'planner'         : Recieves linear motion commands from 'motion_control' and adds them to the plan of 
+                    prepared motions. It takes care of continously optimizing the acceleration profile
+                    as motions are added.
+
+'stepper'         : Executes the motions by stepping the steppers according to the plan.
+
+
+
+
+Supporting files:
+
+'config.h'        : Compile time user settings
+
+'settings'        : Maintains the run time settings record in eeprom and makes it availible
+                    to all modules.
+
+'eeprom'          : A library from Atmel that provides methods for reading and writing the eeprom with 
+                    a small addition from us that read and write binary streams with check sums used 
+                    to verify validity of the settings record.
+                    
+'nuts_bolts.h'    : A tiny collection of useful constants and macros used everywhere
+
+'wiring_serial'   : Low level serial library initially from an old version of the Arduino software
