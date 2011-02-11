@@ -66,12 +66,12 @@
 // The number of linear motions that can be in the plan at any give time
 #define BLOCK_BUFFER_SIZE 20  
 
-block_t block_buffer[BLOCK_BUFFER_SIZE];  // A ring buffer for motion instructions
-volatile int block_buffer_head;           // Index of the next block to be pushed
-volatile int block_buffer_tail;           // Index of the block to process now
+static block_t block_buffer[BLOCK_BUFFER_SIZE];  // A ring buffer for motion instructions
+static volatile int block_buffer_head;           // Index of the next block to be pushed
+static volatile int block_buffer_tail;           // Index of the block to process now
 
 // The current position of the tool in absolute steps
-int32_t position[3];   
+static int32_t position[3];   
 
 static uint8_t acceleration_manager_enabled;   // Acceleration management active?
 

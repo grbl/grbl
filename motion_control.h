@@ -28,9 +28,8 @@
 // unless invert_feed_rate is true. Then the feed_rate means that the motion should be completed in
 // (1 minute)/feed_rate time.
 #define mc_line(x, y, z, feed_rate, invert_feed_rate) plan_buffer_line(x, y, z, feed_rate, invert_feed_rate) 
-// NOTE: Although this function structurally belongs in this module, there is nothing to to but
-// to forward the request to the planner. For efficiency the function is replaced with a macro that
-// just forwards the call to the planner.
+// NOTE: Although this function structurally belongs in this module, there is nothing to do but
+// to forward the request to the planner. For efficiency the function is implemented with a macro.
 
 // Execute an arc. theta == start angle, angular_travel == number of radians to go along the arc,
 // positive angular_travel means clockwise, negative means counterclockwise. Radius == the radius of the

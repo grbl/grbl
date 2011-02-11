@@ -51,8 +51,6 @@ typedef struct {
   
 } block_t;
       
-extern int32_t position[3];
-
 // Initialize the motion plan subsystem      
 void plan_init();
 

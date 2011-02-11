@@ -55,7 +55,7 @@ static int32_t counter_x,       // Counter variables for the bresenham line trac
                counter_y, 
                counter_z;       
 static uint32_t step_events_completed; // The number of step events executed in the current block
-volatile int busy; // TRUE when SIG_OUTPUT_COMPARE1A is being serviced. Used to avoid retriggering that handler.
+static volatile int busy; // TRUE when SIG_OUTPUT_COMPARE1A is being serviced. Used to avoid retriggering that handler.
 
 // Variables used by the trapezoid generation
 static uint32_t cycles_per_step_event;        // The number of machine cycles between each step event

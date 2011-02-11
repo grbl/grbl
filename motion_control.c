@@ -36,14 +36,6 @@ void mc_dwell(uint32_t milliseconds)
   _delay_ms(milliseconds);
 }
 
-// Execute linear motion in absolute millimeter coordinates. Feed rate given in millimeters/second
-// unless invert_feed_rate is true. Then the feed_rate means that the motion should be completed in
-// 1/feed_rate minutes.
-// void mc_line(double x, double y, double z, double feed_rate, int invert_feed_rate)
-// {
-//   plan_buffer_line(x, y, z, feed_rate, invert_feed_rate);
-// }
-
 // Execute an arc. theta == start angle, angular_travel == number of radians to go along the arc,
 // positive angular_travel means clockwise, negative means counterclockwise. Radius == the radius of the
 // circle in millimeters. axis_1 and axis_2 selects the circle plane in tool space. Stick the remaining

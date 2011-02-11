@@ -33,13 +33,13 @@
 
 int main(void)
 {
-  sp_init(); // initialize the serial protocol
-  settings_init();
-  plan_init(); // initialize the stepper plan subsystem
-  st_init(); // initialize the stepper subsystem
-  spindle_init(); // initialize spindle controller
-  gc_init(); // initialize gcode-parser
-  
+  sp_init();        
+  settings_init();  
+  plan_init();      
+  st_init();        
+  spindle_init();   
+  gc_init();        
+                    
   for(;;){
     sleep_mode(); // Wait for it ...
     sp_process(); // ... process the serial protocol
