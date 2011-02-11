@@ -18,6 +18,8 @@
   along with Grbl.  If not, see <http://www.gnu.org/licenses/>.
 */
 
+/* The ring buffer implementation gleaned from the wiring_serial library by David A. Mellis. */
+
 /*  
   Reasoning behind the mathematics in this module (in the key of 'Mathematica'):
   

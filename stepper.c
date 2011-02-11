@@ -19,8 +19,7 @@
 */
 
 /* The timer calculations of this module informed by the 'RepRap cartesian firmware' by Zack Smith
-   and Philipp Tiefenbacher. The ring buffer implementation gleaned from the wiring_serial library 
-   by David A. Mellis */
+   and Philipp Tiefenbacher. */
 
 #include "stepper.h"
 #include "config.h"
@@ -108,6 +107,12 @@ inline void trapezoid_generator_tick() {
         trapezoid_adjusted_rate -= current_block->rate_delta;
       }          
       set_step_events_per_minute(trapezoid_adjusted_rate);
+    } else {
+      // Make sure we cruise at exactly nominal rate
+      if (trapezoid_adjusted_rate != current_block->nominal_rate) {
+        trapezoid_adjusted_rate = current_block->nominal_rate;
+        set_step_events_per_minute(trapezoid_adjusted_rate);
+      }
     }
   }
 }
