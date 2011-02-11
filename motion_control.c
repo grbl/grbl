@@ -48,14 +48,13 @@ void mc_dwell(uint32_t milliseconds)
 // positive angular_travel means clockwise, negative means counterclockwise. Radius == the radius of the
 // circle in millimeters. axis_1 and axis_2 selects the circle plane in tool space. Stick the remaining
 // axis in axis_l which will be the axis for linear travel if you are tracing a helical motion.
+// position is a pointer to a vector representing the current position in millimeters.
 
 // The arc is approximated by generating a huge number of tiny, linear segments. The length of each 
 // segment is configured in settings.mm_per_arc_segment.  
 void mc_arc(double theta, double angular_travel, double radius, double linear_travel, int axis_1, int axis_2, 
-  int axis_linear, double feed_rate, int invert_feed_rate)
+  int axis_linear, double feed_rate, int invert_feed_rate, double *position)
 {      
-  int32_t position[3];
-  plan_get_position_steps(&position);
   int acceleration_manager_was_enabled = plan_is_acceleration_manager_enabled();
   plan_set_acceleration_manager_enabled(FALSE); // disable acceleration management for the duration of the arc
   double millimeters_of_travel = hypot(angular_travel*radius, labs(linear_travel));
@@ -70,13 +69,13 @@ void mc_arc(double theta, double angular_travel, double radius, double linear_tr
   // The linear motion for each segment
   double linear_per_segment = linear_travel/segments;
   // Compute the center of this circle
-  double center_x = (position[axis_1]/settings.steps_per_mm[axis_1])-sin(theta)*radius;
-  double center_y = (position[axis_2]/settings.steps_per_mm[axis_2])-cos(theta)*radius;
+  double center_x = position[axis_1]-sin(theta)*radius;
+  double center_y = position[axis_2]-cos(theta)*radius;
   // a vector to track the end point of each segment
   double target[3];
   int i;
   // Initialize the linear axis
-  target[axis_linear] = position[axis_linear]/settings.steps_per_mm[axis_linear];
+  target[axis_linear] = position[axis_linear];
   for (i=0; i<=segments; i++) {
     target[axis_linear] += linear_per_segment;
     theta += theta_per_segment;

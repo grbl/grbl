@@ -412,7 +412,3 @@ void plan_buffer_line(double x, double y, double z, double feed_rate, int invert
   st_wake_up();
 }
 
-void plan_get_position_steps(int32_t (*vector)[3]) {
-  memcpy(vector, position, sizeof(position)); // vector[] = position[]
-}
-

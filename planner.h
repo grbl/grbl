@@ -73,8 +73,5 @@ void plan_set_acceleration_manager_enabled(int enabled);
 
 // Is acceleration-management currently enabled?
 int plan_is_acceleration_manager_enabled();
-      
-// Copy the current absolute position in steps into the provided vector
-void plan_get_position_steps(int32_t (*vector)[3]);
 
 #endif

@@ -388,7 +388,8 @@ uint8_t gc_execute_line(char *line) {
       double depth = target[gc.plane_axis_2]-gc.position[gc.plane_axis_2];
       // Trace the arc
       mc_arc(theta_start, angular_travel, radius, depth, gc.plane_axis_0, gc.plane_axis_1, gc.plane_axis_2, 
-        (gc.inverse_feed_rate_mode) ? inverse_feed_rate : gc.feed_rate, gc.inverse_feed_rate_mode);
+        (gc.inverse_feed_rate_mode) ? inverse_feed_rate : gc.feed_rate, gc.inverse_feed_rate_mode,
+        gc.position);
       // Finish off with a line to make sure we arrive exactly where we think we are
       mc_line(target[X_AXIS], target[Y_AXIS], target[Z_AXIS], 
         (gc.inverse_feed_rate_mode) ? inverse_feed_rate : gc.feed_rate, gc.inverse_feed_rate_mode);
