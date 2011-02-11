@@ -320,7 +320,7 @@ uint8_t gc_execute_line(char *line) {
         double x = target[gc.plane_axis_0]-gc.position[gc.plane_axis_0];
         double y = target[gc.plane_axis_1]-gc.position[gc.plane_axis_1];
         
-        clear_vector(&offset);
+        clear_vector(offset);
         double h_x2_div_d = -sqrt(4 * r*r - x*x - y*y)/hypot(x,y); // == -(h * 2 / d)
         // If r is smaller than d, the arc is now traversing the complex plane beyond the reach of any
         // real CNC, and thus - for practical reasons - we will terminate promptly:
