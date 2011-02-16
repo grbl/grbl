@@ -123,12 +123,12 @@ inline double intersection_distance(double initial_rate, double final_rate, doub
 
 void calculate_trapezoid_for_block(block_t *block, double entry_factor, double exit_factor) {
   block->initial_rate = ceil(block->nominal_rate*entry_factor);
-  int32_t final_rate = ceil(block->nominal_rate*exit_factor);
+  block->final_rate = ceil(block->nominal_rate*exit_factor);
   int32_t acceleration_per_minute = block->rate_delta*ACCELERATION_TICKS_PER_SECOND*60.0;
   int32_t accelerate_steps = 
     ceil(estimate_acceleration_distance(block->initial_rate, block->nominal_rate, acceleration_per_minute));
   int32_t decelerate_steps = 
-    floor(estimate_acceleration_distance(block->nominal_rate, final_rate, -acceleration_per_minute));
+    floor(estimate_acceleration_distance(block->nominal_rate, block->final_rate, -acceleration_per_minute));
 
   // Calculate the size of Plateau of Nominal Rate. 
   int32_t plateau_steps = block->step_event_count-accelerate_steps-decelerate_steps;
@@ -138,7 +138,7 @@ void calculate_trapezoid_for_block(block_t *block, double entry_factor, double e
   // in order to reach the final_rate exactly at the end of this block.
   if (plateau_steps < 0) {  
     accelerate_steps = ceil(
-      intersection_distance(block->initial_rate, final_rate, acceleration_per_minute, block->step_event_count));
+      intersection_distance(block->initial_rate, block->final_rate, acceleration_per_minute, block->step_event_count));
     plateau_steps = 0;
   }  
   
@@ -394,6 +394,7 @@ void plan_buffer_line(double x, double y, double z, double feed_rate, int invert
     calculate_trapezoid_for_block(block, safe_speed_factor, safe_speed_factor); 
   } else {
     block->initial_rate = block->nominal_rate;
+    block->final_rate = block->nominal_rate;
     block->accelerate_until = 0;
     block->decelerate_after = block->step_event_count;
     block->rate_delta = 0;

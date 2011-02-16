@@ -90,6 +90,7 @@ void st_wake_up() {
 // block begins.
 inline void trapezoid_generator_reset() {
   trapezoid_adjusted_rate = current_block->initial_rate;  
+  trapezoid_tick_cycle_counter = 0; // Always start a new trapezoid with a full acceleration tick
   set_step_events_per_minute(trapezoid_adjusted_rate);
 }
 
@@ -104,9 +105,12 @@ inline void trapezoid_generator_tick() {
     } else if (step_events_completed > current_block->decelerate_after) {
       // NOTE: We will only reduce speed if the result will be > 0. This catches small
       // rounding errors that might leave steps hanging after the last trapezoid tick.
-      if(current_block->rate_delta < trapezoid_adjusted_rate) {
+      if (trapezoid_adjusted_rate > current_block->rate_delta) {
         trapezoid_adjusted_rate -= current_block->rate_delta;
-      }          
+      }
+      if (trapezoid_adjusted_rate < current_block->final_rate) {
+        trapezoid_adjusted_rate = current_block->final_rate;
+      }        
       set_step_events_per_minute(trapezoid_adjusted_rate);
     } else {
       // Make sure we cruise at exactly nominal rate
