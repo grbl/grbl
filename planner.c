@@ -168,7 +168,11 @@ inline double junction_jerk(block_t *before, block_t *after) {
 // Calculate a braking factor to reach baseline speed which is max_jerk/2, e.g. the 
 // speed under which you cannot exceed max_jerk no matter what you do.
 double factor_for_safe_speed(block_t *block) {
-  return(settings.max_jerk/block->nominal_speed);  
+  if(settings.max_jerk < block->nominal_speed) {
+    return(settings.max_jerk/block->nominal_speed);  
+  } else {
+    return(1.0);
+  }
 }
 
 // The kernel called by planner_recalculate() when scanning the plan from last to first entry.
