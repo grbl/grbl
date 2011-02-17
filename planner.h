@@ -62,10 +62,10 @@ void plan_buffer_line(double x, double y, double z, double feed_rate, int invert
 
 // Called when the current block is no longer needed. Discards the block and makes the memory
 // availible for new blocks.
-inline void plan_discard_current_block();
+void plan_discard_current_block();
 
 // Gets the current block. Returns NULL if buffer empty
-inline block_t *plan_get_current_block();
+block_t *plan_get_current_block();
 
 // Enables or disables acceleration-management for upcoming blocks
 void plan_set_acceleration_manager_enabled(int enabled);

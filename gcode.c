@@ -98,7 +98,7 @@ void gc_init() {
   gc.absolute_mode = TRUE;
 }
 
-inline float to_millimeters(double value) {
+float to_millimeters(double value) {
   return(gc.inches_mode ? (value * MM_PER_INCH) : value);
 }
 

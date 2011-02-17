@@ -88,7 +88,7 @@ void st_wake_up() {
 
 // Initializes the trapezoid generator from the current block. Called whenever a new 
 // block begins.
-inline void trapezoid_generator_reset() {
+void trapezoid_generator_reset() {
   trapezoid_adjusted_rate = current_block->initial_rate;  
   trapezoid_tick_cycle_counter = 0; // Always start a new trapezoid with a full acceleration tick
   set_step_events_per_minute(trapezoid_adjusted_rate);
@@ -97,7 +97,7 @@ inline void trapezoid_generator_reset() {
 // This is called ACCELERATION_TICKS_PER_SECOND times per second by the step_event
 // interrupt. It can be assumed that the trapezoid-generator-parameters and the
 // current_block stays untouched by outside handlers for the duration of this function call.
-inline void trapezoid_generator_tick() {     
+void trapezoid_generator_tick() {     
   if (current_block) {
     if (step_events_completed < current_block->accelerate_until) {
       trapezoid_adjusted_rate += current_block->rate_delta;

@@ -79,7 +79,7 @@ static uint8_t acceleration_manager_enabled;   // Acceleration management active
 
 // Calculates the distance (not time) it takes to accelerate from initial_rate to target_rate using the 
 // given acceleration:
-inline double estimate_acceleration_distance(double initial_rate, double target_rate, double acceleration) {
+double estimate_acceleration_distance(double initial_rate, double target_rate, double acceleration) {
   return(
     (target_rate*target_rate-initial_rate*initial_rate)/
     (2L*acceleration)
@@ -101,7 +101,7 @@ inline double estimate_acceleration_distance(double initial_rate, double target_
                           |  |                   
       intersection_distance  distance                                                                           */
 
-inline double intersection_distance(double initial_rate, double final_rate, double acceleration, double distance) {
+double intersection_distance(double initial_rate, double final_rate, double acceleration, double distance) {
   return(
     (2*acceleration*distance-initial_rate*initial_rate+final_rate*final_rate)/
     (4*acceleration)
@@ -148,7 +148,7 @@ void calculate_trapezoid_for_block(block_t *block, double entry_factor, double e
 
 // Calculates the maximum allowable speed at this point when you must be able to reach target_velocity using the 
 // acceleration within the allotted distance.
-inline double max_allowable_speed(double acceleration, double target_velocity, double distance) {
+double max_allowable_speed(double acceleration, double target_velocity, double distance) {
   return(
     sqrt(target_velocity*target_velocity-2*acceleration*60*60*distance)
   );
@@ -157,7 +157,7 @@ inline double max_allowable_speed(double acceleration, double target_velocity, d
 // "Junction jerk" in this context is the immediate change in speed at the junction of two blocks.
 // This method will calculate the junction jerk as the euclidean distance between the nominal 
 // velocities of the respective blocks.
-inline double junction_jerk(block_t *before, block_t *after) {
+double junction_jerk(block_t *before, block_t *after) {
   return(sqrt(
     pow(before->speed_x-after->speed_x, 2)+
     pow(before->speed_y-after->speed_y, 2)+
@@ -322,13 +322,13 @@ int plan_is_acceleration_manager_enabled() {
   return(acceleration_manager_enabled);
 }
 
-inline void plan_discard_current_block() {
+void plan_discard_current_block() {
   if (block_buffer_head != block_buffer_tail) {
     block_buffer_tail = (block_buffer_tail + 1) % BLOCK_BUFFER_SIZE;  
   }
 }
 
-inline block_t *plan_get_current_block() {
+block_t *plan_get_current_block() {
   if (block_buffer_head == block_buffer_tail) { return(NULL); }
   return(&block_buffer[block_buffer_tail]);
 }
