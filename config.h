@@ -55,7 +55,7 @@
 
 // The temporal resolution of the acceleration management subsystem. Higher number
 // give smoother acceleration but may impact performance
-#define ACCELERATION_TICKS_PER_SECOND 20L
+#define ACCELERATION_TICKS_PER_SECOND 40L
 
 #endif
 
