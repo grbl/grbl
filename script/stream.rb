@@ -38,8 +38,8 @@ SerialPort.open('/dev/tty.usbserial-A700e0GO', 9600) do |sp|
       if prebuffer == 0
         begin
           result = sp.gets.strip
-          puts "Grbl >> #{result}" unless result == '' or result == 'ok'
-        end while result != 'ok'
+          puts "Grbl >> #{result}" #unless result == 'ok'
+        end while !(result =~ /^ok|^error/)
       else
         prebuffer -= 1
       end
