@@ -8,12 +8,6 @@ It accepts standards-compliant G-code and has been tested with the output of sev
 
 Grbl includes full acceleration management with look ahead. That means the controller will look up to 20 motions into the future and plan its velocities ahead to deliver smooth acceleration and jerk-free cornering.
 
-h2. Prioritized to-do:
-
-* Backlash compensation
-* Autodetect baud rate
-* Spindle control
-* Arduino IDE compatible (build and flash)
-* Support "headless" fabrication by buffering all code to SD-card or similar
+*Important note for Atmega 168 users:* Grbl used to be compatible with both the older Ardunios running atmega 168 and the newer with 328p. This had to go, as I was unable to fit the acceleration management into the 16k code space of the 168. If you want to run Grbl on an 168 I am still maintaining Grbl 0.51 "in the branch called 'v0_51'":https://github.com/simen/grbl/tree/v0_51.
 
 _The project was initially inspired by the Arduino GCode Interpreter by Mike Ellery_
