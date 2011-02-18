@@ -1,0 +1,30 @@
+Reasoning behind the mathematics in 'planner' module (in the key of 'Mathematica')
+==================================================================================
+
+
+s == speed, a == acceleration, t == time, d == distance
+
+Basic definitions:
+
+  Speed[s_, a_, t_] := s + (a*t) 
+  Travel[s_, a_, t_] := Integrate[Speed[s, a, t], t]
+
+Distance to reach a specific speed with a constant acceleration:
+
+  Solve[{Speed[s, a, t] == m, Travel[s, a, t] == d}, d, t]
+    d -> (m^2 - s^2)/(2 a) --> estimate_acceleration_distance()
+
+Speed after a given distance of travel with constant acceleration:
+
+  Solve[{Speed[s, a, t] == m, Travel[s, a, t] == d}, m, t]
+    m -> Sqrt[2 a d + s^2]    
+
+  DestinationSpeed[s_, a_, d_] := Sqrt[2 a d + s^2]
+
+When to start braking (di) to reach a specified destionation speed (s2) after accelerating
+from initial speed s1 without ever stopping at a plateau:
+
+  Solve[{DestinationSpeed[s1, a, di] == DestinationSpeed[s2, a, d - di]}, di]
+    di -> (2 a d - s1^2 + s2^2)/(4 a) --> intersection_distance()
+
+  IntersectionDistance[s1_, s2_, a_, d_] := (2 a d - s1^2 + s2^2)/(4 a)

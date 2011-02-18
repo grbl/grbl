@@ -20,38 +20,6 @@
 
 /* The ring buffer implementation gleaned from the wiring_serial library by David A. Mellis. */
 
-/*  
-  Reasoning behind the mathematics in this module (in the key of 'Mathematica'):
-  
-  s == speed, a == acceleration, t == time, d == distance
-
-  Basic definitions:
-
-    Speed[s_, a_, t_] := s + (a*t) 
-    Travel[s_, a_, t_] := Integrate[Speed[s, a, t], t]
-
-  Distance to reach a specific speed with a constant acceleration:
-
-    Solve[{Speed[s, a, t] == m, Travel[s, a, t] == d}, d, t]
-      d -> (m^2 - s^2)/(2 a) --> estimate_acceleration_distance()
-
-  Speed after a given distance of travel with constant acceleration:
-
-    Solve[{Speed[s, a, t] == m, Travel[s, a, t] == d}, m, t]
-      m -> Sqrt[2 a d + s^2]    
-
-    DestinationSpeed[s_, a_, d_] := Sqrt[2 a d + s^2]
-
-  When to start braking (di) to reach a specified destionation speed (s2) after accelerating
-  from initial speed s1 without ever stopping at a plateau:
-
-    Solve[{DestinationSpeed[s1, a, di] == DestinationSpeed[s2, a, d - di]}, di]
-      di -> (2 a d - s1^2 + s2^2)/(4 a) --> intersection_distance()
-
-    IntersectionDistance[s1_, s2_, a_, d_] := (2 a d - s1^2 + s2^2)/(4 a)
-*/
-                                                                                                            
-
 #include <inttypes.h>
 #include <math.h>       
 #include <stdlib.h>
@@ -67,8 +35,8 @@
 #define BLOCK_BUFFER_SIZE 16
 
 static block_t block_buffer[BLOCK_BUFFER_SIZE];  // A ring buffer for motion instructions
-static volatile uint8_t block_buffer_head;           // Index of the next block to be pushed
-static volatile uint8_t block_buffer_tail;           // Index of the block to process now
+static volatile uint8_t block_buffer_head;       // Index of the next block to be pushed
+static volatile uint8_t block_buffer_tail;       // Index of the block to process now
 
 // The current position of the tool in absolute steps
 static int32_t position[3];   
@@ -86,11 +54,6 @@ double estimate_acceleration_distance(double initial_rate, double target_rate, d
   );
 }
 
-// This function gives you the point at which you must start braking (at the rate of -acceleration) if 
-// you started at speed initial_rate and accelerated until this point and want to end at the final_rate after
-// a total travel of distance. This can be used to compute the intersection point between acceleration and
-// deceleration in the cases where the trapezoid has no plateau (i.e. never reaches maximum speed)
-
 /*                        + <- some maximum rate we don't care about
                          /|\
                         / | \                    
@@ -101,16 +64,18 @@ double estimate_acceleration_distance(double initial_rate, double target_rate, d
                           |  |                   
       intersection_distance  distance                                                                           */
 
+
+// This function gives you the point at which you must start braking (at the rate of -acceleration) if 
+// you started at speed initial_rate and accelerated until this point and want to end at the final_rate after
+// a total travel of distance. This can be used to compute the intersection point between acceleration and
+// deceleration in the cases where the trapezoid has no plateau (i.e. never reaches maximum speed)
+
 double intersection_distance(double initial_rate, double final_rate, double acceleration, double distance) {
   return(
     (2*acceleration*distance-initial_rate*initial_rate+final_rate*final_rate)/
     (4*acceleration)
   );
 }
-
-
-// Calculates trapezoid parameters so that the entry- and exit-speed is compensated by the provided factors.
-// The factors represent a factor of braking and must be in the range 0.0-1.0.
 
 /*                                                                              
                                      +--------+   <- nominal_rate
@@ -120,6 +85,9 @@ double intersection_distance(double initial_rate, double final_rate, double acce
                                    +-------------+                              
                                        time -->                                 
 */                                                                              
+
+// Calculates trapezoid parameters so that the entry- and exit-speed is compensated by the provided factors.
+// The factors represent a factor of braking and must be in the range 0.0-1.0.
 
 void calculate_trapezoid_for_block(block_t *block, double entry_factor, double exit_factor) {
   block->initial_rate = ceil(block->nominal_rate*entry_factor);
@@ -418,4 +386,3 @@ void plan_buffer_line(double x, double y, double z, double feed_rate, int invert
   if (acceleration_manager_enabled) { planner_recalculate(); }  
   st_wake_up();
 }
-

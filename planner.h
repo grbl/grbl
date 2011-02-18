@@ -18,9 +18,6 @@
   along with Grbl.  If not, see <http://www.gnu.org/licenses/>.
 */
 
-// This module is to be considered a sub-module of stepper.c. Please don't include 
-// this file from any other module.
-
 #ifndef planner_h
 #define planner_h
                  

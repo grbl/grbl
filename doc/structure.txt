@@ -3,7 +3,7 @@ The general structure of Grbl
 
 The main processing stack:
 
-'protocol' : Accepts command lines from the serial port and passes them to 'gcode' for execution.
+'protocol'        : Accepts command lines from the serial port and passes them to 'gcode' for execution.
                     Provides status responses for each command.
                   
 'gcode'           : Recieves gcode from 'protocol', parses it according to the current state
