@@ -92,11 +92,15 @@ uint8_t settings_execute_line(char *line) {
   if(line[char_counter] == 0) { 
     settings_dump(); return(STATUS_OK); 
   }
-  read_double(line, &char_counter, &parameter);
+  if(!read_double(line, &char_counter, &parameter)) {
+    return(STATUS_BAD_NUMBER_FORMAT);
+  };
   if(line[char_counter++] != '=') { 
     return(STATUS_UNSUPPORTED_STATEMENT); 
   }
-  read_double(line, &char_counter, &value);
+  if(!read_double(line, &char_counter, &value)) {
+    return(STATUS_BAD_NUMBER_FORMAT);
+  }
   if(line[char_counter] != 0) { 
     return(STATUS_UNSUPPORTED_STATEMENT); 
   }

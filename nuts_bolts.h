@@ -33,6 +33,9 @@
 #define clear_vector(a) memset(a, 0, sizeof(a))
 #define max(a,b) (((a) > (b)) ? (a) : (b))
 
+// Read a floating point value from a string. Line points to the input buffer, char_counter 
+// is the indexer pointing to the current character of the line, while double_ptr is 
+// a pointer to the result variable. Returns true when it succeeds
 int read_double(char *line, uint8_t *char_counter, double *double_ptr);
 
 #endif

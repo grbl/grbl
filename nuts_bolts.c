@@ -9,10 +9,10 @@ int read_double(char *line, uint8_t *char_counter, double *double_ptr)
   
   *double_ptr = strtod(start, &end);
   if(end == start) { 
-    return(0); 
+    return(false); 
   };
 
   *char_counter = end - line;
-  return(1);
+  return(true);
 }
 
