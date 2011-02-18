@@ -51,14 +51,14 @@ void status_message(int status_code) {
   }
 }
 
-void sp_init() 
+void protocol_init() 
 {
   beginSerial(BAUD_RATE);  
   printPgmString(PSTR("\r\nGrbl " GRBL_VERSION));
   printPgmString(PSTR("\r\n"));  
 }
 
-void sp_process()
+void protocol_process()
 {
   char c;
   while((c = serialRead()) != -1) 

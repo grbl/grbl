@@ -21,10 +21,10 @@
 #define serial_h
 
 // Initialize the serial protocol
-void sp_init();
+void protocol_init();
 
 // Read command lines from the serial port and execute them as they
 // come in. Blocks until the serial buffer is emptied. 
-void sp_process();
+void protocol_process();
 
 #endif
