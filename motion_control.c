@@ -48,7 +48,7 @@ void mc_arc(double theta, double angular_travel, double radius, double linear_tr
   int axis_linear, double feed_rate, int invert_feed_rate, double *position)
 {      
   int acceleration_manager_was_enabled = plan_is_acceleration_manager_enabled();
-  plan_set_acceleration_manager_enabled(FALSE); // disable acceleration management for the duration of the arc
+  plan_set_acceleration_manager_enabled(false); // disable acceleration management for the duration of the arc
   double millimeters_of_travel = hypot(angular_travel*radius, labs(linear_travel));
   if (millimeters_of_travel == 0.0) { return; }
   uint16_t segments = ceil(millimeters_of_travel/settings.mm_per_arc_segment);

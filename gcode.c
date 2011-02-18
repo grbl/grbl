@@ -90,7 +90,7 @@ void gc_init() {
   gc.feed_rate = settings.default_feed_rate/60;
   gc.seek_rate = settings.default_seek_rate/60;
   select_plane(X_AXIS, Y_AXIS, Z_AXIS);
-  gc.absolute_mode = TRUE;
+  gc.absolute_mode = true;
 }
 
 float to_millimeters(double value) {
@@ -122,9 +122,9 @@ uint8_t gc_execute_line(char *line) {
   double value;
   double unit_converted_value;
   double inverse_feed_rate = -1; // negative inverse_feed_rate means no inverse_feed_rate specified
-  int radius_mode = FALSE;
+  int radius_mode = false;
   
-  uint8_t absolute_override = FALSE;          /* 1 = absolute motion for this block only {G53} */
+  uint8_t absolute_override = false;          /* 1 = absolute motion for this block only {G53} */
   uint8_t next_action = NEXT_ACTION_DEFAULT;  /* The action that will be taken by the parsed line */
   
   double target[3], offset[3];  
@@ -155,15 +155,15 @@ uint8_t gc_execute_line(char *line) {
         case 17: select_plane(X_AXIS, Y_AXIS, Z_AXIS); break;
         case 18: select_plane(X_AXIS, Z_AXIS, Y_AXIS); break;
         case 19: select_plane(Y_AXIS, Z_AXIS, X_AXIS); break;
-        case 20: gc.inches_mode = TRUE; break;
-        case 21: gc.inches_mode = FALSE; break;
+        case 20: gc.inches_mode = true; break;
+        case 21: gc.inches_mode = false; break;
         case 28: case 30: next_action = NEXT_ACTION_GO_HOME; break;
-        case 53: absolute_override = TRUE; break;
+        case 53: absolute_override = true; break;
         case 80: gc.motion_mode = MOTION_MODE_CANCEL; break;
-        case 90: gc.absolute_mode = TRUE; break;
-        case 91: gc.absolute_mode = FALSE; break;
-        case 93: gc.inverse_feed_rate_mode = TRUE; break;
-        case 94: gc.inverse_feed_rate_mode = FALSE; break;
+        case 90: gc.absolute_mode = true; break;
+        case 91: gc.absolute_mode = false; break;
+        case 93: gc.inverse_feed_rate_mode = true; break;
+        case 94: gc.inverse_feed_rate_mode = false; break;
         default: FAIL(STATUS_UNSUPPORTED_STATEMENT);
       }
       break;
@@ -208,7 +208,7 @@ uint8_t gc_execute_line(char *line) {
       break;
       case 'I': case 'J': case 'K': offset[letter-'I'] = unit_converted_value; break;
       case 'P': p = value; break;
-      case 'R': r = unit_converted_value; radius_mode = TRUE; break;
+      case 'R': r = unit_converted_value; radius_mode = true; break;
       case 'S': gc.spindle_speed = value; break;
       case 'X': case 'Y': case 'Z':
       if (gc.absolute_mode || absolute_override) {
@@ -238,7 +238,7 @@ uint8_t gc_execute_line(char *line) {
     switch (gc.motion_mode) {
       case MOTION_MODE_CANCEL: break;
       case MOTION_MODE_SEEK:
-      mc_line(target[X_AXIS], target[Y_AXIS], target[Z_AXIS], gc.seek_rate, FALSE);
+      mc_line(target[X_AXIS], target[Y_AXIS], target[Z_AXIS], gc.seek_rate, false);
       break;
       case MOTION_MODE_LINEAR:
       mc_line(target[X_AXIS], target[Y_AXIS], target[Z_AXIS], 

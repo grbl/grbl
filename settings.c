@@ -116,19 +116,19 @@ int read_settings() {
   if (version == SETTINGS_VERSION) {
     // Read settings-record and check checksum
     if (!(memcpy_from_eeprom_with_checksum((char*)&settings, 1, sizeof(settings_t)))) {
-      return(FALSE);
+      return(false);
     }
   } else if (version == 1) {
     // Migrate from old settings version
     if (!(memcpy_from_eeprom_with_checksum((char*)&settings, 1, sizeof(settings_v1_t)))) {
-      return(FALSE);
+      return(false);
     }
     settings.acceleration = DEFAULT_ACCELERATION;
     settings.max_jerk = DEFAULT_MAX_JERK;
   } else {      
-    return(FALSE);
+    return(false);
   }
-  return(TRUE);
+  return(true);
 }
 
 // A helper method to set settings from command line

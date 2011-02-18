@@ -23,8 +23,8 @@
 #include <string.h>
 #include <stdint.h>
 
-#define FALSE 0
-#define TRUE 1
+#define false 0
+#define true 1
 
 #define X_AXIS 0
 #define Y_AXIS 1

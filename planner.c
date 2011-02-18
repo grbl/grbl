@@ -307,7 +307,7 @@ void planner_recalculate() {
 void plan_init() {
   block_buffer_head = 0;
   block_buffer_tail = 0;
-  plan_set_acceleration_manager_enabled(TRUE);
+  plan_set_acceleration_manager_enabled(true);
   clear_vector(position);
 }
 

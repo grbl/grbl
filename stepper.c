@@ -55,7 +55,7 @@ static int32_t counter_x,       // Counter variables for the bresenham line trac
                counter_y, 
                counter_z;       
 static uint32_t step_events_completed; // The number of step events executed in the current block
-static volatile int busy; // TRUE when SIG_OUTPUT_COMPARE1A is being serviced. Used to avoid retriggering that handler.
+static volatile int busy; // true when SIG_OUTPUT_COMPARE1A is being serviced. Used to avoid retriggering that handler.
 
 // Variables used by the trapezoid generation
 static uint32_t cycles_per_step_event;        // The number of machine cycles between each step event
@@ -138,7 +138,7 @@ SIGNAL(TIMER1_COMPA_vect)
   // exactly settings.pulse_microseconds microseconds.
   TCNT2 = -(((settings.pulse_microseconds-2)*TICKS_PER_MICROSECOND)/8);
 
-  busy = TRUE;
+  busy = true;
   sei(); // Re enable interrupts (normally disabled while inside an interrupt handler)
          // ((We re-enable interrupts in order for SIG_OVERFLOW2 to be able to be triggered 
          // at exactly the right time even if we occasionally spend a lot of time inside this handler.))
@@ -195,7 +195,7 @@ SIGNAL(TIMER1_COMPA_vect)
     trapezoid_generator_tick();
   }
   
-  busy=FALSE;
+  busy=false;
 }
 
 // This interrupt is set up by SIG_OUTPUT_COMPARE1A when it sets the motor port bits. It resets
