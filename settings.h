@@ -51,6 +51,9 @@ void settings_init();
 // Print current settings
 void settings_dump();
 
+// Handle settings command
+uint8_t settings_execute_line(char *line);
+
 // A helper method to set new settings from command line
 void settings_store_setting(int parameter, double value);
 

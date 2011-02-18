@@ -21,6 +21,7 @@
 #ifndef nuts_bolts_h
 #define nuts_bolts_h
 #include <string.h>
+#include <stdint.h>
 
 #define FALSE 0
 #define TRUE 1
@@ -31,5 +32,7 @@
 
 #define clear_vector(a) memset(a, 0, sizeof(a))
 #define max(a,b) (((a) > (b)) ? (a) : (b))
+
+int read_double(char *line, uint8_t *char_counter, double *double_ptr);
 
 #endif

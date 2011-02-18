@@ -25,6 +25,7 @@
 #include "eeprom.h"
 #include "wiring_serial.h"
 #include <avr/pgmspace.h>
+#include "protocol.h"
 
 settings_t settings;
 
@@ -79,6 +80,28 @@ void settings_dump() {
   printPgmString(PSTR(" (acceleration in mm/sec^2)\r\n$9 = ")); printFloat(settings.max_jerk);
   printPgmString(PSTR(" (max instant cornering speed change in delta mm/min)"));
   printPgmString(PSTR("\r\n'$x=value' to set parameter or just '$' to dump current settings\r\n"));
+}
+
+// Parameter lines are on the form '$4=374.3' or '$' to dump current settings
+uint8_t settings_execute_line(char *line) {
+  uint8_t char_counter = 1;
+  double parameter, value;
+  if(line[0] != '$') { 
+    return(STATUS_UNSUPPORTED_STATEMENT); 
+  }
+  if(line[char_counter] == 0) { 
+    settings_dump(); return(STATUS_OK); 
+  }
+  read_double(line, &char_counter, &parameter);
+  if(line[char_counter++] != '=') { 
+    return(STATUS_UNSUPPORTED_STATEMENT); 
+  }
+  read_double(line, &char_counter, &value);
+  if(line[char_counter] != 0) { 
+    return(STATUS_UNSUPPORTED_STATEMENT); 
+  }
+  settings_store_setting(parameter, value);
+  return(STATUS_OK);
 }
 
 void write_settings() {

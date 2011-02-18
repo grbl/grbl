@@ -22,7 +22,6 @@
    by Kramer, Proctor and Messina. */
 
 #include "gcode.h"
-#include <stdlib.h>
 #include <string.h>
 #include "nuts_bolts.h"
 #include <math.h>
@@ -63,7 +62,7 @@ typedef struct {
   uint8_t inches_mode;             /* 0 = millimeter mode, 1 = inches mode {G20, G21} */
   uint8_t absolute_mode;           /* 0 = relative motion, 1 = absolute motion {G90, G91} */
   uint8_t program_flow;
-  int spindle_direction;
+  int8_t spindle_direction;
   double feed_rate, seek_rate;     /* Millimeters/second */
   double position[3];              /* Where the interpreter considers the tool to be at this point in the code */
   uint8_t tool;
@@ -76,11 +75,7 @@ static parser_state_t gc;
 
 #define FAIL(status) gc.status_code = status;
 
-int read_double(char *line,               //  <- string: line of RS274/NGC code being processed
-                     int *char_counter,        //  <- pointer to a counter for position on the line 
-                     double *double_ptr); //  <- pointer to double to be read                  
-
-int next_statement(char *letter, double *double_ptr, char *line, int *char_counter);
+int next_statement(char *letter, double *double_ptr, char *line, uint8_t *char_counter);
 
 
 void select_plane(uint8_t axis_0, uint8_t axis_1, uint8_t axis_2) 
@@ -122,7 +117,7 @@ double theta(double x, double y)
 // Executes one line of 0-terminated G-Code. The line is assumed to contain only uppercase
 // characters and signed floating point values (no whitespace).
 uint8_t gc_execute_line(char *line) {
-  int char_counter = 0;  
+  uint8_t char_counter = 0;  
   char letter;
   double value;
   double unit_converted_value;
@@ -140,27 +135,12 @@ uint8_t gc_execute_line(char *line) {
   clear_vector(target);
   clear_vector(offset);
 
-  gc.status_code = GCSTATUS_OK;
+  gc.status_code = STATUS_OK;
   
   // Disregard comments and block delete
   if (line[0] == '(') { return(gc.status_code); }
   if (line[0] == '/') { char_counter++; } // ignore block delete  
   
-  // If the line starts with an '$' it is a configuration-command
-  if (line[0] == '$') { 
-    // Parameter lines are on the form '$4=374.3' or '$' to dump current settings
-    char_counter = 1;
-    if(line[char_counter] == 0) { settings_dump(); return(GCSTATUS_OK); }
-    read_double(line, &char_counter, &p);
-    if(line[char_counter++] != '=') { return(GCSTATUS_UNSUPPORTED_STATEMENT); }
-    read_double(line, &char_counter, &value);
-    if(line[char_counter] != 0) { return(GCSTATUS_UNSUPPORTED_STATEMENT); }
-    settings_store_setting(p, value);
-    return(gc.status_code);
-  }
-  
-  /* We'll handle this as g-code. First: parse all statements */
-
   // Pass 1: Commands
   while(next_statement(&letter, &value, line, &char_counter)) {
     int_value = trunc(value);
@@ -184,7 +164,7 @@ uint8_t gc_execute_line(char *line) {
         case 91: gc.absolute_mode = FALSE; break;
         case 93: gc.inverse_feed_rate_mode = TRUE; break;
         case 94: gc.inverse_feed_rate_mode = FALSE; break;
-        default: FAIL(GCSTATUS_UNSUPPORTED_STATEMENT);
+        default: FAIL(STATUS_UNSUPPORTED_STATEMENT);
       }
       break;
       
@@ -195,7 +175,7 @@ uint8_t gc_execute_line(char *line) {
         case 3: gc.spindle_direction = 1; break;
         case 4: gc.spindle_direction = -1; break;
         case 5: gc.spindle_direction = 0; break;
-        default: FAIL(GCSTATUS_UNSUPPORTED_STATEMENT);
+        default: FAIL(STATUS_UNSUPPORTED_STATEMENT);
       }            
       break;
       case 'T': gc.tool = trunc(value); break;
@@ -324,7 +304,7 @@ uint8_t gc_execute_line(char *line) {
         double h_x2_div_d = -sqrt(4 * r*r - x*x - y*y)/hypot(x,y); // == -(h * 2 / d)
         // If r is smaller than d, the arc is now traversing the complex plane beyond the reach of any
         // real CNC, and thus - for practical reasons - we will terminate promptly:
-        if(isnan(h_x2_div_d)) { FAIL(GCSTATUS_FLOATING_POINT_ERROR); return(gc.status_code); }
+        if(isnan(h_x2_div_d)) { FAIL(STATUS_FLOATING_POINT_ERROR); return(gc.status_code); }
         // Invert the sign of h_x2_div_d if the circle is counter clockwise (see sketch below)
         if (gc.motion_mode == MOTION_MODE_CCW_ARC) { h_x2_div_d = -h_x2_div_d; }
         
@@ -407,37 +387,21 @@ uint8_t gc_execute_line(char *line) {
 // Parses the next statement and leaves the counter on the first character following
 // the statement. Returns 1 if there was a statements, 0 if end of string was reached
 // or there was an error (check state.status_code).
-int next_statement(char *letter, double *double_ptr, char *line, int *char_counter) {
+int next_statement(char *letter, double *double_ptr, char *line, uint8_t *char_counter) {
   if (line[*char_counter] == 0) {
     return(0); // No more statements
   }
   
   *letter = line[*char_counter];
   if((*letter < 'A') || (*letter > 'Z')) {
-    FAIL(GCSTATUS_EXPECTED_COMMAND_LETTER);
+    FAIL(STATUS_EXPECTED_COMMAND_LETTER);
     return(0);
   }
   (*char_counter)++;
   if (!read_double(line, char_counter, double_ptr)) {
+    FAIL(STATUS_BAD_NUMBER_FORMAT); 
     return(0);
   };
-  return(1);
-}
-
-int read_double(char *line,               //!< string: line of RS274/NGC code being processed
-                     int *char_counter,   //!< pointer to a counter for position on the line 
-                     double *double_ptr)  //!< pointer to double to be read                  
-{
-  char *start = line + *char_counter;
-  char *end;
-  
-  *double_ptr = strtod(start, &end);
-  if(end == start) { 
-    FAIL(GCSTATUS_BAD_NUMBER_FORMAT); 
-    return(0); 
-  };
-
-  *char_counter = end - line;
   return(1);
 }
 

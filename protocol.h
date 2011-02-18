@@ -20,11 +20,20 @@
 #ifndef serial_h
 #define serial_h
 
+#define STATUS_OK 0
+#define STATUS_BAD_NUMBER_FORMAT 1
+#define STATUS_EXPECTED_COMMAND_LETTER 2
+#define STATUS_UNSUPPORTED_STATEMENT 3
+#define STATUS_FLOATING_POINT_ERROR 4
+
 // Initialize the serial protocol
 void protocol_init();
 
 // Read command lines from the serial port and execute them as they
 // come in. Blocks until the serial buffer is emptied. 
 void protocol_process();
+
+// Executes one line of input according to protocol
+uint8_t protocol_execute_line(char *line);
 
 #endif
