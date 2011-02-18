@@ -26,7 +26,7 @@
 #include "spindle_control.h"
 #include "motion_control.h"
 #include "gcode.h"
-#include "serial_protocol.h"
+#include "protocol.h"
 
 #include "settings.h"
 #include "wiring_serial.h"

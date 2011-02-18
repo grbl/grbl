@@ -1,5 +1,5 @@
 /*
-  serial_protocol.c - the serial protocol master control unit
+  protocol.c - the serial protocol master control unit
   Part of Grbl
 
   Copyright (c) 2009-2011 Simen Svale Skogsrud
@@ -19,7 +19,7 @@
 */
 
 #include <avr/io.h>
-#include "serial_protocol.h"
+#include "protocol.h"
 #include "gcode.h"
 #include "wiring_serial.h"
 #include "settings.h"

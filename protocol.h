@@ -1,5 +1,5 @@
 /*
-  serial_protocol.h - the serial protocol master control unit
+  protocol.h - the serial protocol master control unit
   Part of Grbl
 
   Copyright (c) 2009-2011 Simen Svale Skogsrud

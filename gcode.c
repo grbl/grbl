@@ -30,7 +30,7 @@
 #include "motion_control.h"
 #include "spindle_control.h"
 #include "errno.h"
-#include "serial_protocol.h"
+#include "protocol.h"
 
 #define MM_PER_INCH (25.4)
 
