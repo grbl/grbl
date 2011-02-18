@@ -64,11 +64,11 @@
 #include "wiring_serial.h"
 
 // The number of linear motions that can be in the plan at any give time
-#define BLOCK_BUFFER_SIZE 20  
+#define BLOCK_BUFFER_SIZE 16
 
 static block_t block_buffer[BLOCK_BUFFER_SIZE];  // A ring buffer for motion instructions
-static volatile int block_buffer_head;           // Index of the next block to be pushed
-static volatile int block_buffer_tail;           // Index of the block to process now
+static volatile uint8_t block_buffer_head;           // Index of the next block to be pushed
+static volatile uint8_t block_buffer_tail;           // Index of the block to process now
 
 // The current position of the tool in absolute steps
 static int32_t position[3];   

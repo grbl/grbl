@@ -31,12 +31,12 @@
 // using a ring buffer (I think), in which rx_buffer_head is the index of the
 // location to which to write the next incoming character and rx_buffer_tail
 // is the index of the location from which to read.
-#define RX_BUFFER_SIZE 200
+#define RX_BUFFER_SIZE 256
 
 unsigned char rx_buffer[RX_BUFFER_SIZE];
 
-int rx_buffer_head = 0;
-int rx_buffer_tail = 0;
+uint8_t rx_buffer_head = 0;
+uint8_t rx_buffer_tail = 0;
 
 void beginSerial(long baud)
 {
