@@ -21,6 +21,7 @@
 #include "spindle_control.h"
 #include "settings.h"
 #include "config.h"
+#include "stepper.h"
 
 #include <avr/io.h>
 
@@ -31,6 +32,7 @@ void spindle_init()
 
 void spindle_run(int direction, uint32_t rpm) 
 {
+  st_synchronize();
   if(direction >= 0) {
     SPINDLE_DIRECTION_PORT &= ~(1<<SPINDLE_DIRECTION_BIT);
   } else {
@@ -41,5 +43,6 @@ void spindle_run(int direction, uint32_t rpm)
 
 void spindle_stop()
 {
+  st_synchronize();
   SPINDLE_ENABLE_PORT &= ~(1<<SPINDLE_ENABLE_BIT);
 }
