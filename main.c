@@ -27,6 +27,7 @@
 #include "motion_control.h"
 #include "gcode.h"
 #include "protocol.h"
+#include "limits.h"
 
 #include "settings.h"
 #include "wiring_serial.h"
@@ -42,7 +43,8 @@ int main(void)
   plan_init();      
   st_init();        
   spindle_init();   
-  gc_init();        
+  gc_init();
+  limits_init();  
                     
   for(;;){
     sleep_mode(); // Wait for it ...

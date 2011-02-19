@@ -40,7 +40,7 @@
 #define Z_DIRECTION_BIT      7
 
 #define LIMIT_DDR      DDRB
-#define LIMIT_PORT     PORTB
+#define LIMIT_PIN     PINB
 #define X_LIMIT_BIT          1
 #define Y_LIMIT_BIT          2
 #define Z_LIMIT_BIT          3

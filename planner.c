@@ -386,3 +386,10 @@ void plan_buffer_line(double x, double y, double z, double feed_rate, int invert
   if (acceleration_manager_enabled) { planner_recalculate(); }  
   st_wake_up();
 }
+
+// Reset the position vector
+void plan_set_current_position(double x, double y, double z) {
+  position[X_AXIS] = x;
+  position[Y_AXIS] = y;
+  position[Z_AXIS] = z;
+}

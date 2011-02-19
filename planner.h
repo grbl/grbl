@@ -70,4 +70,7 @@ void plan_set_acceleration_manager_enabled(int enabled);
 // Is acceleration-management currently enabled?
 int plan_is_acceleration_manager_enabled();
 
+// Reset the position vector
+void plan_set_current_position(double x, double y, double z); 
+
 #endif

@@ -31,13 +31,12 @@
 #include <avr/interrupt.h>
 #include "planner.h"
 #include "wiring_serial.h"
-
+#include "limits.h"
 
 // Some useful constants
 #define STEP_MASK ((1<<X_STEP_BIT)|(1<<Y_STEP_BIT)|(1<<Z_STEP_BIT)) // All step bits
 #define DIRECTION_MASK ((1<<X_DIRECTION_BIT)|(1<<Y_DIRECTION_BIT)|(1<<Z_DIRECTION_BIT)) // All direction bits
 #define STEPPING_MASK (STEP_MASK | DIRECTION_MASK) // All stepping-related bits (step/direction)
-#define LIMIT_MASK ((1<<X_LIMIT_BIT)|(1<<Y_LIMIT_BIT)|(1<<Z_LIMIT_BIT)) // All limit bits
 
 #define TICKS_PER_MICROSECOND (F_CPU/1000000)
 #define CYCLES_PER_ACCELERATION_TICK ((TICKS_PER_MICROSECOND*1000000)/ACCELERATION_TICKS_PER_SECOND)
@@ -212,7 +211,6 @@ void st_init()
 	// Configure directions of interface pins
   STEPPING_DDR   |= STEPPING_MASK;
   STEPPING_PORT = (STEPPING_PORT & ~STEPPING_MASK) | settings.invert_mask;
-  LIMIT_DDR &= ~(LIMIT_MASK);
   STEPPERS_ENABLE_DDR |= 1<<STEPPERS_ENABLE_BIT;
   
 	// waveform generation = 0100 = CTC
@@ -293,5 +291,6 @@ static void set_step_events_per_minute(uint32_t steps_per_minute) {
 
 void st_go_home()
 {
-  // Todo: Perform the homing cycle
+  limits_go_home();  
+  plan_set_current_position(0,0,0);
 }
