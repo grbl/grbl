@@ -75,10 +75,9 @@ static parser_state_t gc;
 
 #define FAIL(status) gc.status_code = status;
 
-int next_statement(char *letter, double *double_ptr, char *line, uint8_t *char_counter);
+static int next_statement(char *letter, double *double_ptr, char *line, uint8_t *char_counter);
 
-
-void select_plane(uint8_t axis_0, uint8_t axis_1, uint8_t axis_2) 
+static void select_plane(uint8_t axis_0, uint8_t axis_1, uint8_t axis_2) 
 {
   gc.plane_axis_0 = axis_0;
   gc.plane_axis_1 = axis_1;
@@ -93,13 +92,13 @@ void gc_init() {
   gc.absolute_mode = true;
 }
 
-float to_millimeters(double value) {
+static float to_millimeters(double value) {
   return(gc.inches_mode ? (value * MM_PER_INCH) : value);
 }
 
 // Find the angle in radians of deviance from the positive y axis. negative angles to the left of y-axis, 
 // positive to the right.
-double theta(double x, double y)
+static double theta(double x, double y)
 {
   double theta = atan(x/fabs(y));
   if (y>0) {
@@ -387,7 +386,7 @@ uint8_t gc_execute_line(char *line) {
 // Parses the next statement and leaves the counter on the first character following
 // the statement. Returns 1 if there was a statements, 0 if end of string was reached
 // or there was an error (check state.status_code).
-int next_statement(char *letter, double *double_ptr, char *line, uint8_t *char_counter) {
+static int next_statement(char *letter, double *double_ptr, char *line, uint8_t *char_counter) {
   if (line[*char_counter] == 0) {
     return(0); // No more statements
   }

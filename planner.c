@@ -47,7 +47,7 @@ static uint8_t acceleration_manager_enabled;   // Acceleration management active
 
 // Calculates the distance (not time) it takes to accelerate from initial_rate to target_rate using the 
 // given acceleration:
-double estimate_acceleration_distance(double initial_rate, double target_rate, double acceleration) {
+static double estimate_acceleration_distance(double initial_rate, double target_rate, double acceleration) {
   return(
     (target_rate*target_rate-initial_rate*initial_rate)/
     (2L*acceleration)
@@ -70,7 +70,7 @@ double estimate_acceleration_distance(double initial_rate, double target_rate, d
 // a total travel of distance. This can be used to compute the intersection point between acceleration and
 // deceleration in the cases where the trapezoid has no plateau (i.e. never reaches maximum speed)
 
-double intersection_distance(double initial_rate, double final_rate, double acceleration, double distance) {
+static double intersection_distance(double initial_rate, double final_rate, double acceleration, double distance) {
   return(
     (2*acceleration*distance-initial_rate*initial_rate+final_rate*final_rate)/
     (4*acceleration)
@@ -89,7 +89,7 @@ double intersection_distance(double initial_rate, double final_rate, double acce
 // Calculates trapezoid parameters so that the entry- and exit-speed is compensated by the provided factors.
 // The factors represent a factor of braking and must be in the range 0.0-1.0.
 
-void calculate_trapezoid_for_block(block_t *block, double entry_factor, double exit_factor) {
+static void calculate_trapezoid_for_block(block_t *block, double entry_factor, double exit_factor) {
   block->initial_rate = ceil(block->nominal_rate*entry_factor);
   block->final_rate = ceil(block->nominal_rate*exit_factor);
   int32_t acceleration_per_minute = block->rate_delta*ACCELERATION_TICKS_PER_SECOND*60.0;
@@ -116,7 +116,7 @@ void calculate_trapezoid_for_block(block_t *block, double entry_factor, double e
 
 // Calculates the maximum allowable speed at this point when you must be able to reach target_velocity using the 
 // acceleration within the allotted distance.
-double max_allowable_speed(double acceleration, double target_velocity, double distance) {
+static double max_allowable_speed(double acceleration, double target_velocity, double distance) {
   return(
     sqrt(target_velocity*target_velocity-2*acceleration*60*60*distance)
   );
@@ -125,7 +125,7 @@ double max_allowable_speed(double acceleration, double target_velocity, double d
 // "Junction jerk" in this context is the immediate change in speed at the junction of two blocks.
 // This method will calculate the junction jerk as the euclidean distance between the nominal 
 // velocities of the respective blocks.
-double junction_jerk(block_t *before, block_t *after) {
+static double junction_jerk(block_t *before, block_t *after) {
   return(sqrt(
     pow(before->speed_x-after->speed_x, 2)+
     pow(before->speed_y-after->speed_y, 2)+
@@ -135,7 +135,7 @@ double junction_jerk(block_t *before, block_t *after) {
 
 // Calculate a braking factor to reach baseline speed which is max_jerk/2, e.g. the 
 // speed under which you cannot exceed max_jerk no matter what you do.
-double factor_for_safe_speed(block_t *block) {
+static double factor_for_safe_speed(block_t *block) {
   if(settings.max_jerk < block->nominal_speed) {
     return(settings.max_jerk/block->nominal_speed);  
   } else {
@@ -144,7 +144,7 @@ double factor_for_safe_speed(block_t *block) {
 }
 
 // The kernel called by planner_recalculate() when scanning the plan from last to first entry.
-void planner_reverse_pass_kernel(block_t *previous, block_t *current, block_t *next) {
+static void planner_reverse_pass_kernel(block_t *previous, block_t *current, block_t *next) {
   if(!current) { return; }
 
   double entry_factor = 1.0;
@@ -181,7 +181,7 @@ void planner_reverse_pass_kernel(block_t *previous, block_t *current, block_t *n
 
 // planner_recalculate() needs to go over the current plan twice. Once in reverse and once forward. This 
 // implements the reverse pass.
-void planner_reverse_pass() {
+static void planner_reverse_pass() {
   auto int8_t block_index = block_buffer_head;
   block_t *block[3] = {NULL, NULL, NULL};
   while(block_index != block_buffer_tail) {    
@@ -198,7 +198,7 @@ void planner_reverse_pass() {
 }
 
 // The kernel called by planner_recalculate() when scanning the plan from first to last entry.
-void planner_forward_pass_kernel(block_t *previous, block_t *current, block_t *next) {
+static void planner_forward_pass_kernel(block_t *previous, block_t *current, block_t *next) {
   if(!current) { return; }
   // If the previous block is an acceleration block, but it is not long enough to 
   // complete the full speed change within the block, we need to adjust out entry
@@ -216,7 +216,7 @@ void planner_forward_pass_kernel(block_t *previous, block_t *current, block_t *n
 
 // planner_recalculate() needs to go over the current plan twice. Once in reverse and once forward. This 
 // implements the forward pass.
-void planner_forward_pass() {
+static void planner_forward_pass() {
   int8_t block_index = block_buffer_tail;
   block_t *block[3] = {NULL, NULL, NULL};
   
@@ -233,7 +233,7 @@ void planner_forward_pass() {
 // Recalculates the trapezoid speed profiles for all blocks in the plan according to the 
 // entry_factor for each junction. Must be called by planner_recalculate() after 
 // updating the blocks.
-void planner_recalculate_trapezoids() {
+static void planner_recalculate_trapezoids() {
   int8_t block_index = block_buffer_tail;
   block_t *current;
   block_t *next = NULL;
@@ -266,7 +266,7 @@ void planner_recalculate_trapezoids() {
 //
 //   3. Recalculate trapezoids for all blocks.
 
-void planner_recalculate() {     
+static void planner_recalculate() {     
   planner_reverse_pass();
   planner_forward_pass();
   planner_recalculate_trapezoids();

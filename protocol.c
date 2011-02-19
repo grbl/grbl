@@ -32,7 +32,7 @@
 static char line[LINE_BUFFER_SIZE];
 static uint8_t char_counter;
 
-void status_message(int status_code) {
+static void status_message(int status_code) {
   if (status_code == 0) {
     printPgmString(PSTR("ok\n\r"));
   } else {
