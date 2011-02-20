@@ -32,6 +32,7 @@
 
 #define mc_line(x, y, z, feed_rate, invert_feed_rate) plan_buffer_line(x, y, z, feed_rate, invert_feed_rate) 
 
+#ifdef __AVR_ATmega328P__
 // Execute an arc. theta == start angle, angular_travel == number of radians to go along the arc,
 // positive angular_travel means clockwise, negative means counterclockwise. Radius == the radius of the
 // circle in millimeters. axis_1 and axis_2 selects the circle plane in tool space. Stick the remaining
@@ -39,6 +40,7 @@
 
 void mc_arc(double theta, double angular_travel, double radius, double linear_travel, int axis_1, int axis_2, 
   int axis_linear, double feed_rate, int invert_feed_rate, double *position);
+#endif
   
 // Dwell for a couple of time units
 void mc_dwell(uint32_t milliseconds);
