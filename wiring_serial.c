@@ -31,7 +31,11 @@
 // using a ring buffer (I think), in which rx_buffer_head is the index of the
 // location to which to write the next incoming character and rx_buffer_tail
 // is the index of the location from which to read.
-#define RX_BUFFER_SIZE 200
+#ifdef __AVR_ATmega328P__
+#define RX_BUFFER_SIZE 256
+#else
+#define RX_BUFFER_SIZE 64
+#endif
 
 unsigned char rx_buffer[RX_BUFFER_SIZE];
 

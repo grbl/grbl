@@ -64,7 +64,11 @@
 #include "wiring_serial.h"
 
 // The number of linear motions that can be in the plan at any give time
-#define BLOCK_BUFFER_SIZE 20  
+#ifdef __AVR_ATmega328P__
+#define BLOCK_BUFFER_SIZE 20
+#else
+#define BLOCK_BUFFER_SIZE 5
+#endif
 
 static block_t block_buffer[BLOCK_BUFFER_SIZE];  // A ring buffer for motion instructions
 static volatile int block_buffer_head;           // Index of the next block to be pushed
