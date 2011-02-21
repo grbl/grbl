@@ -24,13 +24,15 @@
 #include <avr/io.h>
 #include "planner.h"
 
+// NOTE: Although the following functions structurally belongs in this module, there is nothing to do but
+// to forward the request to the planner.
+
 // Execute linear motion in absolute millimeter coordinates. Feed rate given in millimeters/second
 // unless invert_feed_rate is true. Then the feed_rate means that the motion should be completed in
 // (1 minute)/feed_rate time.
-// NOTE: Although this function structurally belongs in this module, there is nothing to do but
-// to forward the request to the planner. For efficiency the function is implemented with a macro.
-
 #define mc_line(x, y, z, feed_rate, invert_feed_rate) plan_buffer_line(x, y, z, feed_rate, invert_feed_rate) 
+
+#define mc_set_current_position(x, y, z) plan_set_current_position(x, y, z) 
 
 #ifdef __AVR_ATmega328P__
 // Execute an arc. theta == start angle, angular_travel == number of radians to go along the arc,

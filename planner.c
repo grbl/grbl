@@ -391,9 +391,9 @@ void plan_buffer_line(double x, double y, double z, double feed_rate, int invert
   st_wake_up();
 }
 
-// Reset the position vector
+// Reset the planner position vector
 void plan_set_current_position(double x, double y, double z) {
-  position[X_AXIS] = x;
-  position[Y_AXIS] = y;
-  position[Z_AXIS] = z;
+  position[X_AXIS] = lround(x*settings.steps_per_mm[X_AXIS]);
+  position[Y_AXIS] = lround(y*settings.steps_per_mm[Y_AXIS]);
+  position[Z_AXIS] = lround(z*settings.steps_per_mm[Z_AXIS]);     
 }

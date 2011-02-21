@@ -97,6 +97,7 @@ static float to_millimeters(double value) {
   return(gc.inches_mode ? (value * MM_PER_INCH) : value);
 }
 
+#ifdef __AVR_ATmega328P__        
 // Find the angle in radians of deviance from the positive y axis. negative angles to the left of y-axis, 
 // positive to the right.
 static double theta(double x, double y)
@@ -113,6 +114,7 @@ static double theta(double x, double y)
     }
   }
 }
+#endif
 
 // Executes one line of 0-terminated G-Code. The line is assumed to contain only uppercase
 // characters and signed floating point values (no whitespace).
@@ -236,7 +238,9 @@ uint8_t gc_execute_line(char *line) {
   switch (next_action) {
     case NEXT_ACTION_GO_HOME: mc_go_home(); clear_vector(gc.position); break;
     case NEXT_ACTION_DWELL: mc_dwell(trunc(p*1000)); break;   
-    case NEXT_ACTION_SET_COORDINATE_OFFSET: break; // no action needed
+    case NEXT_ACTION_SET_COORDINATE_OFFSET: 
+    mc_set_current_position(target[X_AXIS], target[Y_AXIS], target[Z_AXIS]);
+    break;
     case NEXT_ACTION_DEFAULT: 
     switch (gc.motion_mode) {
       case MOTION_MODE_CANCEL: break;
