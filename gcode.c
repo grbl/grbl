@@ -36,6 +36,7 @@
 #define NEXT_ACTION_DEFAULT 0
 #define NEXT_ACTION_DWELL 1
 #define NEXT_ACTION_GO_HOME 2
+#define NEXT_ACTION_SET_COORDINATE_OFFSET 3
 
 #define MOTION_MODE_SEEK 0 // G0 
 #define MOTION_MODE_LINEAR 1 // G1
@@ -234,7 +235,8 @@ uint8_t gc_execute_line(char *line) {
   // Perform any physical actions
   switch (next_action) {
     case NEXT_ACTION_GO_HOME: mc_go_home(); clear_vector(gc.position); break;
-    case NEXT_ACTION_DWELL: mc_dwell(trunc(p*1000)); break;
+    case NEXT_ACTION_DWELL: mc_dwell(trunc(p*1000)); break;   
+    case NEXT_ACTION_SET_COORDINATE_OFFSET: break; // no action needed
     case NEXT_ACTION_DEFAULT: 
     switch (gc.motion_mode) {
       case MOTION_MODE_CANCEL: break;
