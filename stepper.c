@@ -82,6 +82,7 @@ static uint32_t trapezoid_adjusted_rate;      // The current rate of step_events
 static void set_step_events_per_minute(uint32_t steps_per_minute);
 
 void st_wake_up() {
+  STEPPERS_ENABLE_PORT |= (1<<STEPPERS_ENABLE_BIT);
   ENABLE_STEPPER_DRIVER_INTERRUPT();  
 }
 
@@ -153,6 +154,8 @@ SIGNAL(TIMER1_COMPA_vect)
       counter_z = counter_x;
       step_events_completed = 0;
     } else {
+      // set enable pin     
+      STEPPERS_ENABLE_PORT &= ~(1<<STEPPERS_ENABLE_BIT);
       DISABLE_STEPPER_DRIVER_INTERRUPT();
     }    
   } 
@@ -229,12 +232,11 @@ void st_init()
   TIMSK2 |= (1<<TOIE2);      
   
   set_step_events_per_minute(6000);
-  DISABLE_STEPPER_DRIVER_INTERRUPT();  
   trapezoid_tick_cycle_counter = 0;
-  
-  // set enable pin     
-  STEPPERS_ENABLE_PORT |= 1<<STEPPERS_ENABLE_BIT;
-     
+
+  STEPPERS_ENABLE_PORT &= ~(1<<STEPPERS_ENABLE_BIT);
+  DISABLE_STEPPER_DRIVER_INTERRUPT();  
+       
   sei();
 }
 
