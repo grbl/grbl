@@ -52,7 +52,7 @@ void mc_arc(double theta, double angular_travel, double radius, double linear_tr
   plan_set_acceleration_manager_enabled(false); // disable acceleration management for the duration of the arc
   double millimeters_of_travel = hypot(angular_travel*radius, labs(linear_travel));
   if (millimeters_of_travel == 0.0) { return; }
-  uint16_t segments = ceil(millimeters_of_travel/settings.mm_per_arc_segment);
+  uint16_t segments = round(millimeters_of_travel/settings.mm_per_arc_segment);
   // Multiply inverse feed_rate to compensate for the fact that this movement is approximated
   // by a number of discrete segments. The inverse feed_rate should be correct for the sum of 
   // all segments.
@@ -69,7 +69,7 @@ void mc_arc(double theta, double angular_travel, double radius, double linear_tr
   int i;
   // Initialize the linear axis
   target[axis_linear] = position[axis_linear];
-  for (i=0; i<=segments; i++) {
+  for (i=0; i<segments; i++) {
     target[axis_linear] += linear_per_segment;
     theta += theta_per_segment;
     target[axis_1] = center_x+sin(theta)*radius;
