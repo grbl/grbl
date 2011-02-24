@@ -34,21 +34,21 @@ static uint8_t char_counter;
 
 static void status_message(int status_code) {
   if (status_code == 0) {
-    printPgmString(PSTR("ok\n\r"));
+    printPgmString(PSTR("ok\r\n"));
   } else {
     printPgmString(PSTR("error: "));
     switch(status_code) {          
       case STATUS_BAD_NUMBER_FORMAT:
-      printPgmString(PSTR("Bad number format\n\r")); break;
+      printPgmString(PSTR("Bad number format\r\n")); break;
       case STATUS_EXPECTED_COMMAND_LETTER:
-      printPgmString(PSTR("Expected command letter\n\r")); break;
+      printPgmString(PSTR("Expected command letter\r\n")); break;
       case STATUS_UNSUPPORTED_STATEMENT:
-      printPgmString(PSTR("Unsupported statement\n\r")); break;
+      printPgmString(PSTR("Unsupported statement\r\n")); break;
       case STATUS_FLOATING_POINT_ERROR:
-      printPgmString(PSTR("Floating point error\n\r")); break;
+      printPgmString(PSTR("Floating point error\r\n")); break;
       default:
       printInteger(status_code);
-      printPgmString(PSTR("\n\r"));
+      printPgmString(PSTR("\r\n"));
     }
   }
 }
