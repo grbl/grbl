@@ -163,9 +163,10 @@ uint8_t gc_execute_line(char *line) {
         case 21: gc.inches_mode = false; break;
         case 28: case 30: next_action = NEXT_ACTION_GO_HOME; break;
         case 53: absolute_override = true; break;
-        case 80: gc.motion_mode = MOTION_MODE_CANCEL; break;
+        case 80: gc.motion_mode = MOTION_MODE_CANCEL; break;        
         case 90: gc.absolute_mode = true; break;
         case 91: gc.absolute_mode = false; break;
+        case 92: next_action = NEXT_ACTION_SET_COORDINATE_OFFSET; break;        
         case 93: gc.inverse_feed_rate_mode = true; break;
         case 94: gc.inverse_feed_rate_mode = false; break;
         default: FAIL(STATUS_UNSUPPORTED_STATEMENT);
