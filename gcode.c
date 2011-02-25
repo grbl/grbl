@@ -229,11 +229,7 @@ uint8_t gc_execute_line(char *line) {
   if (gc.status_code) { return(gc.status_code); }
     
   // Update spindle state
-  if (gc.spindle_direction) {
-    spindle_run(gc.spindle_direction, gc.spindle_speed);
-  } else {
-    spindle_stop();
-  }
+  spindle_run(gc.spindle_direction, gc.spindle_speed);
   
   // Perform any physical actions
   switch (next_action) {
