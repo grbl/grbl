@@ -139,6 +139,10 @@ int read_settings() {
 void settings_store_setting(int parameter, double value) {
   switch(parameter) {
     case 0: case 1: case 2:
+    if (value <= 0.0) {
+      printPgmString(PSTR("Steps/mm must be > 0.0\r\n"));
+      return;
+    }
     settings.steps_per_mm[parameter] = value; break;
     case 3: settings.pulse_microseconds = round(value); break;
     case 4: settings.default_feed_rate = value; break;
