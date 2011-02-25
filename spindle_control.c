@@ -36,12 +36,16 @@ void spindle_run(int direction, uint32_t rpm)
 {
   if (direction != current_direction) {
     st_synchronize();
-    if(direction >= 0) {
-      SPINDLE_DIRECTION_PORT &= ~(1<<SPINDLE_DIRECTION_BIT);
+    if(direction) {
+      if(direction > 0) {
+        SPINDLE_DIRECTION_PORT &= ~(1<<SPINDLE_DIRECTION_BIT);
+      } else {
+        SPINDLE_DIRECTION_PORT |= 1<<SPINDLE_DIRECTION_BIT;
+      }
+      SPINDLE_ENABLE_PORT |= 1<<SPINDLE_ENABLE_BIT;
     } else {
-      SPINDLE_DIRECTION_PORT |= 1<<SPINDLE_DIRECTION_BIT;
+      SPINDLE_ENABLE_PORT &= ~(1<<SPINDLE_ENABLE_BIT);      
     }
-    SPINDLE_ENABLE_PORT |= 1<<SPINDLE_ENABLE_BIT;
     current_direction = direction;
   }
 }
