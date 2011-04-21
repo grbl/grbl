@@ -1,5 +1,5 @@
 /*
-  serial_protocol.c - the serial protocol master control unit
+  protocol.c - the serial protocol master control unit
   Part of Grbl
 
   Copyright (c) 2009-2011 Simen Svale Skogsrud
@@ -19,7 +19,7 @@
 */
 
 #include <avr/io.h>
-#include "serial_protocol.h"
+#include "protocol.h"
 #include "gcode.h"
 #include "wiring_serial.h"
 #include "settings.h"
@@ -32,40 +32,51 @@
 static char line[LINE_BUFFER_SIZE];
 static uint8_t char_counter;
 
-void status_message(int status_code) {
-  switch(status_code) {          
-    case GCSTATUS_OK:
-    printPgmString(PSTR("ok\n\r")); break;
-    case GCSTATUS_BAD_NUMBER_FORMAT:
-    printPgmString(PSTR("error: Bad number format\n\r")); break;
-    case GCSTATUS_EXPECTED_COMMAND_LETTER:
-    printPgmString(PSTR("error: Expected command letter\n\r")); break;
-    case GCSTATUS_UNSUPPORTED_STATEMENT:
-    printPgmString(PSTR("error: Unsupported statement\n\r")); break;
-    case GCSTATUS_FLOATING_POINT_ERROR:
-    printPgmString(PSTR("error: Floating point error\n\r")); break;
-    default:
+static void status_message(int status_code) {
+  if (status_code == 0) {
+    printPgmString(PSTR("ok\r\n"));
+  } else {
     printPgmString(PSTR("error: "));
-    printInteger(status_code);
-    printPgmString(PSTR("\n\r"));
+    switch(status_code) {          
+      case STATUS_BAD_NUMBER_FORMAT:
+      printPgmString(PSTR("Bad number format\r\n")); break;
+      case STATUS_EXPECTED_COMMAND_LETTER:
+      printPgmString(PSTR("Expected command letter\r\n")); break;
+      case STATUS_UNSUPPORTED_STATEMENT:
+      printPgmString(PSTR("Unsupported statement\r\n")); break;
+      case STATUS_FLOATING_POINT_ERROR:
+      printPgmString(PSTR("Floating point error\r\n")); break;
+      default:
+      printInteger(status_code);
+      printPgmString(PSTR("\r\n"));
+    }
   }
 }
 
-void sp_init() 
+void protocol_init() 
 {
   beginSerial(BAUD_RATE);  
   printPgmString(PSTR("\r\nGrbl " GRBL_VERSION));
   printPgmString(PSTR("\r\n"));  
 }
 
-void sp_process()
+// Executes one line of input according to protocol
+uint8_t protocol_execute_line(char *line) {
+  if(line[0] == '$') {
+    return(settings_execute_line(line)); // Delegate lines starting with '$' to the settings module
+  } else {
+    return(gc_execute_line(line));    // Everything else is gcode
+  }
+}
+
+void protocol_process()
 {
   char c;
   while((c = serialRead()) != -1) 
   {
     if((char_counter > 0) && ((c == '\n') || (c == '\r'))) {  // Line is complete. Then execute!
       line[char_counter] = 0; // treminate string
-      status_message(gc_execute_line(line));
+      status_message(protocol_execute_line(line));
       char_counter = 0; // reset line buffer index
     } else if (c <= ' ') { // Throw away whitepace and control characters
     } else if (c >= 'a' && c <= 'z') { // Upcase lowercase
