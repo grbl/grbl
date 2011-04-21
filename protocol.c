@@ -71,8 +71,8 @@ uint8_t protocol_execute_line(char *line) {
 
 void protocol_process()
 {
-  char c;
-  while((c = serialRead()) != -1) 
+  unsigned char c;	// what do you get when you have a lot of unsigned characters?
+  while((c = serialRead()) != (unsigned char)-1) 	// unemployed actors.
   {
     if((char_counter > 0) && ((c == '\n') || (c == '\r'))) {  // Line is complete. Then execute!
       line[char_counter] = 0; // treminate string
