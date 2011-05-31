@@ -20,6 +20,7 @@
 
 #include <avr/io.h>
 #include <avr/sleep.h>
+#include <avr/interrupt.h>
 #include <util/delay.h>
 #include "planner.h"
 #include "stepper.h"
@@ -44,7 +45,9 @@ int main(void)
   st_init();        
   spindle_init();   
   gc_init();
-  limits_init();  
+  limits_init();
+
+  sei();
                     
   for(;;){
     sleep_mode(); // Wait for it ...

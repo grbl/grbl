@@ -26,9 +26,9 @@
 // Updated default pin-assignments from 0.6 onwards 
 // (see bottom of file for a copy of the old config)
 
-#define STEPPERS_ENABLE_DDR     DDRB
-#define STEPPERS_ENABLE_PORT    PORTB
-#define STEPPERS_ENABLE_BIT         0
+#define STEPPERS_DISABLE_DDR     DDRB
+#define STEPPERS_DISABLE_PORT    PORTB
+#define STEPPERS_DISABLE_BIT         0
 
 #define STEPPING_DDR       DDRD
 #define STEPPING_PORT      PORTD
@@ -61,9 +61,9 @@
 
 // Pin-assignments from Grbl 0.5
 
-// #define STEPPERS_ENABLE_DDR     DDRD
-// #define STEPPERS_ENABLE_PORT    PORTD
-// #define STEPPERS_ENABLE_BIT         2
+// #define STEPPERS_DISABLE_DDR     DDRD
+// #define STEPPERS_DISABLE_PORT    PORTD
+// #define STEPPERS_DISABLE_BIT         2
 // 
 // #define STEPPING_DDR       DDRC
 // #define STEPPING_PORT      PORTC 
