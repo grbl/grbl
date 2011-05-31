@@ -37,10 +37,12 @@
 #define RX_BUFFER_SIZE 64
 #endif
 
+#define TX_BUFFER_SIZE 16
+
 unsigned char rx_buffer[RX_BUFFER_SIZE];
 
-uint8_t rx_buffer_head = 0;
-uint8_t rx_buffer_tail = 0;
+int rx_buffer_head = 0;
+int rx_buffer_tail = 0;
 
 void beginSerial(long baud)
 {
@@ -60,12 +62,60 @@ void beginSerial(long baud)
 	// defaults to 8-bit, no parity, 1 stop bit
 }
 
-void serialWrite(unsigned char c)
-{
-	while (!(UCSR0A & (1 << UDRE0)))
-		;
 
+unsigned char tx_buffer[TX_BUFFER_SIZE];
+unsigned char tx_buffer_head = 0;
+volatile unsigned char tx_buffer_tail = 0;
+
+void serialWrite(unsigned char c) {
+
+  if ((!(UCSR0A & (1 << UDRE0))) || (tx_buffer_head != tx_buffer_tail)) {
+    // maybe checking if buffer is empty is not necessary, 
+    // not sure if there can be a state when the data register empty flag is set
+    // and read here without the interrupt being executed
+    // well, it shouldn't happen, right?
+
+    // data register is not empty, use the buffer
+    unsigned char newhead = tx_buffer_head + 1;
+    newhead %= TX_BUFFER_SIZE;
+
+    // wait until there's a space in the buffer
+    while (newhead == tx_buffer_tail) ;
+
+    tx_buffer[tx_buffer_head] = c;
+    tx_buffer_head = newhead;
+
+    // enable the Data Register Empty Interrupt
+    sei();
+    UCSR0B |=  (1 << UDRIE0);
+
+    } 
+    else {
 	UDR0 = c;
+    }
+}
+
+// interrupt called on Data Register Empty
+SIGNAL(USART_UDRE_vect) {
+  // temporary tx_buffer_tail 
+  // (to optimize for volatile, there are no interrupts inside an interrupt routine)
+  unsigned char tail = tx_buffer_tail;
+
+  // get a byte from the buffer	
+  unsigned char c = tx_buffer[tail];
+  // send the byte
+	 UDR0 = c;
+
+  // update tail position
+  tail ++;
+  tail %= TX_BUFFER_SIZE;
+
+  // if the buffer is empty,  disable the interrupt
+  if (tail == tx_buffer_head) {
+    UCSR0B &=  ~(1 << UDRIE0);
+  }
+
+  tx_buffer_tail = tail;
 }
 
 int serialAvailable()
