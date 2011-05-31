@@ -354,6 +354,10 @@ void plan_buffer_line(double x, double y, double z, double feed_rate, int invert
   block->nominal_rate = ceil(block->step_event_count * multiplier);  
   block->entry_factor = 0.0;
   
+  // This is a temporary fix to avoid a situation where very low nominal_speeds would be rounded 
+  // down to zero and cause a division by zero. TODO: Grbl deserves a less patchy fix for this problem
+  if (block->nominal_speed < 60.0) { block->nominal_speed = 60.0; }
+  
   // Compute the acceleration rate for the trapezoid generator. Depending on the slope of the line
   // average travel per step event changes. For a line along one axis the travel per step event
   // is equal to the travel/step in the particular axis. For a 45 degree line the steppers of both
