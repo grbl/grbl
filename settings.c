@@ -26,6 +26,7 @@
 #include "wiring_serial.h"
 #include <avr/pgmspace.h>
 #include "protocol.h"
+#include "config.h"
 
 settings_t settings;
 
@@ -51,7 +52,7 @@ typedef struct {
 #define DEFAULT_FEEDRATE 500.0
 #define DEFAULT_ACCELERATION (DEFAULT_FEEDRATE/10.0)
 #define DEFAULT_MAX_JERK 300.0
-#define DEFAULT_STEPPING_INVERT_MASK 0
+#define DEFAULT_STEPPING_INVERT_MASK ((1<<X_STEP_BIT)|(1<<Y_STEP_BIT)||(1<<Z_STEP_BIT))
 
 void settings_reset() {
   settings.steps_per_mm[X_AXIS] = DEFAULT_X_STEPS_PER_MM;
