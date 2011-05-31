@@ -36,4 +36,4 @@ Supporting files:
                     
 'nuts_bolts.h'    : A tiny collection of useful constants and macros used everywhere
 
-'wiring_serial'   : Low level serial library initially from an old version of the Arduino software
+'serial'          : Low level serial communications

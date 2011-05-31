@@ -22,8 +22,8 @@
   $Id: wiring.h 387 2008-03-08 21:30:00Z mellis $
 */
 
-#ifndef wiring_h
-#define wiring_h
+#ifndef serial_h
+#define serial_h
 
 void beginSerial(long);
 void serialWrite(unsigned char);

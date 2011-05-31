@@ -29,7 +29,7 @@
 #include "stepper.h"
 #include "settings.h"
 #include "config.h"
-#include "wiring_serial.h"
+#include "serial.h"
 
 // The number of linear motions that can be in the plan at any give time
 #ifdef __AVR_ATmega328P__

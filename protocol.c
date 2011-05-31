@@ -21,7 +21,7 @@
 #include <avr/io.h>
 #include "protocol.h"
 #include "gcode.h"
-#include "wiring_serial.h"
+#include "serial.h"
 #include "settings.h"
 #include "config.h"
 #include <math.h>

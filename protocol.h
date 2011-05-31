@@ -17,8 +17,8 @@
   You should have received a copy of the GNU General Public License
   along with Grbl.  If not, see <http://www.gnu.org/licenses/>.
 */
-#ifndef serial_h
-#define serial_h
+#ifndef protocol_h
+#define protocol_h
 
 #define STATUS_OK 0
 #define STATUS_BAD_NUMBER_FORMAT 1
