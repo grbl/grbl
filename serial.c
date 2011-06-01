@@ -37,10 +37,14 @@
 
 #define TX_BUFFER_SIZE 16
 
-unsigned char rx_buffer[RX_BUFFER_SIZE];
+uint8_t rx_buffer[RX_BUFFER_SIZE];
+uint8_t rx_buffer_head = 0;
+uint8_t rx_buffer_tail = 0;
 
-int rx_buffer_head = 0;
-int rx_buffer_tail = 0;
+uint8_t tx_buffer[TX_BUFFER_SIZE];
+uint8_t tx_buffer_head = 0;
+volatile uint8_t tx_buffer_tail = 0;
+
 
 void beginSerial(long baud)
 {
@@ -60,49 +64,29 @@ void beginSerial(long baud)
 	// defaults to 8-bit, no parity, 1 stop bit
 }
 
+void serialWrite(uint8_t data) {
+  uint8_t next_head = (tx_buffer_head + 1) % TX_BUFFER_SIZE;
 
-unsigned char tx_buffer[TX_BUFFER_SIZE];
-unsigned char tx_buffer_head = 0;
-volatile unsigned char tx_buffer_tail = 0;
+  // wait until there's a space in the buffer
+  while (next_head == tx_buffer_tail) ;
 
-void serialWrite(unsigned char c) {
+  tx_buffer[tx_buffer_head] = data;
+  tx_buffer_head = next_head;
 
-  if ((!(UCSR0A & (1 << UDRE0))) || (tx_buffer_head != tx_buffer_tail)) {
-    // maybe checking if buffer is empty is not necessary, 
-    // not sure if there can be a state when the data register empty flag is set
-    // and read here without the interrupt being executed
-    // well, it shouldn't happen, right?
-
-    // data register is not empty, use the buffer
-    unsigned char newhead = tx_buffer_head + 1;
-    newhead %= TX_BUFFER_SIZE;
-
-    // wait until there's a space in the buffer
-    while (newhead == tx_buffer_tail) ;
-
-    tx_buffer[tx_buffer_head] = c;
-    tx_buffer_head = newhead;
-
-    // enable the Data Register Empty Interrupt
-    sei();
-    UCSR0B |=  (1 << UDRIE0);
-
-    } 
-    else {
-	UDR0 = c;
-    }
+  // enable the Data Register Empty Interrupt
+  UCSR0B |=  (1 << UDRIE0);
 }
 
 // interrupt called on Data Register Empty
 SIGNAL(USART_UDRE_vect) {
   // temporary tx_buffer_tail 
   // (to optimize for volatile, there are no interrupts inside an interrupt routine)
-  unsigned char tail = tx_buffer_tail;
+  uint8_t tail = tx_buffer_tail;
 
   // get a byte from the buffer	
-  unsigned char c = tx_buffer[tail];
+  uint8_t data = tx_buffer[tail];
   // send the byte
-	 UDR0 = c;
+  UDR0 = data;
 
   // update tail position
   tail ++;
@@ -122,58 +106,37 @@ int serialAnyAvailable()
   return (rx_buffer_head != rx_buffer_tail);
 }
 
-int serialRead()
+uint8_t serialRead()
 {
-	// if the head isn't ahead of the tail, we don't have any characters
-	if (serialAnyAvailable()) {
+	if (!serialAnyAvailable()) {
 		return -1;
 	} else {
-		unsigned char c = rx_buffer[rx_buffer_tail];
+		uint8_t data = rx_buffer[rx_buffer_tail];
 		rx_buffer_tail = (rx_buffer_tail + 1) % RX_BUFFER_SIZE;
-		return c;
+		return data;
 	}
-}
-
-void serialFlush()
-{
-	// don't reverse this or there may be problems if the RX interrupt
-	// occurs after reading the value of rx_buffer_head but before writing
-	// the value to rx_buffer_tail; the previous value of rx_buffer_head
-	// may be written to rx_buffer_tail, making it appear as if the buffer
-	// were full, not empty.
-	rx_buffer_head = rx_buffer_tail;
 }
 
 SIGNAL(USART_RX_vect)
 {
-	unsigned char c = UDR0;
-	int i = (rx_buffer_head + 1) % RX_BUFFER_SIZE;
+	uint8_t data = UDR0;
+	uint8_t next_head = (rx_buffer_head + 1) % RX_BUFFER_SIZE;
 
 	// if we should be storing the received character into the location
 	// just before the tail (meaning that the head would advance to the
 	// current location of the tail), we're about to overflow the buffer
 	// and so we don't write the character or advance the head.
-	if (i != rx_buffer_tail) {
-		rx_buffer[rx_buffer_head] = c;
-		rx_buffer_head = i;
+	if (next_head != rx_buffer_tail) {
+		rx_buffer[rx_buffer_head] = data;
+		rx_buffer_head = next_head;
 	}
 }
 
-// void printMode(int mode)
-// {
-//  // do nothing, we only support serial printing, not lcd.
-// }
-
 void printByte(unsigned char c)
 {
-	serialWrite(c);
+	serialWrite((uint8_t) c);
 }
 
-// void printNewline()
-// {
-//  printByte('\n');
-// }
-// 
 void printString(const char *s)
 {
 	while (*s)

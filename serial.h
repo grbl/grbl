@@ -26,10 +26,9 @@
 #define serial_h
 
 void beginSerial(long);
-void serialWrite(unsigned char);
+void serialWrite(uint8_t);
 int serialAnyAvailable(void);
-int serialRead(void);
-void serialFlush(void);
+uint8_t serialRead(void);
 void printMode(int);
 void printByte(unsigned char c);
 void printNewline(void);
