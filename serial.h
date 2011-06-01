@@ -27,7 +27,7 @@
 
 void beginSerial(long);
 void serialWrite(unsigned char);
-int serialAvailable(void);
+int serialAnyAvailable(void);
 int serialRead(void);
 void serialFlush(void);
 void printMode(int);

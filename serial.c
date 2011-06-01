@@ -116,15 +116,16 @@ SIGNAL(USART_UDRE_vect) {
   tx_buffer_tail = tail;
 }
 
-int serialAvailable()
+// Returns true if there is any data in the read buffer
+int serialAnyAvailable()
 {
-	return (RX_BUFFER_SIZE + rx_buffer_head - rx_buffer_tail) % RX_BUFFER_SIZE;
+  return (rx_buffer_head != rx_buffer_tail);
 }
 
 int serialRead()
 {
 	// if the head isn't ahead of the tail, we don't have any characters
-	if (rx_buffer_head == rx_buffer_tail) {
+	if (serialAnyAvailable()) {
 		return -1;
 	} else {
 		unsigned char c = rx_buffer[rx_buffer_tail];
@@ -227,33 +228,3 @@ void printFloat(double n)
   printInteger(round(fractional_part*1000));
 }
 
-// void printHex(unsigned long n)
-// {
-//  printIntegerInBase(n, 16);
-// }
-// 
-// void printOctal(unsigned long n)
-// {
-//  printIntegerInBase(n, 8);
-// }
-// 
-// void printBinary(unsigned long n)
-// {
-//  printIntegerInBase(n, 2);
-// }
-
-/* Including print() adds approximately 1500 bytes to the binary size,
- * so we replace it with the smaller and less-confusing printString(),
- * printInteger(), etc.
-void print(const char *format, ...)
-{
-	char buf[256];
-	va_list ap;
-	
-	va_start(ap, format);
-	vsnprintf(buf, 256, format, ap);
-	va_end(ap);
-	
-	printString(buf);
-}
-*/
