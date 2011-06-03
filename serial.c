@@ -23,6 +23,7 @@
 
 #include <avr/interrupt.h>
 #include <avr/sleep.h>
+#include "serial.h"
 
 
 #ifdef __AVR_ATmega328P__
@@ -97,7 +98,7 @@ uint8_t serial_read()
 {
 	if (rx_buffer_head != rx_buffer_tail) {
 	  // Return magic number if no data pending
-		return 0xff;
+		return SERIAL_NO_DATA;
 	} else {
 		uint8_t data = rx_buffer[rx_buffer_tail];
 		rx_buffer_tail = (rx_buffer_tail + 1) % RX_BUFFER_SIZE;
