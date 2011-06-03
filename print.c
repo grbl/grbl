@@ -26,6 +26,8 @@
 #include <avr/pgmspace.h>
 #include "serial.h"
 
+#define DECIMAL_PLACES 4
+
 void printString(const char *s)
 {
 	while (*s)
@@ -70,15 +72,20 @@ void printInteger(long n)
 	printIntegerInBase(n, 10);
 }
 
-// TODO: This is nasty. I can't remember where I got this, but this monster 
-// will truncate leading zeroes from the fractional part so that 
-// 3.5, 3.05 and 3.000005 all will print as 3.5!!! Needs fixing fast.
+// A very simple 
 void printFloat(double n)
 {
-  double integer_part, fractional_part;
+  double integer_part, fractional_part, decimal_part;
   fractional_part = modf(n, &integer_part);
   printInteger(integer_part);
   serial_write('.');
-  printInteger(round(fractional_part*1000));
+  fractional_part *= 10;
+  int decimals = DECIMAL_PLACES;  
+  while(decimals > 0) {
+    decimal_part = floor(fractional_part);
+    printDigit(decimal_part);
+    fractional_part -= decimal_part;
+    fractional_part *= 10;
+  }
 }
 
