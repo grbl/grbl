@@ -81,7 +81,7 @@ void printFloat(double n)
   serial_write('.');
   fractional_part *= 10;
   int decimals = DECIMAL_PLACES;  
-  while(decimals > 0) {
+  while(decimals-- > 0) {
     decimal_part = floor(fractional_part);
     printDigit(decimal_part);
     fractional_part -= decimal_part;
