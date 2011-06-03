@@ -71,13 +71,12 @@ void serial_write(uint8_t data) {
   tx_buffer[tx_buffer_head] = data;
   tx_buffer_head = next_head;
   
-  // Enable Data Register Empty Interrupt
+  // Enable Data Register Empty Interrupt to make sure tx-streaming is running
 	UCSR0B |=  (1 << UDRIE0); 
 }
 
 // Data Register Empty Interrupt handler
-SIGNAL(USART_UDRE_vect) {
-  
+SIGNAL(USART_UDRE_vect) {  
   // temporary tx_buffer_tail (to optimize for volatile)
   uint8_t tail = tx_buffer_tail;
 
@@ -87,15 +86,17 @@ SIGNAL(USART_UDRE_vect) {
   // Update tail position
   tail ++;
   tail %= TX_BUFFER_SIZE;
-  tx_buffer_tail = tail;
 
-  // Turn off Data Register Empty Interrupt if this concludes the transfer
+  // Turn off Data Register Empty Interrupt to stop tx-streaming if this concludes the transfer
   if (tail == tx_buffer_head) { UCSR0B &= ~(1 << UDRIE0); }
+
+  tx_buffer_tail = tail;
 }
 
 uint8_t serial_read()
 {
 	if (rx_buffer_head != rx_buffer_tail) {
+	  // Return magic number if no data pending
 		return 0xff;
 	} else {
 		uint8_t data = rx_buffer[rx_buffer_tail];
