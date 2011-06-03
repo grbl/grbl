@@ -37,3 +37,5 @@ Supporting files:
 'nuts_bolts.h'    : A tiny collection of useful constants and macros used everywhere
 
 'serial'          : Low level serial communications
+
+'print'           : Functions to print strings of different formats (using serial)

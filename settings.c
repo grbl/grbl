@@ -23,7 +23,7 @@
 #include "nuts_bolts.h"
 #include "settings.h"
 #include "eeprom.h"
-#include "serial.h"
+#include "print.h"
 #include <avr/pgmspace.h>
 #include "protocol.h"
 #include "config.h"

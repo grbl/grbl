@@ -30,7 +30,6 @@
 #include "nuts_bolts.h"
 #include <avr/interrupt.h>
 #include "planner.h"
-#include "serial.h"
 #include "limits.h"
 
 // Some useful constants

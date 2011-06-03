@@ -22,6 +22,7 @@
 #include "protocol.h"
 #include "gcode.h"
 #include "serial.h"
+#include "print.h"
 #include "settings.h"
 #include "config.h"
 #include <math.h>
@@ -55,7 +56,6 @@ static void status_message(int status_code) {
 
 void protocol_init() 
 {
-  beginSerial(BAUD_RATE);  
   printPgmString(PSTR("\r\nGrbl " GRBL_VERSION));
   printPgmString(PSTR("\r\n"));  
 }
@@ -72,7 +72,7 @@ uint8_t protocol_execute_line(char *line) {
 void protocol_process()
 {
   char c;
-  while((c = serialRead()) != -1) 
+  while((c = serial_read()) != 0xff) 
   {
     if((char_counter > 0) && ((c == '\n') || (c == '\r'))) {  // Line is complete. Then execute!
       line[char_counter] = 0; // treminate string

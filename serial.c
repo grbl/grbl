@@ -21,9 +21,8 @@
 
 */
 
-#include <math.h>
-#include <avr/pgmspace.h>
 #include <avr/interrupt.h>
+#include <avr/sleep.h>
 
 // Define constants and variables for buffering incoming serial data.  We're
 // using a ring buffer (I think), in which rx_buffer_head is the index of the
@@ -46,7 +45,7 @@ uint8_t tx_buffer_head = 0;
 volatile uint8_t tx_buffer_tail = 0;
 
 
-void beginSerial(long baud)
+void serial_init(long baud)
 {
 	UBRR0H = ((F_CPU / 16 + baud / 2) / baud - 1) >> 8;
 	UBRR0L = ((F_CPU / 16 + baud / 2) / baud - 1);
@@ -60,56 +59,50 @@ void beginSerial(long baud)
 	
 	// enable interrupt on complete reception of a byte
   UCSR0B |= 1<<RXCIE0;
-	
+	  
 	// defaults to 8-bit, no parity, 1 stop bit
 }
 
-void serialWrite(uint8_t data) {
+void serial_write(uint8_t data) {
+  // Calculate next head
   uint8_t next_head = (tx_buffer_head + 1) % TX_BUFFER_SIZE;
 
-  // wait until there's a space in the buffer
-  while (next_head == tx_buffer_tail) ;
+  // Wait until there's a space in the buffer
+  while (next_head == tx_buffer_tail) { sleep_mode(); };
 
+  // Store data and advance head
   tx_buffer[tx_buffer_head] = data;
   tx_buffer_head = next_head;
-
-  // enable the Data Register Empty Interrupt
-  UCSR0B |=  (1 << UDRIE0);
+  
+  // Enable Data Register Empty Interrupt
+	UCSR0B |=  (1 << UDRIE0); 
 }
 
-// interrupt called on Data Register Empty
+// Data Register Empty Interrupt handler
 SIGNAL(USART_UDRE_vect) {
-  // temporary tx_buffer_tail 
-  // (to optimize for volatile, there are no interrupts inside an interrupt routine)
+  
+  // temporary tx_buffer_tail (to optimize for volatile)
   uint8_t tail = tx_buffer_tail;
 
-  // get a byte from the buffer	
-  uint8_t data = tx_buffer[tail];
-  // send the byte
-  UDR0 = data;
+  // Send a byte from the buffer	
+  UDR0 = tx_buffer[tail];
 
-  // update tail position
+  // Update tail position
   tail ++;
   tail %= TX_BUFFER_SIZE;
+  tx_buffer_tail = tail;
 
-  // if the buffer is empty,  disable the interrupt
-  if (tail == tx_buffer_head) {
-    UCSR0B &=  ~(1 << UDRIE0);
+  // Turn off Data Register Empty Interrupt if this concludes the transfer
+  if (tail == tx_buffer_head) { 
+    UCSR0B &= ~(1 << UDRIE0); 
   }
 
-  tx_buffer_tail = tail;
 }
 
-// Returns true if there is any data in the read buffer
-int serialAnyAvailable()
+uint8_t serial_read()
 {
-  return (rx_buffer_head != rx_buffer_tail);
-}
-
-uint8_t serialRead()
-{
-	if (!serialAnyAvailable()) {
-		return -1;
+	if (rx_buffer_head != rx_buffer_tail) {
+		return 0xff;
 	} else {
 		uint8_t data = rx_buffer[rx_buffer_tail];
 		rx_buffer_tail = (rx_buffer_tail + 1) % RX_BUFFER_SIZE;
@@ -130,64 +123,5 @@ SIGNAL(USART_RX_vect)
 		rx_buffer[rx_buffer_head] = data;
 		rx_buffer_head = next_head;
 	}
-}
-
-void printByte(unsigned char c)
-{
-	serialWrite((uint8_t) c);
-}
-
-void printString(const char *s)
-{
-	while (*s)
-		printByte(*s++);
-}
-
-// Print a string stored in PGM-memory
-void printPgmString(const char *s)
-{
-  char c;
-	while ((c = pgm_read_byte_near(s++)))
-		printByte(c);
-}
-
-void printIntegerInBase(unsigned long n, unsigned long base)
-{ 
-	unsigned char buf[8 * sizeof(long)]; // Assumes 8-bit chars. 
-	unsigned long i = 0;
-
-	if (n == 0) {
-		printByte('0');
-		return;
-	} 
-
-	while (n > 0) {
-		buf[i++] = n % base;
-		n /= base;
-	}
-
-	for (; i > 0; i--)
-		printByte(buf[i - 1] < 10 ?
-			'0' + buf[i - 1] :
-			'A' + buf[i - 1] - 10);
-}
-
-void printInteger(long n)
-{
-	if (n < 0) {
-		printByte('-');
-		n = -n;
-	}
-
-	printIntegerInBase(n, 10);
-}
-
-void printFloat(double n)
-{
-  double integer_part, fractional_part;
-  fractional_part = modf(n, &integer_part);
-  printInteger(integer_part);
-  printByte('.');
-  printInteger(round(fractional_part*1000));
 }
 

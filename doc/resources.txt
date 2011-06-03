@@ -3,7 +3,7 @@ Allocation of AVR peripherals in Grbl
 
 See config.h for pin allocation.
 
-The UART is handled by 'wiring_serial' and used primarily for streaming gcode
+The UART is handled by 'serial' and used primarily for streaming gcode
 
 16 bit Timer 1 and the TIMER1_COMPA interrupt is used by the 'stepper' module to handle step events
 

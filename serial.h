@@ -25,20 +25,8 @@
 #ifndef serial_h
 #define serial_h
 
-void beginSerial(long);
-void serialWrite(uint8_t);
-int serialAnyAvailable(void);
-uint8_t serialRead(void);
-void printMode(int);
-void printByte(unsigned char c);
-void printNewline(void);
-void printString(const char *s);
-void printPgmString(const char *s);
-void printInteger(long n);
-void printHex(unsigned long n);
-void printOctal(unsigned long n);
-void printBinary(unsigned long n);
-void printIntegerInBase(unsigned long n, unsigned long base);
-void printFloat(double n);
+void serial_init(long);
+void serial_write(uint8_t);
+uint8_t serial_read(void);
 
 #endif

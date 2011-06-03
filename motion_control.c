@@ -27,7 +27,6 @@
 #include "nuts_bolts.h"
 #include "stepper.h"
 #include "planner.h"
-#include "serial.h"
 
 
 void mc_dwell(uint32_t milliseconds) 

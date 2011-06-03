@@ -22,6 +22,7 @@
 #include <avr/sleep.h>
 #include <avr/interrupt.h>
 #include <util/delay.h>
+#include "config.h"
 #include "planner.h"
 #include "stepper.h"
 #include "spindle_control.h"
@@ -33,12 +34,9 @@
 #include "settings.h"
 #include "serial.h"
 
-// #ifndef __AVR_ATmega328P__
-// #  error "As of version 0.6 Grbl only supports atmega328p. If you want to run Grbl on an 168 check out 0.51 ('git co v0_51')"
-// #endif
-
 int main(void)
 {
+  serial_init(BAUD_RATE);
   protocol_init();        
   settings_init();  
   plan_init();      
