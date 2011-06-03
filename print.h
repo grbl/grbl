@@ -25,9 +25,13 @@
 #define print_h
 
 void printString(const char *s);
+
 void printPgmString(const char *s);
+
 void printInteger(long n);
+
 void printIntegerInBase(unsigned long n, unsigned long base);
+
 void printFloat(double n);
 
 #endif

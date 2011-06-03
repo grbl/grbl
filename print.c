@@ -71,6 +71,9 @@ void printInteger(long n)
 	printIntegerInBase(n, 10);
 }
 
+// TODO: This is nasty. I can't remember where I got this, but this monster 
+// will truncate leading zeroes from the fractional part so that 
+// 3.5, 3.05 and 3.000005 all will print as 3.5!!! Needs fixing fast.
 void printFloat(double n)
 {
   double integer_part, fractional_part;

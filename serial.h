@@ -24,8 +24,10 @@
 #ifndef serial_h
 #define serial_h
 
-void serial_init(long);
-void serial_write(uint8_t);
-uint8_t serial_read(void);
+void serial_init(long baud);
+
+void serial_write(uint8_t data);
+
+uint8_t serial_read();
 
 #endif
