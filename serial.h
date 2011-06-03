@@ -1,26 +1,25 @@
 /*
-  Based on wiring.h - Partial implementation of the Wiring API for the ATmega8.
-  Part of Arduino - http://www.arduino.cc/
+  serial.c - Low level functions for sending and recieving bytes via the serial port
+  Part of Grbl
 
-  Copyright (c) 2005-2006 David A. Mellis
+  Copyright (c) 2009-2011 Simen Svale Skogsrud
 
-  This library is free software; you can redistribute it and/or
-  modify it under the terms of the GNU Lesser General Public
-  License as published by the Free Software Foundation; either
-  version 2.1 of the License, or (at your option) any later version.
+  Grbl is free software: you can redistribute it and/or modify
+  it under the terms of the GNU General Public License as published by
+  the Free Software Foundation, either version 3 of the License, or
+  (at your option) any later version.
 
-  This library is distributed in the hope that it will be useful,
+  Grbl is distributed in the hope that it will be useful,
   but WITHOUT ANY WARRANTY; without even the implied warranty of
-  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
-  Lesser General Public License for more details.
+  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+  GNU General Public License for more details.
 
-  You should have received a copy of the GNU Lesser General
-  Public License along with this library; if not, write to the
-  Free Software Foundation, Inc., 59 Temple Place, Suite 330,
-  Boston, MA  02111-1307  USA
-
-  $Id: wiring.h 387 2008-03-08 21:30:00Z mellis $
+  You should have received a copy of the GNU General Public License
+  along with Grbl.  If not, see <http://www.gnu.org/licenses/>.
 */
+
+/* This code was initially inspired by the wiring_serial module by David A. Mellis which
+   used to be a part of the Arduino project. */ 
 
 #ifndef serial_h
 #define serial_h
