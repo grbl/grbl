@@ -110,10 +110,7 @@ SIGNAL(USART_RX_vect)
 	uint8_t data = UDR0;
 	uint8_t next_head = (rx_buffer_head + 1) % RX_BUFFER_SIZE;
 
-	// if we should be storing the received character into the location
-	// just before the tail (meaning that the head would advance to the
-	// current location of the tail), we're about to overflow the buffer
-	// and so we don't write the character or advance the head.
+  // Write data to buffer unless it is full.
 	if (next_head != rx_buffer_tail) {
 		rx_buffer[rx_buffer_head] = data;
 		rx_buffer_head = next_head;
