@@ -42,24 +42,25 @@ void printPgmString(const char *s)
 		serial_write(c);
 }
 
-// Prints a single digit of any base up to 36. 0..9 prints as
-// '0'..'9' while 10..35 prints as 'a'..'z'
-void printDigit(uint8_t value) {
-	serial_write(value < 10 ?
-		'0' + value :
-		'a' + value - 10);
-}
-
 void printIntegerInBase(unsigned long n, unsigned long base)
 { 
+	unsigned char buf[8 * sizeof(long)]; // Assumes 8-bit chars. 
+	unsigned long i = 0;
+
 	if (n == 0) {
-    printDigit(0);
+		serial_write('0');
 		return;
 	} 
+
 	while (n > 0) {
-    printDigit(n % base);
+		buf[i++] = n % base;
 		n /= base;
 	}
+
+	for (; i > 0; i--)
+		serial_write(buf[i - 1] < 10 ?
+			'0' + buf[i - 1] :
+			'A' + buf[i - 1] - 10);
 }
 
 void printInteger(long n)
@@ -75,7 +76,8 @@ void printInteger(long n)
 // A very simple 
 void printFloat(double n)
 {
-  double integer_part, fractional_part, decimal_part;
+  double integer_part, fractional_part;
+  uint8_t decimal_part;
   fractional_part = modf(n, &integer_part);
   printInteger(integer_part);
   serial_write('.');
@@ -83,7 +85,7 @@ void printFloat(double n)
   int decimals = DECIMAL_PLACES;  
   while(decimals-- > 0) {
     decimal_part = floor(fractional_part);
-    printDigit(decimal_part);
+    serial_write('0'+decimal_part);
     fractional_part -= decimal_part;
     fractional_part *= 10;
   }
