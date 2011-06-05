@@ -26,7 +26,9 @@
 #include <avr/pgmspace.h>
 #include "serial.h"
 
-#define DECIMAL_PLACES 4
+#ifndef DECIMAL_PLACES
+#define DECIMAL_PLACES 3
+#endif
 
 void printString(const char *s)
 {
