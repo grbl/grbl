@@ -36,6 +36,8 @@
 
 int main(void)
 {
+  sei();
+  
   serial_init(BAUD_RATE);
   protocol_init();        
   settings_init();  
@@ -44,8 +46,6 @@ int main(void)
   spindle_init();   
   gc_init();
   limits_init();
-
-  sei();
                     
   for(;;){
     sleep_mode(); // Wait for it ...

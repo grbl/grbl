@@ -42,12 +42,16 @@ uint8_t tx_buffer[TX_BUFFER_SIZE];
 uint8_t tx_buffer_head = 0;
 volatile uint8_t tx_buffer_tail = 0;
 
+static void set_baud_rate(long baud) {
+  uint16_t UBRR0_value = ((F_CPU / 16 + baud / 2) / baud - 1);
+	UBRR0H = UBRR0_value >> 8;
+	UBRR0L = UBRR0_value;
+}
 
 void serial_init(long baud)
 {
-	UBRR0H = ((F_CPU / 16 + baud / 2) / baud - 1) >> 8;
-	UBRR0L = ((F_CPU / 16 + baud / 2) / baud - 1);
-	
+  set_baud_rate(baud);
+  
 	/* baud doubler off  - Only needed on Uno XXX */
   UCSR0A &= ~(1 << U2X0);
           
@@ -96,8 +100,7 @@ SIGNAL(USART_UDRE_vect) {
 
 uint8_t serial_read()
 {
-	if (rx_buffer_head != rx_buffer_tail) {
-	  // Return magic number if no data pending
+	if (rx_buffer_head == rx_buffer_tail) {
 		return SERIAL_NO_DATA;
 	} else {
 		uint8_t data = rx_buffer[rx_buffer_tail];
