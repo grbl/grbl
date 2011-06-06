@@ -78,7 +78,10 @@ void protocol_process()
       line[char_counter] = 0; // treminate string
       status_message(protocol_execute_line(line));
       char_counter = 0; // reset line buffer index
-    } else if (c <= ' ') { // Throw away whitepace and control characters
+    } else if (c <= ' ') { 
+      // Throw away whitepace and control characters
+    } else if (char_counter >= LINE_BUFFER_SIZE-1) {
+      // Throw away any characters beyond the end of the line buffer
     } else if (c >= 'a' && c <= 'z') { // Upcase lowercase
       line[char_counter++] = c-'a'+'A';
     } else {
