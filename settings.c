@@ -53,6 +53,7 @@ typedef struct {
 #define DEFAULT_ACCELERATION (DEFAULT_FEEDRATE/10.0)
 #define DEFAULT_MAX_JERK 300.0
 #define DEFAULT_STEPPING_INVERT_MASK ((1<<X_STEP_BIT)|(1<<Y_STEP_BIT)|(1<<Z_STEP_BIT))
+#define DEFAULT_ENABLE_SET 1
 
 void settings_reset() {
   settings.steps_per_mm[X_AXIS] = DEFAULT_X_STEPS_PER_MM;
@@ -65,6 +66,7 @@ void settings_reset() {
   settings.mm_per_arc_segment = DEFAULT_MM_PER_ARC_SEGMENT;
   settings.invert_mask = DEFAULT_STEPPING_INVERT_MASK;
   settings.max_jerk = DEFAULT_MAX_JERK;
+  settings.enable_set = DEFAULT_ENABLE_SET;
 }
 
 void settings_dump() {
@@ -79,7 +81,8 @@ void settings_dump() {
   printPgmString(PSTR(" (step port invert mask. binary = ")); printIntegerInBase(settings.invert_mask, 2);  
   printPgmString(PSTR(")\r\n$8 = ")); printFloat(settings.acceleration);
   printPgmString(PSTR(" (acceleration in mm/sec^2)\r\n$9 = ")); printFloat(settings.max_jerk);
-  printPgmString(PSTR(" (max instant cornering speed change in delta mm/min)"));
+  printPgmString(PSTR(" (max instant cornering speed change in delta mm/min)\r\n$10 = ")); printFloat(settings.enable_set);
+  printPgmString(PSTR(" (motor enable pin: 1=Enable High, no sleep, 2=Enable High, sleep, 3=Enable Low, no sleep, 4= Enable Low, sleep)"));
   printPgmString(PSTR("\r\n'$x=value' to set parameter or just '$' to dump current settings\r\n"));
 }
 
@@ -130,6 +133,7 @@ int read_settings() {
     }
     settings.acceleration = DEFAULT_ACCELERATION;
     settings.max_jerk = DEFAULT_MAX_JERK;
+	settings.enable_set = DEFAULT_ENABLE_SET;
   } else {      
     return(false);
   }
@@ -152,6 +156,13 @@ void settings_store_setting(int parameter, double value) {
     case 7: settings.invert_mask = trunc(value); break;
     case 8: settings.acceleration = value; break;
     case 9: settings.max_jerk = fabs(value); break;
+	case 10: settings.enable_set = value;
+	if (!((value==1)||(value==2)||(value==3)||(value==4))) {
+	  printPgmString(PSTR("Invalid Settign value\r\n"));
+      return;
+	} else {
+	  settings.enable_set = round(value);
+	} break;
     default: 
       printPgmString(PSTR("Unknown parameter\r\n"));
       return;

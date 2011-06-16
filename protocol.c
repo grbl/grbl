@@ -56,7 +56,7 @@ static void status_message(int status_code) {
 
 void protocol_init() 
 {
-  printPgmString(PSTR("\r\nGrbl " GRBL_VERSION));
+  printPgmString(PSTR("\r\nLCGCi Version:" LCGCi_VERSION));
   printPgmString(PSTR("\r\n"));  
 }
 

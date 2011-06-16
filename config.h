@@ -26,9 +26,9 @@
 // Updated default pin-assignments from 0.6 onwards 
 // (see bottom of file for a copy of the old config)
 
-#define STEPPERS_DISABLE_DDR     DDRB
-#define STEPPERS_DISABLE_PORT    PORTB
-#define STEPPERS_DISABLE_BIT         0
+#define STEPPERS_ENABLE_DDR     DDRB
+#define STEPPERS_ENABLE_PORT    PORTB
+#define STEPPERS_ENABLE_BIT         0
 
 #define STEPPING_DDR       DDRD
 #define STEPPING_PORT      PORTD

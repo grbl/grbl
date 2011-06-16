@@ -391,7 +391,7 @@ void plan_buffer_line(double x, double y, double z, double feed_rate, int invert
   memcpy(position, target, sizeof(target)); // position[] = target[]
   
   if (acceleration_manager_enabled) { planner_recalculate(); }  
-  st_wake_up();
+  st_Enable();
 }
 
 // Reset the planner position vector
