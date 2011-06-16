@@ -180,6 +180,8 @@ uint8_t gc_execute_line(char *line) {
         case 3: gc.spindle_direction = 1; break;
         case 4: gc.spindle_direction = -1; break;
         case 5: gc.spindle_direction = 0; break;
+		case 80: st_Enable(); break;
+		case 81: st_Disable(); break;
         default: FAIL(STATUS_UNSUPPORTED_STATEMENT);
       }            
       break;
