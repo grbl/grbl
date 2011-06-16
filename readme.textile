@@ -1,15 +1,3 @@
-h1. Grbl - An embedded g-code interpreter and motion-controller for the Arduino/AVR328 microcontroller
+﻿h1. LCGCi - An embedded g-code interpreter and motion-controller for AVR microcontrollers, based on GRBL 0.7b developed for CNC lasers (specifically for www.buildlog.net 2.X lasers)
     
-Grbl is a no-compromise, high performance, low cost alternative to parallel-port-based motion control for CNC milling. It will run on a vanilla Arduino (Duemillanove/Uno) as long as it sports an Atmega 328. 
-
-The controller is written in highly optimized C utilizing every clever feature of the AVR-chips to achieve precise timing and asynchronous operation. It is able to maintain more than 30kHz of stable, jitter free control pulses.
-
-It accepts standards-compliant G-code and has been tested with the output of several CAM tools with no problems. Arcs, circles and helical motion are fully supported - but no support for tool offsets, functions or variables as these are apocryphal and fell into disuse after humans left G-code authoring to machines some time in the 80s.
-
-Grbl includes full acceleration management with look ahead. That means the controller will look up to 20 motions into the future and plan its velocities ahead to deliver smooth acceleration and jerk-free cornering.
-
-*Important note for Atmega 168 users:* Grbl used to be compatible with both the older Ardunios running atmega 168 and the newer with 328p. The full version of Grbl now compiles without support for circles/arcs if you target 168. If you need arcs, but not acceleration-management I am still maintaining Grbl 0.51 "in the branch called 'v0_51'":https://github.com/simen/grbl/tree/v0_51.
-
-*Note for users upgrading from 0.51 to 0.6:* The new version has new and improved default pin-out. If nothing works when you upgrade, that is because the pulse trains are coming from the wrong pins. This is a simple matter of editing config.h – the whole legacy pin assignment is there for you to uncomment.
-
-_The project was initially inspired by the Arduino GCode Interpreter by Mike Ellery_
+LCGCi (Laser Controller, G-Code interpreter) is on open source code meant to run on one (or two) AVR microcontroller(s) The software is based on the GRBL software v0.7b.  The basic g-code interpreter and stepper controller will are used as the basic workings of the LCGCi.  However, several features will be added that make the code specific for laser cutters and will be extended to work as a headless controller (with two AVR’s running together).  The slave controller will host the modified GRBL software and its sole purpose is to interpret streamed g-code from the master controller.  The master will read g-code from an SD card and pass it via serial to the slave.  The master will also monitor variables and pass data through USB to a computer.  During a any run, the control comes from the master and will in no way depend on the computer.  The computer will be used to set up files and display information.
