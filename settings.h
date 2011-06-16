@@ -42,6 +42,7 @@ typedef struct {
   double mm_per_arc_segment;
   double acceleration;
   double max_jerk;
+  uint8_t enable_set;
 } settings_t;
 extern settings_t settings;
 
