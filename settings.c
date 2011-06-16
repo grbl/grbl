@@ -156,12 +156,13 @@ void settings_store_setting(int parameter, double value) {
     case 7: settings.invert_mask = trunc(value); break;
     case 8: settings.acceleration = value; break;
     case 9: settings.max_jerk = fabs(value); break;
+	case 10: settings.enable_set = value;
 	if (!((value==1)||(value==2)||(value==3)||(value==4))) {
 	  printPgmString(PSTR("Invalid Settign value\r\n"));
       return;
 	} else {
-	  settings.enable_set = round(value); break;
-	}
+	  settings.enable_set = round(value);
+	} break;
     default: 
       printPgmString(PSTR("Unknown parameter\r\n"));
       return;
