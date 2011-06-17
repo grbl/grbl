@@ -116,7 +116,20 @@ SIGNAL(USART_RX_vect)
 
   // Write data to buffer unless it is full.
 	if (next_head != rx_buffer_tail) {
-		rx_buffer[rx_buffer_head] = data;
-		rx_buffer_head = next_head;
+		rx_buffer[rx_buffer_head] = data; // write the data to the buffer
+		rx_buffer_head = next_head;  // advance the head
 	}
+  // add something similar to the following to make physical pins communicate buffer write/read behavior btween 2 arduinos:
+  // if (rx_buffer_tail < rx_buffer_head) {  // since we use a modulus, the head position may not always be less than the tail
+  // 	rx_buff_size = rx_buffer_tail - rx_buffer_head + RX_BUFFER_SIZE;
+  // } else {
+  // 	rx_buff_size = rx_buffer_tail - rx_buffer_head;
+  // }
+  // if (rx_buff_size <= 2) { // check to see if the buffer is almost full 
+  //	pinXXX = high;  // if it is set this pin XXX high which tells the master to quit sending data
+  // } else {
+  //    if (rx_buff_size >= 10) { // if there is at least 10 spaces in the buffer
+  //	  pinXXX = low; // set the pin low which tells the master to start sending data again
+  //	}
+  // }
 }
