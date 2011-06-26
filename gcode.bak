@@ -126,7 +126,6 @@ uint8_t gc_execute_line(char *line) {
   double unit_converted_value;
   double inverse_feed_rate = -1; // negative inverse_feed_rate means no inverse_feed_rate specified
   int radius_mode = false;
-  uint32_t Limit_Position;
   
   uint8_t absolute_override = false;          /* 1 = absolute motion for this block only {G53} */
   uint8_t next_action = NEXT_ACTION_DEFAULT;  /* The action that will be taken by the parsed line */
@@ -223,25 +222,42 @@ uint8_t gc_execute_line(char *line) {
       case 'S': gc.spindle_speed = value; break;
       case 'X': case 'Y': case 'Z':
 	  if (next_action == NEXT_ACTION_GO_HOME) {
-	    // set the limit position
-		switch (letter - 'X') {
-		  case X_AXIS : Limit_Position = 0; break;
-		  case Y_AXIS : Limit_Position = 320; break;
-		  case Z_AXIS : Limit_Position = 0; break;
+	    if (letter == 'X') {
+		  // home the x axis
+		  limits_go_home(true, false, false);
+		  // set the target and position to x limit positon
+		  target[X_AXIS] = 0;
+		  gc.position[X_AXIS] = 0;
+		  plan_set_current_position(0,gc.position[Y_AXIS],gc.position[Z_AXIS]);
+		  // send x axis to zero position
+		  mc_line(0, target[Y_AXIS], target[Z_AXIS], gc.seek_rate, false);
+		  // set target and position to zero
+		  target[X_AXIS] = 0;
+		  gc.position[X_AXIS] = 0;
+		  plan_set_current_position(0,gc.position[Y_AXIS],gc.position[Z_AXIS]);
+			
+		// wrince and repeat for y axis
+		} if (letter == 'Y') {
+		  limits_go_home(false, true, false);
+		  target[Y_AXIS] = 320;
+		  gc.position[Y_AXIS] = 320;
+		  plan_set_current_position(gc.position[X_AXIS],320,gc.position[Z_AXIS]);
+		  mc_line(target[X_AXIS], 0, target[Z_AXIS], gc.seek_rate, false);
+		  target[Y_AXIS] = 0;
+		  gc.position[Y_AXIS] = 0;
+		  plan_set_current_position(gc.position[X_AXIS],0,gc.position[Z_AXIS]);
+		  
+		// wrince and repeat for z axis
+		} if (letter == 'Z') {
+		  limits_go_home(false, false, true);
+		  target[Z_AXIS] = 0;
+		  gc.position[Z_AXIS] = 0;
+		  plan_set_current_position(gc.position[X_AXIS],gc.position[Y_AXIS],0);
+		  mc_line(target[X_AXIS], target[Y_AXIS], 0, gc.seek_rate, false);
+		  target[Z_AXIS] = 0;
+		  gc.position[Z_AXIS] = 0;
+		  plan_set_current_position(gc.position[X_AXIS],gc.position[Y_AXIS],0);
 		}
-		// home the axis
-		limits_go_home(letter - 'X');
-		// set the target and position to limit positon
-		target[letter - 'X'] = Limit_Position;
-		gc.position[letter - 'X'] = Limit_Position;
-		plan_set_current_position(gc.position[X_AXIS],gc.position[Y_AXIS],gc.position[Z_AXIS]);
-  
-		// set target and position to zero
-		target[letter - 'X'] = 0;
-		gc.position[letter - 'X'] = 0;
-		// move axis to zero
-		mc_line(target[X_AXIS], target[Y_AXIS], target[Z_AXIS], gc.seek_rate, false);
-		plan_set_current_position(gc.position[X_AXIS],gc.position[Y_AXIS],gc.position[Z_AXIS]);
 	  } else {
 		if (gc.absolute_mode || absolute_override) {
 			target[letter - 'X'] = unit_converted_value;

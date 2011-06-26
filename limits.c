@@ -30,18 +30,23 @@ void limits_init() {
   LIMIT_DDR &= ~(LIMIT_MASK);
 }
 
-static void homing_cycle(bool x_axis, bool y_axis, bool z_axis, bool reverse_direction, uint32_t microseconds_per_pulse) {
+static void homing_cycle(uint8_t Axis_Select, bool reverse_direction, uint32_t microseconds_per_pulse) {
   // First home the Z axis
   uint32_t step_delay = microseconds_per_pulse - settings.pulse_microseconds;
   uint8_t out_bits = DIRECTION_MASK;
   uint8_t limit_bits;
   uint8_t pulse_pin;
+  bool x_axis = false;
+  bool y_axis = false;
+  bool z_axis = false;
   
-  if (x_axis) { pulse_pin = (1<<X_STEP_BIT); }
-  if (y_axis) { pulse_pin = (1<<Y_STEP_BIT); }
-  if (z_axis) { pulse_pin = (1<<Z_STEP_BIT); }
+  switch (Axis_Select) {
+    case X_AXIS : pulse_pin = (1<<X_STEP_BIT); x_axis = true; break;
+	case Y_AXIS : pulse_pin = (1<<Y_STEP_BIT); y_axis = true; break;
+    case Z_AXIS : pulse_pin = (1<<Z_STEP_BIT); z_axis = true; break;
+  }
   
-  
+  st_Enable(); // make sure steppers are turned on
   DISABLE_STEPPER_DRIVER_INTERRUPT(); // This is needed because the interrupt will reset the stepping port and mess up the homing
   
   
@@ -62,35 +67,32 @@ static void homing_cycle(bool x_axis, bool y_axis, bool z_axis, bool reverse_dir
     limit_bits = LIMIT_PIN;
     if (reverse_direction) {
 	  if (x_axis && !(LIMIT_PIN & (1<<X_LIMIT_BIT))) {
-        x_axis = false;
-       // out_bits ^= (1<<X_STEP_BIT);      
+        x_axis = false;      
       }
 	  if (y_axis && !(LIMIT_PIN & (1<<Y_LIMIT_BIT))) {
         y_axis = false;
-       // out_bits ^= (1<<Y_STEP_BIT);
       }    
       if (z_axis && !(LIMIT_PIN & (1<<Z_LIMIT_BIT))) {
         z_axis = false;
-       // out_bits ^= (1<<Z_STEP_BIT);
       } 
     } else {
       if (x_axis && (LIMIT_PIN & (1<<X_LIMIT_BIT))) {
-        x_axis = false;
-        //out_bits ^= (1<<X_STEP_BIT);      
+        x_axis = false;   
       }    
       if (y_axis && (LIMIT_PIN & (1<<Y_LIMIT_BIT))) {
         y_axis = false;
-       // out_bits ^= (1<<Y_STEP_BIT);
       }    
       if (z_axis && (LIMIT_PIN & (1<<Z_LIMIT_BIT))) {
         z_axis = false;
-       // out_bits ^= (1<<Z_STEP_BIT);
       }
 	}
 	
     // Check if we are done enable the stepper interrupt again and exit the loop
     if(!(x_axis || y_axis || z_axis)) { 
 	  ENABLE_STEPPER_DRIVER_INTERRUPT(); 
+	  if ((settings.enable_set == 2) || (settings.enable_set == 4)) {
+	    st_Disable();
+	  }
 	  return; 
 	}
 	
@@ -111,9 +113,9 @@ static void homing_cycle(bool x_axis, bool y_axis, bool z_axis, bool reverse_dir
 //  homing_cycle(x, y, z, true, 10000);  // NOTE: make the pulse period configurable and calculate based on velocity
 //}
 
-void limits_go_home(x_home, y_home, z_home) {
+void limits_go_home(Axis_Select) {
   st_synchronize();
-  homing_cycle(x_home, y_home, z_home, false, 100);
+  homing_cycle(Axis_Select, false, 100);
   _delay_us(1000);
-  homing_cycle(x_home, y_home, z_home, true, 10000);
+  homing_cycle(Axis_Select, true, 10000);
 }
