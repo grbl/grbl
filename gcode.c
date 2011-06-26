@@ -223,18 +223,38 @@ uint8_t gc_execute_line(char *line) {
       case 'X': case 'Y': case 'Z':
 	  if (next_action == NEXT_ACTION_GO_HOME) {
 	    if (letter == 'X') {
+		  // home the x axis
 		  limits_go_home(true, false, false);
-		  target[X_AXIS] = 0; // must set both target and position to zero
+		  // set the target and position to x limit positon
+		  target[X_AXIS] = 0;
 		  gc.position[X_AXIS] = 0;
 		  plan_set_current_position(0,gc.position[Y_AXIS],gc.position[Z_AXIS]);
+		  // send x axis to zero position
+		  mc_line(0, target[Y_AXIS], target[Z_AXIS], gc.seek_rate, false);
+		  // set target and position to zero
+		  target[X_AXIS] = 0;
+		  gc.position[X_AXIS] = 0;
+		  plan_set_current_position(0,gc.position[Y_AXIS],gc.position[Z_AXIS]);
+			
+		// wrince and repeat for y axis
 		} if (letter == 'Y') {
 		  limits_go_home(false, true, false);
-		  target[Y_AXIS] = 320; // must set both target and position to zero
+		  target[Y_AXIS] = 320;
 		  gc.position[Y_AXIS] = 320;
 		  plan_set_current_position(gc.position[X_AXIS],320,gc.position[Z_AXIS]);
+		  mc_line(target[X_AXIS], 0, target[Z_AXIS], gc.seek_rate, false);
+		  target[Y_AXIS] = 0;
+		  gc.position[Y_AXIS] = 0;
+		  plan_set_current_position(gc.position[X_AXIS],0,gc.position[Z_AXIS]);
+		  
+		// wrince and repeat for z axis
 		} if (letter == 'Z') {
 		  limits_go_home(false, false, true);
-		  target[Z_AXIS] = 0; // must set both target and position to zero
+		  target[Z_AXIS] = 0;
+		  gc.position[Z_AXIS] = 0;
+		  plan_set_current_position(gc.position[X_AXIS],gc.position[Y_AXIS],0);
+		  mc_line(target[X_AXIS], target[Y_AXIS], 0, gc.seek_rate, false);
+		  target[Z_AXIS] = 0;
 		  gc.position[Z_AXIS] = 0;
 		  plan_set_current_position(gc.position[X_AXIS],gc.position[Y_AXIS],0);
 		}

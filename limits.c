@@ -41,19 +41,11 @@ static void homing_cycle(bool x_axis, bool y_axis, bool z_axis, bool reverse_dir
   if (y_axis) { pulse_pin = (1<<Y_STEP_BIT); }
   if (z_axis) { pulse_pin = (1<<Z_STEP_BIT); }
   
-  // Invert direction bits if this is a reverse homing_cycle
-  //if (reverse_direction) {
-    //STEPPING_PORT = (STEPPING_PORT & ~DIRECTION_MASK) | (true & DIRECTION_MASK);  
-  // } else //{
-   // STEPPING_PORT = (STEPPING_PORT & ~DIRECTION_MASK) | (false & DIRECTION_MASK);
-  //}
   
-  DISABLE_STEPPER_DRIVER_INTERRUPT();
+  DISABLE_STEPPER_DRIVER_INTERRUPT(); // This is needed because the interrupt will reset the stepping port and mess up the homing
   
-  // NOTE: add an option for reversing homing directions and add if statements to set correctly
   
-  // STEPPING_PORT |= (1<<X_DIRECTION_BIT);// || (1<<Y_DIRECTION_BIT) || (1<<Z_DIRECTION_BIT));
-  
+  // This setts the direction of the homing "&= ~" sets the direction bit low "|= " sets it high.  Find a way to make this configurable from setup.c
   if (reverse_direction) {
 	if (x_axis) { STEPPING_PORT &= ~(1<<X_DIRECTION_BIT); }
     if (y_axis) { STEPPING_PORT |= (1<<Y_DIRECTION_BIT); }
@@ -65,46 +57,43 @@ static void homing_cycle(bool x_axis, bool y_axis, bool z_axis, bool reverse_dir
   }
   
   
-  // Apply the global invert mask
- // out_bits ^= settings.invert_mask;
-  
-  // Set direction pins
-  //STEPPING_PORT = (STEPPING_PORT & ~DIRECTION_MASK) | (out_bits & DIRECTION_MASK);
-  
   for(;;) {
+    // This code tells when to stop based on pin state.  Find a way to make this configurable
     limit_bits = LIMIT_PIN;
-    if (reverse_direction) { // NOTE: make this configurable for each axis
+    if (reverse_direction) {
 	  if (x_axis && !(LIMIT_PIN & (1<<X_LIMIT_BIT))) {
         x_axis = false;
-        out_bits ^= (1<<X_STEP_BIT);      
+       // out_bits ^= (1<<X_STEP_BIT);      
       }
 	  if (y_axis && !(LIMIT_PIN & (1<<Y_LIMIT_BIT))) {
         y_axis = false;
-        out_bits ^= (1<<Y_STEP_BIT);
+       // out_bits ^= (1<<Y_STEP_BIT);
       }    
       if (z_axis && !(LIMIT_PIN & (1<<Z_LIMIT_BIT))) {
         z_axis = false;
-        out_bits ^= (1<<Z_STEP_BIT);
+       // out_bits ^= (1<<Z_STEP_BIT);
       } 
     } else {
       if (x_axis && (LIMIT_PIN & (1<<X_LIMIT_BIT))) {
         x_axis = false;
-        out_bits ^= (1<<X_STEP_BIT);      
+        //out_bits ^= (1<<X_STEP_BIT);      
       }    
       if (y_axis && (LIMIT_PIN & (1<<Y_LIMIT_BIT))) {
         y_axis = false;
-        out_bits ^= (1<<Y_STEP_BIT);
+       // out_bits ^= (1<<Y_STEP_BIT);
       }    
       if (z_axis && (LIMIT_PIN & (1<<Z_LIMIT_BIT))) {
         z_axis = false;
-        out_bits ^= (1<<Z_STEP_BIT);
+       // out_bits ^= (1<<Z_STEP_BIT);
       }
 	}
-    // Check if we are done
+	
+    // Check if we are done enable the stepper interrupt again and exit the loop
     if(!(x_axis || y_axis || z_axis)) { 
 	  ENABLE_STEPPER_DRIVER_INTERRUPT(); 
 	  return; 
 	}
+	
 	// NOTE: set G28 to read xyz and make it step each axis individually in the order it recieves the axis commands
     STEPPING_PORT = (STEPPING_PORT & ~STEP_MASK) | (out_bits & pulse_pin); // pulse the stepper motors
     _delay_us(settings.pulse_microseconds);  // wait required time
@@ -114,24 +103,17 @@ static void homing_cycle(bool x_axis, bool y_axis, bool z_axis, bool reverse_dir
   return;
 }
 
-static void approach_limit_switch(bool x, bool y, bool z) {
-  homing_cycle(x, y, z, false, 100); // NOTE: make the pulse period configurable and calculate based on velocity
-}
+// static void approach_limit_switch(bool x, bool y, bool z) {
+//  homing_cycle(x, y, z, false, 100); // NOTE: make the pulse period configurable and calculate based on velocity
+//}
 
-static void leave_limit_switch(bool x, bool y, bool z) {
-  homing_cycle(x, y, z, true, 10000);  // NOTE: make the pulse period configurable and calculate based on velocity
-}
+//static void leave_limit_switch(bool x, bool y, bool z) {
+//  homing_cycle(x, y, z, true, 10000);  // NOTE: make the pulse period configurable and calculate based on velocity
+//}
 
 void limits_go_home(x_home, y_home, z_home) {
   st_synchronize();
-  // Store the current limit switch state
-  // uint8_t original_limit_state = LIMIT_PIN;
-  // approach_limit_switch(false, false, true); // First home the z axis
-  //approach_limit_switch(true, true, false);  // Then home the x and y axis
-  approach_limit_switch(x_home, y_home, z_home); // DVE: temporary change to work with homing only the x axis
-  // Xor previous and current limit switch state to determine which were high then but have become 
-  // low now. These are the actual installed limit switches.
-//  uint8_t limit_switches_present = (original_limit_state ^ LIMIT_PIN) & LIMIT_MASK;
-  // Now carefully leave the limit switches
-  leave_limit_switch(x_home, y_home, z_home);
+  homing_cycle(x_home, y_home, z_home, false, 100);
+  _delay_us(1000);
+  homing_cycle(x_home, y_home, z_home, true, 10000);
 }
