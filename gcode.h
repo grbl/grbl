@@ -22,6 +22,7 @@
 #ifndef gcode_h
 #define gcode_h
 #include <avr/io.h>
+#include "stepper.h"
 
 // Initialize the parser
 void gc_init();

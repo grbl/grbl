@@ -34,6 +34,10 @@
 #define clear_vector(a) memset(a, 0, sizeof(a))
 #define max(a,b) (((a) > (b)) ? (a) : (b))
 
+#define ENABLE_STEPPER_DRIVER_INTERRUPT()  TIMSK1 |= (1<<OCIE1A) 
+#define DISABLE_STEPPER_DRIVER_INTERRUPT() TIMSK1 &= ~(1<<OCIE1A) 
+
+
 // Read a floating point value from a string. Line points to the input buffer, char_counter 
 // is the indexer pointing to the current character of the line, while double_ptr is 
 // a pointer to the result variable. Returns true when it succeeds

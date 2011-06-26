@@ -7,7 +7,7 @@ Development Pathway:
 GRBL changes/additions:
 1) Add setting options for configuring enable pins as normally high or low as well as sleep state: DONE, Tested
 2) Add support for M80 and M81 commands that will enable and disable steppers: DONE, Tested
-3) Add support for G28 xyz homing so that one can select which axes to home from command line: Started
+3) Add support for G28 xyz homing so that one can select which axes to home from command line: DONE, Tested
 4) Move limit switch pins from digital to analog to free up digital IO: Not Started
 5) Add settings options for homing: Not Started
 6) Add relative positioning from given point: Not Started

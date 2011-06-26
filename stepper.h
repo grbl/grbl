@@ -36,7 +36,7 @@ void st_init();
 void st_synchronize();
 
 // Execute the homing cycle
-void st_go_home();
+//void st_go_home();
 
 // Call to enable stepper drivers and stepper interrupt
 void st_Enable();

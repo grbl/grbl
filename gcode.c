@@ -30,6 +30,7 @@
 #include "spindle_control.h"
 #include "errno.h"
 #include "protocol.h"
+#include "stepper.h"
 
 #define MM_PER_INCH (25.4)
 
@@ -185,7 +186,9 @@ uint8_t gc_execute_line(char *line) {
         default: FAIL(STATUS_UNSUPPORTED_STATEMENT);
       }            
       break;
+	  
       case 'T': gc.tool = trunc(value); break;
+	  
     }
     if(gc.status_code) { break; }
   }
@@ -218,15 +221,33 @@ uint8_t gc_execute_line(char *line) {
       case 'R': r = unit_converted_value; radius_mode = true; break;
       case 'S': gc.spindle_speed = value; break;
       case 'X': case 'Y': case 'Z':
-      if (gc.absolute_mode || absolute_override) {
-        target[letter - 'X'] = unit_converted_value;
-      } else {
-        target[letter - 'X'] += unit_converted_value;
-      }
+	  if (next_action == NEXT_ACTION_GO_HOME) {
+	    if (letter == 'X') {
+		  limits_go_home(true, false, false);
+		  target[X_AXIS] = 0; // must set both target and position to zero
+		  gc.position[X_AXIS] = 0;
+		  plan_set_current_position(0,gc.position[Y_AXIS],gc.position[Z_AXIS]);
+		} if (letter == 'Y') {
+		  limits_go_home(false, true, false);
+		  target[Y_AXIS] = 320; // must set both target and position to zero
+		  gc.position[Y_AXIS] = 320;
+		  plan_set_current_position(gc.position[X_AXIS],320,gc.position[Z_AXIS]);
+		} if (letter == 'Z') {
+		  limits_go_home(false, false, true);
+		  target[Z_AXIS] = 0; // must set both target and position to zero
+		  gc.position[Z_AXIS] = 0;
+		  plan_set_current_position(gc.position[X_AXIS],gc.position[Y_AXIS],0);
+		}
+	  } else {
+		if (gc.absolute_mode || absolute_override) {
+			target[letter - 'X'] = unit_converted_value;
+		} else {
+			target[letter - 'X'] += unit_converted_value;
+		}
+	  }
       break;
     }
   }
-  
   // If there were any errors parsing this line, we will return right away with the bad news
   if (gc.status_code) { return(gc.status_code); }
     
@@ -235,7 +256,11 @@ uint8_t gc_execute_line(char *line) {
   
   // Perform any physical actions
   switch (next_action) {
-    case NEXT_ACTION_GO_HOME: mc_go_home(); clear_vector(gc.position); break;
+//    case NEXT_ACTION_GO_HOME: 
+//		limits_go_home();
+//		target[X_AXIS] = 0; // must set both target and position to zero
+//		plan_set_current_position(0,gc.position[Y_AXIS],gc.position[Z_AXIS]);
+//		break;
     case NEXT_ACTION_DWELL: mc_dwell(trunc(p*1000)); break;   
     case NEXT_ACTION_SET_COORDINATE_OFFSET: 
     mc_set_current_position(target[X_AXIS], target[Y_AXIS], target[Z_AXIS]);

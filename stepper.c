@@ -295,11 +295,14 @@ static void set_step_events_per_minute(uint32_t steps_per_minute) {
   cycles_per_step_event = config_step_timer((TICKS_PER_MICROSECOND*1000000*60)/steps_per_minute);
 }
 
-void st_go_home()
-{
-  limits_go_home();  
-  plan_set_current_position(0,0,0);
-}
+// DVE: remove st_go home and add plan_set_current_position to end of limits_go_home
+//void st_go_home()
+//{
+//  limits_go_home();  
+//  plan_set_current_position(0,0,0);
+//}
+
+
 // Define a function which properly configures the enable pin to turn on the stepper motors through the enable pin
 void st_Enable() {
   if ((settings.enable_set == 1)||(settings.enable_set == 2)) {
