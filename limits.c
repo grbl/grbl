@@ -34,61 +34,69 @@ static void homing_cycle(uint8_t Axis_Select, bool reverse_direction, uint32_t m
   // First home the Z axis
   uint32_t step_delay = microseconds_per_pulse - settings.pulse_microseconds;
   uint8_t out_bits = DIRECTION_MASK;
-  uint8_t limit_bits;
   uint8_t pulse_pin;
-  bool x_axis = false;
-  bool y_axis = false;
-  bool z_axis = false;
+  bool stop_loop = false;
+  bool limit_pin_cont[3];
+  bool limit_dir_cont[3];
+  uint8_t limit_bit_cont[3];
+  uint8_t direction_bit_cont[3];
+  uint8_t step_bit_cont[3];
   
-  switch (Axis_Select) {
-    case X_AXIS : pulse_pin = (1<<X_STEP_BIT); x_axis = true; break;
-	case Y_AXIS : pulse_pin = (1<<Y_STEP_BIT); y_axis = true; break;
-    case Z_AXIS : pulse_pin = (1<<Z_STEP_BIT); z_axis = true; break;
-  }
+  limit_dir_cont[X_AXIS] = true;
+  limit_dir_cont[Y_AXIS] = false;
+  limit_dir_cont[Z_AXIS] = true;
+  
+  limit_bit_cont[X_AXIS] = X_LIMIT_BIT;
+  limit_bit_cont[Y_AXIS] = Y_LIMIT_BIT;
+  limit_bit_cont[Z_AXIS] = Z_LIMIT_BIT;
+  
+  direction_bit_cont[X_AXIS] = X_DIRECTION_BIT;
+  direction_bit_cont[Y_AXIS] = Y_DIRECTION_BIT;
+  direction_bit_cont[Z_AXIS] = Z_DIRECTION_BIT;
+  
+  step_bit_cont[X_AXIS] = X_STEP_BIT;
+  step_bit_cont[Y_AXIS] = Y_STEP_BIT;
+  step_bit_cont[Z_AXIS] = Z_STEP_BIT;
+  
+  // set the step bit
+  pulse_pin = (1<<step_bit_cont[Axis_Select]);
   
   st_Enable(); // make sure steppers are turned on
   DISABLE_STEPPER_DRIVER_INTERRUPT(); // This is needed because the interrupt will reset the stepping port and mess up the homing
   
   
-  // This setts the direction of the homing "&= ~" sets the direction bit low "|= " sets it high.  Find a way to make this configurable from setup.c
+  // This setts the direction of the homing
   if (reverse_direction) {
-	if (x_axis) { STEPPING_PORT &= ~(1<<X_DIRECTION_BIT); }
-    if (y_axis) { STEPPING_PORT |= (1<<Y_DIRECTION_BIT); }
-    if (z_axis) { STEPPING_PORT &= ~(1<<Z_DIRECTION_BIT); }
+	if (limit_dir_cont[Axis_Select]) {
+	  STEPPING_PORT &= ~(1<<direction_bit_cont[Axis_Select]);
+	} else {
+	  STEPPING_PORT |= (1<<direction_bit_cont[Axis_Select]);
+	}
   } else {
-	if (x_axis) { STEPPING_PORT |= (1<<X_DIRECTION_BIT); }
-    if (y_axis) { STEPPING_PORT &= ~(1<<Y_DIRECTION_BIT); }
-    if (z_axis) { STEPPING_PORT |= (1<<Z_DIRECTION_BIT); }
+    if (limit_dir_cont[Axis_Select]) {
+	  STEPPING_PORT |= (1<<direction_bit_cont[Axis_Select]);
+	} else {
+	  STEPPING_PORT &= ~(1<<direction_bit_cont[Axis_Select]);
+	}
   }
   
   
   for(;;) {
-    // This code tells when to stop based on pin state.  Find a way to make this configurable
-    limit_bits = LIMIT_PIN;
+	// detect limit pin
+	limit_pin_cont[Axis_Select] = (LIMIT_PIN & (1<<limit_bit_cont[Axis_Select]));
+	
+	// reverse pin state when backing off limit switch
     if (reverse_direction) {
-	  if (x_axis && !(LIMIT_PIN & (1<<X_LIMIT_BIT))) {
-        x_axis = false;      
-      }
-	  if (y_axis && !(LIMIT_PIN & (1<<Y_LIMIT_BIT))) {
-        y_axis = false;
-      }    
-      if (z_axis && !(LIMIT_PIN & (1<<Z_LIMIT_BIT))) {
-        z_axis = false;
-      } 
-    } else {
-      if (x_axis && (LIMIT_PIN & (1<<X_LIMIT_BIT))) {
-        x_axis = false;   
-      }    
-      if (y_axis && (LIMIT_PIN & (1<<Y_LIMIT_BIT))) {
-        y_axis = false;
-      }    
-      if (z_axis && (LIMIT_PIN & (1<<Z_LIMIT_BIT))) {
-        z_axis = false;
-      }
+	  limit_pin_cont[Axis_Select] = !limit_pin_cont[Axis_Select];
+    }
+
+	// detect when to exit loop
+	if (limit_pin_cont[Axis_Select]) {
+	  stop_loop = true;
 	}
 	
     // Check if we are done enable the stepper interrupt again and exit the loop
-    if(!(x_axis || y_axis || z_axis)) { 
+    if(stop_loop) { 
 	  ENABLE_STEPPER_DRIVER_INTERRUPT(); 
 	  if ((settings.enable_set == 2) || (settings.enable_set == 4)) {
 	    st_Disable();
@@ -96,7 +104,7 @@ static void homing_cycle(uint8_t Axis_Select, bool reverse_direction, uint32_t m
 	  return; 
 	}
 	
-	// NOTE: set G28 to read xyz and make it step each axis individually in the order it recieves the axis commands
+	// pulse the steppers to make them move
     STEPPING_PORT = (STEPPING_PORT & ~STEP_MASK) | (out_bits & pulse_pin); // pulse the stepper motors
     _delay_us(settings.pulse_microseconds);  // wait required time
     STEPPING_PORT = (STEPPING_PORT & ~STEP_MASK) | (~out_bits & pulse_pin); // reset pins while leaving direction pins alone
