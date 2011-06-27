@@ -25,6 +25,6 @@
 void limits_init();
 
 // perform the homing cycle
-void limits_go_home();
+void limits_go_home(Axis_Select);
 
 #endif

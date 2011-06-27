@@ -25,7 +25,7 @@
 #include <math.h>
 #include <inttypes.h>
 
-#define GRBL_VERSION "0.7b"
+#define LCGCi_VERSION "0.01a (based on GRBL 0.7b)"
 
 // Version of the EEPROM data. Will be used to migrate existing data from older versions of Grbl
 // when firmware is upgraded. Always stored in byte 0 of eeprom
@@ -42,6 +42,9 @@ typedef struct {
   double mm_per_arc_segment;
   double acceleration;
   double max_jerk;
+  uint8_t enable_set;
+  uint8_t limit_normal;
+  double limit_pos[3];
 } settings_t;
 extern settings_t settings;
 

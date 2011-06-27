@@ -40,9 +40,14 @@
 #define TICKS_PER_MICROSECOND (F_CPU/1000000)
 #define CYCLES_PER_ACCELERATION_TICK ((TICKS_PER_MICROSECOND*1000000)/ACCELERATION_TICKS_PER_SECOND)
 
+#define ENABLE_STEPPER_DRIVER_INTERRUPT()  TIMSK1 |= (1<<OCIE1A) 
+#define DISABLE_STEPPER_DRIVER_INTERRUPT() TIMSK1 &= ~(1<<OCIE1A) 
+
 #define MINIMUM_STEPS_PER_MINUTE 1200 // The stepper subsystem will never run slower than this, exept when sleeping
 
 static block_t *current_block;  // A pointer to the block currently being traced
+
+bool GCMD_Trigger;
 
 // Variables used by The Stepper Driver Interrupt
 static uint8_t out_bits;        // The next stepping-bits to be output
@@ -77,19 +82,6 @@ static uint32_t trapezoid_adjusted_rate;      // The current rate of step_events
 
 static void set_step_events_per_minute(uint32_t steps_per_minute);
 
-void st_wake_up() {
-  // Enable steppers by resetting the stepper disable port
-  STEPPERS_DISABLE_PORT &= ~(1<<STEPPERS_DISABLE_BIT);
-  // Enable stepper driver interrupt
-  TIMSK1 |= (1<<OCIE1A);
-}
-
-static void st_go_idle() {
-  // Disable steppers by setting stepper disable
-  STEPPERS_DISABLE_PORT |= (1<<STEPPERS_DISABLE_BIT);
-  // Disable stepper driver interrupt
-  TIMSK1 &= ~(1<<OCIE1A); 
-}
 
 // Initializes the trapezoid generator from the current block. Called whenever a new 
 // block begins.
@@ -158,9 +150,16 @@ SIGNAL(TIMER1_COMPA_vect)
       counter_y = counter_x;
       counter_z = counter_x;
       step_events_completed = 0;
+     GCMD_Trigger = true;
     } else {
-      st_go_idle();
-    }    
+		// set enable pin      
+		if ((settings.enable_set == 2) || (settings.enable_set == 4)) {
+		  if ((GCMD_Trigger)) {
+		    st_Disable();
+			GCMD_Trigger = false;
+		  }
+		}
+	}    
   } 
 
   if (current_block != NULL) {
@@ -217,7 +216,7 @@ void st_init()
 	// Configure directions of interface pins
   STEPPING_DDR   |= STEPPING_MASK;
   STEPPING_PORT = (STEPPING_PORT & ~STEPPING_MASK) | settings.invert_mask;
-  STEPPERS_DISABLE_DDR |= 1<<STEPPERS_DISABLE_BIT;
+  //STEPPERS_ENABLE_DDR |= 1<<STEPPERS_ENABLE_BIT; DVE -commented out because it is not necessary and causes motor shake at startup
   
 	// waveform generation = 0100 = CTC
 	TCCR1B &= ~(1<<WGM13);
@@ -237,8 +236,12 @@ void st_init()
   set_step_events_per_minute(6000);
   trapezoid_tick_cycle_counter = 0;
   
-  // Start in the idle state
-  st_go_idle();
+   if ((settings.enable_set == 1)||(settings.enable_set == 3)) {
+	st_Enable();
+  } else {
+    st_Disable();
+  }
+  sei();
 }
 
 // Block until all buffered steps are executed
@@ -292,8 +295,31 @@ static void set_step_events_per_minute(uint32_t steps_per_minute) {
   cycles_per_step_event = config_step_timer((TICKS_PER_MICROSECOND*1000000*60)/steps_per_minute);
 }
 
-void st_go_home()
-{
-  limits_go_home();  
-  plan_set_current_position(0,0,0);
+// DVE: remove st_go home and add plan_set_current_position to end of limits_go_home
+//void st_go_home()
+//{
+//  limits_go_home();  
+//  plan_set_current_position(0,0,0);
+//}
+
+
+// Define a function which properly configures the enable pin to turn on the stepper motors through the enable pin
+void st_Enable() {
+  if ((settings.enable_set == 1)||(settings.enable_set == 2)) {
+	  STEPPERS_ENABLE_PORT |= (1<<STEPPERS_ENABLE_BIT);
+	  ENABLE_STEPPER_DRIVER_INTERRUPT();  
+  } else {
+	  STEPPERS_ENABLE_PORT &= ~(1<<STEPPERS_ENABLE_BIT);
+	  ENABLE_STEPPER_DRIVER_INTERRUPT();
+  }
+}
+// Define a function which properly configures the enable pin to turn off the stepper motors through the enable pin
+void st_Disable() {
+  if ((settings.enable_set == 1)||(settings.enable_set == 2)) {
+	  STEPPERS_ENABLE_PORT &= ~(1<<STEPPERS_ENABLE_BIT);
+	  DISABLE_STEPPER_DRIVER_INTERRUPT();  
+	} else {
+	  STEPPERS_ENABLE_PORT |= (1<<STEPPERS_ENABLE_BIT);
+	  DISABLE_STEPPER_DRIVER_INTERRUPT();
+  }
 }

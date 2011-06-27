@@ -79,7 +79,7 @@ void mc_arc(double theta, double angular_travel, double radius, double linear_tr
 }
 #endif
 
-void mc_go_home()
-{
-  st_go_home();
-}
+//void mc_go_home()  //DVE: taken out because mc_go_home does nothing, just use st_go_home insted
+//{
+//  st_go_home();
+//}
