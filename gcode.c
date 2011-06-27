@@ -225,9 +225,9 @@ uint8_t gc_execute_line(char *line) {
 	  if (next_action == NEXT_ACTION_GO_HOME) {
 	    // set the limit position
 		switch (letter - 'X') {
-		  case X_AXIS : Limit_Position = 0; break;
-		  case Y_AXIS : Limit_Position = 320; break;
-		  case Z_AXIS : Limit_Position = 0; break;
+		  case X_AXIS : Limit_Position = settings.limit_pos[X_AXIS]; break;
+		  case Y_AXIS : Limit_Position = settings.limit_pos[Y_AXIS]; break;
+		  case Z_AXIS : Limit_Position = settings.limit_pos[Z_AXIS]; break;
 		}
 		// home the axis
 		limits_go_home(letter - 'X');

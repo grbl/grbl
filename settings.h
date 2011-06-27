@@ -43,6 +43,8 @@ typedef struct {
   double acceleration;
   double max_jerk;
   uint8_t enable_set;
+  uint8_t limit_normal;
+  double limit_pos[3];
 } settings_t;
 extern settings_t settings;
 

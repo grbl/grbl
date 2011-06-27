@@ -9,7 +9,7 @@ GRBL changes/additions:
 2) Add support for M80 and M81 commands that will enable and disable steppers: DONE, Tested
 3) Add support for G28 xyz homing so that one can select which axes to home from command line: DONE, Tested
 4) Move limit switch pins from digital to analog to free up digital IO: Not Started
-5) Add settings options for homing: Not Started
+5) Add settings options for homing: Started, tested what is there
 6) Add relative positioning from given point: Not Started
 7) Add out of bounds check and pin flag: Not Started
 8) Add serial communication data flow pin for talking to second Arduino: Started

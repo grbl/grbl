@@ -85,6 +85,9 @@ static void homing_cycle(uint8_t Axis_Select, bool reverse_direction, uint32_t m
 	// detect limit pin
 	limit_pin_cont[Axis_Select] = (LIMIT_PIN & (1<<limit_bit_cont[Axis_Select]));
 	
+	if (settings.limit_normal==0) {
+	  limit_pin_cont[Axis_Select] = !limit_pin_cont[Axis_Select];
+    }
 	// reverse pin state when backing off limit switch
     if (reverse_direction) {
 	  limit_pin_cont[Axis_Select] = !limit_pin_cont[Axis_Select];

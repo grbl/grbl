@@ -43,17 +43,21 @@ typedef struct {
 
 // Default settings (used when resetting eeprom-settings)
 #define MICROSTEPS 8
-#define DEFAULT_X_STEPS_PER_MM (94.488188976378*MICROSTEPS)
-#define DEFAULT_Y_STEPS_PER_MM (94.488188976378*MICROSTEPS)
-#define DEFAULT_Z_STEPS_PER_MM (94.488188976378*MICROSTEPS)
-#define DEFAULT_STEP_PULSE_MICROSECONDS 30
+#define DEFAULT_X_STEPS_PER_MM 157
+#define DEFAULT_Y_STEPS_PER_MM 157
+#define DEFAULT_Z_STEPS_PER_MM 157
+#define DEFAULT_STEP_PULSE_MICROSECONDS 20
 #define DEFAULT_MM_PER_ARC_SEGMENT 0.1
-#define DEFAULT_RAPID_FEEDRATE 500.0 // in millimeters per minute
-#define DEFAULT_FEEDRATE 500.0
+#define DEFAULT_RAPID_FEEDRATE 10000 // in millimeters per minute
+#define DEFAULT_FEEDRATE 10000
 #define DEFAULT_ACCELERATION (DEFAULT_FEEDRATE/10.0)
-#define DEFAULT_MAX_JERK 300.0
-#define DEFAULT_STEPPING_INVERT_MASK ((1<<X_STEP_BIT)|(1<<Y_STEP_BIT)|(1<<Z_STEP_BIT))
-#define DEFAULT_ENABLE_SET 1
+#define DEFAULT_MAX_JERK 0
+#define DEFAULT_STEPPING_INVERT_MASK 0
+#define DEFAULT_ENABLE_SET 2
+#define DEFAULT_LIMIT_NORMAL_SET 1
+#define DEFAULT_LIMIT_POS_X 0
+#define DEFAULT_LIMIT_POS_Y 325
+#define DEFAULT_LIMIT_POS_Z 0
 
 void settings_reset() {
   settings.steps_per_mm[X_AXIS] = DEFAULT_X_STEPS_PER_MM;
@@ -67,6 +71,10 @@ void settings_reset() {
   settings.invert_mask = DEFAULT_STEPPING_INVERT_MASK;
   settings.max_jerk = DEFAULT_MAX_JERK;
   settings.enable_set = DEFAULT_ENABLE_SET;
+  settings.limit_normal = DEFAULT_LIMIT_NORMAL_SET;
+  settings.limit_pos[X_AXIS] = DEFAULT_LIMIT_POS_X;
+  settings.limit_pos[Y_AXIS] = DEFAULT_LIMIT_POS_Y;
+  settings.limit_pos[Z_AXIS] = DEFAULT_LIMIT_POS_Z;
 }
 
 void settings_dump() {
@@ -82,7 +90,11 @@ void settings_dump() {
   printPgmString(PSTR(")\r\n$8 = ")); printFloat(settings.acceleration);
   printPgmString(PSTR(" (acceleration in mm/sec^2)\r\n$9 = ")); printFloat(settings.max_jerk);
   printPgmString(PSTR(" (max instant cornering speed change in delta mm/min)\r\n$10 = ")); printFloat(settings.enable_set);
-  printPgmString(PSTR(" (motor enable pin: 1=Enable High, no sleep, 2=Enable High, sleep, 3=Enable Low, no sleep, 4= Enable Low, sleep)"));
+  printPgmString(PSTR(" enable pin (1=H, !sleep, 2=H, sleep, 3=L, !sleep, 4=L, sleep)\r\n$11 = ")); printFloat(settings.limit_normal);
+  printPgmString(PSTR(" normal limit (mode 1=H, 0=L)\r\n$12 = ")); printFloat(settings.limit_pos[X_AXIS]);
+  printPgmString(PSTR(" x limit position (mm)\r\n$13 = ")); printFloat(settings.limit_pos[Y_AXIS]);
+  printPgmString(PSTR(" y limit position (mm)\r\n$14 = ")); printFloat(settings.limit_pos[Z_AXIS]);
+  printPgmString(PSTR(" z limit position (mm)"));
   printPgmString(PSTR("\r\n'$x=value' to set parameter or just '$' to dump current settings\r\n"));
 }
 
@@ -156,13 +168,24 @@ void settings_store_setting(int parameter, double value) {
     case 7: settings.invert_mask = trunc(value); break;
     case 8: settings.acceleration = value; break;
     case 9: settings.max_jerk = fabs(value); break;
-	case 10: settings.enable_set = value;
+	case 10:
 	if (!((value==1)||(value==2)||(value==3)||(value==4))) {
 	  printPgmString(PSTR("Invalid Settign value\r\n"));
       return;
 	} else {
-	  settings.enable_set = round(value);
+	  settings.enable_set = value;
 	} break;
+	case 11:
+	if (!((value==0)||(value==1))) {
+	  printPgmString(PSTR("Invalid Settign value\r\n"));
+      return;
+	} else {
+	  settings.limit_normal = value;
+	} break;
+	case 12: settings.limit_pos[X_AXIS] = value; break;
+	case 13: settings.limit_pos[Y_AXIS] = value; break;
+	case 14: settings.limit_pos[Z_AXIS] = value; break;
+	
     default: 
       printPgmString(PSTR("Unknown parameter\r\n"));
       return;
