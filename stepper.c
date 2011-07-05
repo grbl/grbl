@@ -101,6 +101,9 @@ inline void trapezoid_generator_tick() {
   if (current_block) {
     if (step_events_completed < current_block->accelerate_until) {
       trapezoid_adjusted_rate += current_block->rate_delta;
+      if (trapezoid_adjusted_rate > current_block->nominal_rate ) {
+        trapezoid_adjusted_rate = current_block->nominal_rate;
+      }
       set_step_events_per_minute(trapezoid_adjusted_rate);
     } else if (step_events_completed > current_block->decelerate_after) {
       // NOTE: We will only reduce speed if the result will be > 0. This catches small
