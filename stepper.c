@@ -135,8 +135,10 @@ SIGNAL(TIMER1_COMPA_vect)
   // Then pulse the stepping pins
   STEPPING_PORT = (STEPPING_PORT & ~STEP_MASK) | out_bits;
   // Reset step pulse reset timer so that The Stepper Port Reset Interrupt can reset the signal after
-  // exactly settings.pulse_microseconds microseconds.
+  // exactly settings.pulse_microseconds microseconds.  Clear the overflow flag to stop a queued
+  // interrupt from resetting the step pulse too soon.
   TCNT2 = -(((settings.pulse_microseconds-2)*TICKS_PER_MICROSECOND)/8);
+  TIFR2 |= (1<<TOV2);
 
   busy = TRUE;
   sei(); // Re enable interrupts (normally disabled while inside an interrupt handler)
