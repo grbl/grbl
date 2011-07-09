@@ -304,9 +304,9 @@ block_t *plan_get_current_block() {
   return(&block_buffer[block_buffer_tail]);
 }
 
-// Add a new linear movement to the buffer. steps_x, _y and _z is the absolute position in 
-// mm. Microseconds specify how many microseconds the move should take to perform. To aid acceleration
-// calculation the caller must also provide the physical length of the line in millimeters.
+// Add a new linear movement to the buffer. x, y and z is the signed, absolute target position in 
+// millimaters. Feed rate specifies the speed of the motion. If feed rate is inverted, the feed
+// rate is taken to mean "frequency" and would complete the operation in 1/feed_rate minutes.
 void plan_buffer_line(double x, double y, double z, double feed_rate, int invert_feed_rate) {
   // The target position of the tool in absolute steps
   
