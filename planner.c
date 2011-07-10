@@ -206,13 +206,15 @@ static void planner_forward_pass_kernel(block_t *previous, block_t *current, blo
   // If the previous block is an acceleration block, but it is not long enough to 
   // complete the full speed change within the block, we need to adjust out entry
   // speed accordingly. Remember current->entry_factor equals the exit factor of 
-  // the previous block.
-  if(previous->entry_factor < current->entry_factor) {
-    double max_entry_speed = max_allowable_speed(-settings.acceleration,
-      current->nominal_speed*previous->entry_factor, previous->millimeters);
-    double max_entry_factor = max_entry_speed/current->nominal_speed;
-    if (max_entry_factor < current->entry_factor) {
-      current->entry_factor = max_entry_factor;
+  // the previous block.¨
+  if(previous) {
+    if(previous->entry_factor < current->entry_factor) {
+      double max_entry_speed = max_allowable_speed(-settings.acceleration,
+        current->nominal_speed*previous->entry_factor, previous->millimeters);
+      double max_entry_factor = max_entry_speed/current->nominal_speed;
+      if (max_entry_factor < current->entry_factor) {
+        current->entry_factor = max_entry_factor;
+      }
     }
   }
 }
