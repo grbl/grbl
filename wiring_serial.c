@@ -24,6 +24,7 @@
 
 //#include "wiring_private.h"
 #include <math.h>
+#include <stdlib.h>
 #include <avr/pgmspace.h>
 #include <avr/interrupt.h>
 
@@ -176,7 +177,7 @@ void printFloat(double n)
   fractional_part = modf(n, &integer_part);
   printInteger(integer_part);
   printByte('.');
-  printInteger(round(fractional_part*1000));
+  printInteger(labs(round(fractional_part*1000)));
 }
 
 // void printHex(unsigned long n)
