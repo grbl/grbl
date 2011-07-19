@@ -145,7 +145,12 @@ void settings_store_setting(int parameter, double value) {
       return;
     }
     settings.steps_per_mm[parameter] = value; break;
-    case 3: settings.pulse_microseconds = round(value); break;
+    case 3: 
+    if (value < 3) {
+      printPgmString(PSTR("Step pulse must be >= 3 microseconds\r\n"));
+      return;
+    }
+    settings.pulse_microseconds = round(value); break;
     case 4: settings.default_feed_rate = value; break;
     case 5: settings.default_seek_rate = value; break;
     case 6: settings.mm_per_arc_segment = value; break;
