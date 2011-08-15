@@ -72,20 +72,41 @@ uint8_t protocol_execute_line(char *line) {
 void protocol_process()
 {
   char c;
+  uint8_t iscomment = false;
   while((c = serial_read()) != SERIAL_NO_DATA) 
   {
-    if((char_counter > 0) && ((c == '\n') || (c == '\r'))) {  // Line is complete. Then execute!
-      line[char_counter] = 0; // treminate string
-      status_message(protocol_execute_line(line));
-      char_counter = 0; // reset line buffer index
-    } else if (c <= ' ') { 
-      // Throw away whitepace and control characters
-    } else if (char_counter >= LINE_BUFFER_SIZE-1) {
-      // Throw away any characters beyond the end of the line buffer
-    } else if (c >= 'a' && c <= 'z') { // Upcase lowercase
-      line[char_counter++] = c-'a'+'A';
-    } else {
-      line[char_counter++] = c;
+    if (iscomment) {
+      // While in comment, skip all characters until ')', '\n', or '\r'
+      if ((c == ')') || (c == '\n') || (c == '\r')) {
+        iscomment = false;
+      }        
+    } 
+    if (!iscomment) { // Seperate if-statement to process '\n' or '\r' at end of comment
+      if ((c == '\n') || (c == '\r')) { // End of block reached
+        if (char_counter > 0) {// Line is complete. Then execute!
+          line[char_counter] = 0; // terminate string
+          status_message(protocol_execute_line(line));
+          char_counter = 0; // reset line buffer index
+        } else { 
+          // Empty or comment line. Skip block.
+          status_message(STATUS_OK); // Send status message for syncing purposes.
+        }
+      } else if (c <= ' ') { 
+        // Throw away whitepace and control characters
+      } else if (c == '/') {
+        // Disable block delete and throw away character
+        // To enable block delete, uncomment following line
+        // iscomment = true;
+      } else if (c == '(') {
+        // Enable comments and ignore all characters until ')' or '\n'
+        iscomment = true;
+      } else if (char_counter >= LINE_BUFFER_SIZE-1) {
+        // Throw away any characters beyond the end of the line buffer
+      } else if (c >= 'a' && c <= 'z') { // Upcase lowercase
+        line[char_counter++] = c-'a'+'A';
+      } else {
+        line[char_counter++] = c;
+      }
     }
   }
 }
