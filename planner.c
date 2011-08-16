@@ -79,43 +79,7 @@ static double intersection_distance(double initial_rate, double final_rate, doub
     (4*acceleration)
   );
 }
-
-/*                                                                              
-                                     +--------+   <- nominal_rate
-                                    /          \                                
-    nominal_rate*entry_factor ->   +            \                               
-                                   |             + <- nominal_rate*exit_factor  
-                                   +-------------+                              
-                                       time -->                                 
-*/                                                                              
-
-// Calculates trapezoid parameters so that the entry- and exit-speed is compensated by the provided factors.
-// The factors represent a factor of braking and must be in the range 0.0-1.0.
-
-static void calculate_trapezoid_for_block(block_t *block, double entry_factor, double exit_factor) {
-  block->initial_rate = ceil(block->nominal_rate*entry_factor);
-  block->final_rate = ceil(block->nominal_rate*exit_factor);
-  int32_t acceleration_per_minute = block->rate_delta*ACCELERATION_TICKS_PER_SECOND*60.0;
-  int32_t accelerate_steps = 
-    ceil(estimate_acceleration_distance(block->initial_rate, block->nominal_rate, acceleration_per_minute));
-  int32_t decelerate_steps = 
-    floor(estimate_acceleration_distance(block->nominal_rate, block->final_rate, -acceleration_per_minute));
-
-  // Calculate the size of Plateau of Nominal Rate. 
-  int32_t plateau_steps = block->step_event_count-accelerate_steps-decelerate_steps;
-  
-  // Is the Plateau of Nominal Rate smaller than nothing? That means no cruising, and we will
-  // have to use intersection_distance() to calculate when to abort acceleration and start braking 
-  // in order to reach the final_rate exactly at the end of this block.
-  if (plateau_steps < 0) {  
-    accelerate_steps = ceil(
-      intersection_distance(block->initial_rate, block->final_rate, acceleration_per_minute, block->step_event_count));
-    plateau_steps = 0;
-  }  
-  
-  block->accelerate_until = accelerate_steps;
-  block->decelerate_after = accelerate_steps+plateau_steps;
-}                    
+               
 
 // Calculates the maximum allowable speed at this point when you must be able to reach target_velocity using the 
 // acceleration within the allotted distance.
@@ -145,6 +109,7 @@ static double factor_for_safe_speed(block_t *block) {
     return(1.0);
   }
 }
+
 
 // The kernel called by planner_recalculate() when scanning the plan from last to first entry.
 static void planner_reverse_pass_kernel(block_t *previous, block_t *current, block_t *next) {
@@ -235,6 +200,42 @@ static void planner_forward_pass() {
   planner_forward_pass_kernel(block[1], block[2], NULL);
 }
 
+/*                                                                              
+                                     +--------+   <- nominal_rate
+                                    /          \                                
+    nominal_rate*entry_factor ->   +            \                               
+                                   |             + <- nominal_rate*exit_factor  
+                                   +-------------+                              
+                                       time -->                                 
+*/                                                                              
+
+// Calculates trapezoid parameters so that the entry- and exit-speed is compensated by the provided factors.
+// The factors represent a factor of braking and must be in the range 0.0-1.0.
+static void calculate_trapezoid_for_block(block_t *block, double entry_factor, double exit_factor) {
+  block->initial_rate = ceil(block->nominal_rate*entry_factor);
+  block->final_rate = ceil(block->nominal_rate*exit_factor);
+  int32_t acceleration_per_minute = block->rate_delta*ACCELERATION_TICKS_PER_SECOND*60.0;
+  int32_t accelerate_steps = 
+    ceil(estimate_acceleration_distance(block->initial_rate, block->nominal_rate, acceleration_per_minute));
+  int32_t decelerate_steps = 
+    floor(estimate_acceleration_distance(block->nominal_rate, block->final_rate, -acceleration_per_minute));
+
+  // Calculate the size of Plateau of Nominal Rate. 
+  int32_t plateau_steps = block->step_event_count-accelerate_steps-decelerate_steps;
+  
+  // Is the Plateau of Nominal Rate smaller than nothing? That means no cruising, and we will
+  // have to use intersection_distance() to calculate when to abort acceleration and start braking 
+  // in order to reach the final_rate exactly at the end of this block.
+  if (plateau_steps < 0) {  
+    accelerate_steps = ceil(
+      intersection_distance(block->initial_rate, block->final_rate, acceleration_per_minute, block->step_event_count));
+    plateau_steps = 0;
+  }  
+  
+  block->accelerate_until = accelerate_steps;
+  block->decelerate_after = accelerate_steps+plateau_steps;
+}     
+
 // Recalculates the trapezoid speed profiles for all blocks in the plan according to the 
 // entry_factor for each junction. Must be called by planner_recalculate() after 
 // updating the blocks.
@@ -269,7 +270,7 @@ static void planner_recalculate_trapezoids() {
 // be performed using only the one, true constant acceleration, and where no junction jerk is jerkier than 
 // the set limit. Finally it will:
 //
-//   3. Recalculate trapezoids for all blocks.
+//   3. Recalculate trapezoids for all blocks using the recently updated factors
 
 static void planner_recalculate() {     
   planner_reverse_pass();
