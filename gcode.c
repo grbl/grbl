@@ -117,8 +117,7 @@ static double theta(double x, double y)
 #endif
 
 // Executes one line of 0-terminated G-Code. The line is assumed to contain only uppercase
-// characters and signed floating point values (no whitespace). Comments and block delete
-// characters have been removed.
+// characters and signed floating point values (no whitespace).
 uint8_t gc_execute_line(char *line) {
   uint8_t char_counter = 0;  
   char letter;
@@ -139,6 +138,10 @@ uint8_t gc_execute_line(char *line) {
   clear_vector(offset);
 
   gc.status_code = STATUS_OK;
+  
+  // Disregard comments and block delete
+  if (line[0] == '(') { return(gc.status_code); }
+  if (line[0] == '/') { char_counter++; } // ignore block delete  
   
   // Pass 1: Commands
   while(next_statement(&letter, &value, line, &char_counter)) {
