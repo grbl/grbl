@@ -41,7 +41,7 @@ typedef struct {
   uint8_t invert_mask;
   double mm_per_arc_segment;
   double acceleration;
-  double max_jerk;
+  double junction_deviation;
 } settings_t;
 extern settings_t settings;
 

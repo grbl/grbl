@@ -51,7 +51,7 @@ typedef struct {
 #define DEFAULT_RAPID_FEEDRATE 500.0 // in millimeters per minute
 #define DEFAULT_FEEDRATE 500.0
 #define DEFAULT_ACCELERATION (DEFAULT_FEEDRATE/10.0)
-#define DEFAULT_MAX_JERK 300.0
+#define DEFAULT_JUNCTION_DEVIATION 0.1
 #define DEFAULT_STEPPING_INVERT_MASK ((1<<X_STEP_BIT)|(1<<Y_STEP_BIT)|(1<<Z_STEP_BIT))
 
 void settings_reset() {
@@ -64,7 +64,7 @@ void settings_reset() {
   settings.acceleration = DEFAULT_ACCELERATION;
   settings.mm_per_arc_segment = DEFAULT_MM_PER_ARC_SEGMENT;
   settings.invert_mask = DEFAULT_STEPPING_INVERT_MASK;
-  settings.max_jerk = DEFAULT_MAX_JERK;
+  settings.junction_deviation = DEFAULT_JUNCTION_DEVIATION;
 }
 
 void settings_dump() {
@@ -78,8 +78,8 @@ void settings_dump() {
   printPgmString(PSTR(" (mm/arc segment)\r\n$7 = ")); printInteger(settings.invert_mask); 
   printPgmString(PSTR(" (step port invert mask. binary = ")); printIntegerInBase(settings.invert_mask, 2);  
   printPgmString(PSTR(")\r\n$8 = ")); printFloat(settings.acceleration);
-  printPgmString(PSTR(" (acceleration in mm/sec^2)\r\n$9 = ")); printFloat(settings.max_jerk);
-  printPgmString(PSTR(" (max instant cornering speed change in delta mm/min)"));
+  printPgmString(PSTR(" (acceleration in mm/sec^2)\r\n$9 = ")); printFloat(settings.junction_deviation);
+  printPgmString(PSTR(" (junction deviation for cornering in mm)"));
   printPgmString(PSTR("\r\n'$x=value' to set parameter or just '$' to dump current settings\r\n"));
 }
 
@@ -129,7 +129,7 @@ int read_settings() {
       return(false);
     }
     settings.acceleration = DEFAULT_ACCELERATION;
-    settings.max_jerk = DEFAULT_MAX_JERK;
+    settings.junction_deviation = DEFAULT_JUNCTION_DEVIATION;
   } else {      
     return(false);
   }
@@ -156,7 +156,7 @@ void settings_store_setting(int parameter, double value) {
     case 6: settings.mm_per_arc_segment = value; break;
     case 7: settings.invert_mask = trunc(value); break;
     case 8: settings.acceleration = value; break;
-    case 9: settings.max_jerk = fabs(value); break;
+    case 9: settings.junction_deviation = fabs(value); break;
     default: 
       printPgmString(PSTR("Unknown parameter\r\n"));
       return;

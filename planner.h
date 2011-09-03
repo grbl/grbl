@@ -36,10 +36,10 @@ typedef struct {
   double speed_x, speed_y, speed_z;   // Nominal mm/minute for each axis
   double nominal_speed;               // The nominal speed for this block in mm/min  
   double millimeters;                 // The total travel of this block in mm
-  double entry_factor;                // The factor representing the change in speed at the start of this trapezoid.
-                                      // (The end of the curren speed trapezoid is defined by the entry_factor of the
-                                      // next block)
-  
+  double delta_mm[3];                 // XYZ travel components of this block in mm                  
+  double entry_speed;                 // Entry speed at previous-current junction 
+  double max_entry_speed;             // Maximum allowable entry speed
+
   // Settings for the trapezoid generator
   uint32_t initial_rate;              // The jerk-adjusted step rate at start of block  
   uint32_t final_rate;                // The minimal rate at exit
