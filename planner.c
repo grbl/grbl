@@ -99,24 +99,20 @@ static double max_allowable_speed(double acceleration, double target_velocity, d
 // The kernel called by planner_recalculate() when scanning the plan from last to first entry.
 static void planner_reverse_pass_kernel(block_t *previous, block_t *current, block_t *next) {
   if (!current) { return; }
-  // Calculate the entry speed for the current block. 
-  if (previous) {
-    double entry_speed = current->max_entry_speed;
-    double exit_speed;
-    if (next) {
-      exit_speed = next->entry_speed;
-    } else {
-      exit_speed = 0.0;
-    }
-    // If the required deceleration across the block is too rapid, reduce the entry_factor accordingly.
-    if (entry_speed > exit_speed) {
-      entry_speed = 
-        min(max_allowable_speed(-settings.acceleration,exit_speed,current->millimeters),entry_speed);
-    }    
-    current->entry_speed = entry_speed;
+  
+  double entry_speed = current->max_entry_speed;
+  double exit_speed;
+  if (next) {
+    exit_speed = next->entry_speed;
   } else {
-    current->entry_speed = 0.0;
+    exit_speed = 0.0;
   }
+  // If the required deceleration across the block is too rapid, reduce the entry_factor accordingly.
+  if (entry_speed > exit_speed) {
+    entry_speed = 
+      min(max_allowable_speed(-settings.acceleration,exit_speed,current->millimeters),entry_speed);
+  }    
+  current->entry_speed = entry_speed;
 }
 
 
@@ -144,9 +140,8 @@ static void planner_forward_pass_kernel(block_t *previous, block_t *current, blo
   // speed accordingly.
   if(previous) {
     if (previous->entry_speed < current->entry_speed) {
-      current->entry_speed = 
-        min( max_allowable_speed(-settings.acceleration,current->entry_speed,previous->millimeters),
-             min(  current->max_entry_speed, current->entry_speed ) );
+      current->entry_speed = min( min( current->entry_speed, current->max_entry_speed ), 
+        max_allowable_speed(-settings.acceleration,previous->entry_speed,previous->millimeters) );
     }
   }
 }
@@ -359,18 +354,19 @@ void plan_buffer_line(double x, double y, double z, double feed_rate, int invert
                            -previous->delta_mm[Z_AXIS] * block->delta_mm[Z_AXIS] )/
                           ( previous->millimeters * block->millimeters );
       
-      // Avoid divide by zero and set zero max junction velocity for highly acute angles.
-      if (cos_theta < 0.9) {
+      // Avoid divide by zero for straight junctions around 180 degress
+      if (cos_theta > -0.95) {
         // Compute maximum junction velocity based on maximum acceleration and junction deviation
         double sin_theta_d2 = sqrt((1-cos_theta)/2); // Trig half angle identity
         vmax_junction = 
           sqrt(settings.acceleration*60*60 * settings.junction_deviation * sin_theta_d2/(1-sin_theta_d2));
         vmax_junction = max(0.0,min(vmax_junction, min(previous->nominal_speed,block->nominal_speed)));
+      } else {
+        vmax_junction = min(previous->nominal_speed,block->nominal_speed);
       }
     }
     block->max_entry_speed = vmax_junction;
     block->entry_speed = 0.0;
-    calculate_trapezoid_for_block(block, block->entry_speed, 0.0);
   } else {
     block->initial_rate = block->nominal_rate;
     block->final_rate = block->nominal_rate;
