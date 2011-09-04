@@ -100,19 +100,21 @@ static double max_allowable_speed(double acceleration, double target_velocity, d
 static void planner_reverse_pass_kernel(block_t *previous, block_t *current, block_t *next) {
   if (!current) { return; }
   
-  double entry_speed = current->max_entry_speed;
-  double exit_speed;
-  if (next) {
-    exit_speed = next->entry_speed;
-  } else {
-    exit_speed = 0.0;
+  if (previous) { // Prevent reverse planner from over-writing buffer_tail entry speed.
+    double entry_speed = current->max_entry_speed; // Re-write to ensure at max possible speed
+    double exit_speed;
+    if (next) {
+      exit_speed = next->entry_speed;
+    } else {
+      exit_speed = 0.0; // Assume last block has zero exit velocity
+    }
+    // If the required deceleration across the block is too rapid, reduce the entry_factor accordingly.
+    if (entry_speed > exit_speed) {
+      entry_speed = 
+        min(max_allowable_speed(-settings.acceleration,exit_speed,current->millimeters),entry_speed);
+    }    
+    current->entry_speed = entry_speed;
   }
-  // If the required deceleration across the block is too rapid, reduce the entry_factor accordingly.
-  if (entry_speed > exit_speed) {
-    entry_speed = 
-      min(max_allowable_speed(-settings.acceleration,exit_speed,current->millimeters),entry_speed);
-  }    
-  current->entry_speed = entry_speed;
 }
 
 
@@ -354,19 +356,17 @@ void plan_buffer_line(double x, double y, double z, double feed_rate, int invert
                            -previous->delta_mm[Z_AXIS] * block->delta_mm[Z_AXIS] )/
                           ( previous->millimeters * block->millimeters );
       
-      // Avoid divide by zero for straight junctions around 180 degress
+      // Avoid divide by zero for straight junctions near 180 degrees. Limit to min nominal speeds.
+      vmax_junction = min(previous->nominal_speed,block->nominal_speed);
       if (cos_theta > -0.95) {
         // Compute maximum junction velocity based on maximum acceleration and junction deviation
         double sin_theta_d2 = sqrt((1-cos_theta)/2); // Trig half angle identity
-        vmax_junction = 
-          sqrt(settings.acceleration*60*60 * settings.junction_deviation * sin_theta_d2/(1-sin_theta_d2));
-        vmax_junction = max(0.0,min(vmax_junction, min(previous->nominal_speed,block->nominal_speed)));
-      } else {
-        vmax_junction = min(previous->nominal_speed,block->nominal_speed);
+        vmax_junction = max(0.0, min(vmax_junction,
+          sqrt(settings.acceleration*60*60 * settings.junction_deviation * sin_theta_d2/(1-sin_theta_d2)) ) );
       }
     }
     block->max_entry_speed = vmax_junction;
-    block->entry_speed = 0.0;
+    block->entry_speed = vmax_junction;
   } else {
     block->initial_rate = block->nominal_rate;
     block->final_rate = block->nominal_rate;
