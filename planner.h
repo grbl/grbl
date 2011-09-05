@@ -36,7 +36,6 @@ typedef struct {
   double speed_x, speed_y, speed_z;   // Nominal mm/minute for each axis
   double nominal_speed;               // The nominal speed for this block in mm/min  
   double millimeters;                 // The total travel of this block in mm
-  double delta_mm[3];                 // XYZ travel components of this block in mm                  
   double entry_speed;                 // Entry speed at previous-current junction 
   double max_entry_speed;             // Maximum allowable entry speed
 
