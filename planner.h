@@ -3,6 +3,7 @@
   Part of Grbl
 
   Copyright (c) 2009-2011 Simen Svale Skogsrud
+  Modifications Copyright (c) 2011 Sungeun (Sonny) Jeon  
 
   Grbl is free software: you can redistribute it and/or modify
   it under the terms of the GNU General Public License as published by
@@ -35,9 +36,11 @@ typedef struct {
   // Fields used by the motion planner to manage acceleration
   double speed_x, speed_y, speed_z;   // Nominal mm/minute for each axis
   double nominal_speed;               // The nominal speed for this block in mm/min  
+  double entry_speed_sqr;             // Square of entry speed at previous-current junction in (mm/min)^2
+  double max_entry_speed_sqr;         // Square of maximum allowable entry speed in (mm/min)^2
   double millimeters;                 // The total travel of this block in mm
-  double entry_speed;                 // Entry speed at previous-current junction 
-  double max_entry_speed;             // Maximum allowable entry speed
+  uint8_t recalculate_flag;           // Planner flag to recalculate trapezoids on entry junction
+  uint8_t nominal_length_flag;        // Planner flag for nominal speed always reached
 
   // Settings for the trapezoid generator
   uint32_t initial_rate;              // The jerk-adjusted step rate at start of block  
@@ -54,7 +57,7 @@ void plan_init();
 // Add a new linear movement to the buffer. x, y and z is the signed, absolute target position in 
 // millimaters. Feed rate specifies the speed of the motion. If feed rate is inverted, the feed
 // rate is taken to mean "frequency" and would complete the operation in 1/feed_rate minutes.
-void plan_buffer_line(double x, double y, double z, double feed_rate, int invert_feed_rate);
+void plan_buffer_line(double x, double y, double z, double feed_rate, uint8_t invert_feed_rate);
 
 // Called when the current block is no longer needed. Discards the block and makes the memory
 // availible for new blocks.
@@ -64,7 +67,7 @@ void plan_discard_current_block();
 block_t *plan_get_current_block();
 
 // Enables or disables acceleration-management for upcoming blocks
-void plan_set_acceleration_manager_enabled(int enabled);
+void plan_set_acceleration_manager_enabled(uint8_t enabled);
 
 // Is acceleration-management currently enabled?
 int plan_is_acceleration_manager_enabled();

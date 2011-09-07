@@ -1,6 +1,6 @@
 #!/usr/bin/env python
 """\
-G-code preprocessor for grbl
+G-code preprocessor for grbl (BETA!)
 - Converts G02/03 arcs to G01 linear interpolations
 - Removes comments, block delete characters, and line numbers
 - Removes spaces and capitalizes commands
@@ -16,6 +16,7 @@ TODO:
 
 Based on GRBL 0.7b source code by Simen Svale Skogsrud
 
+By: Sungeun (Sonny) Jeon
 Version: 20100825
 """
 import re

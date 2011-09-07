@@ -3,7 +3,8 @@
   Part of Grbl
 
   Copyright (c) 2009-2011 Simen Svale Skogsrud
-
+  Modifications Copyright (c) 2011 Sungeun (Sonny) Jeon
+  
   Grbl is free software: you can redistribute it and/or modify
   it under the terms of the GNU General Public License as published by
   the Free Software Foundation, either version 3 of the License, or
@@ -97,25 +98,6 @@ static float to_millimeters(double value) {
   return(gc.inches_mode ? (value * MM_PER_INCH) : value);
 }
 
-#ifdef __AVR_ATmega328P__        
-// Find the angle in radians of deviance from the positive y axis. negative angles to the left of y-axis, 
-// positive to the right.
-static double theta(double x, double y)
-{
-  double theta = atan(x/fabs(y));
-  if (y>0) {
-    return(theta);
-  } else {
-    if (theta>0) 
-    {
-      return(M_PI-theta);
-    } else {
-      return(-M_PI-theta);
-    }
-  }
-}
-#endif
-
 // Executes one line of 0-terminated G-Code. The line is assumed to contain only uppercase
 // characters and signed floating point values (no whitespace). Comments and block delete
 // characters have been removed.
@@ -125,7 +107,7 @@ uint8_t gc_execute_line(char *line) {
   double value;
   double unit_converted_value;
   double inverse_feed_rate = -1; // negative inverse_feed_rate means no inverse_feed_rate specified
-  int radius_mode = false;
+  uint8_t radius_mode = false;
   
   uint8_t absolute_override = false;          /* 1 = absolute motion for this block only {G53} */
   uint8_t next_action = NEXT_ACTION_DEFAULT;  /* The action that will be taken by the parsed line */
@@ -331,50 +313,29 @@ uint8_t gc_execute_line(char *line) {
         // even though it is advised against ever generating such circles in a single line of g-code. By 
         // inverting the sign of h_x2_div_d the center of the circles is placed on the opposite side of the line of
         // travel and thus we get the unadvisably long arcs as prescribed.
-        if (r < 0) { h_x2_div_d = -h_x2_div_d; }        
+        if (r < 0) { 
+            h_x2_div_d = -h_x2_div_d; 
+            r = -r; // Finished with r. Set to positive for mc_arc
+        }        
         // Complete the operation by calculating the actual center of the arc
-        offset[gc.plane_axis_0] = (x-(y*h_x2_div_d))/2;
-        offset[gc.plane_axis_1] = (y+(x*h_x2_div_d))/2;
-      } 
-      
-      /*
-         This segment sets up an clockwise or counterclockwise arc from the current position to the target position around 
-         the center designated by the offset vector. All theta-values measured in radians of deviance from the positive 
-         y-axis. 
+        offset[gc.plane_axis_0] = 0.5*(x-(y*h_x2_div_d));
+        offset[gc.plane_axis_1] = 0.5*(y+(x*h_x2_div_d));
 
-                            | <- theta == 0
-                          * * *                
-                        *       *                                               
-                      *           *                                             
-                      *     O ----T   <- theta_end (e.g. 90 degrees: theta_end == PI/2)                                          
-                      *   /                                                     
-                        C   <- theta_start (e.g. -145 degrees: theta_start == -PI*(3/4))
+      } else { // Offset mode specific computations
 
-      */
-            
-      // calculate the theta (angle) of the current point
-      double theta_start = theta(-offset[gc.plane_axis_0], -offset[gc.plane_axis_1]);
-      // calculate the theta (angle) of the target point
-      double theta_end = theta(target[gc.plane_axis_0] - offset[gc.plane_axis_0] - gc.position[gc.plane_axis_0], 
-         target[gc.plane_axis_1] - offset[gc.plane_axis_1] - gc.position[gc.plane_axis_1]);
-      // ensure that the difference is positive so that we have clockwise travel
-      if (theta_end < theta_start) { theta_end += 2*M_PI; }
-      double angular_travel = theta_end-theta_start;
-      // Invert angular motion if the g-code wanted a counterclockwise arc
-      if (gc.motion_mode == MOTION_MODE_CCW_ARC) {
-        angular_travel = angular_travel-2*M_PI;
+        r = hypot(offset[gc.plane_axis_0], offset[gc.plane_axis_1]); // Compute arc radius for mc_arc
+
       }
-      // Find the radius
-      double radius = hypot(offset[gc.plane_axis_0], offset[gc.plane_axis_1]);
-      // Calculate the motion along the depth axis of the helix
-      double depth = target[gc.plane_axis_2]-gc.position[gc.plane_axis_2];
+      
+      // Set clockwise/counter-clockwise sign for mc_arc computations
+      int8_t clockwise_sign = 1;
+      if (gc.motion_mode == MOTION_MODE_CW_ARC) { clockwise_sign = -1; }
+
       // Trace the arc
-      mc_arc(theta_start, angular_travel, radius, depth, gc.plane_axis_0, gc.plane_axis_1, gc.plane_axis_2, 
+      mc_arc(gc.position, target, offset, gc.plane_axis_0, gc.plane_axis_1, gc.plane_axis_2,
         (gc.inverse_feed_rate_mode) ? inverse_feed_rate : gc.feed_rate, gc.inverse_feed_rate_mode,
-        gc.position);
-      // Finish off with a line to make sure we arrive exactly where we think we are
-      mc_line(target[X_AXIS], target[Y_AXIS], target[Z_AXIS], 
-        (gc.inverse_feed_rate_mode) ? inverse_feed_rate : gc.feed_rate, gc.inverse_feed_rate_mode);
+        r, clockwise_sign);
+        
       break;
 #endif      
     }    

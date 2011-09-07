@@ -3,7 +3,8 @@
   Part of Grbl
 
   Copyright (c) 2009-2011 Simen Svale Skogsrud
-
+  Modifications Copyright (c) 2011 Sungeun (Sonny) Jeon
+  
   Grbl is free software: you can redistribute it and/or modify
   it under the terms of the GNU General Public License as published by
   the Free Software Foundation, either version 3 of the License, or
@@ -35,13 +36,12 @@
 #define mc_set_current_position(x, y, z) plan_set_current_position(x, y, z) 
 
 #ifdef __AVR_ATmega328P__
-// Execute an arc. theta == start angle, angular_travel == number of radians to go along the arc,
-// positive angular_travel means clockwise, negative means counterclockwise. Radius == the radius of the
-// circle in millimeters. axis_1 and axis_2 selects the circle plane in tool space. Stick the remaining
-// axis in axis_l which will be the axis for linear travel if you are tracing a helical motion.
-
-void mc_arc(double theta, double angular_travel, double radius, double linear_travel, int axis_1, int axis_2, 
-  int axis_linear, double feed_rate, int invert_feed_rate, double *position);
+// Execute an arc in offset mode format. position == current xyz, target == target xyz, 
+// offset == offset from current xyz, axis_XXX defines circle plane in tool space, axis_linear is
+// the direction of helical travel, radius == circle radius, clockwise_sign == -1 or 1. Used
+// for vector transformation direction.
+void mc_arc(double *position, double *target, double *offset, uint8_t axis_0, uint8_t axis_1,
+  uint8_t axis_linear, double feed_rate, uint8_t invert_feed_rate, double radius, int8_t clockwise_sign);
 #endif
   
 // Dwell for a couple of time units
