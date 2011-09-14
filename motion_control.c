@@ -3,7 +3,7 @@
   Part of Grbl
 
   Copyright (c) 2009-2011 Simen Svale Skogsrud
-  Modifications Copyright (c) 2011 Sungeun (Sonny) Jeon
+  Copyright (c) 2011 Sungeun K. Jeon
   
   Grbl is free software: you can redistribute it and/or modify
   it under the terms of the GNU General Public License as published by
@@ -48,7 +48,7 @@ void mc_dwell(uint32_t milliseconds)
 // The arc is approximated by generating a huge number of tiny, linear segments. The length of each 
 // segment is configured in settings.mm_per_arc_segment.  
 void mc_arc(double *position, double *target, double *offset, uint8_t axis_0, uint8_t axis_1, 
-  uint8_t axis_linear, double feed_rate, uint8_t invert_feed_rate, double radius, int8_t clockwise_sign)
+  uint8_t axis_linear, double feed_rate, uint8_t invert_feed_rate, double radius, int8_t isclockwise)
 {      
 //   int acceleration_manager_was_enabled = plan_is_acceleration_manager_enabled();
 //   plan_set_acceleration_manager_enabled(false); // disable acceleration management for the duration of the arc
@@ -64,7 +64,7 @@ void mc_arc(double *position, double *target, double *offset, uint8_t axis_0, ui
   // CCW angle between position and target from circle center. Only one atan2() trig computation required.
   double angular_travel = atan2(r_axis0*rt_axis1-r_axis1*rt_axis0, r_axis0*rt_axis0+r_axis1*rt_axis1);
   if (angular_travel < 0) { angular_travel += 2*M_PI; }
-  if (clockwise_sign < 0) { angular_travel = 2*M_PI-angular_travel; }
+  if (isclockwise) { angular_travel -= 2*M_PI; }
   
   double millimeters_of_travel = hypot(angular_travel*radius, fabs(linear_travel));
   if (millimeters_of_travel == 0.0) { return; }
@@ -104,7 +104,7 @@ void mc_arc(double *position, double *target, double *offset, uint8_t axis_0, ui
   */
   // Vector rotation matrix values
   double cos_T = 1-0.5*theta_per_segment*theta_per_segment; // Small angle approximation
-  double sin_T = clockwise_sign*theta_per_segment;
+  double sin_T = theta_per_segment;
   
   double trajectory[3];
   double sin_Ti;
@@ -128,7 +128,7 @@ void mc_arc(double *position, double *target, double *offset, uint8_t axis_0, ui
       // Arc correction to radius vector. Computed only every N_ARC_CORRECTION increments.
       // Compute exact location by applying transformation matrix from initial radius vector(=-offset).
       cos_Ti = cos(i*theta_per_segment);
-      sin_Ti = clockwise_sign*sin(i*theta_per_segment);
+      sin_Ti = sin(i*theta_per_segment);
       r_axis0 = -offset[axis_0]*cos_Ti + offset[axis_1]*sin_Ti;
       r_axis1 = -offset[axis_0]*sin_Ti - offset[axis_1]*cos_Ti;
       count = 0;

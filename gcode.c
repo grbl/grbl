@@ -3,7 +3,7 @@
   Part of Grbl
 
   Copyright (c) 2009-2011 Simen Svale Skogsrud
-  Modifications Copyright (c) 2011 Sungeun (Sonny) Jeon
+  Copyright (c) 2011 Sungeun K. Jeon
   
   Grbl is free software: you can redistribute it and/or modify
   it under the terms of the GNU General Public License as published by
@@ -328,13 +328,13 @@ uint8_t gc_execute_line(char *line) {
       }
       
       // Set clockwise/counter-clockwise sign for mc_arc computations
-      int8_t clockwise_sign = 1;
-      if (gc.motion_mode == MOTION_MODE_CW_ARC) { clockwise_sign = -1; }
+      int8_t isclockwise = false;
+      if (gc.motion_mode == MOTION_MODE_CW_ARC) { isclockwise = true; }
 
       // Trace the arc
       mc_arc(gc.position, target, offset, gc.plane_axis_0, gc.plane_axis_1, gc.plane_axis_2,
         (gc.inverse_feed_rate_mode) ? inverse_feed_rate : gc.feed_rate, gc.inverse_feed_rate_mode,
-        r, clockwise_sign);
+        r, isclockwise);
         
       break;
 #endif      

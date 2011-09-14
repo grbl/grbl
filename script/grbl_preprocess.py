@@ -8,6 +8,8 @@ G-code preprocessor for grbl (BETA!)
 - OPTIONAL: Remove unsupported grbl G and M commands
 
 TODO: 
+- Number precision truncation
+- Arc conversion option
 - More robust error checking
 - Improve interface to command line options
 - Improve g-code parsing to NIST standards

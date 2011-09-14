@@ -3,7 +3,7 @@
   Part of Grbl
 
   Copyright (c) 2009-2011 Simen Svale Skogsrud
-  Modifications Copyright (c) 2011 Sungeun (Sonny) Jeon  
+  Copyright (c) 2011 Sungeun K. Jeon  
 
   Grbl is free software: you can redistribute it and/or modify
   it under the terms of the GNU General Public License as published by
@@ -34,10 +34,9 @@ typedef struct {
   uint32_t nominal_rate;              // The nominal step rate for this block in step_events/minute
   
   // Fields used by the motion planner to manage acceleration
-  double speed_x, speed_y, speed_z;   // Nominal mm/minute for each axis
   double nominal_speed;               // The nominal speed for this block in mm/min  
-  double entry_speed_sqr;             // Square of entry speed at previous-current junction in (mm/min)^2
-  double max_entry_speed_sqr;         // Square of maximum allowable entry speed in (mm/min)^2
+  double entry_speed;                 // Entry speed at previous-current junction in mm/min
+  double max_entry_speed;             // Maximum allowable junction entry speed in mm/min
   double millimeters;                 // The total travel of this block in mm
   uint8_t recalculate_flag;           // Planner flag to recalculate trapezoids on entry junction
   uint8_t nominal_length_flag;        // Planner flag for nominal speed always reached

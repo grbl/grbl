@@ -3,7 +3,7 @@
   Part of Grbl
 
   Copyright (c) 2009-2011 Simen Svale Skogsrud
-  Modifications Copyright (c) 2011 Sungeun (Sonny) Jeon
+  Copyright (c) 2011 Sungeun K. Jeon
   
   Grbl is free software: you can redistribute it and/or modify
   it under the terms of the GNU General Public License as published by
@@ -33,7 +33,7 @@
 
 // The number of linear motions that can be in the plan at any give time
 #ifdef __AVR_ATmega328P__
-#define BLOCK_BUFFER_SIZE 16
+#define BLOCK_BUFFER_SIZE 18
 #else
 #define BLOCK_BUFFER_SIZE 5
 #endif
@@ -52,15 +52,18 @@ static uint8_t acceleration_manager_enabled;   // Acceleration management active
 
 
 // Returns the index of the next block in the ring buffer
+// NOTE: Removed modulo (%) operator, which uses an expensive divide and multiplication.
 static int8_t next_block_index(int8_t block_index) {
-  return( (block_index + 1) % BLOCK_BUFFER_SIZE );
+  block_index++;
+  if (block_index == BLOCK_BUFFER_SIZE) { block_index = 0; }
+  return(block_index);
 }
 
 
 // Returns the index of the previous block in the ring buffer
 static int8_t prev_block_index(int8_t block_index) {
-  block_index--;
-  if (block_index < 0) { block_index = BLOCK_BUFFER_SIZE-1; }
+  if (block_index == 0) { block_index = BLOCK_BUFFER_SIZE-1; }
+  else { block_index--; }
   return(block_index);
 }
 
@@ -90,41 +93,38 @@ static double intersection_distance(double initial_rate, double final_rate, doub
 }
 
             
-// Calculates the square of the maximum allowable speed at this point when you must be able to reach 
-// target_velocity using the acceleration within the allotted distance.
-// NOTE: sqrt() removed for speed optimization. Related calculations in terms of square velocity.
-static double max_allowable_speed_sqr(double acceleration, double target_velocity_sqr, double distance) {
-  return( target_velocity_sqr-2*acceleration*60*60*distance );
+// Calculates the maximum allowable speed at this point when you must be able to reach target_velocity
+// using the acceleration within the allotted distance.
+// NOTE: sqrt() reimplimented here from prior version due to improved planner logic. Increases speed
+// in time critical computations, i.e. arcs or rapid short lines from curves. Guaranteed to not exceed
+// BLOCK_BUFFER_SIZE calls per planner cycle.
+static double max_allowable_speed(double acceleration, double target_velocity, double distance) {
+  return( sqrt(target_velocity*target_velocity-2*acceleration*60*60*distance) );
 }
 
 
 // The kernel called by planner_recalculate() when scanning the plan from last to first entry.
 static void planner_reverse_pass_kernel(block_t *previous, block_t *current, block_t *next) {
-  if (!current) { return; }
+  if (!current) { return; }  // Cannot operate on nothing.
   
-  double entry_speed_sqr = current->max_entry_speed_sqr; // Reset and check to ensure max possible speed
+  if (next) { 
+    // If entry speed is already at the maximum entry speed, no need to recheck. Block is cruising.
+    // If not, block in state of acceleration or deceleration. Reset entry speed to maximum and 
+    // check for maximum allowable speed reductions to ensure maximum possible planned speed.
+    if (current->entry_speed != current->max_entry_speed) {
     
-  // If nominal length true, nominal speed is guaranteed to be reached. No need to re-compute.
-  // But, if forward planner changed entry speed, reset to max entry speed just to be sure.
-  if (!current->nominal_length_flag) {
-    if (next) {
-      // If the required deceleration across the block is too rapid, reduce entry_speed_sqr accordingly.
-      if (entry_speed_sqr > next->entry_speed_sqr) {
-        entry_speed_sqr = min( entry_speed_sqr,
-          max_allowable_speed_sqr(-settings.acceleration,next->entry_speed_sqr,current->millimeters));
-      }
-    } else { 
-      // Assume last block has zero exit velocity.
-      entry_speed_sqr = min( entry_speed_sqr,
-          max_allowable_speed_sqr(-settings.acceleration,0.0,current->millimeters));
+      // If nominal length true, max junction speed is guaranteed to be reached. Only compute
+      // for max allowable speed if block is decelerating and nominal length is false.
+      if ((!current->nominal_length_flag) && (current->max_entry_speed > next->entry_speed)) {
+        current->entry_speed = min( current->max_entry_speed,
+          max_allowable_speed(-settings.acceleration,next->entry_speed,current->millimeters));
+      } else {
+        current->entry_speed = current->max_entry_speed;
+      } 
+      current->recalculate_flag = true;    
+    
     }
-  }
-
-  // Check for junction speed change
-  if (current->entry_speed_sqr != entry_speed_sqr) {
-    current->entry_speed_sqr = entry_speed_sqr;
-    current->recalculate_flag = true; // Note: Newest block already set to true
-  }
+  } // Skip last block. Already initialized and set for recalculation.
 }
 
 
@@ -140,34 +140,29 @@ static void planner_reverse_pass() {
     block[0] = &block_buffer[block_index];
     planner_reverse_pass_kernel(block[0], block[1], block[2]);
   }
-  // Skip buffer tail to prevent over-writing the initial entry speed.
+  // Skip buffer tail/first block to prevent over-writing the initial entry speed.
 }
 
 
 // The kernel called by planner_recalculate() when scanning the plan from first to last entry.
 static void planner_forward_pass_kernel(block_t *previous, block_t *current, block_t *next) {
-  if(!current) { return; }
+  if(!previous) { return; }  // Begin planning after buffer_tail
+  
+  // If the previous block is an acceleration block, but it is not long enough to complete the
+  // full speed change within the block, we need to adjust the entry speed accordingly. Entry
+  // speeds have already been reset, maximized, and reverse planned by reverse planner.
+  // If nominal length is true, max junction speed is guaranteed to be reached. No need to recheck.  
+  if (!previous->nominal_length_flag) {
+    if (previous->entry_speed < current->entry_speed) {
+      double entry_speed = min( current->entry_speed,
+        max_allowable_speed(-settings.acceleration,previous->entry_speed,previous->millimeters) );
 
-  if(previous) {
-
-    // If nominal length true, nominal speed is guaranteed to be reached. No need to recalculate.  
-    if (!previous->nominal_length_flag) {
-      // If the previous block is an acceleration block, but it is not long enough to 
-      // complete the full speed change within the block, we need to adjust the entry
-      // speed accordingly.
-      if (previous->entry_speed_sqr < current->entry_speed_sqr) {
-        double entry_speed_sqr = min( current->entry_speed_sqr, current->max_entry_speed_sqr );
-        entry_speed_sqr = min( entry_speed_sqr,
-          max_allowable_speed_sqr(-settings.acceleration,previous->entry_speed_sqr,previous->millimeters) );
-
-        // Check for junction speed change
-        if (current->entry_speed_sqr != entry_speed_sqr) {
-          current->entry_speed_sqr = entry_speed_sqr;
-          current->recalculate_flag = true;
-        }
+      // Check for junction speed change
+      if (current->entry_speed != entry_speed) {
+        current->entry_speed = entry_speed;
+        current->recalculate_flag = true;
       }
-      
-    }
+    }    
   }
 }
 
@@ -243,25 +238,23 @@ static void planner_recalculate_trapezoids() {
   int8_t block_index = block_buffer_tail;
   block_t *current;
   block_t *next = NULL;
-
+  
   while(block_index != block_buffer_head) {
     current = next;
     next = &block_buffer[block_index];
     if (current) {
       // Recalculate if current block entry or exit junction speed has changed.
       if (current->recalculate_flag || next->recalculate_flag) {
-        // Compute entry and exit factors for trapezoid calculations. 
-        // NOTE: sqrt(square velocities) now performed only when required in trapezoid calculation.
-        double entry_factor = sqrt( current->entry_speed_sqr ) / current->nominal_speed;
-        double exit_factor = sqrt( next->entry_speed_sqr ) / current->nominal_speed;
-        calculate_trapezoid_for_block(current, entry_factor, exit_factor);      
+        // NOTE: Entry and exit factors always > 0 by all previous logic operations.     
+        calculate_trapezoid_for_block(current, current->entry_speed/current->nominal_speed,
+          next->entry_speed/current->nominal_speed);      
         current->recalculate_flag = false; // Reset current only to ensure next trapezoid is computed
       }
     }
     block_index = next_block_index( block_index );
   }
-  // Last/newest block in buffer. Exit speed is zero.
-  calculate_trapezoid_for_block(next, sqrt( next->entry_speed_sqr ) / next->nominal_speed, 0.0);
+  // Last/newest block in buffer. Exit speed is zero. Always recalculated.
+  calculate_trapezoid_for_block(next, next->entry_speed/next->nominal_speed, 0.0);
   next->recalculate_flag = false;
 }
 
@@ -373,9 +366,6 @@ void plan_buffer_line(double x, double y, double z, double feed_rate, uint8_t in
   
   // Calculate speed in mm/minute for each axis
   double multiplier = 60.0*1000000.0/microseconds;
-  block->speed_x = delta_mm[X_AXIS] * multiplier;
-  block->speed_y = delta_mm[Y_AXIS] * multiplier;
-  block->speed_z = delta_mm[Z_AXIS] * multiplier; 
   block->nominal_speed = block->millimeters * multiplier;
   block->nominal_rate = ceil(block->step_event_count * multiplier);  
   
@@ -404,16 +394,15 @@ void plan_buffer_line(double x, double y, double z, double feed_rate, uint8_t in
     unit_vec[Z_AXIS] = delta_mm[Z_AXIS]*inv_millimeters;  
   
     // Compute maximum allowable entry speed at junction by centripetal acceleration approximation.
-    // Does not actually deviate from path, but used as a robust way to compute cornering speeds.
     // Let a circle be tangent to both previous and current path line segments, where the junction 
     // deviation is defined as the distance from the junction to the closest edge of the circle, 
     // colinear with the circle center. The circular segment joining the two paths represents the 
     // path of centripetal acceleration. Solve for max velocity based on max acceleration about the
     // radius of the circle, defined indirectly by junction deviation. This may be also viewed as 
-    // path width or max_jerk in the previous grbl version.
-    // NOTE: sqrt() removed for speed optimization. Related calculations in terms of square velocity.
-
-    double vmax_junction_sqr = 0.0; // Set default zero max junction speed
+    // path width or max_jerk in the previous grbl version. This approach does not actually deviate 
+    // from path, but used as a robust way to compute cornering speeds, as it takes into account the
+    // nonlinearities of both the junction angle and junction velocity.
+    double vmax_junction = 0.0; // Set default zero max junction speed
 
     // Skip first block or when previous_nominal_speed is used as a flag for homing and offset cycles.
     if ((block_buffer_head != block_buffer_tail) && (previous_nominal_speed > 0.0)) {
@@ -423,25 +412,33 @@ void plan_buffer_line(double x, double y, double z, double feed_rate, uint8_t in
                          - previous_unit_vec[Y_AXIS] * unit_vec[Y_AXIS] 
                          - previous_unit_vec[Z_AXIS] * unit_vec[Z_AXIS] ;
                            
-      // Skip and use default zero max junction speed for 0 degree acute junction.
-      if (cos_theta < 1.0) {
-        vmax_junction_sqr = square( min(previous_nominal_speed,block->nominal_speed) );
+      // Skip and use default max junction speed for 0 degree acute junction.
+      if (cos_theta < 0.95) {
+        vmax_junction = min(previous_nominal_speed,block->nominal_speed);
         // Skip and avoid divide by zero for straight junctions at 180 degrees. Limit to min() of nominal speeds.
-        if (cos_theta > -1.0) {
+        if (cos_theta > -0.95) {
           // Compute maximum junction velocity based on maximum acceleration and junction deviation
           double sin_theta_d2 = sqrt(0.5*(1.0-cos_theta)); // Trig half angle identity. Always positive.
-          vmax_junction_sqr = min(vmax_junction_sqr,
-            settings.acceleration*60*60 * settings.junction_deviation * sin_theta_d2/(1.0-sin_theta_d2) );
+          vmax_junction = min(vmax_junction,
+            sqrt(settings.acceleration*60*60 * settings.junction_deviation * sin_theta_d2/(1.0-sin_theta_d2)) );
         }
       }
     }
-    block->max_entry_speed_sqr = vmax_junction_sqr;
-    block->entry_speed_sqr = vmax_junction_sqr;
+    block->max_entry_speed = vmax_junction;
+    
+    // Initialize block entry speed. Compute based on deceleration to rest (zero speed).
+    double v_allowable = max_allowable_speed(-settings.acceleration,0.0,block->millimeters);
+    block->entry_speed = min(vmax_junction, v_allowable);
 
     // Initialize planner efficiency flags
-    // Set flag if block will always reach nominal speed regardless of entry/exit speeds.
-    if (block->nominal_speed <= sqrt(max_allowable_speed_sqr(-settings.acceleration,0.0,0.5*block->millimeters)) ) 
-      { block->nominal_length_flag = true; }
+    // Set flag if block will always reach maximum junction speed regardless of entry/exit speeds.
+    // If a block can de/ac-celerate from nominal speed to zero within the length of the block, then
+    // the current block and next block junction speeds are guaranteed to always be at their maximum
+    // junction speeds in deceleration and acceleration, respectively. This is due to how the current
+    // block nominal speed limits both the current and next maximum junction speeds. Hence, in both
+    // the reverse and forward planners, the corresponding block junction speed will always be at the
+    // the maximum junction speed and may always be ignored for any speed reduction checks.
+    if (block->nominal_speed <= v_allowable) { block->nominal_length_flag = true; }
     else { block->nominal_length_flag = false; }
     block->recalculate_flag = true; // Always calculate trapezoid for new block
   
@@ -471,6 +468,7 @@ void plan_buffer_line(double x, double y, double z, double feed_rate, uint8_t in
 void plan_set_current_position(double x, double y, double z) {
   position[X_AXIS] = lround(x*settings.steps_per_mm[X_AXIS]);
   position[Y_AXIS] = lround(y*settings.steps_per_mm[Y_AXIS]);
-  position[Z_AXIS] = lround(z*settings.steps_per_mm[Z_AXIS]);     
-  previous_nominal_speed = 0.0;
+  position[Z_AXIS] = lround(z*settings.steps_per_mm[Z_AXIS]);    
+  previous_nominal_speed = 0.0; // Resets planner junction speeds. Assumes start from rest.
+  clear_vector_double(previous_unit_vec);
 }

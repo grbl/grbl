@@ -3,7 +3,7 @@
   Part of Grbl
 
   Copyright (c) 2009-2011 Simen Svale Skogsrud
-  Modifications Copyright (c) 2011 Sungeun (Sonny) Jeon
+  Copyright (c) 2011 Sungeun K. Jeon
   
   Grbl is free software: you can redistribute it and/or modify
   it under the terms of the GNU General Public License as published by
@@ -41,7 +41,7 @@
 // the direction of helical travel, radius == circle radius, clockwise_sign == -1 or 1. Used
 // for vector transformation direction.
 void mc_arc(double *position, double *target, double *offset, uint8_t axis_0, uint8_t axis_1,
-  uint8_t axis_linear, double feed_rate, uint8_t invert_feed_rate, double radius, int8_t clockwise_sign);
+  uint8_t axis_linear, double feed_rate, uint8_t invert_feed_rate, double radius, int8_t isclockwise);
 #endif
   
 // Dwell for a couple of time units

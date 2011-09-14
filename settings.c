@@ -3,7 +3,7 @@
   Part of Grbl
 
   Copyright (c) 2009-2011 Simen Svale Skogsrud
-  Modifications Copyright (c) 2011 Sungeun (Sonny) Jeon  
+  Copyright (c) 2011 Sungeun Jeon  
 
   Grbl is free software: you can redistribute it and/or modify
   it under the terms of the GNU General Public License as published by
@@ -52,7 +52,7 @@ typedef struct {
 #define DEFAULT_RAPID_FEEDRATE 500.0 // in millimeters per minute
 #define DEFAULT_FEEDRATE 500.0
 #define DEFAULT_ACCELERATION (DEFAULT_FEEDRATE/10.0)
-#define DEFAULT_JUNCTION_DEVIATION 0.1
+#define DEFAULT_JUNCTION_DEVIATION 0.05
 #define DEFAULT_STEPPING_INVERT_MASK ((1<<X_STEP_BIT)|(1<<Y_STEP_BIT)|(1<<Z_STEP_BIT))
 
 void settings_reset() {
