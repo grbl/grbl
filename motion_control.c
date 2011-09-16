@@ -48,7 +48,7 @@ void mc_dwell(uint32_t milliseconds)
 // The arc is approximated by generating a huge number of tiny, linear segments. The length of each 
 // segment is configured in settings.mm_per_arc_segment.  
 void mc_arc(double *position, double *target, double *offset, uint8_t axis_0, uint8_t axis_1, 
-  uint8_t axis_linear, double feed_rate, uint8_t invert_feed_rate, double radius, int8_t isclockwise)
+  uint8_t axis_linear, double feed_rate, uint8_t invert_feed_rate, double radius, uint8_t isclockwise)
 {      
 //   int acceleration_manager_was_enabled = plan_is_acceleration_manager_enabled();
 //   plan_set_acceleration_manager_enabled(false); // disable acceleration management for the duration of the arc
@@ -106,7 +106,7 @@ void mc_arc(double *position, double *target, double *offset, uint8_t axis_0, ui
   double cos_T = 1-0.5*theta_per_segment*theta_per_segment; // Small angle approximation
   double sin_T = theta_per_segment;
   
-  double trajectory[3];
+  double arc_target[3];
   double sin_Ti;
   double cos_Ti;
   double r_axisi;
@@ -114,7 +114,7 @@ void mc_arc(double *position, double *target, double *offset, uint8_t axis_0, ui
   int8_t count = 0;
 
   // Initialize the linear axis
-  trajectory[axis_linear] = position[axis_linear];
+  arc_target[axis_linear] = position[axis_linear];
 
   for (i = 1; i<segments; i++) { // Increment (segments-1)
     
@@ -134,11 +134,11 @@ void mc_arc(double *position, double *target, double *offset, uint8_t axis_0, ui
       count = 0;
     }
 
-    // Update trajectory location
-    trajectory[axis_0] = center_axis0 + r_axis0;
-    trajectory[axis_1] = center_axis1 + r_axis1;
-    trajectory[axis_linear] += linear_per_segment;
-    plan_buffer_line(trajectory[X_AXIS], trajectory[Y_AXIS], trajectory[Z_AXIS], feed_rate, invert_feed_rate);
+    // Update arc_target location
+    arc_target[axis_0] = center_axis0 + r_axis0;
+    arc_target[axis_1] = center_axis1 + r_axis1;
+    arc_target[axis_linear] += linear_per_segment;
+    plan_buffer_line(arc_target[X_AXIS], arc_target[Y_AXIS], arc_target[Z_AXIS], feed_rate, invert_feed_rate);
     
   }
   // Ensure last segment arrives at target location.

@@ -67,7 +67,8 @@ void serial_init(long baud)
 
 void serial_write(uint8_t data) {
   // Calculate next head
-  uint8_t next_head = (tx_buffer_head + 1) % TX_BUFFER_SIZE;
+  uint8_t next_head = tx_buffer_head + 1;
+  if (next_head == TX_BUFFER_SIZE) { next_head = 0; }
 
   // Wait until there's a space in the buffer
   while (next_head == tx_buffer_tail) { sleep_mode(); };
@@ -90,7 +91,7 @@ SIGNAL(USART_UDRE_vect) {
 
   // Update tail position
   tail ++;
-  tail %= TX_BUFFER_SIZE;
+  if (tail == TX_BUFFER_SIZE) { tail = 0; }
 
   // Turn off Data Register Empty Interrupt to stop tx-streaming if this concludes the transfer
   if (tail == tx_buffer_head) { UCSR0B &= ~(1 << UDRIE0); }
@@ -104,7 +105,8 @@ uint8_t serial_read()
 		return SERIAL_NO_DATA;
 	} else {
 		uint8_t data = rx_buffer[rx_buffer_tail];
-		rx_buffer_tail = (rx_buffer_tail + 1) % RX_BUFFER_SIZE;
+		rx_buffer_tail++;
+		if (rx_buffer_tail == RX_BUFFER_SIZE) { rx_buffer_tail = 0; }
 		return data;
 	}
 }
@@ -112,7 +114,8 @@ uint8_t serial_read()
 SIGNAL(USART_RX_vect)
 {
 	uint8_t data = UDR0;
-	uint8_t next_head = (rx_buffer_head + 1) % RX_BUFFER_SIZE;
+	uint8_t next_head = rx_buffer_head + 1;
+	if (next_head == RX_BUFFER_SIZE) { next_head = 0; }
 
   // Write data to buffer unless it is full.
 	if (next_head != rx_buffer_tail) {

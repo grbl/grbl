@@ -328,7 +328,7 @@ uint8_t gc_execute_line(char *line) {
       }
       
       // Set clockwise/counter-clockwise sign for mc_arc computations
-      int8_t isclockwise = false;
+      uint8_t isclockwise = false;
       if (gc.motion_mode == MOTION_MODE_CW_ARC) { isclockwise = true; }
 
       // Trace the arc
