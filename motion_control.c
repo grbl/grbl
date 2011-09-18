@@ -29,13 +29,21 @@
 #include "stepper.h"
 #include "planner.h"
 
-#define N_ARC_CORRECTION 25    // (0-255) Number of iterations before arc trajectory correction
+// Number of arc generation iterations with small angle approximation before exact arc
+// trajectory correction. Value must be 1-255.
+#define N_ARC_CORRECTION 25 
 
 
-void mc_dwell(uint32_t milliseconds) 
+// Execute dwell in seconds. Maximum time delay is > 18 hours, more than enough for any application.
+void mc_dwell(double seconds) 
 {
-  st_synchronize();
-  _delay_ms(milliseconds);
+   uint16_t i = floor(seconds);
+   st_synchronize();
+   _delay_ms(floor(1000*(seconds-i))); // Delay millisecond remainder
+   while (i > 0) {
+     _delay_ms(1000); // Delay one second
+     i--;
+   }
 }
 
 // Execute an arc in offset mode format. position == current xyz, target == target xyz, 

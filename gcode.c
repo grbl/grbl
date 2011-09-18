@@ -88,8 +88,8 @@ static void select_plane(uint8_t axis_0, uint8_t axis_1, uint8_t axis_2)
 
 void gc_init() {
   memset(&gc, 0, sizeof(gc));
-  gc.feed_rate = settings.default_feed_rate/60;
-  gc.seek_rate = settings.default_seek_rate/60;
+  gc.feed_rate = settings.default_feed_rate;
+  gc.seek_rate = settings.default_seek_rate;
   select_plane(X_AXIS, Y_AXIS, Z_AXIS);
   gc.absolute_mode = true;
 }
@@ -180,13 +180,14 @@ uint8_t gc_execute_line(char *line) {
     unit_converted_value = to_millimeters(value);
     switch(letter) {
       case 'F': 
+      if (unit_converted_value <= 0) { FAIL(STATUS_BAD_NUMBER_FORMAT); } // Must be greater than zero
       if (gc.inverse_feed_rate_mode) {
         inverse_feed_rate = unit_converted_value; // seconds per motion for this motion only
       } else {          
         if (gc.motion_mode == MOTION_MODE_SEEK) {
-          gc.seek_rate = unit_converted_value/60;
+          gc.seek_rate = unit_converted_value;
         } else {
-          gc.feed_rate = unit_converted_value/60; // millimeters pr second
+          gc.feed_rate = unit_converted_value; // millimeters per minute
         }
       }
       break;
@@ -213,7 +214,7 @@ uint8_t gc_execute_line(char *line) {
   // Perform any physical actions
   switch (next_action) {
     case NEXT_ACTION_GO_HOME: mc_go_home(); clear_vector(gc.position); break;
-    case NEXT_ACTION_DWELL: mc_dwell(trunc(p*1000)); break;   
+    case NEXT_ACTION_DWELL: mc_dwell(p); break;   
     case NEXT_ACTION_SET_COORDINATE_OFFSET: 
     mc_set_current_position(target[X_AXIS], target[Y_AXIS], target[Z_AXIS]);
     break;

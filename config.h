@@ -55,6 +55,11 @@
 
 // The temporal resolution of the acceleration management subsystem. Higher number
 // give smoother acceleration but may impact performance
+// NOTE: Increasing this parameter will help remove the long slow motion bug at the end
+// of very fast de/ac-celerations. This is due to the increased resolution of the 
+// acceleration steps that more accurately predicted by the planner exact integration
+// of acceleration distance. An efficient solution to this bug is under investigation.
+// In general, setting this parameter is high as your system will allow is suggested.
 #define ACCELERATION_TICKS_PER_SECOND 40L
 
 #endif

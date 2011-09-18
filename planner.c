@@ -48,8 +48,6 @@ static double previous_nominal_speed;   // Nominal speed of previous path line s
 
 static uint8_t acceleration_manager_enabled;   // Acceleration management active?
 
-#define ONE_MINUTE_OF_MICROSECONDS 60000000.0
-
 
 // Returns the index of the next block in the ring buffer
 // NOTE: Removed modulo (%) operator, which uses an expensive divide and multiplication.
@@ -62,8 +60,8 @@ static int8_t next_block_index(int8_t block_index) {
 
 // Returns the index of the previous block in the ring buffer
 static int8_t prev_block_index(int8_t block_index) {
-  if (block_index == 0) { block_index = BLOCK_BUFFER_SIZE-1; }
-  else { block_index--; }
+  if (block_index == 0) { block_index = BLOCK_BUFFER_SIZE; }
+  block_index--;
   return(block_index);
 }
 
@@ -197,9 +195,9 @@ static void planner_forward_pass() {
 // This converts the planner parameters to the data required by the stepper controller.
 static void calculate_trapezoid_for_block(block_t *block, double entry_factor, double exit_factor) {
   
-  block->initial_rate = ceil(block->nominal_rate*entry_factor);
-  block->final_rate = ceil(block->nominal_rate*exit_factor);
-  int32_t acceleration_per_minute = block->rate_delta*ACCELERATION_TICKS_PER_SECOND*60.0;
+  block->initial_rate = ceil(block->nominal_rate*entry_factor); // (step/min)
+  block->final_rate = ceil(block->nominal_rate*exit_factor); // (step/min)
+  int32_t acceleration_per_minute = block->rate_delta*ACCELERATION_TICKS_PER_SECOND*60.0; // (step/min^2)
   int32_t accelerate_steps = 
     ceil(estimate_acceleration_distance(block->initial_rate, block->nominal_rate, acceleration_per_minute));
   int32_t decelerate_steps = 
@@ -356,42 +354,38 @@ void plan_buffer_line(double x, double y, double z, double feed_rate, uint8_t in
   delta_mm[Z_AXIS] = (target[Z_AXIS]-position[Z_AXIS])/settings.steps_per_mm[Z_AXIS];
   block->millimeters = sqrt(square(delta_mm[X_AXIS]) + square(delta_mm[Y_AXIS]) + 
                             square(delta_mm[Z_AXIS]));
-	
-  uint32_t microseconds;
+  double inverse_millimeters = 1.0/block->millimeters;  // Inverse millimeters to remove multiple divides	
+  
+  // Calculate speed in mm/minute for each axis. No divide by zero due to previous checks.
+  // NOTE: Minimum stepper speed is limited by MINIMUM_STEPS_PER_MINUTE in stepper.c
+  double inverse_minute;
   if (!invert_feed_rate) {
-    microseconds = lround((block->millimeters/feed_rate)*1000000);
+    inverse_minute = feed_rate * inverse_millimeters;
   } else {
-    microseconds = lround(ONE_MINUTE_OF_MICROSECONDS/feed_rate);
+    inverse_minute = 1.0 / feed_rate;
   }
+  block->nominal_speed = block->millimeters * inverse_minute; // (mm/min) Always > 0
+  block->nominal_rate = ceil(block->step_event_count * inverse_minute); // (step/min) Always > 0
   
-  // Calculate speed in mm/minute for each axis
-  double multiplier = 60.0*1000000.0/microseconds;
-  block->nominal_speed = block->millimeters * multiplier;
-  block->nominal_rate = ceil(block->step_event_count * multiplier);  
-  
-  // This is a temporary fix to avoid a situation where very low nominal_speeds would be rounded 
-  // down to zero and cause a division by zero. TODO: Grbl deserves a less patchy fix for this problem
-  if (block->nominal_speed < 60.0) { block->nominal_speed = 60.0; }
-
   // Compute the acceleration rate for the trapezoid generator. Depending on the slope of the line
   // average travel per step event changes. For a line along one axis the travel per step event
   // is equal to the travel/step in the particular axis. For a 45 degree line the steppers of both
   // axes might step for every step event. Travel per step event is then sqrt(travel_x^2+travel_y^2).
   // To generate trapezoids with contant acceleration between blocks the rate_delta must be computed 
   // specifically for each line to compensate for this phenomenon:
-  double step_per_travel = block->step_event_count/block->millimeters; // Compute inverse to remove divide
-  block->rate_delta = step_per_travel * ceil(                        // convert to: acceleration steps/min/acceleration_tick    
-    settings.acceleration*60.0 / ACCELERATION_TICKS_PER_SECOND );    // acceleration mm/sec/sec per acceleration_tick
+  // Convert universal acceleration for direction-dependent stepper rate change parameter
+  block->rate_delta = ceil( block->step_event_count*inverse_millimeters *  
+        settings.acceleration*60.0 / ACCELERATION_TICKS_PER_SECOND ); // (step/min/acceleration_tick)
 
   // Perform planner-enabled calculations
   if (acceleration_manager_enabled) {  
   
     // Compute path unit vector                            
     double unit_vec[3];
-    double inv_millimeters = 1.0/block->millimeters;  // Inverse millimeters to remove multiple divides
-    unit_vec[X_AXIS] = delta_mm[X_AXIS]*inv_millimeters;
-    unit_vec[Y_AXIS] = delta_mm[Y_AXIS]*inv_millimeters;
-    unit_vec[Z_AXIS] = delta_mm[Z_AXIS]*inv_millimeters;  
+
+    unit_vec[X_AXIS] = delta_mm[X_AXIS]*inverse_millimeters;
+    unit_vec[Y_AXIS] = delta_mm[Y_AXIS]*inverse_millimeters;
+    unit_vec[Z_AXIS] = delta_mm[Z_AXIS]*inverse_millimeters;  
   
     // Compute maximum allowable entry speed at junction by centripetal acceleration approximation.
     // Let a circle be tangent to both previous and current path line segments, where the junction 
