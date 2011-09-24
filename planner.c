@@ -193,6 +193,7 @@ static void planner_forward_pass() {
 // Calculates trapezoid parameters so that the entry- and exit-speed is compensated by the provided factors.
 // The factors represent a factor of braking and must be in the range 0.0-1.0.
 // This converts the planner parameters to the data required by the stepper controller.
+// NOTE: Final rates must be computed in terms of their respective blocks.
 static void calculate_trapezoid_for_block(block_t *block, double entry_factor, double exit_factor) {
   
   block->initial_rate = ceil(block->nominal_rate*entry_factor); // (step/min)
@@ -212,6 +213,8 @@ static void calculate_trapezoid_for_block(block_t *block, double entry_factor, d
   if (plateau_steps < 0) {  
     accelerate_steps = ceil(
       intersection_distance(block->initial_rate, block->final_rate, acceleration_per_minute, block->step_event_count));
+    accelerate_steps = max(accelerate_steps,0); // Check limits due to numerical round-off
+    accelerate_steps = min(accelerate_steps,block->step_event_count);
     plateau_steps = 0;
   }  
   
@@ -251,8 +254,9 @@ static void planner_recalculate_trapezoids() {
     }
     block_index = next_block_index( block_index );
   }
-  // Last/newest block in buffer. Exit speed is zero. Always recalculated.
-  calculate_trapezoid_for_block(next, next->entry_speed/next->nominal_speed, 0.0);
+  // Last/newest block in buffer. Exit speed is set with MINIMUM_PLANNER_SPEED. Always recalculated.
+  calculate_trapezoid_for_block(next, next->entry_speed/next->nominal_speed,
+    MINIMUM_PLANNER_SPEED/next->nominal_speed);
   next->recalculate_flag = false;
 }
 
@@ -273,6 +277,9 @@ static void planner_recalculate_trapezoids() {
 //
 //   3. Recalculate trapezoids for all blocks using the recently updated junction speeds. Block trapezoids
 //      with no updated junction speeds will not be recalculated and assumed ok as is.
+//
+// All planner computations are performed with doubles (float on Arduinos) to minimize numerical round-
+// off errors. Only when planned values are converted to stepper rate parameters, these are integers.
 
 static void planner_recalculate() {     
   planner_reverse_pass();
@@ -396,7 +403,7 @@ void plan_buffer_line(double x, double y, double z, double feed_rate, uint8_t in
     // path width or max_jerk in the previous grbl version. This approach does not actually deviate 
     // from path, but used as a robust way to compute cornering speeds, as it takes into account the
     // nonlinearities of both the junction angle and junction velocity.
-    double vmax_junction = 0.0; // Set default zero max junction speed
+    double vmax_junction = MINIMUM_PLANNER_SPEED; // Set default max junction speed
 
     // Skip first block or when previous_nominal_speed is used as a flag for homing and offset cycles.
     if ((block_buffer_head != block_buffer_tail) && (previous_nominal_speed > 0.0)) {
@@ -420,8 +427,8 @@ void plan_buffer_line(double x, double y, double z, double feed_rate, uint8_t in
     }
     block->max_entry_speed = vmax_junction;
     
-    // Initialize block entry speed. Compute based on deceleration to rest (zero speed).
-    double v_allowable = max_allowable_speed(-settings.acceleration,0.0,block->millimeters);
+    // Initialize block entry speed. Compute based on deceleration to user-defined MINIMUM_PLANNER_SPEED.
+    double v_allowable = max_allowable_speed(-settings.acceleration,MINIMUM_PLANNER_SPEED,block->millimeters);
     block->entry_speed = min(vmax_junction, v_allowable);
 
     // Initialize planner efficiency flags

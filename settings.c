@@ -80,7 +80,7 @@ void settings_dump() {
   printPgmString(PSTR(" (step port invert mask. binary = ")); printIntegerInBase(settings.invert_mask, 2);  
   printPgmString(PSTR(")\r\n$8 = ")); printFloat(settings.acceleration);
   printPgmString(PSTR(" (acceleration in mm/sec^2)\r\n$9 = ")); printFloat(settings.junction_deviation);
-  printPgmString(PSTR(" (junction deviation for cornering in mm)"));
+  printPgmString(PSTR(" (cornering junction deviation in mm)"));
   printPgmString(PSTR("\r\n'$x=value' to set parameter or just '$' to dump current settings\r\n"));
 }
 
@@ -125,11 +125,17 @@ int read_settings() {
       return(false);
     }
   } else if (version == 1) {
-    // Migrate from old settings version
+    // Migrate from settings version 1
     if (!(memcpy_from_eeprom_with_checksum((char*)&settings, 1, sizeof(settings_v1_t)))) {
       return(false);
     }
     settings.acceleration = DEFAULT_ACCELERATION;
+    settings.junction_deviation = DEFAULT_JUNCTION_DEVIATION;
+  } else if (version == 2) {
+    // Migrate from settings version 2
+    if (!(memcpy_from_eeprom_with_checksum((char*)&settings, 1, sizeof(settings_t)))) {
+      return(false);
+    }
     settings.junction_deviation = DEFAULT_JUNCTION_DEVIATION;
   } else {      
     return(false);

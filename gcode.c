@@ -389,4 +389,3 @@ static int next_statement(char *letter, double *double_ptr, char *line, uint8_t 
    group 12 = {G54, G55, G56, G57, G58, G59, G59.1, G59.2, G59.3} coordinate system selection
    group 13 = {G61, G61.1, G64} path control mode
 */
-

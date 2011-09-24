@@ -3,6 +3,7 @@
   Part of Grbl
 
   Copyright (c) 2009-2011 Simen Svale Skogsrud
+  Copyright (c) 2011 Sungeun K. Jeon
 
   Grbl is free software: you can redistribute it and/or modify
   it under the terms of the GNU General Public License as published by
@@ -20,6 +21,8 @@
 
 #ifndef config_h
 #define config_h
+
+// IMPORTANT: Any changes here requires a full re-compiling of the source code to propagate them.
 
 #define BAUD_RATE 9600
 
@@ -55,12 +58,32 @@
 
 // The temporal resolution of the acceleration management subsystem. Higher number
 // give smoother acceleration but may impact performance
-// NOTE: Increasing this parameter will help remove the long slow motion bug at the end
-// of very fast de/ac-celerations. This is due to the increased resolution of the 
-// acceleration steps that more accurately predicted by the planner exact integration
-// of acceleration distance. An efficient solution to this bug is under investigation.
-// In general, setting this parameter is high as your system will allow is suggested.
-#define ACCELERATION_TICKS_PER_SECOND 40L
+// NOTE: Increasing this parameter will help any resolution related issues, especially with machines 
+// requiring very high accelerations and/or very fast feedrates. In general, this will reduce the 
+// error between how the planner plans the motions and how the stepper program actually performs them.
+// However, at some point, the resolution can be high enough, where the errors related to numerical 
+// round-off can be great enough to cause problems and/or it's too fast for the Arduino. The correct
+// value for this parameter is machine dependent, so it's advised to set this only as high as needed.
+// Approximate successful values can range from 30L to 100L or more.
+#define ACCELERATION_TICKS_PER_SECOND 50L
+
+// Minimum planner junction speed. Sets the default minimum speed the planner plans for at the end
+// of the buffer and all stops. This should not be much greater than zero and should only be changed
+// if unwanted behavior is observed on a user's machine when running at very slow speeds.
+#define MINIMUM_PLANNER_SPEED 0.0 // (mm/min)
+
+// Minimum stepper rate. Sets the absolute minimum stepper rate in the stepper program and never run
+// slower than this value, except when sleeping. This parameter overrides the minimum planner speed.
+// This is primarily used to guarantee that the end of a movement is always reached and not stop to
+// never reach its target. This parameter should always be greater than zero.
+#define MINIMUM_STEPS_PER_MINUTE 800 // (steps/min) - Integer value only
+
+// Number of arc generation iterations by small angle approximation before exact arc
+// trajectory correction. Value must be 1-255. This parameter maybe decreased if there are issues
+// with the accuracy of the arc generations. In general, the default value is more than enough for
+// the intended CNC applications of grbl, and should be on the order or greater than the size of
+// the buffer to help with the computational efficiency of generating arcs.
+#define N_ARC_CORRECTION 25 
 
 #endif
 
@@ -92,4 +115,3 @@
 // #define SPINDLE_DIRECTION_DDR DDRD
 // #define SPINDLE_DIRECTION_PORT PORTD
 // #define SPINDLE_DIRECTION_BIT 7
-

@@ -21,6 +21,7 @@
 
 #include <avr/io.h>
 #include "settings.h"
+#include "config.h"
 #include "motion_control.h"
 #include <util/delay.h>
 #include <math.h>
@@ -28,11 +29,6 @@
 #include "nuts_bolts.h"
 #include "stepper.h"
 #include "planner.h"
-
-// Number of arc generation iterations with small angle approximation before exact arc
-// trajectory correction. Value must be 1-255.
-#define N_ARC_CORRECTION 25 
-
 
 // Execute dwell in seconds. Maximum time delay is > 18 hours, more than enough for any application.
 void mc_dwell(double seconds) 
@@ -48,7 +44,7 @@ void mc_dwell(double seconds)
 
 // Execute an arc in offset mode format. position == current xyz, target == target xyz, 
 // offset == offset from current xyz, axis_XXX defines circle plane in tool space, axis_linear is
-// the direction of helical travel, radius == circle radius, clockwise_sign == -1 or 1. Used
+// the direction of helical travel, radius == circle radius, isclockwise boolean. Used
 // for vector transformation direction.
 // position, target, and offset are pointers to vectors from gcode.c
 
