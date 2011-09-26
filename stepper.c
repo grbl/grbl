@@ -71,8 +71,8 @@ static uint32_t trapezoid_adjusted_rate;      // The current rate of step_events
 //  The trapezoid is the shape the speed curve over time. It starts at block->initial_rate, accelerates by block->rate_delta
 //  during the first block->accelerate_until step_events_completed, then keeps going at constant speed until 
 //  step_events_completed reaches block->decelerate_after after which it decelerates until the trapezoid generator is reset.
-//  The slope of acceleration is always +/- block->rate_delta and is applied at a constant rate by trapezoid_generator_tick()
-//  that is called ACCELERATION_TICKS_PER_SECOND times per second.
+//  The slope of acceleration is always +/- block->rate_delta and is applied at a constant rate following the midpoint rule
+//  by the trapezoid generator, which is called ACCELERATION_TICKS_PER_SECOND times per second.
 
 static void set_step_events_per_minute(uint32_t steps_per_minute);
 
@@ -171,12 +171,10 @@ SIGNAL(TIMER1_COMPA_vect)
 
     // While in block steps, check for de/ac-celeration events and execute them accordingly.
     if (step_events_completed < current_block->step_event_count) {
-
-      // Always check step event location to ensure de/ac-celerations are executed and terminated at
-      // exactly the right time. This helps prevent over/under-shooting the target position and speed.
-      // Trapezoid de/ac-celeration is approximated by discrete increases or decreases in velocity, 
-      // defined by ACCELERATION_TICKS_PER_SECOND and block->rate_delta. The accelerations employ the
-      // midpoint rule to obtain an accurate representation of the exact acceleration curve. 
+      
+      // The trapezoid generator always checks step event location to ensure de/ac-celerations are 
+      // executed and terminated at exactly the right time. This helps prevent over/under-shooting
+      // the target position and speed. 
       
       // NOTE: By increasing the ACCELERATION_TICKS_PER_SECOND in config.h, the resolution of the 
       // discrete velocity changes increase and accuracy can increase as well to a point. Numerical 
@@ -193,31 +191,32 @@ SIGNAL(TIMER1_COMPA_vect)
           }
           set_step_events_per_minute(trapezoid_adjusted_rate);
         }
-      } else if (step_events_completed > current_block->decelerate_after) {
-        // Iterate cycle counter and check if speeds need to be reduced.
-        if ( iterate_trapezoid_cycle_counter() ) {  
-          // NOTE: We will only reduce speed if the result will be > 0. This catches small
-          // rounding errors that might leave steps hanging after the last trapezoid tick.
-          if (trapezoid_adjusted_rate > current_block->rate_delta) {
-            trapezoid_adjusted_rate -= current_block->rate_delta;
+      } else if (step_events_completed >= current_block->decelerate_after) {
+        // Reset trapezoid tick cycle counter to make sure that the deceleration is performed the
+        // same every time. Reset to CYCLES_PER_ACCELERATION_TICK/2 to follow the midpoint rule for
+        // an accurate approximation of the deceleration curve.
+        if (step_events_completed == current_block-> decelerate_after) {
+          trapezoid_tick_cycle_counter = CYCLES_PER_ACCELERATION_TICK/2;
+        } else {
+          // Iterate cycle counter and check if speeds need to be reduced.
+          if ( iterate_trapezoid_cycle_counter() ) {  
+            // NOTE: We will only reduce speed if the result will be > 0. This catches small
+            // rounding errors that might leave steps hanging after the last trapezoid tick.
+            if (trapezoid_adjusted_rate > current_block->rate_delta) {
+              trapezoid_adjusted_rate -= current_block->rate_delta;
+            }
+            if (trapezoid_adjusted_rate < current_block->final_rate) {
+              // Reached final rate a little early. Cruise to end of block at final rate.
+              trapezoid_adjusted_rate = current_block->final_rate;
+            }
+            set_step_events_per_minute(trapezoid_adjusted_rate);
           }
-          if (trapezoid_adjusted_rate < current_block->final_rate) {
-            // Reached final rate a little early. Cruise to end of block at final rate.
-            trapezoid_adjusted_rate = current_block->final_rate;
-          }
-          set_step_events_per_minute(trapezoid_adjusted_rate);
         }
       } else {
-        // No accelerations. Make sure we cruise exactly at nominal rate.
+        // No accelerations. Make sure we cruise exactly at the nominal rate.
         if (trapezoid_adjusted_rate != current_block->nominal_rate) {
           trapezoid_adjusted_rate = current_block->nominal_rate;
           set_step_events_per_minute(trapezoid_adjusted_rate);
-        }
-        // Check to reset trapezoid tick cycle counter to make sure that the deceleration is 
-        // performed the same every time. Reset to CYCLES_PER_ACCELERATION_TICK/2 to follow the 
-        // midpoint rule for an accurate approximation of the deceleration curve.
-        if (step_events_completed >= current_block-> decelerate_after) {
-          trapezoid_tick_cycle_counter = CYCLES_PER_ACCELERATION_TICK/2;
         }
       }
             
