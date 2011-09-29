@@ -84,6 +84,9 @@ void st_wake_up() {
 }
 
 static void st_go_idle() {
+  // Force stepper dwell to lock axes for a defined amount of time to ensure the axes come to a complete
+  // stop and not drift from residual inertial forces at the end of the last movement.
+  _delay_ms(STEPPER_IDLE_LOCK_TIME);   
   // Disable steppers by setting stepper disable
   STEPPERS_DISABLE_PORT |= (1<<STEPPERS_DISABLE_BIT);
   // Disable stepper driver interrupt
