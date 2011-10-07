@@ -207,7 +207,10 @@ SIGNAL(TIMER1_COMPA_vect)
           if ( iterate_trapezoid_cycle_counter() ) {  
             // NOTE: We will only reduce speed if the result will be > 0. This catches small
             // rounding errors that might leave steps hanging after the last trapezoid tick.
-            if (trapezoid_adjusted_rate > current_block->rate_delta) {
+            // The if statement performs a bit shift multiply by 2 to gauge when to begin
+            // adjusting the rate by half increments. Prevents the long slope at the end of
+            // deceleration issue that occurs in certain cases.
+            if ((trapezoid_adjusted_rate << 1) > current_block->rate_delta) {
               trapezoid_adjusted_rate -= current_block->rate_delta;
             } else {
               trapezoid_adjusted_rate >>= 1; // Bit shift divide by 2
