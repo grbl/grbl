@@ -86,7 +86,9 @@ void st_wake_up() {
 static void st_go_idle() {
   // Force stepper dwell to lock axes for a defined amount of time to ensure the axes come to a complete
   // stop and not drift from residual inertial forces at the end of the last movement.
-  _delay_ms(STEPPER_IDLE_LOCK_TIME);   
+  #if STEPPER_IDLE_LOCK_TIME
+    _delay_ms(STEPPER_IDLE_LOCK_TIME);   
+  #endif
   // Disable steppers by setting stepper disable
   STEPPERS_DISABLE_PORT |= (1<<STEPPERS_DISABLE_BIT);
   // Disable stepper driver interrupt
@@ -207,6 +209,8 @@ SIGNAL(TIMER1_COMPA_vect)
             // rounding errors that might leave steps hanging after the last trapezoid tick.
             if (trapezoid_adjusted_rate > current_block->rate_delta) {
               trapezoid_adjusted_rate -= current_block->rate_delta;
+            } else {
+              trapezoid_adjusted_rate >>= 1; // Bit shift divide by 2
             }
             if (trapezoid_adjusted_rate < current_block->final_rate) {
               // Reached final rate a little early. Cruise to end of block at final rate.
