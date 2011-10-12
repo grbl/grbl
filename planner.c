@@ -97,7 +97,7 @@ static double intersection_distance(double initial_rate, double final_rate, doub
 // in time critical computations, i.e. arcs or rapid short lines from curves. Guaranteed to not exceed
 // BLOCK_BUFFER_SIZE calls per planner cycle.
 static double max_allowable_speed(double acceleration, double target_velocity, double distance) {
-  return( sqrt(target_velocity*target_velocity-2*acceleration*60*60*distance) );
+  return( sqrt(target_velocity*target_velocity-2*acceleration*distance) );
 }
 
 
@@ -203,7 +203,7 @@ static void calculate_trapezoid_for_block(block_t *block, double entry_factor, d
     ceil(estimate_acceleration_distance(block->initial_rate, block->nominal_rate, acceleration_per_minute));
   int32_t decelerate_steps = 
     floor(estimate_acceleration_distance(block->nominal_rate, block->final_rate, -acceleration_per_minute));
-
+    
   // Calculate the size of Plateau of Nominal Rate. 
   int32_t plateau_steps = block->step_event_count-accelerate_steps-decelerate_steps;
   
@@ -382,7 +382,7 @@ void plan_buffer_line(double x, double y, double z, double feed_rate, uint8_t in
   // specifically for each line to compensate for this phenomenon:
   // Convert universal acceleration for direction-dependent stepper rate change parameter
   block->rate_delta = ceil( block->step_event_count*inverse_millimeters *  
-        settings.acceleration*60.0 / ACCELERATION_TICKS_PER_SECOND ); // (step/min/acceleration_tick)
+        settings.acceleration / (60 * ACCELERATION_TICKS_PER_SECOND )); // (step/min/acceleration_tick)
 
   // Perform planner-enabled calculations
   if (acceleration_manager_enabled) {  
@@ -421,7 +421,7 @@ void plan_buffer_line(double x, double y, double z, double feed_rate, uint8_t in
           // Compute maximum junction velocity based on maximum acceleration and junction deviation
           double sin_theta_d2 = sqrt(0.5*(1.0-cos_theta)); // Trig half angle identity. Always positive.
           vmax_junction = min(vmax_junction,
-            sqrt(settings.acceleration*60*60 * settings.junction_deviation * sin_theta_d2/(1.0-sin_theta_d2)) );
+            sqrt(settings.acceleration * settings.junction_deviation * sin_theta_d2/(1.0-sin_theta_d2)) );
         }
       }
     }
@@ -462,7 +462,7 @@ void plan_buffer_line(double x, double y, double z, double feed_rate, uint8_t in
   memcpy(position, target, sizeof(target)); // position[] = target[]
 
   if (acceleration_manager_enabled) { planner_recalculate(); }  
-  st_wake_up();
+  st_cycle_start();
 }
 
 // Reset the planner position vector and planner speed

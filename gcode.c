@@ -116,9 +116,6 @@ uint8_t gc_execute_line(char *line) {
   
   double p = 0, r = 0;
   int int_value;
-  
-  clear_vector(target);
-  clear_vector(offset);
 
   gc.status_code = STATUS_OK;
   
@@ -171,6 +168,7 @@ uint8_t gc_execute_line(char *line) {
   if (gc.status_code) { return(gc.status_code); }
 
   char_counter = 0;
+  clear_vector(target);
   clear_vector(offset);
   memcpy(target, gc.position, sizeof(target)); // i.e. target = gc.position
 

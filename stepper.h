@@ -38,8 +38,7 @@ void st_synchronize();
 // Execute the homing cycle
 void st_go_home();
              
-// The stepper subsystem goes to sleep when it runs out of things to execute. Call this
-// to notify the subsystem that it is time to go to work.
-void st_wake_up();
+// Notify the stepper subsystem to start executing the g-code program in buffer.
+void st_cycle_start();
 
 #endif

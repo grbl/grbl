@@ -49,10 +49,10 @@ typedef struct {
 #define DEFAULT_Z_STEPS_PER_MM (94.488188976378*MICROSTEPS)
 #define DEFAULT_STEP_PULSE_MICROSECONDS 30
 #define DEFAULT_MM_PER_ARC_SEGMENT 0.1
-#define DEFAULT_RAPID_FEEDRATE 500.0 // in millimeters per minute
+#define DEFAULT_RAPID_FEEDRATE 500.0 // mm/min
 #define DEFAULT_FEEDRATE 500.0
-#define DEFAULT_ACCELERATION (DEFAULT_FEEDRATE/10.0)
-#define DEFAULT_JUNCTION_DEVIATION 0.05
+#define DEFAULT_ACCELERATION (DEFAULT_FEEDRATE*60*60/10.0) // mm/min^2
+#define DEFAULT_JUNCTION_DEVIATION 0.05 // mm
 #define DEFAULT_STEPPING_INVERT_MASK ((1<<X_STEP_BIT)|(1<<Y_STEP_BIT)|(1<<Z_STEP_BIT))
 
 void settings_reset() {
@@ -78,7 +78,7 @@ void settings_dump() {
   printPgmString(PSTR(" (mm/min default seek rate)\r\n$6 = ")); printFloat(settings.mm_per_arc_segment);
   printPgmString(PSTR(" (mm/arc segment)\r\n$7 = ")); printInteger(settings.invert_mask); 
   printPgmString(PSTR(" (step port invert mask. binary = ")); printIntegerInBase(settings.invert_mask, 2);  
-  printPgmString(PSTR(")\r\n$8 = ")); printFloat(settings.acceleration);
+  printPgmString(PSTR(")\r\n$8 = ")); printFloat(settings.acceleration/(60*60)); // Convert from mm/min^2 for human readability
   printPgmString(PSTR(" (acceleration in mm/sec^2)\r\n$9 = ")); printFloat(settings.junction_deviation);
   printPgmString(PSTR(" (cornering junction deviation in mm)"));
   printPgmString(PSTR("\r\n'$x=value' to set parameter or just '$' to dump current settings\r\n"));
@@ -131,12 +131,15 @@ int read_settings() {
     }
     settings.acceleration = DEFAULT_ACCELERATION;
     settings.junction_deviation = DEFAULT_JUNCTION_DEVIATION;
-  } else if (version == 2) {
-    // Migrate from settings version 2
+    write_settings();
+  } else if ((version == 2) || (version == 3)) {
+    // Migrate from settings version 2 and 3
     if (!(memcpy_from_eeprom_with_checksum((char*)&settings, 1, sizeof(settings_t)))) {
       return(false);
     }
-    settings.junction_deviation = DEFAULT_JUNCTION_DEVIATION;
+    if (version == 2) { settings.junction_deviation = DEFAULT_JUNCTION_DEVIATION; }    
+    settings.acceleration *= 3600; // Convert to mm/min^2 from mm/sec^2
+    write_settings();
   } else {      
     return(false);
   }
@@ -162,7 +165,7 @@ void settings_store_setting(int parameter, double value) {
     case 5: settings.default_seek_rate = value; break;
     case 6: settings.mm_per_arc_segment = value; break;
     case 7: settings.invert_mask = trunc(value); break;
-    case 8: settings.acceleration = value; break;
+    case 8: settings.acceleration = value*60*60; break; // Convert to mm/min^2 for grbl internal use.
     case 9: settings.junction_deviation = fabs(value); break;
     default: 
       printPgmString(PSTR("Unknown parameter\r\n"));

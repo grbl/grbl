@@ -26,11 +26,11 @@
 #include <math.h>
 #include <inttypes.h>
 
-#define GRBL_VERSION "0.7c"
+#define GRBL_VERSION "0.7d"
 
 // Version of the EEPROM data. Will be used to migrate existing data from older versions of Grbl
 // when firmware is upgraded. Always stored in byte 0 of eeprom
-#define SETTINGS_VERSION 3
+#define SETTINGS_VERSION 4
 
 // Current global settings (persisted in EEPROM from byte 1 onwards)
 typedef struct {

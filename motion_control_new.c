@@ -42,6 +42,61 @@ void mc_dwell(double seconds)
    }
 }
 
+// void mc_jog_enable() 
+// {
+//   // Planned sequence of events:
+//   //  Send X,Y,Z motion, target step rate, direction
+//   //   Rate_delta, step_xyz, counter_xyz should be all the same.
+//   //   
+
+// Change of direction can cause some problems. Need to force a complete stop for any direction change.
+// This likely needs to be done in stepper.c as a jog mode parameter. 
+
+// !!! Need a way to get step locations realtime!!!
+// Jog is a specialized case, where grbl is reset and there is no cycle start.
+// If there is a real-time status elsewhere, this shouldn't be a problem.
+
+//     st.direction_bits = current_block->direction_bits;
+//     st.target_rate;
+//     st.rate_delta;
+//     st.step_event_count;
+//     st.steps_x;
+//     st.steps_y;
+//     st.steps_z;
+//     st.counter_x = -(current_block->step_event_count >> 1);
+//     st.counter_y = st.counter_x;
+//     st.counter_z = st.counter_x;
+//     st.step_event_count = current_block->step_event_count;
+//     st.step_events_completed = 0;
+// }
+
+// void mc_jog_disable()
+// {
+//   // Calls stepper.c and disables jog mode to start deceleration.
+//   // Shouldn't have to anything else. Just initiate the stop, so if re-enabled, it can accelerate.
+// }
+
+// void mc_feed_hold()
+// {
+//   // Planned sequence of events:
+//   //   Query stepper for interrupting cycle and hold until pause flag is set?
+//   //   Query stepper intermittenly and check for !st.do_motion to indicate complete stop.
+//   //   Retreive st.step_events_completed and recompute current location.
+//   //   Truncate current block start to current location.
+//   //   Re-plan buffer for start from zero velocity and truncated block length.
+//   //   All necessary computations for a restart should be done by now.
+//   //   Reset pause flag.
+//   //   Only wait for a cycle start command from user interface. (TBD).
+//   //   !!! Need to check how to circumvent the wait in the main program. May need to be in serial.c
+//   //   as an interrupt process call. Can two interrupt programs exist at the same time??
+// }
+
+// Execute an arc in offset mode format. position == current xyz, target == target xyz, 
+// offset == offset from current xyz, axis_XXX defines circle plane in tool space, axis_linear is
+// the direction of helical travel, radius == circle radius, isclockwise boolean. Used
+// for vector transformation direction.
+// position, target, and offset are pointers to vectors from gcode.c
+
 #ifdef __AVR_ATmega328P__
 // The arc is approximated by generating a huge number of tiny, linear segments. The length of each 
 // segment is configured in settings.mm_per_arc_segment.  
