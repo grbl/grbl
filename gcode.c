@@ -211,7 +211,7 @@ uint8_t gc_execute_line(char *line) {
   
   // Perform any physical actions
   switch (next_action) {
-    case NEXT_ACTION_GO_HOME: mc_go_home(); clear_vector(gc.position); break;
+    case NEXT_ACTION_GO_HOME: mc_go_home(); clear_vector(target); break;
     case NEXT_ACTION_DWELL: mc_dwell(p); break;   
     case NEXT_ACTION_SET_COORDINATE_OFFSET: 
     mc_set_current_position(target[X_AXIS], target[Y_AXIS], target[Z_AXIS]);
