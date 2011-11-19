@@ -92,6 +92,8 @@ void st_wake_up() {
 static void st_go_idle() {
   // Cycle finished. Set flag to false.
   cycle_start = false; 
+  // Disable stepper driver interrupt
+  TIMSK1 &= ~(1<<OCIE1A); 
   // Force stepper dwell to lock axes for a defined amount of time to ensure the axes come to a complete
   // stop and not drift from residual inertial forces at the end of the last movement.
   #if STEPPER_IDLE_LOCK_TIME
@@ -99,8 +101,6 @@ static void st_go_idle() {
   #endif
   // Disable steppers by setting stepper disable
   STEPPERS_DISABLE_PORT |= (1<<STEPPERS_DISABLE_BIT);
-  // Disable stepper driver interrupt
-  TIMSK1 &= ~(1<<OCIE1A); 
 }
 
 // Initializes the trapezoid generator from the current block. Called whenever a new 
