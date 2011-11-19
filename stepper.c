@@ -49,7 +49,7 @@ static int32_t counter_x,       // Counter variables for the bresenham line trac
                counter_y, 
                counter_z;       
 static uint32_t step_events_completed; // The number of step events executed in the current block
-static volatile int busy; // true when SIG_OUTPUT_COMPARE1A is being serviced. Used to avoid retriggering that handler.
+static volatile uint8_t busy; // true when SIG_OUTPUT_COMPARE1A is being serviced. Used to avoid retriggering that handler.
 
 // Variables used by the trapezoid generation
 static uint32_t cycles_per_step_event;        // The number of machine cycles between each step event
@@ -79,7 +79,8 @@ static uint8_t cycle_start;     // Cycle start flag to indicate program start an
 static void set_step_events_per_minute(uint32_t steps_per_minute);
 
 // Stepper state initialization
-void st_wake_up() {
+void st_wake_up() 
+{
   // Initialize stepper output bits
   out_bits = (0) ^ (settings.invert_mask);
   // Enable steppers by resetting the stepper disable port
@@ -89,7 +90,8 @@ void st_wake_up() {
 }
 
 // Stepper shutdown
-static void st_go_idle() {
+void st_go_idle() 
+{
   // Cycle finished. Set flag to false.
   cycle_start = false; 
   // Disable stepper driver interrupt
@@ -105,7 +107,8 @@ static void st_go_idle() {
 
 // Initializes the trapezoid generator from the current block. Called whenever a new 
 // block begins.
-static void trapezoid_generator_reset() {
+static void trapezoid_generator_reset() 
+{
   trapezoid_adjusted_rate = current_block->initial_rate;
   min_safe_rate = current_block->rate_delta + (current_block->rate_delta >> 1); // 1.5 x rate_delta
   trapezoid_tick_cycle_counter = CYCLES_PER_ACCELERATION_TICK/2; // Start halfway for midpoint rule.
@@ -115,7 +118,8 @@ static void trapezoid_generator_reset() {
 // This function determines an acceleration velocity change every CYCLES_PER_ACCELERATION_TICK by
 // keeping track of the number of elapsed cycles during a de/ac-celeration. The code assumes that 
 // step_events occur significantly more often than the acceleration velocity iterations.
-static uint8_t iterate_trapezoid_cycle_counter() {
+static uint8_t iterate_trapezoid_cycle_counter() 
+{
   trapezoid_tick_cycle_counter += cycles_per_step_event;  
   if(trapezoid_tick_cycle_counter > CYCLES_PER_ACCELERATION_TICK) {
     trapezoid_tick_cycle_counter -= CYCLES_PER_ACCELERATION_TICK;
@@ -186,16 +190,13 @@ SIGNAL(TIMER1_COMPA_vect)
 
     // While in block steps, check for de/ac-celeration events and execute them accordingly.
     if (step_events_completed < current_block->step_event_count) {
-      
       // The trapezoid generator always checks step event location to ensure de/ac-celerations are 
       // executed and terminated at exactly the right time. This helps prevent over/under-shooting
       // the target position and speed. 
-      
       // NOTE: By increasing the ACCELERATION_TICKS_PER_SECOND in config.h, the resolution of the 
       // discrete velocity changes increase and accuracy can increase as well to a point. Numerical 
       // round-off errors can effect this, if set too high. This is important to note if a user has 
       // very high acceleration and/or feedrate requirements for their machine.
-      
       if (step_events_completed < current_block->accelerate_until) {
         // Iterate cycle counter and check if speeds need to be increased.
         if ( iterate_trapezoid_cycle_counter() ) {
@@ -248,9 +249,7 @@ SIGNAL(TIMER1_COMPA_vect)
       current_block = NULL;
       plan_discard_current_block();
     }
-
   }
-  
   out_bits ^= settings.invert_mask;  // Apply stepper invert mask    
   busy=false;
 }
@@ -306,33 +305,33 @@ static uint32_t config_step_timer(uint32_t cycles)
   uint16_t ceiling;
   uint16_t prescaler;
   uint32_t actual_cycles;
-	if (cycles <= 0xffffL) {
-		ceiling = cycles;
-    prescaler = 0; // prescaler: 0
-    actual_cycles = ceiling;
-	} else if (cycles <= 0x7ffffL) {
-    ceiling = cycles >> 3;
-    prescaler = 1; // prescaler: 8
-    actual_cycles = ceiling * 8L;
-	} else if (cycles <= 0x3fffffL) {
-		ceiling =  cycles >> 6;
-    prescaler = 2; // prescaler: 64
-    actual_cycles = ceiling * 64L;
-	} else if (cycles <= 0xffffffL) {
-		ceiling =  (cycles >> 8);
-    prescaler = 3; // prescaler: 256
-    actual_cycles = ceiling * 256L;
-	} else if (cycles <= 0x3ffffffL) {
-		ceiling = (cycles >> 10);
-    prescaler = 4; // prescaler: 1024
-    actual_cycles = ceiling * 1024L;    
-	} else {
-	  // Okay, that was slower than we actually go. Just set the slowest speed
-		ceiling = 0xffff;
-    prescaler = 4;
-    actual_cycles = 0xffff * 1024;
-	}
-	// Set prescaler
+  if (cycles <= 0xffffL) {
+      ceiling = cycles;
+  prescaler = 0; // prescaler: 0
+  actual_cycles = ceiling;
+  } else if (cycles <= 0x7ffffL) {
+  ceiling = cycles >> 3;
+  prescaler = 1; // prescaler: 8
+  actual_cycles = ceiling * 8L;
+  } else if (cycles <= 0x3fffffL) {
+      ceiling =  cycles >> 6;
+  prescaler = 2; // prescaler: 64
+  actual_cycles = ceiling * 64L;
+  } else if (cycles <= 0xffffffL) {
+      ceiling =  (cycles >> 8);
+  prescaler = 3; // prescaler: 256
+  actual_cycles = ceiling * 256L;
+  } else if (cycles <= 0x3ffffffL) {
+      ceiling = (cycles >> 10);
+  prescaler = 4; // prescaler: 1024
+  actual_cycles = ceiling * 1024L;    
+  } else {
+    // Okay, that was slower than we actually go. Just set the slowest speed
+      ceiling = 0xffff;
+  prescaler = 4;
+  actual_cycles = 0xffff * 1024;
+  }
+  // Set prescaler
   TCCR1B = (TCCR1B & ~(0x07<<CS10)) | ((prescaler+1)<<CS10);
   // Set ceiling
   OCR1A = ceiling;

@@ -4,12 +4,20 @@ Grbl is a no-compromise, high performance, low cost alternative to parallel-port
 
 The controller is written in highly optimized C utilizing every clever feature of the AVR-chips to achieve precise timing and asynchronous operation. It is able to maintain more than 30kHz of stable, jitter free control pulses.
 
-It accepts standards-compliant G-code and has been tested with the output of several CAM tools with no problems. Arcs, circles and helical motion are fully supported - but no support for tool offsets, functions or variables as these are apocryphal and fell into disuse after humans left G-code authoring to machines some time in the 80s.
+It accepts standards-compliant G-code and has been tested with the output of several CAM tools with no problems. Arcs, circles and helical motion are fully supported, as well as, other basic functional g-code commands. Functions and variables are not currently supported, but may be included in future releases in a form of a pre-processor.
 
-Grbl includes full acceleration management with look ahead. That means the controller will look up to 20 motions into the future and plan its velocities ahead to deliver smooth acceleration and jerk-free cornering.
+Grbl includes full acceleration management with look ahead. That means the controller will look up to 16 to 20 motions into the future and plan its velocities ahead to deliver smooth acceleration and jerk-free cornering.
 
-*Important note for Atmega 168 users:* Grbl used to be compatible with both the older Ardunios running atmega 168 and the newer with 328p. The full version of Grbl now compiles without support for circles/arcs if you target 168. If you need arcs, but not acceleration-management I am still maintaining Grbl 0.51 "in the branch called 'v0_51'":https://github.com/simen/grbl/tree/v0_51.
+*Changelog for v0.7 from v0.6:*
+  - Significantly improved and optimized planner re-factoring.
+  - New robust cornering algorithm, enabling smoother and faster motions.
+  - Arc acceleration planning enabled by efficient vector transformation implementation.
+  - Stepper subsystem re-factoring to help remove some motion issues from pre-v0.7 builds.
+  - Increased dwell times.
+  - G92 Coordinate offset support.
+  - (Beta) Limit switch and homing cycle support.
+  - Many other bug fixes and efficiency improvements.
 
-*Note for users upgrading from 0.51 to 0.6:* The new version has new and improved default pin-out. If nothing works when you upgrade, that is because the pulse trains are coming from the wrong pins. This is a simple matter of editing config.h – the whole legacy pin assignment is there for you to uncomment.
+*Important note for Atmega 168 users:* Going forward, support for Atmega 168 will be dropped due to its limited memory and speed. However, legacy Grbl v0.51 "in the branch called 'v0_51' is still available for use.
 
 _The project was initially inspired by the Arduino GCode Interpreter by Mike Ellery_
