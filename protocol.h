@@ -3,6 +3,7 @@
   Part of Grbl
 
   Copyright (c) 2009-2011 Simen Svale Skogsrud
+  Copyright (c) 2011 Sungeun K. Jeon
 
   Grbl is free software: you can redistribute it and/or modify
   it under the terms of the GNU General Public License as published by
@@ -35,5 +36,8 @@ void protocol_process();
 
 // Executes one line of input according to protocol
 uint8_t protocol_execute_line(char *line);
+
+// Checks and executes a runtime command at various stop points in main program
+void protocol_execute_runtime();
 
 #endif

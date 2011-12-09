@@ -25,24 +25,21 @@
 #include <avr/io.h>
 #include "planner.h"
 
-// NOTE: Although the following functions structurally belongs in this module, there is nothing to do but
+// NOTE: Although the following function structurally belongs in this module, there is nothing to do but
 // to forward the request to the planner.
+#define mc_set_current_position(x, y, z) plan_set_current_position(x, y, z) 
 
 // Execute linear motion in absolute millimeter coordinates. Feed rate given in millimeters/second
 // unless invert_feed_rate is true. Then the feed_rate means that the motion should be completed in
 // (1 minute)/feed_rate time.
-#define mc_line(x, y, z, feed_rate, invert_feed_rate) plan_buffer_line(x, y, z, feed_rate, invert_feed_rate) 
+void mc_line(double x, double y, double z, double feed_rate, uint8_t invert_feed_rate);
 
-#define mc_set_current_position(x, y, z) plan_set_current_position(x, y, z) 
-
-#ifdef __AVR_ATmega328P__
 // Execute an arc in offset mode format. position == current xyz, target == target xyz, 
 // offset == offset from current xyz, axis_XXX defines circle plane in tool space, axis_linear is
 // the direction of helical travel, radius == circle radius, isclockwise boolean. Used
 // for vector transformation direction.
 void mc_arc(double *position, double *target, double *offset, uint8_t axis_0, uint8_t axis_1,
   uint8_t axis_linear, double feed_rate, uint8_t invert_feed_rate, double radius, uint8_t isclockwise);
-#endif
   
 // Dwell for a specific number of seconds
 void mc_dwell(double seconds);

@@ -4,6 +4,7 @@
 
   Copyright (c) 2009-2011 Simen Svale Skogsrud
   Copyright (c) 2011 Sungeun K. Jeon
+  Copyright (c) 2011 Jens Geisler
   
   Grbl is free software: you can redistribute it and/or modify
   it under the terms of the GNU General Public License as published by
@@ -29,28 +30,55 @@
 #include "nuts_bolts.h"
 #include "stepper.h"
 #include "planner.h"
+#include "limits.h"
+#include "protocol.h"
 
-// Execute dwell in seconds. Maximum time delay is > 18 hours, more than enough for any application.
-void mc_dwell(double seconds) 
+#include "print.h"
+
+// Execute linear motion in absolute millimeter coordinates. Feed rate given in millimeters/second
+// unless invert_feed_rate is true. Then the feed_rate means that the motion should be completed in
+// (1 minute)/feed_rate time.
+// NOTE: This is the primary gateway to the grbl planner. All line motions, including arc line 
+// segments, must pass through this routine before being passed to the planner. The seperation of
+// mc_line and plan_buffer_line is done primarily to make backlash compensation integration simple
+// and direct.
+// TODO: Check for a better way to avoid having to push the arguments twice for non-backlash cases.
+// However, this keeps the memory requirements lower since it doesn't have to call and hold two 
+// plan_buffer_lines in memory. Grbl only has to retain the original line input variables during a
+// backlash segment(s).
+void mc_line(double x, double y, double z, double feed_rate, uint8_t invert_feed_rate)
 {
-   uint16_t i = floor(seconds);
-   st_synchronize();
-   _delay_ms(floor(1000*(seconds-i))); // Delay millisecond remainder
-   while (i > 0) {
-     _delay_ms(1000); // Delay one second
-     i--;
-   }
+  // TODO: Backlash compensation may be installed here. Only need direction info to track when
+  // to insert a backlash line motion(s) before the intended line motion. Requires its own
+  // plan_check_full_buffer() and check for system abort loop.
+
+  // If the buffer is full: good! That means we are well ahead of the robot. 
+  // Remain in this loop until there is room in the buffer.
+  do {
+    protocol_execute_runtime(); // Check for any run-time commands
+    if (sys_abort) { return; } // Bail, if system abort.
+  } while ( plan_check_full_buffer() );  
+  plan_buffer_line(x, y, z, feed_rate, invert_feed_rate);
+  
+  // Auto-cycle start. 
+  // TODO: Determine a more efficient and robust way of implementing the auto-starting the cycle. 
+  // For example, only auto-starting when the buffer is full; if there was only one g-code command
+  // sent during manual operation; or if there is buffer starvation, making sure it minimizes any
+  // dwelling/motion hiccups. Additionally, these situations must not auto-start during a feed hold.
+  // Only the cycle start runtime command should be able to restart the cycle after a feed hold.
+  st_cycle_start();
 }
 
-#ifdef __AVR_ATmega328P__
+
+// Execute an arc in offset mode format. position == current xyz, target == target xyz, 
+// offset == offset from current xyz, axis_XXX defines circle plane in tool space, axis_linear is
+// the direction of helical travel, radius == circle radius, isclockwise boolean. Used
+// for vector transformation direction.
 // The arc is approximated by generating a huge number of tiny, linear segments. The length of each 
 // segment is configured in settings.mm_per_arc_segment.  
 void mc_arc(double *position, double *target, double *offset, uint8_t axis_0, uint8_t axis_1, 
   uint8_t axis_linear, double feed_rate, uint8_t invert_feed_rate, double radius, uint8_t isclockwise)
 {      
-//   int acceleration_manager_was_enabled = plan_is_acceleration_manager_enabled();
-//   plan_set_acceleration_manager_enabled(false); // disable acceleration management for the duration of the arc
-
   double center_axis0 = position[axis_0] + offset[axis_0];
   double center_axis1 = position[axis_1] + offset[axis_1];
   double linear_travel = target[axis_linear] - position[axis_linear];
@@ -136,17 +164,35 @@ void mc_arc(double *position, double *target, double *offset, uint8_t axis_0, ui
     arc_target[axis_0] = center_axis0 + r_axis0;
     arc_target[axis_1] = center_axis1 + r_axis1;
     arc_target[axis_linear] += linear_per_segment;
-    plan_buffer_line(arc_target[X_AXIS], arc_target[Y_AXIS], arc_target[Z_AXIS], feed_rate, invert_feed_rate);
+    mc_line(arc_target[X_AXIS], arc_target[Y_AXIS], arc_target[Z_AXIS], feed_rate, invert_feed_rate);
     
+    // Bail mid-circle on system abort. Runtime command check already performed by mc_line.
+    if (sys_abort) { return; }
   }
   // Ensure last segment arrives at target location.
-  plan_buffer_line(target[X_AXIS], target[Y_AXIS], target[Z_AXIS], feed_rate, invert_feed_rate);
-
-//   plan_set_acceleration_manager_enabled(acceleration_manager_was_enabled);
+  mc_line(target[X_AXIS], target[Y_AXIS], target[Z_AXIS], feed_rate, invert_feed_rate);
 }
-#endif
 
+
+// Execute dwell in seconds.
+void mc_dwell(double seconds) 
+{
+   uint16_t i = floor(1000/DWELL_TIME_STEP*seconds);
+   plan_synchronize();
+   _delay_ms(floor(1000*seconds-i*DWELL_TIME_STEP)); // Delay millisecond remainder
+   while (i > 0) {
+     // NOTE: Check and execute runtime commands during dwell every <= DWELL_TIME_STEP milliseconds.
+     protocol_execute_runtime();
+     if (sys_abort) { return; }
+     _delay_ms(DWELL_TIME_STEP); // Delay DWELL_TIME_STEP increment
+     i--;
+   }
+}
+
+
+// TODO: Update limits and homing cycle subprograms for better integration with new features.
 void mc_go_home()
 {
-  st_go_home();
+  limits_go_home();  
+  plan_set_current_position(0,0,0);
 }

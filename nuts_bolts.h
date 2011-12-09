@@ -1,5 +1,5 @@
 /*
-  motion_control.h - cartesian robot controller.
+  nuts_bolts.h - Header file for shared definitions, variables, and functions
   Part of Grbl
 
   Copyright (c) 2009-2011 Simen Svale Skogsrud
@@ -36,6 +36,23 @@
 #define clear_vector_double(a) memset(a, 0.0, sizeof(a))
 #define max(a,b) (((a) > (b)) ? (a) : (b))
 #define min(a,b) (((a) < (b)) ? (a) : (b))
+
+// Define system state bit map. Used internally by runtime protocol as runtime command flags.
+// NOTE: The system state is an unsigned 8-bit volatile variable and has a 8 flag limit. The default
+// flags are always false, so the runtime protocol only needs to check for a non-zero state value to 
+// know when there is a runtime command to execute.
+#define BIT_STATUS_REPORT    1 // bit 00000001
+#define BIT_CYCLE_START      2 // bit 00000010
+#define BIT_FEED_HOLD        4 // bit 00000100
+#define BIT_RESET            8 // bit 00001000
+#define BIT_REPLAN_CYCLE    16 // bit 00010000
+// #define                     32 // bit 00100000
+// #define                     64 // bit 01000000
+// #define                    128 // bit 10000000
+
+// Define global system variables
+extern uint8_t sys_abort; // Global system abort flag
+extern volatile uint8_t sys_state; // Global system state variable
 
 // Read a floating point value from a string. Line points to the input buffer, char_counter 
 // is the indexer pointing to the current character of the line, while double_ptr is 

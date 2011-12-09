@@ -20,10 +20,13 @@
 
 #include "spindle_control.h"
 #include "settings.h"
+#include "motion_control.h"
 #include "config.h"
-#include "stepper.h"
+#include "planner.h"
 
 #include <avr/io.h>
+
+// TODO: Deprecated. Need to update for new version.
 
 static int current_direction;
 
@@ -35,7 +38,7 @@ void spindle_init()
 void spindle_run(int direction, uint32_t rpm) 
 {
   if (direction != current_direction) {
-    st_synchronize();
+    plan_synchronize();
     if(direction) {
       if(direction > 0) {
         SPINDLE_DIRECTION_PORT &= ~(1<<SPINDLE_DIRECTION_BIT);

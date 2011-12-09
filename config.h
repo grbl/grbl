@@ -26,9 +26,7 @@
 
 #define BAUD_RATE 9600
 
-// Updated default pin-assignments from 0.6 onwards 
-// (see bottom of file for a copy of the old config)
-
+// Define pin-assignments
 #define STEPPERS_DISABLE_DDR     DDRB
 #define STEPPERS_DISABLE_PORT    PORTB
 #define STEPPERS_DISABLE_BIT         0
@@ -55,6 +53,16 @@
 #define SPINDLE_DIRECTION_DDR DDRB
 #define SPINDLE_DIRECTION_PORT PORTB
 #define SPINDLE_DIRECTION_BIT 5
+
+// Define runtime command special characters. These characters are 'picked-off' directly from the
+// serial read data stream and are not passed to the grbl line execution parser. Select characters
+// that do not and must not exist in the streamed g-code program. ASCII control characters may be 
+// used, if they are available per user setup.
+// TODO: Solidify these default characters. Temporary for now.
+#define CMD_STATUS_REPORT '?'
+#define CMD_FEED_HOLD '!'
+#define CMD_CYCLE_START '~'
+#define CMD_RESET 0x18 // ctrl-x
 
 // This parameter sets the delay time before disabling the steppers after the final block of movement.
 // A short delay ensures the steppers come to a complete stop and the residual inertial force in the 
@@ -94,33 +102,11 @@
 // computational efficiency of generating arcs.
 #define N_ARC_CORRECTION 25 // Integer (1-255)
 
+// Time delay increments performed during a dwell. The default value is set at 50ms, which provides
+// a maximum time delay of roughly 55 minutes, more than enough for most any application. Increasing
+// this delay will increase the maximum dwell time linearly, but also reduces the responsiveness of 
+// run-time command executions, like status reports, since these are performed between each dwell 
+// time step. Also, keep in mind that the Arduino delay timer is not very accurate for long delays.
+#define DWELL_TIME_STEP 50 // Integer (milliseconds)
+
 #endif
-
-// Pin-assignments from Grbl 0.5
-
-// #define STEPPERS_DISABLE_DDR     DDRD
-// #define STEPPERS_DISABLE_PORT    PORTD
-// #define STEPPERS_DISABLE_BIT         2
-// 
-// #define STEPPING_DDR       DDRC
-// #define STEPPING_PORT      PORTC 
-// #define X_STEP_BIT           0
-// #define Y_STEP_BIT           1
-// #define Z_STEP_BIT           2
-// #define X_DIRECTION_BIT            3
-// #define Y_DIRECTION_BIT            4
-// #define Z_DIRECTION_BIT            5
-// 
-// #define LIMIT_DDR      DDRD
-// #define LIMIT_PORT     PORTD
-// #define X_LIMIT_BIT          3
-// #define Y_LIMIT_BIT          4
-// #define Z_LIMIT_BIT          5
-// 
-// #define SPINDLE_ENABLE_DDR DDRD
-// #define SPINDLE_ENABLE_PORT PORTD
-// #define SPINDLE_ENABLE_BIT 6
-// 
-// #define SPINDLE_DIRECTION_DDR DDRD
-// #define SPINDLE_DIRECTION_PORT PORTD
-// #define SPINDLE_DIRECTION_BIT 7
