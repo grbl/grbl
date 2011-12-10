@@ -44,25 +44,25 @@ volatile uint8_t tx_buffer_tail = 0;
 
 static void set_baud_rate(long baud) {
   uint16_t UBRR0_value = ((F_CPU / 16 + baud / 2) / baud - 1);
-	UBRR0H = UBRR0_value >> 8;
-	UBRR0L = UBRR0_value;
+  UBRR0H = UBRR0_value >> 8;
+  UBRR0L = UBRR0_value;
 }
 
 void serial_init(long baud)
 {
   set_baud_rate(baud);
   
-	/* baud doubler off  - Only needed on Uno XXX */
+  /* baud doubler off  - Only needed on Uno XXX */
   UCSR0A &= ~(1 << U2X0);
           
-	// enable rx and tx
+  // enable rx and tx
   UCSR0B |= 1<<RXEN0;
   UCSR0B |= 1<<TXEN0;
 	
-	// enable interrupt on complete reception of a byte
+  // enable interrupt on complete reception of a byte
   UCSR0B |= 1<<RXCIE0;
 	  
-	// defaults to 8-bit, no parity, 1 stop bit
+  // defaults to 8-bit, no parity, 1 stop bit
 }
 
 void serial_write(uint8_t data) {
@@ -71,19 +71,19 @@ void serial_write(uint8_t data) {
   if (next_head == TX_BUFFER_SIZE) { next_head = 0; }
 
   // Wait until there's a space in the buffer
-  while (next_head == tx_buffer_tail) { sleep_mode(); };
+  while (next_head == tx_buffer_tail) { };//sleep_mode(); };
 
   // Store data and advance head
   tx_buffer[tx_buffer_head] = data;
   tx_buffer_head = next_head;
   
   // Enable Data Register Empty Interrupt to make sure tx-streaming is running
-	UCSR0B |=  (1 << UDRIE0); 
+  UCSR0B |=  (1 << UDRIE0); 
 }
 
 // Data Register Empty Interrupt handler
-SIGNAL(USART_UDRE_vect) {  
-  // temporary tx_buffer_tail (to optimize for volatile)
+ISR(USART_UDRE_vect) {  
+  // Temporary tx_buffer_tail (to optimize for volatile)
   uint8_t tail = tx_buffer_tail;
 
   // Send a byte from the buffer	
@@ -101,25 +101,25 @@ SIGNAL(USART_UDRE_vect) {
 
 uint8_t serial_read()
 {
-	if (rx_buffer_head == rx_buffer_tail) {
-		return SERIAL_NO_DATA;
-	} else {
-		uint8_t data = rx_buffer[rx_buffer_tail];
-		rx_buffer_tail++;
-		if (rx_buffer_tail == RX_BUFFER_SIZE) { rx_buffer_tail = 0; }
-		return data;
-	}
+  if (rx_buffer_head == rx_buffer_tail) {
+    return SERIAL_NO_DATA;
+  } else {
+    uint8_t data = rx_buffer[rx_buffer_tail];
+    rx_buffer_tail++;
+    if (rx_buffer_tail == RX_BUFFER_SIZE) { rx_buffer_tail = 0; }
+    return data;
+  }
 }
 
-SIGNAL(USART_RX_vect)
+ISR(USART_RX_vect)
 {
-	uint8_t data = UDR0;
-	uint8_t next_head = rx_buffer_head + 1;
-	if (next_head == RX_BUFFER_SIZE) { next_head = 0; }
+  uint8_t data = UDR0;
+  uint8_t next_head = rx_buffer_head + 1;
+  if (next_head == RX_BUFFER_SIZE) { next_head = 0; }
 
   // Write data to buffer unless it is full.
-	if (next_head != rx_buffer_tail) {
-		rx_buffer[rx_buffer_head] = data;
-		rx_buffer_head = next_head;
-	}
+  if (next_head != rx_buffer_tail) {
+    rx_buffer[rx_buffer_head] = data;
+    rx_buffer_head = next_head;
+  }
 }

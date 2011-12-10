@@ -79,10 +79,10 @@ static uint8_t cycle_start;     // Cycle start flag to indicate program start an
 static void set_step_events_per_minute(uint32_t steps_per_minute);
 
 // Stepper state initialization
-void st_wake_up() 
+static void st_wake_up() 
 {
   // Initialize stepper output bits
-  out_bits = (0) ^ (settings.invert_mask);
+  out_bits = (0) ^ (settings.invert_mask); 
   // Enable steppers by resetting the stepper disable port
   STEPPERS_DISABLE_PORT &= ~(1<<STEPPERS_DISABLE_BIT);
   // Enable stepper driver interrupt
@@ -90,7 +90,7 @@ void st_wake_up()
 }
 
 // Stepper shutdown
-void st_go_idle() 
+static void st_go_idle() 
 {
   // Cycle finished. Set flag to false.
   cycle_start = false; 
@@ -133,28 +133,24 @@ static uint8_t iterate_trapezoid_cycle_counter()
 // config_step_timer. It pops blocks from the block_buffer and executes them by pulsing the stepper pins appropriately. 
 // It is supported by The Stepper Port Reset Interrupt which it uses to reset the stepper port after each pulse. 
 // The bresenham line tracer algorithm controls all three stepper outputs simultaneously with these two interrupts.
-SIGNAL(TIMER1_COMPA_vect)
+// NOTE: ISR_NOBLOCK allows SIG_OVERFLOW2 to trigger on-time regardless of time in this handler. This is
+// the compiler optimizable equivalent of the old SIGNAL() and sei() method.
+ISR(TIMER1_COMPA_vect,ISR_NOBLOCK)
 {        
-  // TODO: Check if the busy-flag can be eliminated by just disabling this interrupt while we are in it
+  if (busy) { return; } // The busy-flag is used to avoid reentering this interrupt
+  busy = true;
   
-  if(busy){ return; } // The busy-flag is used to avoid reentering this interrupt
   // Set the direction pins a couple of nanoseconds before we step the steppers
   STEPPING_PORT = (STEPPING_PORT & ~DIRECTION_MASK) | (out_bits & DIRECTION_MASK);
   // Then pulse the stepping pins
   STEPPING_PORT = (STEPPING_PORT & ~STEP_MASK) | out_bits;
   // Reset step pulse reset timer so that The Stepper Port Reset Interrupt can reset the signal after
   // exactly settings.pulse_microseconds microseconds.
-//   TCNT2 = -(((settings.pulse_microseconds-2)*TICKS_PER_MICROSECOND)/8);
-  TCNT2 = -(((settings.pulse_microseconds-2)*TICKS_PER_MICROSECOND) >> 3); // Bit shift divide by 8.
-  
-  busy = true;
-  sei(); // Re enable interrupts (normally disabled while inside an interrupt handler)
-         // ((We re-enable interrupts in order for SIG_OVERFLOW2 to be able to be triggered 
-         // at exactly the right time even if we occasionally spend a lot of time inside this handler.))
+  TCNT2 = -(((settings.pulse_microseconds-2)*TICKS_PER_MICROSECOND) >> 3);
     
   // If there is no current block, attempt to pop one from the buffer
   if (current_block == NULL) {
-    // Anything in the buffer?
+    // Anything in the buffer? If so, initialize next motion.
     current_block = plan_get_current_block();
     if (current_block != NULL) {
       trapezoid_generator_reset();
@@ -256,37 +252,39 @@ SIGNAL(TIMER1_COMPA_vect)
 
 // This interrupt is set up by SIG_OUTPUT_COMPARE1A when it sets the motor port bits. It resets
 // the motor port after a short period (settings.pulse_microseconds) completing one step cycle.
-SIGNAL(TIMER2_OVF_vect)
+ISR(TIMER2_OVF_vect)
 {
-  // reset stepping pins (leave the direction pins)
+  // Reset stepping pins (leave the direction pins)
   STEPPING_PORT = (STEPPING_PORT & ~STEP_MASK) | (settings.invert_mask & STEP_MASK); 
 }
 
 // Initialize and start the stepper motor subsystem
 void st_init()
 {
-	// Configure directions of interface pins
-  STEPPING_DDR   |= STEPPING_MASK;
+  // Configure directions of interface pins
+  STEPPING_DDR |= STEPPING_MASK;
   STEPPING_PORT = (STEPPING_PORT & ~STEPPING_MASK) | settings.invert_mask;
   STEPPERS_DISABLE_DDR |= 1<<STEPPERS_DISABLE_BIT;
   
-	// waveform generation = 0100 = CTC
-	TCCR1B &= ~(1<<WGM13);
-	TCCR1B |=  (1<<WGM12);
-	TCCR1A &= ~(1<<WGM11); 
-	TCCR1A &= ~(1<<WGM10);
+  // waveform generation = 0100 = CTC
+  TCCR1B &= ~(1<<WGM13);
+  TCCR1B |=  (1<<WGM12);
+  TCCR1A &= ~(1<<WGM11); 
+  TCCR1A &= ~(1<<WGM10);
 
-	// output mode = 00 (disconnected)
-	TCCR1A &= ~(3<<COM1A0); 
-	TCCR1A &= ~(3<<COM1B0); 
+  // output mode = 00 (disconnected)
+  TCCR1A &= ~(3<<COM1A0); 
+  TCCR1A &= ~(3<<COM1B0); 
 	
-	// Configure Timer 2
+  // Configure Timer 2
   TCCR2A = 0;         // Normal operation
   TCCR2B = (1<<CS21); // Full speed, 1/8 prescaler
   TIMSK2 |= (1<<TOIE2);      
   
-  set_step_events_per_minute(6000);
+  set_step_events_per_minute(MINIMUM_STEPS_PER_MINUTE);
   trapezoid_tick_cycle_counter = 0;
+  current_block = NULL;
+  busy = false;
   
   // Start in the idle state
   st_go_idle();
@@ -306,30 +304,30 @@ static uint32_t config_step_timer(uint32_t cycles)
   uint16_t prescaler;
   uint32_t actual_cycles;
   if (cycles <= 0xffffL) {
-      ceiling = cycles;
-  prescaler = 0; // prescaler: 0
-  actual_cycles = ceiling;
+    ceiling = cycles;
+    prescaler = 0; // prescaler: 0
+    actual_cycles = ceiling;
   } else if (cycles <= 0x7ffffL) {
-  ceiling = cycles >> 3;
-  prescaler = 1; // prescaler: 8
-  actual_cycles = ceiling * 8L;
+    ceiling = cycles >> 3;
+    prescaler = 1; // prescaler: 8
+    actual_cycles = ceiling * 8L;
   } else if (cycles <= 0x3fffffL) {
-      ceiling =  cycles >> 6;
-  prescaler = 2; // prescaler: 64
-  actual_cycles = ceiling * 64L;
+    ceiling =  cycles >> 6;
+    prescaler = 2; // prescaler: 64
+    actual_cycles = ceiling * 64L;
   } else if (cycles <= 0xffffffL) {
-      ceiling =  (cycles >> 8);
-  prescaler = 3; // prescaler: 256
-  actual_cycles = ceiling * 256L;
+    ceiling =  (cycles >> 8);
+    prescaler = 3; // prescaler: 256
+    actual_cycles = ceiling * 256L;
   } else if (cycles <= 0x3ffffffL) {
-      ceiling = (cycles >> 10);
-  prescaler = 4; // prescaler: 1024
-  actual_cycles = ceiling * 1024L;    
+    ceiling = (cycles >> 10);
+    prescaler = 4; // prescaler: 1024
+    actual_cycles = ceiling * 1024L;    
   } else {
     // Okay, that was slower than we actually go. Just set the slowest speed
-      ceiling = 0xffff;
-  prescaler = 4;
-  actual_cycles = 0xffff * 1024;
+    ceiling = 0xffff;
+    prescaler = 4;
+    actual_cycles = 0xffff * 1024;
   }
   // Set prescaler
   TCCR1B = (TCCR1B & ~(0x07<<CS10)) | ((prescaler+1)<<CS10);
@@ -338,7 +336,8 @@ static uint32_t config_step_timer(uint32_t cycles)
   return(actual_cycles);
 }
 
-static void set_step_events_per_minute(uint32_t steps_per_minute) {
+static void set_step_events_per_minute(uint32_t steps_per_minute) 
+{
   if (steps_per_minute < MINIMUM_STEPS_PER_MINUTE) { steps_per_minute = MINIMUM_STEPS_PER_MINUTE; }
   cycles_per_step_event = config_step_timer((TICKS_PER_MICROSECOND*1000000*60)/steps_per_minute);
 }
@@ -350,7 +349,8 @@ void st_go_home()
 }
 
 // Planner external interface to start stepper interrupt and execute the blocks in queue.
-void st_cycle_start() {
+void st_cycle_start() 
+{
   if (!cycle_start) {
     cycle_start = true;
     st_wake_up();

@@ -36,7 +36,7 @@
 
 int main(void)
 {
-  sei();
+  sei(); // Enable interrupts
   
   serial_init(BAUD_RATE);
   protocol_init();        
@@ -47,8 +47,8 @@ int main(void)
   gc_init();
   limits_init();
                     
-  for(;;){
-    sleep_mode(); // Wait for it ...
+  while (1) {
+//     sleep_mode(); // Wait for it ...
     protocol_process(); // ... process the serial protocol
   }
   return 0;   /* never reached */

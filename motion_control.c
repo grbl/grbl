@@ -48,9 +48,6 @@ void mc_dwell(double seconds)
 void mc_arc(double *position, double *target, double *offset, uint8_t axis_0, uint8_t axis_1, 
   uint8_t axis_linear, double feed_rate, uint8_t invert_feed_rate, double radius, uint8_t isclockwise)
 {      
-//   int acceleration_manager_was_enabled = plan_is_acceleration_manager_enabled();
-//   plan_set_acceleration_manager_enabled(false); // disable acceleration management for the duration of the arc
-
   double center_axis0 = position[axis_0] + offset[axis_0];
   double center_axis1 = position[axis_1] + offset[axis_1];
   double linear_travel = target[axis_linear] - position[axis_linear];
@@ -141,8 +138,6 @@ void mc_arc(double *position, double *target, double *offset, uint8_t axis_0, ui
   }
   // Ensure last segment arrives at target location.
   plan_buffer_line(target[X_AXIS], target[Y_AXIS], target[Z_AXIS], feed_rate, invert_feed_rate);
-
-//   plan_set_acceleration_manager_enabled(acceleration_manager_was_enabled);
 }
 #endif
 

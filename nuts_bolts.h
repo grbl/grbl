@@ -1,5 +1,5 @@
 /*
-  motion_control.h - cartesian robot controller.
+  nuts_bolts.h - Header file for shared definitions, variables, and functions
   Part of Grbl
 
   Copyright (c) 2009-2011 Simen Svale Skogsrud
