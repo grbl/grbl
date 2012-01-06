@@ -27,37 +27,38 @@
 #define BAUD_RATE 9600
 
 // Define pin-assignments
-#define STEPPERS_DISABLE_DDR     DDRB
-#define STEPPERS_DISABLE_PORT    PORTB
-#define STEPPERS_DISABLE_BIT         0
-
 #define STEPPING_DDR       DDRD
 #define STEPPING_PORT      PORTD
-#define X_STEP_BIT           2
-#define Y_STEP_BIT           3
-#define Z_STEP_BIT           4
-#define X_DIRECTION_BIT      5
-#define Y_DIRECTION_BIT      6
-#define Z_DIRECTION_BIT      7
+#define X_STEP_BIT         2  // Uno Digital Pin 2
+#define Y_STEP_BIT         3  // Uno Digital Pin 3
+#define Z_STEP_BIT         4  // Uno Digital Pin 4
+#define X_DIRECTION_BIT    5  // Uno Digital Pin 5
+#define Y_DIRECTION_BIT    6  // Uno Digital Pin 6
+#define Z_DIRECTION_BIT    7  // Uno Digital Pin 7
 
-#define LIMIT_DDR      DDRB
+#define STEPPERS_DISABLE_DDR    DDRB
+#define STEPPERS_DISABLE_PORT   PORTB
+#define STEPPERS_DISABLE_BIT    0  // Uno Digital Pin 8
+
+#define LIMIT_DDR     DDRB
 #define LIMIT_PIN     PINB
-#define X_LIMIT_BIT          1
-#define Y_LIMIT_BIT          2
-#define Z_LIMIT_BIT          3
+#define X_LIMIT_BIT   1  // Uno Digital Pin 9
+#define Y_LIMIT_BIT   2  // Uno Digital Pin 10
+#define Z_LIMIT_BIT   3  // Uno Digital Pin 11
 
 #define SPINDLE_ENABLE_DDR DDRB
 #define SPINDLE_ENABLE_PORT PORTB
-#define SPINDLE_ENABLE_BIT 4
+#define SPINDLE_ENABLE_BIT 4  // Uno Digital Pin 12
 
 #define SPINDLE_DIRECTION_DDR DDRB
 #define SPINDLE_DIRECTION_PORT PORTB
-#define SPINDLE_DIRECTION_BIT 5
+#define SPINDLE_DIRECTION_BIT 5  // Uno Digital Pin 13
 
 // Define runtime command special characters. These characters are 'picked-off' directly from the
 // serial read data stream and are not passed to the grbl line execution parser. Select characters
 // that do not and must not exist in the streamed g-code program. ASCII control characters may be 
-// used, if they are available per user setup.
+// used, if they are available per user setup. Also, extended ASCII codes (>127), which are never in 
+// g-code programs, maybe selected for interface programs.
 // TODO: Solidify these default characters. Temporary for now.
 #define CMD_STATUS_REPORT '?'
 #define CMD_FEED_HOLD '!'
@@ -70,8 +71,8 @@
 // entering g-code into grbl, i.e. locating part zero or simple manual machining. If the axes drift,
 // grbl has no way to know this has happened, since stepper motors are open-loop control. Depending
 // on the machine, this parameter may need to be larger or smaller than the default time.
-// NOTE: If defined 0, the delay will not be compiled.
-#define STEPPER_IDLE_LOCK_TIME 25 // (milliseconds) - Integer >= 0
+// NOTE: If commented out, the delay will not be compiled.
+#define STEPPER_IDLE_LOCK_TIME 25 // (milliseconds) - Integer > 0
 
 // The temporal resolution of the acceleration management subsystem. Higher number give smoother
 // acceleration but may impact performance.
@@ -108,5 +109,21 @@
 // run-time command executions, like status reports, since these are performed between each dwell 
 // time step. Also, keep in mind that the Arduino delay timer is not very accurate for long delays.
 #define DWELL_TIME_STEP 50 // Integer (milliseconds)
+
+
+// -----------------------------------------------
+
+// TODO: The following options are set as compile-time options for now, until the next EEPROM 
+// settings version has solidified. 
+#define CYCLE_AUTO_START 1    // Cycle auto-start boolean flag for the planner.
+#define BLOCK_DELETE_ENABLE 0 // Block delete enable/disable flag during g-code parsing
+#define REPORT_INCH_MODE 0    // Status reporting unit mode (1 = inch, 0 = mm)
+#if REPORT_INCH_MODE
+  #define DECIMAL_PLACES 3
+  #define DECIMAL_MULTIPLIER 1000 // 10^DECIMAL_PLACES
+#else
+  #define DECIMAL_PLACES 2  // mm-mode
+  #define DECIMAL_MULTIPLIER 100
+#endif
 
 #endif

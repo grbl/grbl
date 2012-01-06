@@ -35,7 +35,7 @@ typedef struct {
 
   // Fields used by the motion planner to manage acceleration
   double nominal_speed;               // The nominal speed for this block in mm/min  
-  double entry_speed;                 // Entry speed at previous-current junction in mm/min
+  double entry_speed;                 // Entry speed at previous-current block junction in mm/min
   double max_entry_speed;             // Maximum allowable junction entry speed in mm/min
   double millimeters;                 // The total travel of this block in mm
   uint8_t recalculate_flag;           // Planner flag to recalculate trapezoids on entry junction

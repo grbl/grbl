@@ -32,27 +32,50 @@
 #define Y_AXIS 1
 #define Z_AXIS 2
 
+#define MM_PER_INCH (25.4)
+
+// Useful macros
 #define clear_vector(a) memset(a, 0, sizeof(a))
 #define clear_vector_double(a) memset(a, 0.0, sizeof(a))
 #define max(a,b) (((a) > (b)) ? (a) : (b))
 #define min(a,b) (((a) < (b)) ? (a) : (b))
 
-// Define system state bit map. Used internally by runtime protocol as runtime command flags.
-// NOTE: The system state is an unsigned 8-bit volatile variable and has a 8 flag limit. The default
-// flags are always false, so the runtime protocol only needs to check for a non-zero state value to 
+// Bit field and masking macros
+#define bit(n) (1 << n) 
+#define bit_true(x,mask) (x |= mask)
+#define bit_false(x,mask) (x &= ~mask)
+#define bit_toggle(x,mask) (x ^= mask)
+#define bit_istrue(x,mask) ((x & mask) != 0)
+#define bit_isfalse(x,mask) ((x & mask) == 0)
+
+// Define system executor bit map. Used internally by runtime protocol as runtime command flags, 
+// which notifies the main program to execute the specified runtime command asynchronously.
+// NOTE: The system executor uses an unsigned 8-bit volatile variable (8 flag limit.) The default
+// flags are always false, so the runtime protocol only needs to check for a non-zero value to 
 // know when there is a runtime command to execute.
-#define BIT_STATUS_REPORT    1 // bit 00000001
-#define BIT_CYCLE_START      2 // bit 00000010
-#define BIT_FEED_HOLD        4 // bit 00000100
-#define BIT_RESET            8 // bit 00001000
-#define BIT_REPLAN_CYCLE    16 // bit 00010000
-// #define                     32 // bit 00100000
-// #define                     64 // bit 01000000
-// #define                    128 // bit 10000000
+#define EXEC_STATUS_REPORT  bit(0) // bitmask 00000001
+#define EXEC_CYCLE_START    bit(1) // bitmask 00000010
+#define EXEC_CYCLE_STOP     bit(2) // bitmask 00000100
+#define EXEC_FEED_HOLD      bit(3) // bitmask 00001000
+#define EXEC_RESET          bit(4) // bitmask 00010000
+// #define                  bit(5) // bitmask 00100000
+// #define                  bit(6) // bitmask 01000000
+// #define                  bit(7) // bitmask 10000000
 
 // Define global system variables
-extern uint8_t sys_abort; // Global system abort flag
-extern volatile uint8_t sys_state; // Global system state variable
+typedef struct {
+  uint8_t abort;                 // System abort flag. Forces exit back to main loop for reset.
+  uint8_t feed_hold;             // Feed hold flag. Held true during feed hold. Released when ready to resume.
+  uint8_t auto_start;            // Planner auto-start flag. Toggled off during feed hold. Defaulted by settings.
+
+  int32_t position[3];           // Real-time machine position vector in steps. This may need to be a volatile
+                                 // variable, if problems arise. Subject to change. Need to add coordinate offset
+                                 // functionality to correctly track part zero and machine zero.
+                          
+  volatile uint8_t cycle_start;  // Cycle start flag. Set by stepper subsystem or main program. 
+  volatile uint8_t execute;      // Global system runtime executor bitflag variable. See EXEC bitmasks.
+} system_t;
+extern system_t sys;
 
 // Read a floating point value from a string. Line points to the input buffer, char_counter 
 // is the indexer pointing to the current character of the line, while double_ptr is 

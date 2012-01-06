@@ -33,8 +33,6 @@
 #include "limits.h"
 #include "protocol.h"
 
-#include "print.h"
-
 // Execute linear motion in absolute millimeter coordinates. Feed rate given in millimeters/second
 // unless invert_feed_rate is true. Then the feed_rate means that the motion should be completed in
 // (1 minute)/feed_rate time.
@@ -56,17 +54,19 @@ void mc_line(double x, double y, double z, double feed_rate, uint8_t invert_feed
   // Remain in this loop until there is room in the buffer.
   do {
     protocol_execute_runtime(); // Check for any run-time commands
-    if (sys_abort) { return; } // Bail, if system abort.
+    if (sys.abort) { return; } // Bail, if system abort.
   } while ( plan_check_full_buffer() );  
   plan_buffer_line(x, y, z, feed_rate, invert_feed_rate);
   
-  // Auto-cycle start. 
-  // TODO: Determine a more efficient and robust way of implementing the auto-starting the cycle. 
-  // For example, only auto-starting when the buffer is full; if there was only one g-code command
-  // sent during manual operation; or if there is buffer starvation, making sure it minimizes any
-  // dwelling/motion hiccups. Additionally, these situations must not auto-start during a feed hold.
-  // Only the cycle start runtime command should be able to restart the cycle after a feed hold.
-  st_cycle_start();
+  // Auto-cycle start immediately after planner finishes. Enabled/disabled by grbl settings. During 
+  // a feed hold, auto-start is disabled momentarily until the cycle is resumed by the cycle-start 
+  // runtime command.
+  // NOTE: This is allows the user to decide to exclusively use the cycle start runtime command to
+  // begin motion or let grbl auto-start it for them. This is useful when: manually cycle-starting
+  // when the buffer is completely full and primed; auto-starting, if there was only one g-code 
+  // command sent during manual operation; or if a system is prone to buffer starvation, auto-start
+  // helps make sure it minimizes any dwelling/motion hiccups and keeps the cycle going. 
+  if (sys.auto_start) { st_cycle_start(); }
 }
 
 
@@ -167,7 +167,7 @@ void mc_arc(double *position, double *target, double *offset, uint8_t axis_0, ui
     mc_line(arc_target[X_AXIS], arc_target[Y_AXIS], arc_target[Z_AXIS], feed_rate, invert_feed_rate);
     
     // Bail mid-circle on system abort. Runtime command check already performed by mc_line.
-    if (sys_abort) { return; }
+    if (sys.abort) { return; }
   }
   // Ensure last segment arrives at target location.
   mc_line(target[X_AXIS], target[Y_AXIS], target[Z_AXIS], feed_rate, invert_feed_rate);
@@ -183,7 +183,7 @@ void mc_dwell(double seconds)
    while (i > 0) {
      // NOTE: Check and execute runtime commands during dwell every <= DWELL_TIME_STEP milliseconds.
      protocol_execute_runtime();
-     if (sys_abort) { return; }
+     if (sys.abort) { return; }
      _delay_ms(DWELL_TIME_STEP); // Delay DWELL_TIME_STEP increment
      i--;
    }

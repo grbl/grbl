@@ -4,7 +4,6 @@
 
   Copyright (c) 2009-2011 Simen Svale Skogsrud
   Copyright (c) 2011 Sungeun K. Jeon
-  Copyright (c) 2011 Jens Geisler
   
   Grbl is free software: you can redistribute it and/or modify
   it under the terms of the GNU General Public License as published by
@@ -34,8 +33,6 @@
 #include "planner.h"
 #include "limits.h"
 
-#include "print.h"
-
 // Some useful constants
 #define STEP_MASK ((1<<X_STEP_BIT)|(1<<Y_STEP_BIT)|(1<<Z_STEP_BIT)) // All step bits
 #define DIRECTION_MASK ((1<<X_DIRECTION_BIT)|(1<<Y_DIRECTION_BIT)|(1<<Z_DIRECTION_BIT)) // All direction bits
@@ -46,9 +43,6 @@
 
 // Stepper state variable. Contains running data and trapezoid variables.
 typedef struct {
-  volatile uint8_t cycle_start;  // Cycle start flag
-  volatile uint8_t feed_hold; // Feed hold flag
-    
   // Used by the bresenham line algorithm
   int32_t counter_x,        // Counter variables for the bresenham line tracer
           counter_y, 
@@ -62,10 +56,9 @@ typedef struct {
                                               // pace without allocating a separate timer
   uint32_t trapezoid_adjusted_rate;      // The current rate of step_events according to the trapezoid generator
   uint32_t min_safe_rate;  // Minimum safe rate for full deceleration rate reduction step. Otherwise halves step_rate.
-} stepper_state_t;
+} stepper_t;
 
-static stepper_state_t st;
-static int32_t st_position[3];  // Track current position in steps from initialization state.
+static stepper_t st;
 static block_t *current_block;  // A pointer to the block currently being traced
 
 // Used by the stepper driver interrupt
@@ -112,7 +105,7 @@ void st_go_idle()
   TIMSK1 &= ~(1<<OCIE1A); 
   // Force stepper dwell to lock axes for a defined amount of time to ensure the axes come to a complete
   // stop and not drift from residual inertial forces at the end of the last movement.
-  #if STEPPER_IDLE_LOCK_TIME
+  #ifdef STEPPER_IDLE_LOCK_TIME
     _delay_ms(STEPPER_IDLE_LOCK_TIME);   
   #endif
   // Disable steppers by setting stepper disable
@@ -146,6 +139,7 @@ static uint8_t iterate_trapezoid_cycle_counter()
 // interrupt doing its thing, not that big of a deal, but the latter cause is unknown and worrisome. Need
 // to track down what is causing this problem. Functionally, this shouldn't cause any noticeable issues
 // as long as stepper drivers have a pulse minimum of 1usec or so (Pololu and any Allegro IC are ok).
+// This seems to be an inherent issue that dates all the way back to Simen's v0.6b.
 
 ISR(TIMER1_COMPA_vect,ISR_NOBLOCK)
 {        
@@ -165,7 +159,8 @@ ISR(TIMER1_COMPA_vect,ISR_NOBLOCK)
     // Anything in the buffer? If so, initialize next motion.
     current_block = plan_get_current_block();
     if (current_block != NULL) {
-      if (!st.feed_hold) { // During feed hold, do not update rate and trap counter. Keep decelerating.
+      if (!sys.feed_hold) { 
+        // During feed hold, do not update rate and trap counter. Keep decelerating.
         st.trapezoid_adjusted_rate = current_block->initial_rate;
         set_step_events_per_minute(st.trapezoid_adjusted_rate); // Initialize cycles_per_step_event
         st.trapezoid_tick_cycle_counter = CYCLES_PER_ACCELERATION_TICK/2; // Start halfway for midpoint rule.
@@ -177,9 +172,9 @@ ISR(TIMER1_COMPA_vect,ISR_NOBLOCK)
       st.event_count = current_block->step_event_count;
       st.step_events_completed = 0;     
     } else {
-      st.cycle_start = false;
-      st.feed_hold = false;
       st_go_idle();
+      sys.cycle_start = false;
+      bit_true(sys.execute,EXEC_CYCLE_STOP); // Flag main program for cycle end
     }    
   } 
 
@@ -190,29 +185,29 @@ ISR(TIMER1_COMPA_vect,ISR_NOBLOCK)
     if (st.counter_x > 0) {
       out_bits |= (1<<X_STEP_BIT);
       st.counter_x -= st.event_count;
-      if (out_bits & (1<<X_DIRECTION_BIT)) { st_position[X_AXIS]--; }
-      else { st_position[X_AXIS]++; }
+      if (out_bits & (1<<X_DIRECTION_BIT)) { sys.position[X_AXIS]--; }
+      else { sys.position[X_AXIS]++; }
     }
     st.counter_y += current_block->steps_y;
     if (st.counter_y > 0) {
       out_bits |= (1<<Y_STEP_BIT);
       st.counter_y -= st.event_count;
-      if (out_bits & (1<<Y_DIRECTION_BIT)) { st_position[Y_AXIS]--; }
-      else { st_position[Y_AXIS]++; }
+      if (out_bits & (1<<Y_DIRECTION_BIT)) { sys.position[Y_AXIS]--; }
+      else { sys.position[Y_AXIS]++; }
     }
     st.counter_z += current_block->steps_z;
     if (st.counter_z > 0) {
       out_bits |= (1<<Z_STEP_BIT);
       st.counter_z -= st.event_count;
-      if (out_bits & (1<<Z_DIRECTION_BIT)) { st_position[Z_AXIS]--; }
-      else { st_position[Z_AXIS]++; }
+      if (out_bits & (1<<Z_DIRECTION_BIT)) { sys.position[Z_AXIS]--; }
+      else { sys.position[Z_AXIS]++; }
     }
     
     st.step_events_completed++; // Iterate step events
 
     // While in block steps, check for de/ac-celeration events and execute them accordingly.
     if (st.step_events_completed < current_block->step_event_count) {
-      if (st.feed_hold) {
+      if (sys.feed_hold) {
         // Check for and execute feed hold by enforcing a steady deceleration from the moment of 
         // execution. The rate of deceleration is limited by rate_delta and will never decelerate
         // faster or slower than in normal operation. If the distance required for the feed hold 
@@ -225,10 +220,11 @@ ISR(TIMER1_COMPA_vect,ISR_NOBLOCK)
           // If deceleration complete, set system flags and shutdown steppers.
           if (st.trapezoid_adjusted_rate <= current_block->rate_delta) {
             // Just go idle. Do not NULL current block. The bresenham algorithm variables must
-            // remain intact to ensure the stepper path is exactly the same.
-            st.cycle_start = false;
+            // remain intact to ensure the stepper path is exactly the same. Feed hold is still
+            // active and is released after the buffer has been reinitialized.
             st_go_idle();
-            sys_state |= BIT_REPLAN_CYCLE; // Flag main program that feed hold is complete.
+            sys.cycle_start = false;
+            bit_true(sys.execute,EXEC_CYCLE_STOP); // Flag main program that feed hold is complete.
           } else {
             st.trapezoid_adjusted_rate -= current_block->rate_delta;
             set_step_events_per_minute(st.trapezoid_adjusted_rate);
@@ -339,9 +335,6 @@ void st_init()
   TCCR2A = 0;         // Normal operation
   TCCR2B = (1<<CS21); // Full speed, 1/8 prescaler
   TIMSK2 |= (1<<TOIE2);      
-  
-  // Initialize machine position vector
-  clear_vector(st_position);
 
   // Start in the idle state
   st_go_idle();
@@ -394,12 +387,12 @@ static void set_step_events_per_minute(uint32_t steps_per_minute)
 }
 
 // Planner external interface to start stepper interrupt and execute the blocks in queue. Called
-// by planner auto-start and run-time command functions.
+// by the main program functions: planner auto-start and run-time command execution.
 void st_cycle_start() 
 {
-  if (!st.cycle_start) {
-    if (!st.feed_hold) {
-      st.cycle_start = true;
+  if (!sys.cycle_start) {
+    if (!sys.feed_hold) {
+      sys.cycle_start = true;
       st_wake_up();
     }
   }
@@ -408,9 +401,10 @@ void st_cycle_start()
 // Execute a feed hold with deceleration, only during cycle. Called by main program.
 void st_feed_hold() 
 {
-  if (!st.feed_hold) {
-    if (st.cycle_start) {
-      st.feed_hold = true;
+  if (!sys.feed_hold) {
+    if (sys.cycle_start) {
+      sys.auto_start = false; // Disable planner auto start upon feed hold.
+      sys.feed_hold = true;
     }
   }
 }
@@ -422,12 +416,16 @@ void st_feed_hold()
 // Only the planner de/ac-celerations profiles and stepper rates have been updated.
 void st_cycle_reinitialize()
 {
-  // Replan buffer from the feed hold stop location.
-  plan_cycle_reinitialize(current_block->step_event_count - st.step_events_completed);
-  // Update initial rate and timers after feed hold.
-  st.trapezoid_adjusted_rate = 0; // Resumes from rest
-  set_step_events_per_minute(st.trapezoid_adjusted_rate);
-  st.trapezoid_tick_cycle_counter = CYCLES_PER_ACCELERATION_TICK/2; // Start halfway for midpoint rule.
-  st.step_events_completed = 0;
-  st.feed_hold = false; // Release feed hold. Cycle is ready to re-start.
+  if (current_block != NULL) {
+    // Replan buffer from the feed hold stop location.
+    plan_cycle_reinitialize(current_block->step_event_count - st.step_events_completed);
+    // Update initial rate and timers after feed hold.
+    st.trapezoid_adjusted_rate = 0; // Resumes from rest
+    set_step_events_per_minute(st.trapezoid_adjusted_rate);
+    st.trapezoid_tick_cycle_counter = CYCLES_PER_ACCELERATION_TICK/2; // Start halfway for midpoint rule.
+    st.step_events_completed = 0;
+  }
+  sys.feed_hold = false; // Release feed hold. Cycle is ready to re-start.
 }
+
+

@@ -32,8 +32,6 @@
 #include "errno.h"
 #include "protocol.h"
 
-#define MM_PER_INCH (25.4)
-
 #define NEXT_ACTION_DEFAULT 0
 #define NEXT_ACTION_DWELL 1
 #define NEXT_ACTION_GO_HOME 2

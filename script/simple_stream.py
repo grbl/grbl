@@ -1,6 +1,15 @@
 #!/usr/bin/env python
 """\
 Simple g-code streaming script for grbl
+
+Provided as an illustration of the basic communication interface
+for grbl. When grbl has finished parsing the g-code block, it will
+return an 'ok' or 'error' response. When the planner buffer is full,
+grbl will not send a response until the planner buffer clears space.
+
+G02/03 arcs are special exceptions, where they inject short line 
+segments directly into the planner. So there may not be a response 
+from grbl for the duration of the arc.
 """
 
 import serial

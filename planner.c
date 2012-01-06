@@ -34,7 +34,7 @@
 #include "protocol.h"
 
 // The number of linear motions that can be in the plan at any give time
-#define BLOCK_BUFFER_SIZE 20
+#define BLOCK_BUFFER_SIZE 18
 
 static block_t block_buffer[BLOCK_BUFFER_SIZE];  // A ring buffer for motion instructions
 static volatile uint8_t block_buffer_head;       // Index of the next block to be pushed
@@ -336,7 +336,7 @@ void plan_synchronize()
 {
   while(plan_get_current_block()) { 
     protocol_execute_runtime();   // Check and execute run-time commands
-    if (sys_abort) { return; } // Check for system abort
+    if (sys.abort) { return; } // Check for system abort
   }    
 }
 

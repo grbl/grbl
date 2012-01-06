@@ -69,15 +69,39 @@ void protocol_status_report()
  // may be distance to go on block, processed block id, and feed rate. A secondary, non-critical
  // status report may include g-code state, i.e. inch mode, plane mode, absolute mode, etc. 
  //   The report generated must be as short as possible, yet still provide the user easily readable
- // information, i.e. 'x0.23 y120.4 z2.4'. This is necessary as it minimizes the computational 
+ // information, i.e. 'x0.23,y120.4,z2.4'. This is necessary as it minimizes the computational 
  // overhead and allows grbl to keep running smoothly, especially with g-code programs with fast, 
- // short line segments and interface setups that require real-time status reports (10-20Hz).
- printString("Query Received.\r\n"); // Notify that it's working.
+ // short line segments and interface setups that require real-time status reports (5-20Hz).
+ //   Additionally, during an abort, the steppers are immediately stopped regardless of what they 
+ // are doing. If they are moving, the abort stop can cause grbl to lose steps. However, if a feed 
+ // hold is performed before a system abort, the steppers will steadily decelerate at the max
+ // acceleration rate, hence the stopped machine position will be maintained and correct.
+
+ 
+ // Bare-bones status report. Provides real-time machine position relative to the initialization
+ // or system reset location (0,0,0), not a home position. This section is under construction and
+ // the following are needed: coordinate offsets/updating of machine position relative to home, work 
+ // coordinate position?, user setting of output units (mm|inch), compressed (non-human readable)
+ // data for interfaces?, save last known position in EEPROM?
+ #if REPORT_INCH_MODE
+   printString("x"); printFloat(sys.position[X_AXIS]/(settings.steps_per_mm[X_AXIS]*MM_PER_INCH));
+   printString(",y"); printFloat(sys.position[Y_AXIS]/(settings.steps_per_mm[Y_AXIS]*MM_PER_INCH));
+   printString(",z"); printFloat(sys.position[Z_AXIS]/(settings.steps_per_mm[Z_AXIS]*MM_PER_INCH));
+ #else
+   printString("x"); printFloat(sys.position[X_AXIS]/(settings.steps_per_mm[X_AXIS]));
+   printString(",y"); printFloat(sys.position[Y_AXIS]/(settings.steps_per_mm[Y_AXIS]));
+   printString(",z"); printFloat(sys.position[Z_AXIS]/(settings.steps_per_mm[Z_AXIS]));
+ #endif
+ printString("\r\n");
 }
 
 
 void protocol_init() 
 {
+  // Print grbl initialization message
+  printPgmString(PSTR("\r\nGrbl " GRBL_VERSION));
+  printPgmString(PSTR("\r\n'$' to dump current settings\r\n"));
+
   char_counter = 0; // Reset line input
   iscomment = false;
 }
@@ -87,40 +111,46 @@ void protocol_init()
 // program, primarily where there may be a while loop waiting for a buffer to clear space or any
 // point where the execution time from the last check point may be more than a fraction of a second.
 // This is a way to execute runtime commands asynchronously (aka multitasking) with grbl's g-code
-// parsing and planning functions.
-// NOTE: The sys_state variable flags are set by the serial read subprogram, except where noted.
+// parsing and planning functions. This function also serves as an interface for the interrupts to 
+// set the system runtime flags, where only the main program to handles them, removing the need to
+// define more computationally-expensive volatile variables.
+// NOTE: The sys.execute variable flags are set by the serial read subprogram, except where noted.
 void protocol_execute_runtime()
 {
-  if (sys_state) { // Enter only if any bit flag is enabled
+  if (sys.execute) { // Enter only if any bit flag is true
+    uint8_t rt_exec = sys.execute; // Avoid calling volatile multiple times
   
     // System abort. Steppers have already been force stopped.
-    if (sys_state & BIT_RESET) {
-      sys_abort = true; 
+    if (rt_exec & EXEC_RESET) {
+      sys.abort = true; 
       return; // Nothing else to do but exit.
     }
     
     // Execute and serial print status
-    if (sys_state & BIT_STATUS_REPORT) { 
+    if (rt_exec & EXEC_STATUS_REPORT) { 
+      bit_false(sys.execute,EXEC_STATUS_REPORT);
       protocol_status_report();
-      sys_state ^= BIT_STATUS_REPORT; // Toggle off
     }
     
     // Initiate stepper feed hold
-    if (sys_state & BIT_FEED_HOLD) {
-      st_feed_hold();
-      sys_state ^= BIT_FEED_HOLD; // Toggle off   
+    if (rt_exec & EXEC_FEED_HOLD) {
+      st_feed_hold(); // Initiate feed hold.
+      bit_false(sys.execute,EXEC_FEED_HOLD);
     }
     
-    // Re-plans the buffer after a feed hold completes
-    // NOTE: BIT_REPLAN_CYCLE is set by the stepper subsystem when the feed hold is complete.
-    if (sys_state & BIT_REPLAN_CYCLE) {
+    // Reinitializes the stepper module running flags and re-plans the buffer after a feed hold.
+    // NOTE: EXEC_CYCLE_STOP is set by the stepper subsystem when a cycle or feed hold completes.
+    if (rt_exec & EXEC_CYCLE_STOP) {
       st_cycle_reinitialize();
-      sys_state ^= BIT_REPLAN_CYCLE; // Toggle off
+      bit_false(sys.execute,EXEC_CYCLE_STOP);
     }
     
-    if (sys_state & BIT_CYCLE_START) { 
+    if (rt_exec & EXEC_CYCLE_START) { 
       st_cycle_start(); // Issue cycle start command to stepper subsystem
-      sys_state ^= BIT_CYCLE_START; // Toggle off
+      #ifdef CYCLE_AUTO_START
+        sys.auto_start = true; // Re-enable auto start after feed hold.
+      #endif
+      bit_false(sys.execute,EXEC_CYCLE_START);
     } 
   }
 }  
@@ -130,6 +160,15 @@ void protocol_execute_runtime()
 uint8_t protocol_execute_line(char *line) 
 {     
   if(line[0] == '$') {
+  
+    // TODO: Re-write this '$' as a way to change runtime settings without having to reset, i.e.
+    // auto-starting, status query output formatting and type, jog mode (axes, direction, and
+    // nominal feedrate), toggle block delete, etc. This differs from the EEPROM settings, as they
+    // are considered defaults and loaded upon startup/reset.
+    //   This use is envisioned where '$' itself dumps settings and help. Defined characters
+    // proceeding the '$' may be used to setup modes, such as jog mode with a '$J=X100' for X-axis
+    // motion with a nominal feedrate of 100mm/min. Writing EEPROM settings will likely stay the 
+    // same or similar. Should be worked out in upcoming releases.    
     return(settings_execute_line(line)); // Delegate lines starting with '$' to the settings module
 
   // } else if { 
@@ -165,7 +204,7 @@ void protocol_process()
       // NOTE: If there is no line, this function should quickly return to the main program when
       // the buffer empties of non-executable data.
       protocol_execute_runtime();
-      if (sys_abort) { return; } // Bail to main program upon system abort    
+      if (sys.abort) { return; } // Bail to main program upon system abort    
 
       if (char_counter > 0) {// Line is complete. Then execute!
         line[char_counter] = 0; // Terminate string
@@ -176,6 +215,7 @@ void protocol_process()
       }
       char_counter = 0; // Reset line buffer index
       iscomment = false; // Reset comment flag
+      
     } else {
       if (iscomment) {
         // Throw away all comment characters
@@ -187,9 +227,10 @@ void protocol_process()
         if (c <= ' ') { 
           // Throw away whitepace and control characters
         } else if (c == '/') {
-          // Disable block delete and throw away character
-          // To enable block delete, uncomment following line. Will ignore until EOL.
-          // iscomment = true;
+          // Disable block delete and throw away characters. Will ignore until EOL.
+          #if BLOCK_DELETE_ENABLE
+            iscomment = true;
+          #endif
         } else if (c == '(') {
           // Enable comments flag and ignore all characters until ')' or EOL.
           iscomment = true;

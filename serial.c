@@ -31,7 +31,7 @@
 #include "protocol.h"
 
 #define RX_BUFFER_SIZE 128
-#define TX_BUFFER_SIZE 32
+#define TX_BUFFER_SIZE 64
 
 uint8_t rx_buffer[RX_BUFFER_SIZE];
 uint8_t rx_buffer_head = 0;
@@ -72,7 +72,7 @@ void serial_write(uint8_t data) {
   // Wait until there is space in the buffer
   while (next_head == tx_buffer_tail) { 
     protocol_execute_runtime(); // Check for any run-time commands
-    if (sys_abort) { return; } // Bail, if system abort.
+    if (sys.abort) { return; } // Bail, if system abort.
   }
 
   // Store data and advance head
@@ -124,15 +124,15 @@ ISR(USART_RX_vect)
     // Pick off runtime command characters directly from the serial stream. These characters are
     // not passed into the buffer, but these set system state flag bits for runtime execution.
     switch (data) {
-      case CMD_STATUS_REPORT: sys_state |= BIT_STATUS_REPORT; break; // Set as true
-      case CMD_CYCLE_START:   sys_state |= BIT_CYCLE_START; break; // Set as true
-      case CMD_FEED_HOLD:     sys_state |= BIT_FEED_HOLD; break; // Set as true
+      case CMD_STATUS_REPORT: sys.execute |= EXEC_STATUS_REPORT; break; // Set as true
+      case CMD_CYCLE_START:   sys.execute |= EXEC_CYCLE_START; break; // Set as true
+      case CMD_FEED_HOLD:     sys.execute |= EXEC_FEED_HOLD; break; // Set as true
       case CMD_RESET: 
         // Immediately force stepper subsystem idle at an interrupt level.
-        if (!(sys_state & BIT_RESET)) { // Force stop only first time.
+        if (!(sys.execute & EXEC_RESET)) { // Force stop only first time.
           st_go_idle();  
         }
-        sys_state |= BIT_RESET; // Set as true
+        sys.execute |= EXEC_RESET; // Set as true
         break;
       default : // Write character to buffer
         rx_buffer[rx_buffer_head] = data;
