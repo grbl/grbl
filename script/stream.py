@@ -55,7 +55,7 @@ for line in f:
     l_count += 1 # Iterate line counter
 #     l_block = re.sub('\s|\(.*?\)','',line).upper() # Strip comments/spaces/new line and capitalize
     l_block = line.strip()
-    c_line.append(len(l_block)) # Track number of characters in grbl serial read buffer
+    c_line.append(len(l_block)+1) # Track number of characters in grbl serial read buffer
     grbl_out = '' 
     while sum(c_line) >= RX_BUFFER_SIZE-1 | s.inWaiting() :
         out_temp = s.readline().strip() # Wait for grbl response
