@@ -43,6 +43,7 @@ int main(void)
   serial_init(BAUD_RATE); // Setup serial baud rate and interrupts
   st_init(); // Setup stepper pins and interrupt timers
 
+  memset(&sys, 0, sizeof(sys));  // Clear all system variables
   sys.abort = true;   // Set abort to complete initialization
                     
   while(1) {
@@ -51,10 +52,21 @@ int main(void)
     // Once here, it is safe to re-initialize the system. At startup, the system will automatically
     // reset to finish the initialization process.
     if (sys.abort) {
-
+      
+      // Retain last known machine position. If the system abort occurred while in motion, machine
+      // position is not guaranteed, since a hard stop can cause the steppers to lose steps. Always
+      // perform a feedhold before an abort, if maintaining accurate machine position is required.
+      int32_t last_position[3];
+      memcpy(last_position, sys.position, sizeof(sys.position)); // last_position[] = sys.position[]
+      
       // Clear all system variables
       memset(&sys, 0, sizeof(sys));
-        
+      
+      // Update last known machine position. Set the post-abort work position as the origin [0,0,0],
+      // which corresponds to the g-code parser and planner positions after re-initialization.
+      memcpy(sys.position, last_position, sizeof(last_position)); // sys.position[] = last_position[]
+      memcpy(sys.coord_offset, last_position, sizeof(last_position)); // sys.coord_offset[] = last_position[]
+      
       // Reset system.
       serial_reset_read_buffer(); // Clear serial read buffer
       settings_init(); // Load grbl settings from EEPROM

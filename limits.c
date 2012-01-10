@@ -27,7 +27,8 @@
 #include "motion_control.h"
 #include "planner.h"
 
-// TODO: Deprecated. Need to update for new version.
+// TODO: Deprecated. Need to update for new version. Sys.position now tracks position relative
+// to the home position. Limits should update this vector directly.
 
 void limits_init() {
   LIMIT_DDR &= ~(LIMIT_MASK);

@@ -71,8 +71,7 @@ void serial_write(uint8_t data) {
 
   // Wait until there is space in the buffer
   while (next_head == tx_buffer_tail) { 
-    protocol_execute_runtime(); // Check for any run-time commands
-    if (sys.abort) { return; } // Bail, if system abort.
+    if (sys.execute & EXEC_RESET) { return; } // Only check for abort to avoid an endless loop.
   }
 
   // Store data and advance head

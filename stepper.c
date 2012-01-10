@@ -139,7 +139,7 @@ static uint8_t iterate_trapezoid_cycle_counter()
 // interrupt doing its thing, not that big of a deal, but the latter cause is unknown and worrisome. Need
 // to track down what is causing this problem. Functionally, this shouldn't cause any noticeable issues
 // as long as stepper drivers have a pulse minimum of 1usec or so (Pololu and any Allegro IC are ok).
-// This seems to be an inherent issue that dates all the way back to Simen's v0.6b.
+// ** This seems to be an inherent issue that dates all the way back to Simen's v0.6b or earlier. **
 
 ISR(TIMER1_COMPA_vect,ISR_NOBLOCK)
 {        

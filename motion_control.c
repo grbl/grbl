@@ -48,7 +48,10 @@ void mc_line(double x, double y, double z, double feed_rate, uint8_t invert_feed
 {
   // TODO: Backlash compensation may be installed here. Only need direction info to track when
   // to insert a backlash line motion(s) before the intended line motion. Requires its own
-  // plan_check_full_buffer() and check for system abort loop.
+  // plan_check_full_buffer() and check for system abort loop. Also for position reporting 
+  // backlash steps will need to be also tracked. Not sure what the best strategy is for this,
+  // i.e. keep the planner independent and do the computations in the status reporting, or let
+  // the planner handle the position corrections. The latter may get complicated.
 
   // If the buffer is full: good! That means we are well ahead of the robot. 
   // Remain in this loop until there is room in the buffer.

@@ -72,25 +72,31 @@ void protocol_status_report()
  // information, i.e. 'x0.23,y120.4,z2.4'. This is necessary as it minimizes the computational 
  // overhead and allows grbl to keep running smoothly, especially with g-code programs with fast, 
  // short line segments and interface setups that require real-time status reports (5-20Hz).
- //   Additionally, during an abort, the steppers are immediately stopped regardless of what they 
- // are doing. If they are moving, the abort stop can cause grbl to lose steps. However, if a feed 
- // hold is performed before a system abort, the steppers will steadily decelerate at the max
- // acceleration rate, hence the stopped machine position will be maintained and correct.
 
- 
- // Bare-bones status report. Provides real-time machine position relative to the initialization
- // or system reset location (0,0,0), not a home position. This section is under construction and
- // the following are needed: coordinate offsets/updating of machine position relative to home, work 
- // coordinate position?, user setting of output units (mm|inch), compressed (non-human readable)
- // data for interfaces?, save last known position in EEPROM?
+ // **Under construction** Bare-bones status report. Provides real-time machine position relative to 
+ // the system power on location (0,0,0) and work coordinate position, updatable by the G92 command.
+ // The following are still needed: user setting of output units (mm|inch), compressed (non-human 
+ // readable) data for interfaces?, save last known position in EEPROM?, code optimizations, solidify
+ // the reporting schemes, move to a separate .c file for easy user accessibility, and setting the
+ // home position by the user (likely through '$' setting interface).
+ // Successfully tested at a query rate of 10-20Hz while running a gauntlet of programs at various 
+ // speeds.
+ int32_t print_position[3];
+ memcpy(print_position,sys.position,sizeof(sys.position));
  #if REPORT_INCH_MODE
-   printString("x"); printFloat(sys.position[X_AXIS]/(settings.steps_per_mm[X_AXIS]*MM_PER_INCH));
-   printString(",y"); printFloat(sys.position[Y_AXIS]/(settings.steps_per_mm[Y_AXIS]*MM_PER_INCH));
-   printString(",z"); printFloat(sys.position[Z_AXIS]/(settings.steps_per_mm[Z_AXIS]*MM_PER_INCH));
+   printString("MPos: x"); printFloat(print_position[X_AXIS]/(settings.steps_per_mm[X_AXIS]*MM_PER_INCH));
+   printString(",y"); printFloat(print_position[Y_AXIS]/(settings.steps_per_mm[Y_AXIS]*MM_PER_INCH));
+   printString(",z"); printFloat(print_position[Z_AXIS]/(settings.steps_per_mm[Z_AXIS]*MM_PER_INCH));
+   printString(" WPos: x"); printFloat((print_position[X_AXIS]-sys.coord_offset[X_AXIS])/(settings.steps_per_mm[X_AXIS]*MM_PER_INCH));
+   printString(",y"); printFloat((print_position[Y_AXIS]-sys.coord_offset[Y_AXIS])/(settings.steps_per_mm[Y_AXIS]*MM_PER_INCH));
+   printString(",z"); printFloat((print_position[Z_AXIS]-sys.coord_offset[Z_AXIS])/(settings.steps_per_mm[Z_AXIS]*MM_PER_INCH));
  #else
-   printString("x"); printFloat(sys.position[X_AXIS]/(settings.steps_per_mm[X_AXIS]));
-   printString(",y"); printFloat(sys.position[Y_AXIS]/(settings.steps_per_mm[Y_AXIS]));
-   printString(",z"); printFloat(sys.position[Z_AXIS]/(settings.steps_per_mm[Z_AXIS]));
+   printString("MPos: x"); printFloat(print_position[X_AXIS]/(settings.steps_per_mm[X_AXIS]));
+   printString(",y"); printFloat(print_position[Y_AXIS]/(settings.steps_per_mm[Y_AXIS]));
+   printString(",z"); printFloat(print_position[Z_AXIS]/(settings.steps_per_mm[Z_AXIS]));
+   printString(" WPos: x"); printFloat((print_position[X_AXIS]-sys.coord_offset[X_AXIS])/(settings.steps_per_mm[X_AXIS]));
+   printString(",y"); printFloat((print_position[Y_AXIS]-sys.coord_offset[Y_AXIS])/(settings.steps_per_mm[Y_AXIS]));
+   printString(",z"); printFloat((print_position[Z_AXIS]-sys.coord_offset[Z_AXIS])/(settings.steps_per_mm[Z_AXIS]));
  #endif
  printString("\r\n");
 }
@@ -128,8 +134,8 @@ void protocol_execute_runtime()
     
     // Execute and serial print status
     if (rt_exec & EXEC_STATUS_REPORT) { 
-      bit_false(sys.execute,EXEC_STATUS_REPORT);
       protocol_status_report();
+      bit_false(sys.execute,EXEC_STATUS_REPORT);
     }
     
     // Initiate stepper feed hold

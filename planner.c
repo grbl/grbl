@@ -41,11 +41,15 @@ static volatile uint8_t block_buffer_head;       // Index of the next block to b
 static volatile uint8_t block_buffer_tail;       // Index of the block to process now
 static uint8_t next_buffer_head;                 // Index of the next buffer head
 
-static int32_t position[3];             // The planner position of the tool in absolute steps
-// static int32_t coord_offset[3];         // Current coordinate offset from machine zero in absolute steps
-static double previous_unit_vec[3];     // Unit vector of previous path line segment
-static double previous_nominal_speed;   // Nominal speed of previous path line segment
-
+// Define planner variables
+typedef struct {
+  int32_t position[3];             // The planner position of the tool in absolute steps. Kept separate
+                                   // from g-code position for movements requiring multiple line motions,
+                                   // i.e. arcs, canned cycles, and backlash compensation.
+  double previous_unit_vec[3];     // Unit vector of previous path line segment
+  double previous_nominal_speed;   // Nominal speed of previous path line segment
+} planner_t;
+static planner_t pl;
 
 // Returns the index of the next block in the ring buffer
 // NOTE: Removed modulo (%) operator, which uses an expensive divide and multiplication.
@@ -305,10 +309,7 @@ void plan_reset_buffer()
 void plan_init() 
 {
   plan_reset_buffer();
-  clear_vector(position);
-//  clear_vector(coord_offset);
-  clear_vector_double(previous_unit_vec);
-  previous_nominal_speed = 0.0;
+  memset(&pl, 0, sizeof(pl)); // Clear planner struct
 }
 
 void plan_discard_current_block() 
@@ -357,14 +358,14 @@ void plan_buffer_line(double x, double y, double z, double feed_rate, uint8_t in
 
   // Compute direction bits for this block
   block->direction_bits = 0;
-  if (target[X_AXIS] < position[X_AXIS]) { block->direction_bits |= (1<<X_DIRECTION_BIT); }
-  if (target[Y_AXIS] < position[Y_AXIS]) { block->direction_bits |= (1<<Y_DIRECTION_BIT); }
-  if (target[Z_AXIS] < position[Z_AXIS]) { block->direction_bits |= (1<<Z_DIRECTION_BIT); }
+  if (target[X_AXIS] < pl.position[X_AXIS]) { block->direction_bits |= (1<<X_DIRECTION_BIT); }
+  if (target[Y_AXIS] < pl.position[Y_AXIS]) { block->direction_bits |= (1<<Y_DIRECTION_BIT); }
+  if (target[Z_AXIS] < pl.position[Z_AXIS]) { block->direction_bits |= (1<<Z_DIRECTION_BIT); }
   
   // Number of steps for each axis
-  block->steps_x = labs(target[X_AXIS]-position[X_AXIS]);
-  block->steps_y = labs(target[Y_AXIS]-position[Y_AXIS]);
-  block->steps_z = labs(target[Z_AXIS]-position[Z_AXIS]);
+  block->steps_x = labs(target[X_AXIS]-pl.position[X_AXIS]);
+  block->steps_y = labs(target[Y_AXIS]-pl.position[Y_AXIS]);
+  block->steps_z = labs(target[Z_AXIS]-pl.position[Z_AXIS]);
   block->step_event_count = max(block->steps_x, max(block->steps_y, block->steps_z));
 
   // Bail if this is a zero-length block
@@ -372,9 +373,9 @@ void plan_buffer_line(double x, double y, double z, double feed_rate, uint8_t in
   
   // Compute path vector in terms of absolute step target and current positions
   double delta_mm[3];
-  delta_mm[X_AXIS] = (target[X_AXIS]-position[X_AXIS])/settings.steps_per_mm[X_AXIS];
-  delta_mm[Y_AXIS] = (target[Y_AXIS]-position[Y_AXIS])/settings.steps_per_mm[Y_AXIS];
-  delta_mm[Z_AXIS] = (target[Z_AXIS]-position[Z_AXIS])/settings.steps_per_mm[Z_AXIS];
+  delta_mm[X_AXIS] = (target[X_AXIS]-pl.position[X_AXIS])/settings.steps_per_mm[X_AXIS];
+  delta_mm[Y_AXIS] = (target[Y_AXIS]-pl.position[Y_AXIS])/settings.steps_per_mm[Y_AXIS];
+  delta_mm[Z_AXIS] = (target[Z_AXIS]-pl.position[Z_AXIS])/settings.steps_per_mm[Z_AXIS];
   block->millimeters = sqrt(square(delta_mm[X_AXIS]) + square(delta_mm[Y_AXIS]) + 
                             square(delta_mm[Z_AXIS]));
   double inverse_millimeters = 1.0/block->millimeters;  // Inverse millimeters to remove multiple divides	
@@ -419,16 +420,16 @@ void plan_buffer_line(double x, double y, double z, double feed_rate, uint8_t in
   double vmax_junction = MINIMUM_PLANNER_SPEED; // Set default max junction speed
 
   // Skip first block or when previous_nominal_speed is used as a flag for homing and offset cycles.
-  if ((block_buffer_head != block_buffer_tail) && (previous_nominal_speed > 0.0)) {
+  if ((block_buffer_head != block_buffer_tail) && (pl.previous_nominal_speed > 0.0)) {
     // Compute cosine of angle between previous and current path. (prev_unit_vec is negative)
     // NOTE: Max junction velocity is computed without sin() or acos() by trig half angle identity.
-    double cos_theta = - previous_unit_vec[X_AXIS] * unit_vec[X_AXIS] 
-                       - previous_unit_vec[Y_AXIS] * unit_vec[Y_AXIS] 
-                       - previous_unit_vec[Z_AXIS] * unit_vec[Z_AXIS] ;
+    double cos_theta = - pl.previous_unit_vec[X_AXIS] * unit_vec[X_AXIS] 
+                       - pl.previous_unit_vec[Y_AXIS] * unit_vec[Y_AXIS] 
+                       - pl.previous_unit_vec[Z_AXIS] * unit_vec[Z_AXIS] ;
                          
     // Skip and use default max junction speed for 0 degree acute junction.
     if (cos_theta < 0.95) {
-      vmax_junction = min(previous_nominal_speed,block->nominal_speed);
+      vmax_junction = min(pl.previous_nominal_speed,block->nominal_speed);
       // Skip and avoid divide by zero for straight junctions at 180 degrees. Limit to min() of nominal speeds.
       if (cos_theta > -0.95) {
         // Compute maximum junction velocity based on maximum acceleration and junction deviation
@@ -457,15 +458,15 @@ void plan_buffer_line(double x, double y, double z, double feed_rate, uint8_t in
   block->recalculate_flag = true; // Always calculate trapezoid for new block
 
   // Update previous path unit_vector and nominal speed
-  memcpy(previous_unit_vec, unit_vec, sizeof(unit_vec)); // previous_unit_vec[] = unit_vec[]
-  previous_nominal_speed = block->nominal_speed;
+  memcpy(pl.previous_unit_vec, unit_vec, sizeof(unit_vec)); // pl.previous_unit_vec[] = unit_vec[]
+  pl.previous_nominal_speed = block->nominal_speed;
   
   // Update buffer head and next buffer head indices
   block_buffer_head = next_buffer_head;  
   next_buffer_head = next_block_index(block_buffer_head);
   
-  // Update position
-  memcpy(position, target, sizeof(target)); // position[] = target[]
+  // Update planner position
+  memcpy(pl.position, target, sizeof(target)); // pl.position[] = target[]
 
   planner_recalculate(); 
 }
@@ -473,22 +474,26 @@ void plan_buffer_line(double x, double y, double z, double feed_rate, uint8_t in
 // Reset the planner position vector and planner speed
 void plan_set_current_position(double x, double y, double z) 
 {
-  // Track the position offset from the initial position
-  // TODO: Need to make sure coord_offset is robust and/or needed. Can be used for a soft reset,
-  // where the machine position is retained after a system abort/reset. However, this is not
-  // correlated to the actual machine position after a soft reset and may not be needed. This could
-  // be left to a user interface to maintain.
-//   coord_offset[X_AXIS] += position[X_AXIS]; 
-//   coord_offset[Y_AXIS] += position[Y_AXIS];
-//   coord_offset[Z_AXIS] += position[Z_AXIS];  
-  position[X_AXIS] = lround(x*settings.steps_per_mm[X_AXIS]);
-  position[Y_AXIS] = lround(y*settings.steps_per_mm[Y_AXIS]);
-  position[Z_AXIS] = lround(z*settings.steps_per_mm[Z_AXIS]); 
-//   coord_offset[X_AXIS] -= position[X_AXIS];
-//   coord_offset[Y_AXIS] -= position[Y_AXIS];
-//   coord_offset[Z_AXIS] -= position[Z_AXIS];  
-  previous_nominal_speed = 0.0; // Resets planner junction speeds. Assumes start from rest.
-  clear_vector_double(previous_unit_vec);
+  // To correlate status reporting work position correctly, the planner must force the steppers to
+  // empty the block buffer and synchronize with the planner, as the real-time machine position and 
+  // the planner position at the end of the buffer are different. This will only be called with a 
+  // G92 is executed, which typically is used only at the beginning of a g-code program.
+  // TODO: Find a robust way to avoid a planner synchronize, but may require a bit of ingenuity.
+  plan_synchronize();
+  
+  // Update the system coordinate offsets from machine zero
+  sys.coord_offset[X_AXIS] += pl.position[X_AXIS]; 
+  sys.coord_offset[Y_AXIS] += pl.position[Y_AXIS];
+  sys.coord_offset[Z_AXIS] += pl.position[Z_AXIS];
+  
+  memset(&pl, 0, sizeof(pl)); // Clear planner variables. Assume start from rest.
+  
+  pl.position[X_AXIS] = lround(x*settings.steps_per_mm[X_AXIS]); // Update planner position
+  pl.position[Y_AXIS] = lround(y*settings.steps_per_mm[Y_AXIS]);
+  pl.position[Z_AXIS] = lround(z*settings.steps_per_mm[Z_AXIS]); 
+  sys.coord_offset[X_AXIS] -= pl.position[X_AXIS];
+  sys.coord_offset[Y_AXIS] -= pl.position[Y_AXIS];
+  sys.coord_offset[Z_AXIS] -= pl.position[Z_AXIS];
 }
 
 // Re-initialize buffer plan with a partially completed block, assumed to exist at the buffer tail.

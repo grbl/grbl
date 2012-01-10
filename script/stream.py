@@ -11,7 +11,7 @@ buffer layer to prevent buffer starvation.
 
 TODO: - Add runtime command capabilities
 
-Version: SKJ.20120104
+Version: SKJ.20120110
 """
 
 import serial
@@ -32,6 +32,13 @@ parser.add_argument('-q','--quiet',action='store_true', default=False,
         help='suppress output text')
 args = parser.parse_args()
 
+# Periodic timer to query for status reports
+# TODO: Need to track down why this doesn't restart consistently before a release.
+# def periodic():
+#     s.write('?')
+#     t = threading.Timer(0.1, periodic) # In seconds
+#     t.start()
+
 # Initialize
 s = serial.Serial(args.device_file,9600)
 f = args.gcode_file
@@ -51,6 +58,7 @@ print "Streaming ", args.gcode_file.name, " to ", args.device_file
 l_count = 0
 g_count = 0
 c_line = []
+# periodic() # Start status report periodic timer
 for line in f:
     l_count += 1 # Iterate line counter
 #     l_block = re.sub('\s|\(.*?\)','',line).upper() # Strip comments/spaces/new line and capitalize

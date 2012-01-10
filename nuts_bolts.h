@@ -68,9 +68,10 @@ typedef struct {
   uint8_t feed_hold;             // Feed hold flag. Held true during feed hold. Released when ready to resume.
   uint8_t auto_start;            // Planner auto-start flag. Toggled off during feed hold. Defaulted by settings.
 
-  int32_t position[3];           // Real-time machine position vector in steps. This may need to be a volatile
-                                 // variable, if problems arise. Subject to change. Need to add coordinate offset
-                                 // functionality to correctly track part zero and machine zero.
+  int32_t position[3];           // Real-time machine (aka home) position vector in steps. 
+                                 // NOTE: This may need to be a volatile variable, if problems arise. 
+  int32_t coord_offset[3];       // Retains the G92 coordinate offset (work coordinates) relative to
+                                 // machine zero in steps.
                           
   volatile uint8_t cycle_start;  // Cycle start flag. Set by stepper subsystem or main program. 
   volatile uint8_t execute;      // Global system runtime executor bitflag variable. See EXEC bitmasks.
