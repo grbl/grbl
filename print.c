@@ -3,6 +3,7 @@
   Part of Grbl
 
   Copyright (c) 2009-2011 Simen Svale Skogsrud
+  Copyright (c) 2011 Sungeun K. Jeon
 
   Grbl is free software: you can redistribute it and/or modify
   it under the terms of the GNU General Public License as published by
@@ -28,20 +29,21 @@
 
 #ifndef DECIMAL_PLACES
 #define DECIMAL_PLACES 3
+#define DECIMAL_MULTIPLIER 10*10*10
 #endif
 
 void printString(const char *s)
 {
-	while (*s)
-		serial_write(*s++);
+  while (*s)
+    serial_write(*s++);
 }
 
 // Print a string stored in PGM-memory
 void printPgmString(const char *s)
 {
   char c;
-	while ((c = pgm_read_byte_near(s++)))
-		serial_write(c);
+  while ((c = pgm_read_byte_near(s++)))
+    serial_write(c);
 }
 
 void printIntegerInBase(unsigned long n, unsigned long base)
@@ -78,18 +80,25 @@ void printInteger(long n)
 // A very simple 
 void printFloat(double n)
 {
-  double integer_part, fractional_part;
-  uint8_t decimal_part;
-  fractional_part = modf(n, &integer_part);
-  printInteger(integer_part);
+  if (n < 0) {
+    serial_write('-');
+    n = -n;
+  }
+  n += 0.5/DECIMAL_MULTIPLIER; // Add rounding factor
+ 
+  long integer_part;
+  integer_part = (int)n;
+  printIntegerInBase(integer_part,10);
+  
   serial_write('.');
-  fractional_part *= 10;
+  
+  n -= integer_part;
   int decimals = DECIMAL_PLACES;  
+  uint8_t decimal_part;  
   while(decimals-- > 0) {
-    decimal_part = floor(fractional_part);
+    n *= 10;
+    decimal_part = (int) n;
     serial_write('0'+decimal_part);
-    fractional_part -= decimal_part;
-    fractional_part *= 10;
+    n -= decimal_part;
   }
 }
-
