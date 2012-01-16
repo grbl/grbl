@@ -130,30 +130,25 @@ static uint8_t iterate_trapezoid_cycle_counter()
 // config_step_timer. It pops blocks from the block_buffer and executes them by pulsing the stepper pins appropriately. 
 // It is supported by The Stepper Port Reset Interrupt which it uses to reset the stepper port after each pulse. 
 // The bresenham line tracer algorithm controls all three stepper outputs simultaneously with these two interrupts.
-// NOTE: ISR_NOBLOCK allows SIG_OVERFLOW2 to trigger on-time regardless of time in this handler.
-
-// TODO: ISR_NOBLOCK is the same as the old SIGNAL with sei() method, but is optimizable by the compiler. On
-// an oscilloscope there is a weird hitch in the step pulse during high load operation. Very infrequent, but
-// when this does happen most of the time the pulse falling edge is randomly delayed by 20%-50% of the total 
-// intended pulse time, but sometimes it pulses less than 3usec. The former likely caused by the serial 
-// interrupt doing its thing, not that big of a deal, but the latter cause is unknown and worrisome. Need
-// to track down what is causing this problem. Functionally, this shouldn't cause any noticeable issues
-// as long as stepper drivers have a pulse minimum of 1usec or so (Pololu and any Allegro IC are ok).
-// ** This seems to be an inherent issue that dates all the way back to Simen's v0.6b or earlier. **
-
-ISR(TIMER1_COMPA_vect,ISR_NOBLOCK)
+ISR(TIMER1_COMPA_vect)
 {        
   if (busy) { return; } // The busy-flag is used to avoid reentering this interrupt
-  busy = true;
   
   // Set the direction pins a couple of nanoseconds before we step the steppers
   STEPPING_PORT = (STEPPING_PORT & ~DIRECTION_MASK) | (out_bits & DIRECTION_MASK);
   // Then pulse the stepping pins
   STEPPING_PORT = (STEPPING_PORT & ~STEP_MASK) | out_bits;
-  // Reset step pulse reset timer so that The Stepper Port Reset Interrupt can reset the signal after
-  // exactly settings.pulse_microseconds microseconds.
-  TCNT2 = step_pulse_time;
-    
+  // Enable step pulse reset timer so that The Stepper Port Reset Interrupt can reset the signal after
+  // exactly settings.pulse_microseconds microseconds, independent of the main Timer1 prescaler.
+  TCNT2 = step_pulse_time; // Reload timer counter
+  TCCR2B = (1<<CS21); // Begin timer2. Full speed, 1/8 prescaler
+
+  busy = true;
+  // Re-enable interrupts to allow ISR_TIMER2_OVERFLOW to trigger on-time and allow serial communications
+  // regardless of time in this handler. The following code prepares the stepper driver for the next
+  // step interrupt compare and will always finish before returning to the main program.
+  sei();
+  
   // If there is no current block, attempt to pop one from the buffer
   if (current_block == NULL) {
     // Anything in the buffer? If so, initialize next motion.
@@ -296,12 +291,15 @@ ISR(TIMER1_COMPA_vect,ISR_NOBLOCK)
   busy = false;
 }
 
-// This interrupt is set up by SIG_OUTPUT_COMPARE1A when it sets the motor port bits. It resets
+// This interrupt is set up by ISR_TIMER1_COMPAREA when it sets the motor port bits. It resets
 // the motor port after a short period (settings.pulse_microseconds) completing one step cycle.
+// TODO: It is possible for the serial interrupts to delay this interrupt by a few microseconds, if
+// they execute right before this interrupt. Not a big deal, but could use some TLC at some point.
 ISR(TIMER2_OVF_vect)
 {
   // Reset stepping pins (leave the direction pins)
   STEPPING_PORT = (STEPPING_PORT & ~STEP_MASK) | (settings.invert_mask & STEP_MASK); 
+  TCCR2B = 0; // Disable Timer2 to prevent re-entering this interrupt when it's not needed. 
 }
 
 // Reset and clear stepper subsystem variables
@@ -332,8 +330,8 @@ void st_init()
   TCCR1A &= ~(3<<COM1B0); 
 	
   // Configure Timer 2
-  TCCR2A = 0;         // Normal operation
-  TCCR2B = (1<<CS21); // Full speed, 1/8 prescaler
+  TCCR2A = 0; // Normal operation
+  TCCR2B = 0; // Disable timer until needed.
   TIMSK2 |= (1<<TOIE2);      
 
   // Start in the idle state

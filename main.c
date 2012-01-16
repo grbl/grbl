@@ -39,9 +39,9 @@ system_t sys;
 int main(void)
 {
   // Initialize system
-  sei(); // Enable interrupts
   serial_init(BAUD_RATE); // Setup serial baud rate and interrupts
   st_init(); // Setup stepper pins and interrupt timers
+  sei(); // Enable interrupts
 
   memset(&sys, 0, sizeof(sys));  // Clear all system variables
   sys.abort = true;   // Set abort to complete initialization

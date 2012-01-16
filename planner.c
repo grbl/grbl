@@ -376,8 +376,8 @@ void plan_buffer_line(double x, double y, double z, double feed_rate, uint8_t in
   delta_mm[X_AXIS] = (target[X_AXIS]-pl.position[X_AXIS])/settings.steps_per_mm[X_AXIS];
   delta_mm[Y_AXIS] = (target[Y_AXIS]-pl.position[Y_AXIS])/settings.steps_per_mm[Y_AXIS];
   delta_mm[Z_AXIS] = (target[Z_AXIS]-pl.position[Z_AXIS])/settings.steps_per_mm[Z_AXIS];
-  block->millimeters = sqrt(square(delta_mm[X_AXIS]) + square(delta_mm[Y_AXIS]) + 
-                            square(delta_mm[Z_AXIS]));
+  block->millimeters = sqrt(delta_mm[X_AXIS]*delta_mm[X_AXIS] + delta_mm[Y_AXIS]*delta_mm[Y_AXIS] + 
+                            delta_mm[Z_AXIS]*delta_mm[Z_AXIS]);
   double inverse_millimeters = 1.0/block->millimeters;  // Inverse millimeters to remove multiple divides	
   
   // Calculate speed in mm/minute for each axis. No divide by zero due to previous checks.
@@ -476,9 +476,10 @@ void plan_set_current_position(double x, double y, double z)
 {
   // To correlate status reporting work position correctly, the planner must force the steppers to
   // empty the block buffer and synchronize with the planner, as the real-time machine position and 
-  // the planner position at the end of the buffer are different. This will only be called with a 
-  // G92 is executed, which typically is used only at the beginning of a g-code program.
-  // TODO: Find a robust way to avoid a planner synchronize, but may require a bit of ingenuity.
+  // the planner position at the end of the buffer can be and are usually different. This function is
+  // only called with a G92, which typically is used only at the beginning of a g-code program or 
+  // between different operations.
+  // TODO: Find a robust way to avoid a planner synchronize, but this may require a bit of ingenuity.
   plan_synchronize();
   
   // Update the system coordinate offsets from machine zero

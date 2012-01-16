@@ -182,7 +182,7 @@ void mc_dwell(double seconds)
 {
    uint16_t i = floor(1000/DWELL_TIME_STEP*seconds);
    plan_synchronize();
-   _delay_ms(floor(1000*seconds-i*DWELL_TIME_STEP)); // Delay millisecond remainder
+   delay_ms(floor(1000*seconds-i*DWELL_TIME_STEP)); // Delay millisecond remainder
    while (i > 0) {
      // NOTE: Check and execute runtime commands during dwell every <= DWELL_TIME_STEP milliseconds.
      protocol_execute_runtime();

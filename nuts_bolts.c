@@ -21,6 +21,7 @@
 #include "nuts_bolts.h"
 #include <stdint.h>
 #include <stdlib.h>
+#include <util/delay.h>
 
 int read_double(char *line, uint8_t *char_counter, double *double_ptr)                  
 {
@@ -36,3 +37,10 @@ int read_double(char *line, uint8_t *char_counter, double *double_ptr)
   return(true);
 }
 
+
+// Delays variable defined milliseconds. Compiler compatibility fix for _delay_ms(),
+// which only accepts constants in future compiler releases.
+void delay_ms(uint16_t ms) 
+{
+  while ( ms-- ) { _delay_ms(1); }
+}

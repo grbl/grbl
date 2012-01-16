@@ -108,7 +108,7 @@
 // this delay will increase the maximum dwell time linearly, but also reduces the responsiveness of 
 // run-time command executions, like status reports, since these are performed between each dwell 
 // time step. Also, keep in mind that the Arduino delay timer is not very accurate for long delays.
-#define DWELL_TIME_STEP 50 // Integer (milliseconds)
+#define DWELL_TIME_STEP 50 // Integer (1-255) (milliseconds)
 
 
 // -----------------------------------------------
