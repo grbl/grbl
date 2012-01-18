@@ -10,26 +10,15 @@ Grbl includes full acceleration management with look ahead. That means the contr
 
 *Changelog for v0.8 from v0.7:*
   - *ALPHA STATUS*: Major structural overhaul to allow for multi-tasking events and new feature sets
-  - New run-time command control: Feed hold (pause), Cycle start (resume), Reset (abort), Status report (TBD)
+  - New run-time command control: Feed hold (pause), Cycle start (resume), Reset (abort), Status reporting
   - Controlled feed hold with deceleration to ensure no skipped steps and loss of location.
   - After feed hold, cycle accelerations are re-planned and may be resumed.
-  - System reset re-initializes grbl without resetting the Arduino.
-  - Updated dwell function.
+  - Work(G92) and machine coordinate system support.
+  - System reset re-initializes grbl without resetting the Arduino and retains machine/home position.
   - Restructured planner and stepper modules to become independent and ready for future features.
-  - Planned features: Jog mode, status reporting, backlash compensation, improved flow control, planner optimizations
-  - Reduce serial read buffer to 127 characters and increased write buffer to 31 characters (-1 ring buffer).
-  - Increased planner buffer size to 20 blocks.
+  - Planned features: Jog mode, status reporting, runtime settings such as toggling block delete.
+  - Reduce serial read buffer to 128 characters and increased write buffer to 64 characters.
   - Misc bug fixes and removed deprecated acceleration enabled code.
-
-*Changelog for v0.7 from v0.6:*
-  - Significantly improved and optimized planner re-factoring.
-  - New robust cornering algorithm, enabling smoother and faster motions.
-  - Arc acceleration planning enabled by efficient vector transformation implementation.
-  - Stepper subsystem re-factoring to help remove some motion issues from pre-v0.7 builds.
-  - Increased dwell times.
-  - G92 Coordinate offset support.
-  - (Beta) Limit switch and homing cycle support.
-  - Many other bug fixes and efficiency improvements.
 
 *Important note for Atmega 168 users:* Going forward, support for Atmega 168 will be dropped due to its limited memory and speed. However, legacy Grbl v0.51 "in the branch called 'v0_51' is still available for use.
 
