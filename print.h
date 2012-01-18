@@ -1,5 +1,5 @@
 /*
-  gcode.c - rs274/ngc parser.
+  print.h - Functions for formatting output strings
   Part of Grbl
 
   Copyright (c) 2009-2011 Simen Svale Skogsrud
@@ -18,15 +18,20 @@
   along with Grbl.  If not, see <http://www.gnu.org/licenses/>.
 */
 
+/* This code was initially inspired by the wiring_serial module by David A. Mellis which
+   used to be a part of the Arduino project. */ 
 
-#ifndef gcode_h
-#define gcode_h
-#include <avr/io.h>
+#ifndef print_h
+#define print_h
 
-// Initialize the parser
-void gc_init();
+void printString(const char *s);
 
-// Execute one block of rs275/ngc/g-code
-uint8_t gc_execute_line(char *line);
+void printPgmString(const char *s);
+
+void printInteger(long n);
+
+void printIntegerInBase(unsigned long n, unsigned long base);
+
+void printFloat(double n);
 
 #endif

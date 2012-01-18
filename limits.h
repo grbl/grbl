@@ -1,5 +1,5 @@
 /*
-  gcode.c - rs274/ngc parser.
+  limits.h - code pertaining to limit-switches and performing the homing cycle
   Part of Grbl
 
   Copyright (c) 2009-2011 Simen Svale Skogsrud
@@ -18,15 +18,13 @@
   along with Grbl.  If not, see <http://www.gnu.org/licenses/>.
 */
 
+#ifndef limits_h
+#define limits_h 
 
-#ifndef gcode_h
-#define gcode_h
-#include <avr/io.h>
+// initialize the limits module
+void limits_init();
 
-// Initialize the parser
-void gc_init();
-
-// Execute one block of rs275/ngc/g-code
-uint8_t gc_execute_line(char *line);
+// perform the homing cycle
+void limits_go_home();
 
 #endif

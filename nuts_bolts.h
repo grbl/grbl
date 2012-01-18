@@ -1,8 +1,9 @@
 /*
-  motion_control.h - cartesian robot controller.
+  nuts_bolts.h - Header file for shared definitions, variables, and functions
   Part of Grbl
 
   Copyright (c) 2009-2011 Simen Svale Skogsrud
+  Copyright (c) 2011 Sungeun K. Jeon  
 
   Grbl is free software: you can redistribute it and/or modify
   it under the terms of the GNU General Public License as published by
@@ -21,15 +22,24 @@
 #ifndef nuts_bolts_h
 #define nuts_bolts_h
 #include <string.h>
+#include <stdint.h>
+#include <stdbool.h>
 
-#define FALSE 0
-#define TRUE 1
+#define false 0
+#define true 1
 
 #define X_AXIS 0
 #define Y_AXIS 1
 #define Z_AXIS 2
 
 #define clear_vector(a) memset(a, 0, sizeof(a))
+#define clear_vector_double(a) memset(a, 0.0, sizeof(a))
 #define max(a,b) (((a) > (b)) ? (a) : (b))
+#define min(a,b) (((a) < (b)) ? (a) : (b))
+
+// Read a floating point value from a string. Line points to the input buffer, char_counter 
+// is the indexer pointing to the current character of the line, while double_ptr is 
+// a pointer to the result variable. Returns true when it succeeds
+int read_double(char *line, uint8_t *char_counter, double *double_ptr);
 
 #endif

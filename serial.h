@@ -1,5 +1,5 @@
 /*
-  gcode.c - rs274/ngc parser.
+  serial.c - Low level functions for sending and recieving bytes via the serial port
   Part of Grbl
 
   Copyright (c) 2009-2011 Simen Svale Skogsrud
@@ -18,15 +18,18 @@
   along with Grbl.  If not, see <http://www.gnu.org/licenses/>.
 */
 
+/* This code was initially inspired by the wiring_serial module by David A. Mellis which
+   used to be a part of the Arduino project. */ 
 
-#ifndef gcode_h
-#define gcode_h
-#include <avr/io.h>
+#ifndef serial_h
+#define serial_h
 
-// Initialize the parser
-void gc_init();
+#define SERIAL_NO_DATA 0xff
 
-// Execute one block of rs275/ngc/g-code
-uint8_t gc_execute_line(char *line);
+void serial_init(long baud);
+
+void serial_write(uint8_t data);
+
+uint8_t serial_read();
 
 #endif

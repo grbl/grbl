@@ -21,25 +21,36 @@
 #include "spindle_control.h"
 #include "settings.h"
 #include "config.h"
+#include "stepper.h"
 
 #include <avr/io.h>
 
+static int current_direction;
+
 void spindle_init()
 {
-  SPINDLE_ENABLE_DDR |= 1<<SPINDLE_ENABLE_BIT;
+  spindle_run(0, 0);
 }
 
 void spindle_run(int direction, uint32_t rpm) 
 {
-  if(direction >= 0) {
-    SPINDLE_DIRECTION_PORT &= ~(1<<SPINDLE_DIRECTION_BIT);
-  } else {
-    SPINDLE_DIRECTION_PORT |= 1<<SPINDLE_DIRECTION_BIT;
+  if (direction != current_direction) {
+    st_synchronize();
+    if(direction) {
+      if(direction > 0) {
+        SPINDLE_DIRECTION_PORT &= ~(1<<SPINDLE_DIRECTION_BIT);
+      } else {
+        SPINDLE_DIRECTION_PORT |= 1<<SPINDLE_DIRECTION_BIT;
+      }
+      SPINDLE_ENABLE_PORT |= 1<<SPINDLE_ENABLE_BIT;
+    } else {
+      SPINDLE_ENABLE_PORT &= ~(1<<SPINDLE_ENABLE_BIT);      
+    }
+    current_direction = direction;
   }
-  SPINDLE_ENABLE_PORT |= 1<<SPINDLE_ENABLE_BIT;
 }
 
 void spindle_stop()
 {
-  SPINDLE_ENABLE_PORT &= ~(1<<SPINDLE_ENABLE_BIT);
+  spindle_run(0, 0);
 }

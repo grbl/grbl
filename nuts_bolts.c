@@ -1,5 +1,5 @@
 /*
-  gcode.c - rs274/ngc parser.
+  nuts_bolts.c - Shared functions
   Part of Grbl
 
   Copyright (c) 2009-2011 Simen Svale Skogsrud
@@ -18,15 +18,21 @@
   along with Grbl.  If not, see <http://www.gnu.org/licenses/>.
 */
 
+#include "nuts_bolts.h"
+#include <stdint.h>
+#include <stdlib.h>
 
-#ifndef gcode_h
-#define gcode_h
-#include <avr/io.h>
+int read_double(char *line, uint8_t *char_counter, double *double_ptr)                  
+{
+  char *start = line + *char_counter;
+  char *end;
+  
+  *double_ptr = strtod(start, &end);
+  if(end == start) { 
+    return(false); 
+  };
 
-// Initialize the parser
-void gc_init();
+  *char_counter = end - line;
+  return(true);
+}
 
-// Execute one block of rs275/ngc/g-code
-uint8_t gc_execute_line(char *line);
-
-#endif
