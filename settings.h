@@ -3,7 +3,8 @@
   Part of Grbl
 
   Copyright (c) 2009-2011 Simen Svale Skogsrud
-
+  Copyright (c) 2011 Sungeun K. Jeon
+  
   Grbl is free software: you can redistribute it and/or modify
   it under the terms of the GNU General Public License as published by
   the Free Software Foundation, either version 3 of the License, or
@@ -21,15 +22,14 @@
 #ifndef settings_h
 #define settings_h
 
-
 #include <math.h>
 #include <inttypes.h>
 
-#define GRBL_VERSION "0.7b"
+#define GRBL_VERSION "0.8a"
 
 // Version of the EEPROM data. Will be used to migrate existing data from older versions of Grbl
 // when firmware is upgraded. Always stored in byte 0 of eeprom
-#define SETTINGS_VERSION 2
+#define SETTINGS_VERSION 4
 
 // Current global settings (persisted in EEPROM from byte 1 onwards)
 typedef struct {
@@ -41,7 +41,7 @@ typedef struct {
   uint8_t invert_mask;
   double mm_per_arc_segment;
   double acceleration;
-  double max_jerk;
+  double junction_deviation;
 } settings_t;
 extern settings_t settings;
 

@@ -3,6 +3,7 @@
   Part of Grbl
 
   Copyright (c) 2009-2011 Simen Svale Skogsrud
+  Copyright (c) 2011 Sungeun K. Jeon
 
   Grbl is free software: you can redistribute it and/or modify
   it under the terms of the GNU General Public License as published by
@@ -24,15 +25,13 @@
 #include <avr/interrupt.h>
 #include <avr/sleep.h>
 #include "serial.h"
+#include "config.h"
+#include "stepper.h"
+#include "nuts_bolts.h"
+#include "protocol.h"
 
-
-#ifdef __AVR_ATmega328P__
-#define RX_BUFFER_SIZE 256
-#else
-#define RX_BUFFER_SIZE 64
-#endif
-
-#define TX_BUFFER_SIZE 16
+#define RX_BUFFER_SIZE 128
+#define TX_BUFFER_SIZE 64
 
 uint8_t rx_buffer[RX_BUFFER_SIZE];
 uint8_t rx_buffer_head = 0;
@@ -44,45 +43,48 @@ volatile uint8_t tx_buffer_tail = 0;
 
 static void set_baud_rate(long baud) {
   uint16_t UBRR0_value = ((F_CPU / 16 + baud / 2) / baud - 1);
-	UBRR0H = UBRR0_value >> 8;
-	UBRR0L = UBRR0_value;
+  UBRR0H = UBRR0_value >> 8;
+  UBRR0L = UBRR0_value;
 }
 
 void serial_init(long baud)
 {
   set_baud_rate(baud);
   
-	/* baud doubler off  - Only needed on Uno XXX */
+  /* baud doubler off  - Only needed on Uno XXX */
   UCSR0A &= ~(1 << U2X0);
           
-	// enable rx and tx
+  // enable rx and tx
   UCSR0B |= 1<<RXEN0;
   UCSR0B |= 1<<TXEN0;
 	
-	// enable interrupt on complete reception of a byte
+  // enable interrupt on complete reception of a byte
   UCSR0B |= 1<<RXCIE0;
 	  
-	// defaults to 8-bit, no parity, 1 stop bit
+  // defaults to 8-bit, no parity, 1 stop bit
 }
 
 void serial_write(uint8_t data) {
   // Calculate next head
-  uint8_t next_head = (tx_buffer_head + 1) % TX_BUFFER_SIZE;
+  uint8_t next_head = tx_buffer_head + 1;
+  if (next_head == TX_BUFFER_SIZE) { next_head = 0; }
 
-  // Wait until there's a space in the buffer
-  while (next_head == tx_buffer_tail) { sleep_mode(); };
+  // Wait until there is space in the buffer
+  while (next_head == tx_buffer_tail) { 
+    if (sys.execute & EXEC_RESET) { return; } // Only check for abort to avoid an endless loop.
+  }
 
   // Store data and advance head
   tx_buffer[tx_buffer_head] = data;
   tx_buffer_head = next_head;
   
   // Enable Data Register Empty Interrupt to make sure tx-streaming is running
-	UCSR0B |=  (1 << UDRIE0); 
+  UCSR0B |=  (1 << UDRIE0); 
 }
 
 // Data Register Empty Interrupt handler
-SIGNAL(USART_UDRE_vect) {  
-  // temporary tx_buffer_tail (to optimize for volatile)
+ISR(USART_UDRE_vect) {  
+  // Temporary tx_buffer_tail (to optimize for volatile)
   uint8_t tail = tx_buffer_tail;
 
   // Send a byte from the buffer	
@@ -90,7 +92,7 @@ SIGNAL(USART_UDRE_vect) {
 
   // Update tail position
   tail ++;
-  tail %= TX_BUFFER_SIZE;
+  if (tail == TX_BUFFER_SIZE) { tail = 0; }
 
   // Turn off Data Register Empty Interrupt to stop tx-streaming if this concludes the transfer
   if (tail == tx_buffer_head) { UCSR0B &= ~(1 << UDRIE0); }
@@ -100,23 +102,45 @@ SIGNAL(USART_UDRE_vect) {
 
 uint8_t serial_read()
 {
-	if (rx_buffer_head == rx_buffer_tail) {
-		return SERIAL_NO_DATA;
-	} else {
-		uint8_t data = rx_buffer[rx_buffer_tail];
-		rx_buffer_tail = (rx_buffer_tail + 1) % RX_BUFFER_SIZE;
-		return data;
-	}
+  if (rx_buffer_head == rx_buffer_tail) {
+    return SERIAL_NO_DATA;
+  } else {
+    uint8_t data = rx_buffer[rx_buffer_tail];
+    rx_buffer_tail++;
+    if (rx_buffer_tail == RX_BUFFER_SIZE) { rx_buffer_tail = 0; }
+    return data;
+  }
 }
 
-SIGNAL(USART_RX_vect)
+ISR(USART_RX_vect)
 {
-	uint8_t data = UDR0;
-	uint8_t next_head = (rx_buffer_head + 1) % RX_BUFFER_SIZE;
+  uint8_t data = UDR0;
+  uint8_t next_head = rx_buffer_head + 1;
+  if (next_head == RX_BUFFER_SIZE) { next_head = 0; }
 
   // Write data to buffer unless it is full.
-	if (next_head != rx_buffer_tail) {
-		rx_buffer[rx_buffer_head] = data;
-		rx_buffer_head = next_head;
-	}
+  if (next_head != rx_buffer_tail) {
+    // Pick off runtime command characters directly from the serial stream. These characters are
+    // not passed into the buffer, but these set system state flag bits for runtime execution.
+    switch (data) {
+      case CMD_STATUS_REPORT: sys.execute |= EXEC_STATUS_REPORT; break; // Set as true
+      case CMD_CYCLE_START:   sys.execute |= EXEC_CYCLE_START; break; // Set as true
+      case CMD_FEED_HOLD:     sys.execute |= EXEC_FEED_HOLD; break; // Set as true
+      case CMD_RESET: 
+        // Immediately force stepper subsystem idle at an interrupt level.
+        if (!(sys.execute & EXEC_RESET)) { // Force stop only first time.
+          st_go_idle();  
+        }
+        sys.execute |= EXEC_RESET; // Set as true
+        break;
+      default : // Write character to buffer
+        rx_buffer[rx_buffer_head] = data;
+        rx_buffer_head = next_head;
+    }
+  }
 }
+
+void serial_reset_read_buffer() 
+{
+  rx_buffer_tail = rx_buffer_head;
+}  

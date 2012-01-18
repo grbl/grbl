@@ -24,6 +24,11 @@
 #include "settings.h"
 #include "nuts_bolts.h"
 #include "config.h"
+#include "motion_control.h"
+#include "planner.h"
+
+// TODO: Deprecated. Need to update for new version. Sys.position now tracks position relative
+// to the home position. Limits should update this vector directly.
 
 void limits_init() {
   LIMIT_DDR &= ~(LIMIT_MASK);
@@ -87,7 +92,7 @@ static void leave_limit_switch(bool x, bool y, bool z) {
 }
 
 void limits_go_home() {
-  st_synchronize();
+  plan_synchronize();
   // Store the current limit switch state
   uint8_t original_limit_state = LIMIT_PIN;
   approach_limit_switch(false, false, true); // First home the z axis
