@@ -14,7 +14,7 @@ Grbl includes full acceleration management with look ahead. That means the contr
   - Arc acceleration planning enabled by efficient vector transformation implementation.
   - Stepper subsystem re-factoring to help remove some motion issues from pre-v0.7 builds.
   - Increased dwell times.
-  - G92 Coordinate offset support.
+  - G92 coordinate system offset support.
   - (Beta) Limit switch and homing cycle support.
   - Many other bug fixes and efficiency improvements.
 
