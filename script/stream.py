@@ -24,10 +24,10 @@ import argparse
 RX_BUFFER_SIZE = 128
 
 # Define command line argument interface
-parser = argparse.ArgumentParser(description='Stream g-code file to grbl. (pySerial library required)')
-parser.add_argument('gcode', type=argparse.FileType('r'),
+parser = argparse.ArgumentParser(description='Stream g-code file to grbl. (pySerial and argparse libraries required)')
+parser.add_argument('gcode_file', type=argparse.FileType('r'),
         help='g-code filename to be streamed')
-parser.add_argument('device',
+parser.add_argument('device_file',
         help='serial device path')
 parser.add_argument('-q','--quiet',action='store_true', default=False, 
         help='suppress output text')
