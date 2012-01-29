@@ -3,7 +3,7 @@
   Part of Grbl
 
   Copyright (c) 2009-2011 Simen Svale Skogsrud
-  Copyright (c) 2011 Sungeun K. Jeon  
+  Copyright (c) 2011-2012 Sungeun K. Jeon  
 
   Grbl is free software: you can redistribute it and/or modify
   it under the terms of the GNU General Public License as published by
@@ -84,21 +84,21 @@ void protocol_status_report()
  int32_t print_position[3];
  memcpy(print_position,sys.position,sizeof(sys.position));
  #if REPORT_INCH_MODE
-   printString("MPos: x"); printFloat(print_position[X_AXIS]/(settings.steps_per_mm[X_AXIS]*MM_PER_INCH));
-   printString(",y"); printFloat(print_position[Y_AXIS]/(settings.steps_per_mm[Y_AXIS]*MM_PER_INCH));
-   printString(",z"); printFloat(print_position[Z_AXIS]/(settings.steps_per_mm[Z_AXIS]*MM_PER_INCH));
-   printString(" WPos: x"); printFloat((print_position[X_AXIS]-sys.coord_offset[X_AXIS])/(settings.steps_per_mm[X_AXIS]*MM_PER_INCH));
-   printString(",y"); printFloat((print_position[Y_AXIS]-sys.coord_offset[Y_AXIS])/(settings.steps_per_mm[Y_AXIS]*MM_PER_INCH));
-   printString(",z"); printFloat((print_position[Z_AXIS]-sys.coord_offset[Z_AXIS])/(settings.steps_per_mm[Z_AXIS]*MM_PER_INCH));
+   printString("MPos:["); printFloat(print_position[X_AXIS]/(settings.steps_per_mm[X_AXIS]*MM_PER_INCH));
+   printString(","); printFloat(print_position[Y_AXIS]/(settings.steps_per_mm[Y_AXIS]*MM_PER_INCH));
+   printString(","); printFloat(print_position[Z_AXIS]/(settings.steps_per_mm[Z_AXIS]*MM_PER_INCH));
+   printString("],WPos:["); printFloat((print_position[X_AXIS]-sys.coord_offset[X_AXIS])/(settings.steps_per_mm[X_AXIS]*MM_PER_INCH));
+   printString(","); printFloat((print_position[Y_AXIS]-sys.coord_offset[Y_AXIS])/(settings.steps_per_mm[Y_AXIS]*MM_PER_INCH));
+   printString(","); printFloat((print_position[Z_AXIS]-sys.coord_offset[Z_AXIS])/(settings.steps_per_mm[Z_AXIS]*MM_PER_INCH));
  #else
-   printString("MPos: x"); printFloat(print_position[X_AXIS]/(settings.steps_per_mm[X_AXIS]));
-   printString(",y"); printFloat(print_position[Y_AXIS]/(settings.steps_per_mm[Y_AXIS]));
-   printString(",z"); printFloat(print_position[Z_AXIS]/(settings.steps_per_mm[Z_AXIS]));
-   printString(" WPos: x"); printFloat((print_position[X_AXIS]-sys.coord_offset[X_AXIS])/(settings.steps_per_mm[X_AXIS]));
-   printString(",y"); printFloat((print_position[Y_AXIS]-sys.coord_offset[Y_AXIS])/(settings.steps_per_mm[Y_AXIS]));
-   printString(",z"); printFloat((print_position[Z_AXIS]-sys.coord_offset[Z_AXIS])/(settings.steps_per_mm[Z_AXIS]));
+   printString("MPos:["); printFloat(print_position[X_AXIS]/(settings.steps_per_mm[X_AXIS]));
+   printString(","); printFloat(print_position[Y_AXIS]/(settings.steps_per_mm[Y_AXIS]));
+   printString(","); printFloat(print_position[Z_AXIS]/(settings.steps_per_mm[Z_AXIS]));
+   printString("],WPos:["); printFloat((print_position[X_AXIS]-sys.coord_offset[X_AXIS])/(settings.steps_per_mm[X_AXIS]));
+   printString(","); printFloat((print_position[Y_AXIS]-sys.coord_offset[Y_AXIS])/(settings.steps_per_mm[Y_AXIS]));
+   printString(","); printFloat((print_position[Z_AXIS]-sys.coord_offset[Z_AXIS])/(settings.steps_per_mm[Z_AXIS]));
  #endif
- printString("\r\n");
+ printString("]\r\n");
 }
 
 

@@ -3,7 +3,7 @@
   Part of Grbl
 
   Copyright (c) 2009-2011 Simen Svale Skogsrud
-  Copyright (c) 2011 Sungeun K. Jeon
+  Copyright (c) 2011-2012 Sungeun K. Jeon
   
   Grbl is free software: you can redistribute it and/or modify
   it under the terms of the GNU General Public License as published by
@@ -49,7 +49,8 @@
 
 #define PROGRAM_FLOW_RUNNING 0
 #define PROGRAM_FLOW_PAUSED 1
-#define PROGRAM_FLOW_COMPLETED 2
+#define PROGRAM_FLOW_OPT_PAUSED 2
+#define PROGRAM_FLOW_COMPLETED 3
 
 #define SPINDLE_DIRECTION_CW 0
 #define SPINDLE_DIRECTION_CCW 1
@@ -84,12 +85,21 @@ static void select_plane(uint8_t axis_0, uint8_t axis_1, uint8_t axis_2)
   gc.plane_axis_2 = axis_2;
 }
 
-void gc_init() {
+void gc_init() 
+{
   memset(&gc, 0, sizeof(gc));
   gc.feed_rate = settings.default_feed_rate;
   gc.seek_rate = settings.default_seek_rate;
   select_plane(X_AXIS, Y_AXIS, Z_AXIS);
   gc.absolute_mode = true;
+}
+
+// Set g-code parser position. Input in steps.
+void gc_set_current_position(int32_t x, int32_t y, int32_t z) 
+{
+  gc.position[X_AXIS] = x/settings.steps_per_mm[X_AXIS];
+  gc.position[Y_AXIS] = y/settings.steps_per_mm[Y_AXIS];
+  gc.position[Z_AXIS] = z/settings.steps_per_mm[Z_AXIS]; 
 }
 
 static float to_millimeters(double value) {
@@ -99,7 +109,8 @@ static float to_millimeters(double value) {
 // Executes one line of 0-terminated G-Code. The line is assumed to contain only uppercase
 // characters and signed floating point values (no whitespace). Comments and block delete
 // characters have been removed.
-uint8_t gc_execute_line(char *line) {
+uint8_t gc_execute_line(char *line) 
+{
   uint8_t char_counter = 0;  
   char letter;
   double value;
@@ -122,39 +133,39 @@ uint8_t gc_execute_line(char *line) {
     int_value = trunc(value);
     switch(letter) {
       case 'G':
-      switch(int_value) {
-        case 0: gc.motion_mode = MOTION_MODE_SEEK; break;
-        case 1: gc.motion_mode = MOTION_MODE_LINEAR; break;
-        case 2: gc.motion_mode = MOTION_MODE_CW_ARC; break;
-        case 3: gc.motion_mode = MOTION_MODE_CCW_ARC; break;
-        case 4: next_action = NEXT_ACTION_DWELL; break;
-        case 17: select_plane(X_AXIS, Y_AXIS, Z_AXIS); break;
-        case 18: select_plane(X_AXIS, Z_AXIS, Y_AXIS); break;
-        case 19: select_plane(Y_AXIS, Z_AXIS, X_AXIS); break;
-        case 20: gc.inches_mode = true; break;
-        case 21: gc.inches_mode = false; break;
-        case 28: case 30: next_action = NEXT_ACTION_GO_HOME; break;
-        case 53: absolute_override = true; break;
-        case 80: gc.motion_mode = MOTION_MODE_CANCEL; break;        
-        case 90: gc.absolute_mode = true; break;
-        case 91: gc.absolute_mode = false; break;
-        case 92: next_action = NEXT_ACTION_SET_COORDINATE_OFFSET; break;        
-        case 93: gc.inverse_feed_rate_mode = true; break;
-        case 94: gc.inverse_feed_rate_mode = false; break;
-        default: FAIL(STATUS_UNSUPPORTED_STATEMENT);
-      }
-      break;
-      
+        switch(int_value) {
+          case 0: gc.motion_mode = MOTION_MODE_SEEK; break;
+          case 1: gc.motion_mode = MOTION_MODE_LINEAR; break;
+          case 2: gc.motion_mode = MOTION_MODE_CW_ARC; break;
+          case 3: gc.motion_mode = MOTION_MODE_CCW_ARC; break;
+          case 4: next_action = NEXT_ACTION_DWELL; break;
+          case 17: select_plane(X_AXIS, Y_AXIS, Z_AXIS); break;
+          case 18: select_plane(X_AXIS, Z_AXIS, Y_AXIS); break;
+          case 19: select_plane(Y_AXIS, Z_AXIS, X_AXIS); break;
+          case 20: gc.inches_mode = true; break;
+          case 21: gc.inches_mode = false; break;
+          case 28: case 30: next_action = NEXT_ACTION_GO_HOME; break;
+          case 53: absolute_override = true; break;
+          case 80: gc.motion_mode = MOTION_MODE_CANCEL; break;        
+          case 90: gc.absolute_mode = true; break;
+          case 91: gc.absolute_mode = false; break;
+          case 92: next_action = NEXT_ACTION_SET_COORDINATE_OFFSET; break;        
+          case 93: gc.inverse_feed_rate_mode = true; break;
+          case 94: gc.inverse_feed_rate_mode = false; break;
+          default: FAIL(STATUS_UNSUPPORTED_STATEMENT);
+        }
+        break;
       case 'M':
-      switch(int_value) {
-        case 0: case 1: gc.program_flow = PROGRAM_FLOW_PAUSED; break;
-        case 2: case 30: case 60: gc.program_flow = PROGRAM_FLOW_COMPLETED; break;
-        case 3: gc.spindle_direction = 1; break;
-        case 4: gc.spindle_direction = -1; break;
-        case 5: gc.spindle_direction = 0; break;
-        default: FAIL(STATUS_UNSUPPORTED_STATEMENT);
-      }            
-      break;
+        switch(int_value) {
+          case 0: case 60: gc.program_flow = PROGRAM_FLOW_PAUSED; break; // Program pause
+          case 1: gc.program_flow = PROGRAM_FLOW_OPT_PAUSED; break; // Program pause with optional stop on
+          case 2: case 30: gc.program_flow = PROGRAM_FLOW_COMPLETED; break; // Program end and reset 
+          case 3: gc.spindle_direction = 1; break;
+          case 4: gc.spindle_direction = -1; break;
+          case 5: gc.spindle_direction = 0; break;
+          default: FAIL(STATUS_UNSUPPORTED_STATEMENT);
+        }            
+        break;
       case 'T': gc.tool = trunc(value); break;
     }
     if(gc.status_code) { break; }
@@ -174,28 +185,28 @@ uint8_t gc_execute_line(char *line) {
     unit_converted_value = to_millimeters(value);
     switch(letter) {
       case 'F': 
-      if (unit_converted_value <= 0) { FAIL(STATUS_BAD_NUMBER_FORMAT); } // Must be greater than zero
-      if (gc.inverse_feed_rate_mode) {
-        inverse_feed_rate = unit_converted_value; // seconds per motion for this motion only
-      } else {          
-        if (gc.motion_mode == MOTION_MODE_SEEK) {
-          gc.seek_rate = unit_converted_value;
-        } else {
-          gc.feed_rate = unit_converted_value; // millimeters per minute
+        if (unit_converted_value <= 0) { FAIL(STATUS_BAD_NUMBER_FORMAT); } // Must be greater than zero
+        if (gc.inverse_feed_rate_mode) {
+          inverse_feed_rate = unit_converted_value; // seconds per motion for this motion only
+        } else {          
+          if (gc.motion_mode == MOTION_MODE_SEEK) {
+            gc.seek_rate = unit_converted_value;
+          } else {
+            gc.feed_rate = unit_converted_value; // millimeters per minute
+          }
         }
-      }
-      break;
+        break;
       case 'I': case 'J': case 'K': offset[letter-'I'] = unit_converted_value; break;
       case 'P': p = value; break;
       case 'R': r = unit_converted_value; radius_mode = true; break;
       case 'S': gc.spindle_speed = value; break;
       case 'X': case 'Y': case 'Z':
-      if (gc.absolute_mode || absolute_override) {
-        target[letter - 'X'] = unit_converted_value;
-      } else {
-        target[letter - 'X'] += unit_converted_value;
-      }
-      break;
+        if (gc.absolute_mode || absolute_override) {
+          target[letter - 'X'] = unit_converted_value;
+        } else {
+          target[letter - 'X'] += unit_converted_value;
+        }
+        break;
     }
   }
   
@@ -207,144 +218,161 @@ uint8_t gc_execute_line(char *line) {
   
   // Perform any physical actions
   switch (next_action) {
-    case NEXT_ACTION_GO_HOME: mc_go_home(); clear_vector(target); break;
+    case NEXT_ACTION_GO_HOME: mc_go_home(); clear_vector_double(target); break;
     case NEXT_ACTION_DWELL: mc_dwell(p); break;   
     case NEXT_ACTION_SET_COORDINATE_OFFSET: 
-    mc_set_current_position(target[X_AXIS], target[Y_AXIS], target[Z_AXIS]);
-    break;
+      mc_set_coordinate_offset(target[X_AXIS],target[Y_AXIS],target[Z_AXIS]);
+      break;
     case NEXT_ACTION_DEFAULT: 
-    switch (gc.motion_mode) {
-      case MOTION_MODE_CANCEL: break;
-      case MOTION_MODE_SEEK:
-      mc_line(target[X_AXIS], target[Y_AXIS], target[Z_AXIS], gc.seek_rate, false);
-      break;
-      case MOTION_MODE_LINEAR:
-      mc_line(target[X_AXIS], target[Y_AXIS], target[Z_AXIS], 
-        (gc.inverse_feed_rate_mode) ? inverse_feed_rate : gc.feed_rate, gc.inverse_feed_rate_mode);
-      break;
-      case MOTION_MODE_CW_ARC: case MOTION_MODE_CCW_ARC:
-      if (radius_mode) {
-        /* 
-          We need to calculate the center of the circle that has the designated radius and passes
-          through both the current position and the target position. This method calculates the following
-          set of equations where [x,y] is the vector from current to target position, d == magnitude of 
-          that vector, h == hypotenuse of the triangle formed by the radius of the circle, the distance to
-          the center of the travel vector. A vector perpendicular to the travel vector [-y,x] is scaled to the 
-          length of h [-y/d*h, x/d*h] and added to the center of the travel vector [x/2,y/2] to form the new point 
-          [i,j] at [x/2-y/d*h, y/2+x/d*h] which will be the center of our arc.
-          
-          d^2 == x^2 + y^2
-          h^2 == r^2 - (d/2)^2
-          i == x/2 - y/d*h
-          j == y/2 + x/d*h
-          
-                                                               O <- [i,j]
-                                                            -  |
-                                                  r      -     |
-                                                      -        |
-                                                   -           | h
-                                                -              |
-                                  [0,0] ->  C -----------------+--------------- T  <- [x,y]
-                                            | <------ d/2 ---->|
+      switch (gc.motion_mode) {
+        case MOTION_MODE_CANCEL: break;
+        case MOTION_MODE_SEEK:
+          mc_line(target[X_AXIS], target[Y_AXIS], target[Z_AXIS], gc.seek_rate, false);
+          break;
+        case MOTION_MODE_LINEAR:
+          mc_line(target[X_AXIS], target[Y_AXIS], target[Z_AXIS], 
+            (gc.inverse_feed_rate_mode) ? inverse_feed_rate : gc.feed_rate, gc.inverse_feed_rate_mode);
+          break;
+        case MOTION_MODE_CW_ARC: case MOTION_MODE_CCW_ARC:
+          if (radius_mode) {
+            /* 
+              We need to calculate the center of the circle that has the designated radius and passes
+              through both the current position and the target position. This method calculates the following
+              set of equations where [x,y] is the vector from current to target position, d == magnitude of 
+              that vector, h == hypotenuse of the triangle formed by the radius of the circle, the distance to
+              the center of the travel vector. A vector perpendicular to the travel vector [-y,x] is scaled to the 
+              length of h [-y/d*h, x/d*h] and added to the center of the travel vector [x/2,y/2] to form the new point 
+              [i,j] at [x/2-y/d*h, y/2+x/d*h] which will be the center of our arc.
+              
+              d^2 == x^2 + y^2
+              h^2 == r^2 - (d/2)^2
+              i == x/2 - y/d*h
+              j == y/2 + x/d*h
+              
+                                                                   O <- [i,j]
+                                                                -  |
+                                                      r      -     |
+                                                          -        |
+                                                       -           | h
+                                                    -              |
+                                      [0,0] ->  C -----------------+--------------- T  <- [x,y]
+                                                | <------ d/2 ---->|
+                        
+              C - Current position
+              T - Target position
+              O - center of circle that pass through both C and T
+              d - distance from C to T
+              r - designated radius
+              h - distance from center of CT to O
+              
+              Expanding the equations:
+    
+              d -> sqrt(x^2 + y^2)
+              h -> sqrt(4 * r^2 - x^2 - y^2)/2
+              i -> (x - (y * sqrt(4 * r^2 - x^2 - y^2)) / sqrt(x^2 + y^2)) / 2 
+              j -> (y + (x * sqrt(4 * r^2 - x^2 - y^2)) / sqrt(x^2 + y^2)) / 2
+             
+              Which can be written:
+              
+              i -> (x - (y * sqrt(4 * r^2 - x^2 - y^2))/sqrt(x^2 + y^2))/2
+              j -> (y + (x * sqrt(4 * r^2 - x^2 - y^2))/sqrt(x^2 + y^2))/2
+              
+              Which we for size and speed reasons optimize to:
+    
+              h_x2_div_d = sqrt(4 * r^2 - x^2 - y^2)/sqrt(x^2 + y^2)
+              i = (x - (y * h_x2_div_d))/2
+              j = (y + (x * h_x2_div_d))/2
+              
+            */
+            
+            // Calculate the change in position along each selected axis
+            double x = target[gc.plane_axis_0]-gc.position[gc.plane_axis_0];
+            double y = target[gc.plane_axis_1]-gc.position[gc.plane_axis_1];
+            
+            clear_vector(offset);
+            double h_x2_div_d = -sqrt(4 * r*r - x*x - y*y)/hypot(x,y); // == -(h * 2 / d)
+            // If r is smaller than d, the arc is now traversing the complex plane beyond the reach of any
+            // real CNC, and thus - for practical reasons - we will terminate promptly:
+            if(isnan(h_x2_div_d)) { FAIL(STATUS_FLOATING_POINT_ERROR); return(gc.status_code); }
+            // Invert the sign of h_x2_div_d if the circle is counter clockwise (see sketch below)
+            if (gc.motion_mode == MOTION_MODE_CCW_ARC) { h_x2_div_d = -h_x2_div_d; }
+            
+            /* The counter clockwise circle lies to the left of the target direction. When offset is positive,
+               the left hand circle will be generated - when it is negative the right hand circle is generated.
+               
+               
+                                                             T  <-- Target position
+                                                             
+                                                             ^ 
+                  Clockwise circles with this center         |          Clockwise circles with this center will have
+                  will have > 180 deg of angular travel      |          < 180 deg of angular travel, which is a good thing!
+                                                   \         |          /   
+      center of arc when h_x2_div_d is positive ->  x <----- | -----> x <- center of arc when h_x2_div_d is negative
+                                                             |
+                                                             |
+                                                             
+                                                             C  <-- Current position                                 */
                     
-          C - Current position
-          T - Target position
-          O - center of circle that pass through both C and T
-          d - distance from C to T
-          r - designated radius
-          h - distance from center of CT to O
+    
+            // Negative R is g-code-alese for "I want a circle with more than 180 degrees of travel" (go figure!), 
+            // even though it is advised against ever generating such circles in a single line of g-code. By 
+            // inverting the sign of h_x2_div_d the center of the circles is placed on the opposite side of the line of
+            // travel and thus we get the unadvisably long arcs as prescribed.
+            if (r < 0) { 
+                h_x2_div_d = -h_x2_div_d; 
+                r = -r; // Finished with r. Set to positive for mc_arc
+            }        
+            // Complete the operation by calculating the actual center of the arc
+            offset[gc.plane_axis_0] = 0.5*(x-(y*h_x2_div_d));
+            offset[gc.plane_axis_1] = 0.5*(y+(x*h_x2_div_d));
+    
+          } else { // Offset mode specific computations
+    
+            r = hypot(offset[gc.plane_axis_0], offset[gc.plane_axis_1]); // Compute arc radius for mc_arc
+    
+          }
           
-          Expanding the equations:
-
-          d -> sqrt(x^2 + y^2)
-          h -> sqrt(4 * r^2 - x^2 - y^2)/2
-          i -> (x - (y * sqrt(4 * r^2 - x^2 - y^2)) / sqrt(x^2 + y^2)) / 2 
-          j -> (y + (x * sqrt(4 * r^2 - x^2 - y^2)) / sqrt(x^2 + y^2)) / 2
-         
-          Which can be written:
-          
-          i -> (x - (y * sqrt(4 * r^2 - x^2 - y^2))/sqrt(x^2 + y^2))/2
-          j -> (y + (x * sqrt(4 * r^2 - x^2 - y^2))/sqrt(x^2 + y^2))/2
-          
-          Which we for size and speed reasons optimize to:
-
-          h_x2_div_d = sqrt(4 * r^2 - x^2 - y^2)/sqrt(x^2 + y^2)
-          i = (x - (y * h_x2_div_d))/2
-          j = (y + (x * h_x2_div_d))/2
-          
-        */
-        
-        // Calculate the change in position along each selected axis
-        double x = target[gc.plane_axis_0]-gc.position[gc.plane_axis_0];
-        double y = target[gc.plane_axis_1]-gc.position[gc.plane_axis_1];
-        
-        clear_vector(offset);
-        double h_x2_div_d = -sqrt(4 * r*r - x*x - y*y)/hypot(x,y); // == -(h * 2 / d)
-        // If r is smaller than d, the arc is now traversing the complex plane beyond the reach of any
-        // real CNC, and thus - for practical reasons - we will terminate promptly:
-        if(isnan(h_x2_div_d)) { FAIL(STATUS_FLOATING_POINT_ERROR); return(gc.status_code); }
-        // Invert the sign of h_x2_div_d if the circle is counter clockwise (see sketch below)
-        if (gc.motion_mode == MOTION_MODE_CCW_ARC) { h_x2_div_d = -h_x2_div_d; }
-        
-        /* The counter clockwise circle lies to the left of the target direction. When offset is positive,
-           the left hand circle will be generated - when it is negative the right hand circle is generated.
-           
-           
-                                                         T  <-- Target position
-                                                         
-                                                         ^ 
-              Clockwise circles with this center         |          Clockwise circles with this center will have
-              will have > 180 deg of angular travel      |          < 180 deg of angular travel, which is a good thing!
-                                               \         |          /   
-  center of arc when h_x2_div_d is positive ->  x <----- | -----> x <- center of arc when h_x2_div_d is negative
-                                                         |
-                                                         |
-                                                         
-                                                         C  <-- Current position                                 */
-                
-
-        // Negative R is g-code-alese for "I want a circle with more than 180 degrees of travel" (go figure!), 
-        // even though it is advised against ever generating such circles in a single line of g-code. By 
-        // inverting the sign of h_x2_div_d the center of the circles is placed on the opposite side of the line of
-        // travel and thus we get the unadvisably long arcs as prescribed.
-        if (r < 0) { 
-            h_x2_div_d = -h_x2_div_d; 
-            r = -r; // Finished with r. Set to positive for mc_arc
-        }        
-        // Complete the operation by calculating the actual center of the arc
-        offset[gc.plane_axis_0] = 0.5*(x-(y*h_x2_div_d));
-        offset[gc.plane_axis_1] = 0.5*(y+(x*h_x2_div_d));
-
-      } else { // Offset mode specific computations
-
-        r = hypot(offset[gc.plane_axis_0], offset[gc.plane_axis_1]); // Compute arc radius for mc_arc
-
-      }
-      
-      // Set clockwise/counter-clockwise sign for mc_arc computations
-      uint8_t isclockwise = false;
-      if (gc.motion_mode == MOTION_MODE_CW_ARC) { isclockwise = true; }
-
-      // Trace the arc
-      mc_arc(gc.position, target, offset, gc.plane_axis_0, gc.plane_axis_1, gc.plane_axis_2,
-        (gc.inverse_feed_rate_mode) ? inverse_feed_rate : gc.feed_rate, gc.inverse_feed_rate_mode,
-        r, isclockwise);
-        
-      break;
-    }    
+          // Set clockwise/counter-clockwise sign for mc_arc computations
+          uint8_t isclockwise = false;
+          if (gc.motion_mode == MOTION_MODE_CW_ARC) { isclockwise = true; }
+    
+          // Trace the arc
+          mc_arc(gc.position, target, offset, gc.plane_axis_0, gc.plane_axis_1, gc.plane_axis_2,
+            (gc.inverse_feed_rate_mode) ? inverse_feed_rate : gc.feed_rate, gc.inverse_feed_rate_mode,
+            r, isclockwise);
+            
+          break;
+      }    
   }
   
   // As far as the parser is concerned, the position is now == target. In reality the
   // motion control system might still be processing the action and the real tool position
   // in any intermediate location.
   memcpy(gc.position, target, sizeof(double)*3); // gc.position[] = target[];
+  
+  // Perform non-running program flow actions. During a program pause, the buffer may refill and can
+  // only be resumed by the cycle start run-time command.
+  // TODO: Install optional stop setting and re-factor program flow actions.
+  if (gc.program_flow) {
+    plan_synchronize(); // Finish all remaining buffered motions. Program paused when complete.
+    sys.auto_start = false; // Disable auto cycle start.
+    switch (gc.program_flow) {
+      case PROGRAM_FLOW_PAUSED: case PROGRAM_FLOW_OPT_PAUSED:
+        gc.program_flow = PROGRAM_FLOW_RUNNING; // Re-enable program flow after pause complete.
+        break;
+      // Reset to reload defaults (G92.2,G54,G17,G90,G94,M48,G40,M5,M9)
+      case PROGRAM_FLOW_COMPLETED: sys.abort = true; break;
+    }
+  }    
+  
   return(gc.status_code);
 }
 
 // Parses the next statement and leaves the counter on the first character following
 // the statement. Returns 1 if there was a statements, 0 if end of string was reached
 // or there was an error (check state.status_code).
-static int next_statement(char *letter, double *double_ptr, char *line, uint8_t *char_counter) {
+static int next_statement(char *letter, double *double_ptr, char *line, uint8_t *char_counter) 
+{
   if (line[*char_counter] == 0) {
     return(0); // No more statements
   }
@@ -375,7 +403,7 @@ static int next_statement(char *letter, double *double_ptr, char *line, uint8_t 
   - Probing
   - Override control
 
-   group 0 = {G10, G28, G30, G92, G92.1, G92.2, G92.3} (Non modal G-codes)
+   group 0 = {G10, G28, G30, G92.1, G92.2, G92.3} (Non modal G-codes)
    group 8 = {M7, M8, M9} coolant (special case: M7 and M8 may be active at the same time)
    group 9 = {M48, M49} enable/disable feed and speed override switches
    group 12 = {G54, G55, G56, G57, G58, G59, G59.1, G59.2, G59.3} coordinate system selection

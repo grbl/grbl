@@ -3,7 +3,7 @@
   Part of Grbl
 
   Copyright (c) 2009-2011 Simen Svale Skogsrud
-  Copyright (c) 2011 Sungeun K. Jeon
+  Copyright (c) 2011-2012 Sungeun K. Jeon
 
   Grbl is free software: you can redistribute it and/or modify
   it under the terms of the GNU General Public License as published by
@@ -46,7 +46,7 @@ int main(void)
   memset(&sys, 0, sizeof(sys));  // Clear all system variables
   sys.abort = true;   // Set abort to complete initialization
                     
-  while(1) {
+  for(;;) {
   
     // Execute system reset upon a system abort, where the main program will return to this loop.
     // Once here, it is safe to re-initialize the system. At startup, the system will automatically
@@ -56,18 +56,15 @@ int main(void)
       // Retain last known machine position. If the system abort occurred while in motion, machine
       // position is not guaranteed, since a hard stop can cause the steppers to lose steps. Always
       // perform a feedhold before an abort, if maintaining accurate machine position is required.
-      int32_t last_position[3];
+      // TODO: Report last position and coordinate offset to users to help relocate origins. Future
+      // releases will auto-reset the machine position back to [0,0,0] if an abort is used while 
+      // grbl is moving the machine.
+      int32_t last_position[3]; // last_coord_offset[3];
       memcpy(last_position, sys.position, sizeof(sys.position)); // last_position[] = sys.position[]
-      
-      // Clear all system variables
-      memset(&sys, 0, sizeof(sys));
-      
-      // Update last known machine position. Set the post-abort work position as the origin [0,0,0],
-      // which corresponds to the g-code parser and planner positions after re-initialization.
-      memcpy(sys.position, last_position, sizeof(last_position)); // sys.position[] = last_position[]
-      memcpy(sys.coord_offset, last_position, sizeof(last_position)); // sys.coord_offset[] = last_position[]
-      
+      // memcpy(last_coord_offset, sys.coord_offset, sizeof(sys.coord_offset)); // last_coord_offset[] = sys.coord_offset[]
+
       // Reset system.
+      memset(&sys, 0, sizeof(sys)); // Clear all system variables
       serial_reset_read_buffer(); // Clear serial read buffer
       settings_init(); // Load grbl settings from EEPROM
       protocol_init(); // Clear incoming line data
@@ -76,6 +73,11 @@ int main(void)
       spindle_init();   
       limits_init();
       st_reset(); // Clear stepper subsystem variables.
+      
+      // Reload last known machine position. Coordinate offsets are reset per NIST RS274-NGC protocol.
+      memcpy(sys.position, last_position, sizeof(last_position)); // sys.position[] = last_position[]
+      gc_set_current_position(last_position[X_AXIS],last_position[Y_AXIS],last_position[Z_AXIS]);
+      plan_set_current_position(last_position[X_AXIS],last_position[Y_AXIS],last_position[Z_AXIS]);
       
       // Set system runtime defaults
       // TODO: Eventual move to EEPROM from config.h when all of the new settings are worked out. 

@@ -3,7 +3,7 @@
   Part of Grbl
 
   Copyright (c) 2009-2011 Simen Svale Skogsrud
-  Copyright (c) 2011 Sungeun K. Jeon
+  Copyright (c) 2011-2012 Sungeun K. Jeon
   Copyright (c) 2011 Jens Geisler  
   
   Grbl is free software: you can redistribute it and/or modify
@@ -312,14 +312,14 @@ void plan_init()
   memset(&pl, 0, sizeof(pl)); // Clear planner struct
 }
 
-void plan_discard_current_block() 
+inline void plan_discard_current_block() 
 {
   if (block_buffer_head != block_buffer_tail) {
     block_buffer_tail = next_block_index( block_buffer_tail );
   }
 }
 
-block_t *plan_get_current_block() 
+inline block_t *plan_get_current_block() 
 {
   if (block_buffer_head == block_buffer_tail) { return(NULL); }
   return(&block_buffer[block_buffer_tail]);
@@ -335,7 +335,7 @@ uint8_t plan_check_full_buffer()
 // Block until all buffered steps are executed.
 void plan_synchronize()
 {
-  while(plan_get_current_block()) { 
+  while (plan_get_current_block() || sys.cycle_start) { 
     protocol_execute_runtime();   // Check and execute run-time commands
     if (sys.abort) { return; } // Check for system abort
   }    
@@ -471,8 +471,8 @@ void plan_buffer_line(double x, double y, double z, double feed_rate, uint8_t in
   planner_recalculate(); 
 }
 
-// Reset the planner position vector and planner speed
-void plan_set_current_position(double x, double y, double z) 
+// Apply G92 coordinate offsets and update planner position vector.
+void plan_set_coordinate_offset(double x, double y, double z) 
 {
   // To correlate status reporting work position correctly, the planner must force the steppers to
   // empty the block buffer and synchronize with the planner, as the real-time machine position and 
@@ -489,12 +489,23 @@ void plan_set_current_position(double x, double y, double z)
   
   memset(&pl, 0, sizeof(pl)); // Clear planner variables. Assume start from rest.
   
-  pl.position[X_AXIS] = lround(x*settings.steps_per_mm[X_AXIS]); // Update planner position
-  pl.position[Y_AXIS] = lround(y*settings.steps_per_mm[Y_AXIS]);
-  pl.position[Z_AXIS] = lround(z*settings.steps_per_mm[Z_AXIS]); 
+  // Update planner position and coordinate offset vectors
+  int32_t new_position[3];
+  new_position[X_AXIS] = lround(x*settings.steps_per_mm[X_AXIS]);
+  new_position[Y_AXIS] = lround(y*settings.steps_per_mm[Y_AXIS]);
+  new_position[Z_AXIS] = lround(z*settings.steps_per_mm[Z_AXIS]); 
+  plan_set_current_position(new_position[X_AXIS],new_position[Y_AXIS],new_position[Z_AXIS]); 
   sys.coord_offset[X_AXIS] -= pl.position[X_AXIS];
   sys.coord_offset[Y_AXIS] -= pl.position[Y_AXIS];
   sys.coord_offset[Z_AXIS] -= pl.position[Z_AXIS];
+}
+
+// Reset the planner position vector (in steps)
+void plan_set_current_position(int32_t x, int32_t y, int32_t z)
+{
+  pl.position[X_AXIS] = x;
+  pl.position[Y_AXIS] = y;
+  pl.position[Z_AXIS] = z;
 }
 
 // Re-initialize buffer plan with a partially completed block, assumed to exist at the buffer tail.

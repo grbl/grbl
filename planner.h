@@ -3,7 +3,7 @@
   Part of Grbl
 
   Copyright (c) 2009-2011 Simen Svale Skogsrud
-  Copyright (c) 2011 Sungeun K. Jeon  
+  Copyright (c) 2011-2012 Sungeun K. Jeon  
 
   Grbl is free software: you can redistribute it and/or modify
   it under the terms of the GNU General Public License as published by
@@ -66,8 +66,11 @@ void plan_discard_current_block();
 // Gets the current block. Returns NULL if buffer empty
 block_t *plan_get_current_block();
 
-// Reset the position vector
-void plan_set_current_position(double x, double y, double z);
+// Reset the planner position vector (in steps)
+void plan_set_current_position(int32_t x, int32_t y, int32_t z);
+
+// Apply G92 coordinate offsets and update planner position vector. Called by g-code parser.
+void plan_set_coordinate_offset(double x, double y, double z);
 
 // Reinitialize plan with a partially completed block
 void plan_cycle_reinitialize(int32_t step_events_remaining);

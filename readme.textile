@@ -6,17 +6,19 @@ The controller is written in highly optimized C utilizing every clever feature o
 
 It accepts standards-compliant G-code and has been tested with the output of several CAM tools with no problems. Arcs, circles and helical motion are fully supported, as well as, other basic functional g-code commands. Functions and variables are not currently supported, but may be included in future releases in a form of a pre-processor.
 
-Grbl includes full acceleration management with look ahead. That means the controller will look up to 20 motions into the future and plan its velocities ahead to deliver smooth acceleration and jerk-free cornering.
+Grbl includes full acceleration management with look ahead. That means the controller will look up to 18 motions into the future and plan its velocities ahead to deliver smooth acceleration and jerk-free cornering.
 
 *Changelog for v0.8 from v0.7:*
-  - *ALPHA STATUS*: Major structural overhaul to allow for multi-tasking events and new feature sets
+  - *ALPHA status: _Under heavy development. Code state may significantly change with each push as new features are integrated._*
+  - Major structural overhaul to allow for multi-tasking events and new feature sets
   - New run-time command control: Feed hold (pause), Cycle start (resume), Reset (abort), Status reporting
   - Controlled feed hold with deceleration to ensure no skipped steps and loss of location.
   - After feed hold, cycle accelerations are re-planned and may be resumed.
-  - Work(G92) and machine coordinate system support.
+  - Work offset(G92) and machine coordinate system support.
+  - Program stop(M0,M1*,M2,M30) initial support. Pallet shuttle not supported.
   - System reset re-initializes grbl without resetting the Arduino and retains machine/home position.
   - Restructured planner and stepper modules to become independent and ready for future features.
-  - Planned features: Jog mode, status reporting, runtime settings such as toggling block delete.
+  - Planned features: Jog mode, status reporting, runtime settings such as toggling block delete, XON/XOFF flow control.
   - Reduce serial read buffer to 128 characters and increased write buffer to 64 characters.
   - Misc bug fixes and removed deprecated acceleration enabled code.
 

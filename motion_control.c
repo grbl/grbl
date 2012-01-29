@@ -3,7 +3,7 @@
   Part of Grbl
 
   Copyright (c) 2009-2011 Simen Svale Skogsrud
-  Copyright (c) 2011 Sungeun K. Jeon
+  Copyright (c) 2011-2012 Sungeun K. Jeon
   Copyright (c) 2011 Jens Geisler
   
   Grbl is free software: you can redistribute it and/or modify
@@ -183,12 +183,11 @@ void mc_dwell(double seconds)
    uint16_t i = floor(1000/DWELL_TIME_STEP*seconds);
    plan_synchronize();
    delay_ms(floor(1000*seconds-i*DWELL_TIME_STEP)); // Delay millisecond remainder
-   while (i > 0) {
+   while (i-- > 0) {
      // NOTE: Check and execute runtime commands during dwell every <= DWELL_TIME_STEP milliseconds.
      protocol_execute_runtime();
      if (sys.abort) { return; }
      _delay_ms(DWELL_TIME_STEP); // Delay DWELL_TIME_STEP increment
-     i--;
    }
 }
 

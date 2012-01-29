@@ -3,7 +3,7 @@
   Part of Grbl
 
   Copyright (c) 2009-2011 Simen Svale Skogsrud
-  Copyright (c) 2011 Sungeun K. Jeon
+  Copyright (c) 2011-2012 Sungeun K. Jeon
   
   Grbl is free software: you can redistribute it and/or modify
   it under the terms of the GNU General Public License as published by
@@ -115,7 +115,7 @@ void st_go_idle()
 // This function determines an acceleration velocity change every CYCLES_PER_ACCELERATION_TICK by
 // keeping track of the number of elapsed cycles during a de/ac-celeration. The code assumes that 
 // step_events occur significantly more often than the acceleration velocity iterations.
-static uint8_t iterate_trapezoid_cycle_counter() 
+inline static uint8_t iterate_trapezoid_cycle_counter() 
 {
   st.trapezoid_tick_cycle_counter += st.cycles_per_step_event;  
   if(st.trapezoid_tick_cycle_counter > CYCLES_PER_ACCELERATION_TICK) {

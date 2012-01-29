@@ -29,4 +29,7 @@ void gc_init();
 // Execute one block of rs275/ngc/g-code
 uint8_t gc_execute_line(char *line);
 
+// Set g-code parser position. Input in steps.
+void gc_set_current_position(int32_t x, int32_t y, int32_t z); 
+
 #endif

@@ -3,7 +3,7 @@
   Part of Grbl
 
   Copyright (c) 2009-2011 Simen Svale Skogsrud
-  Copyright (c) 2011 Sungeun K. Jeon
+  Copyright (c) 2011-2012 Sungeun K. Jeon
 
   Grbl is free software: you can redistribute it and/or modify
   it under the terms of the GNU General Public License as published by
@@ -27,6 +27,7 @@
 #include "serial.h"
 #include "config.h"
 #include "stepper.h"
+#include "spindle_control.h"
 #include "nuts_bolts.h"
 #include "protocol.h"
 
@@ -127,9 +128,10 @@ ISR(USART_RX_vect)
       case CMD_CYCLE_START:   sys.execute |= EXEC_CYCLE_START; break; // Set as true
       case CMD_FEED_HOLD:     sys.execute |= EXEC_FEED_HOLD; break; // Set as true
       case CMD_RESET: 
-        // Immediately force stepper subsystem idle at an interrupt level.
+        // Immediately force stepper and spindle subsystem idle at an interrupt level.
         if (!(sys.execute & EXEC_RESET)) { // Force stop only first time.
           st_go_idle();  
+          spindle_stop();
         }
         sys.execute |= EXEC_RESET; // Set as true
         break;
