@@ -29,7 +29,7 @@
 
 #ifndef DECIMAL_PLACES
 #define DECIMAL_PLACES 3
-#define DECIMAL_MULTIPLIER 10*10*10
+#define DECIMAL_MULTIPLIER 1000
 #endif
 
 void printString(const char *s)
