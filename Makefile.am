@@ -25,7 +25,7 @@
 # Set the CPU type when compiling.
 AM_CFLAGS = -Wall -Os -mmcu=$(MMCU) -DF_CPU=$(MHZ)000000 -I $(includedir) -ffunction-sections
 
-# Instructions for building the hex file.
+# Instructions for building the executable file.
 noinst_PROGRAMS = grbl.elf 
 noinst_HEADERS = config.h limits.h planner.h serial.h stepper.h \
    eeprom.h motion_control.h print.h settings.h gcode.h nuts_bolts.h \
@@ -39,8 +39,12 @@ noinst_DATA = grbl.hex
 
 
 #
-# To Make a hex file from an normal binary (aka elf), we strip out all
-# debugging symbols, then run objcopy on it to convert it to hex.
+# In order to upload the grbl.elf executable to the arduino CPU,
+# we have to convert it to hex format.  This file in turn gets uploaded
+# to the arduino using avrdude when you run 'make install'.
+#
+# After we're done converting the executable file to hex, we print
+# out the file size info using the same format as the original Makefile.
 #
 .elf.hex :
 	$(STRIP) -s $<
@@ -56,6 +60,6 @@ clean-local:
 	rm -f *.elf 
 	rm -f *.hex 
 
-# On installation, run avrdude to upload the sketch to the arduino.
+# On installation, run avrdude to upload the compiled code to the arduino.
 install-data-hook:
-	avrdude -p $(AVRDUDE_PARTNO) -c $(AVRDUDE_PROGRAMMER) -P$(AVRDUDE_SERIAL_PORT) -D -Uflash:w:grbl.hex:i
+	avrdude -p $(AVRDUDE_PARTNO) -c $(AVRDUDE_PROGRAMMER) -P$(AVRDUDE_SERIAL_PORT) $(AVRDUDEFLAGS) -Uflash:w:grbl.hex:i

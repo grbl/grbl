@@ -158,12 +158,14 @@ AC_SUBST(MHZ, [${MHZ:-'16'}])
 AC_ARG_VAR(AVRDUDE_PARTNO, "Default avrdude part number id")
 AC_SUBST(AVRDUDE_PARTNO, [${AVRDUDE_PARTNO:-'m328p'}])
 
-AC_ARG_VAR(AVRDUDE_PROGRAMMER, 
-           "Default avrdude programmer id")
+AC_ARG_VAR(AVRDUDE_PROGRAMMER, "Default avrdude programmer id")
 AC_SUBST(AVRDUDE_PROGRAMMER, [${AVRDUDE_PROGRAMMER:-'arduino'}])
 
 AC_ARG_VAR(AVRDUDE_SERIAL_PORT, "Default avrdude serial port parameter")
 AC_SUBST(AVRDUDE_SERIAL_PORT, [${AVRDUDE_SERIAL_PORT:-'/dev/ttyACM0'}])
+
+AC_ARG_VAR(AVRDUDEFLAGS, "Default avrdude flags")
+AC_SUBST(AVRDUDEFLAGS, [${AVRDUDEFLAGS:-'-D'}])
 
 
 AC_CONFIG_FILES([Makefile])
