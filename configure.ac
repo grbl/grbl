@@ -2,7 +2,7 @@
 # Copyright (c) 2004,  Theodore A. Roth
 # Copyright (c) 2005,2006,2007,2009  Anatoly Sokolov
 # Copyright (c) 2005,2008  Joerg Wunsch
-# Copyright (c) 2011  Shawn Wilson
+# Copyright (c) 2012  Shawn Wilson
 # All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or without
@@ -117,6 +117,7 @@ AM_INIT_AUTOMAKE([1.8])
 AC_PROG_CC
 AC_PROG_CXX
 AC_CHECK_TOOL(OBJCOPY, objcopy, objcopy)
+AC_CHECK_TOOL(OBJDUMP, objdump, objdump)
 
 # Make sure that we found the right avr cross-compiler.
 case "${CXX}" in
@@ -126,6 +127,10 @@ esac
 case "${OBJCOPY}" in
    *avr-objcopy*) ;;
    *) AC_MSG_ERROR(Wrong objcopy found; You need avr-objcopy installed!) ;;
+esac
+case "${OBJDUMP}" in
+   *avr-objdump*) ;;
+   *) AC_MSG_ERROR(Wrong objdump found; You need avr-objcopy installed!) ;;
 esac
 
 AC_PROG_INSTALL

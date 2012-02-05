@@ -30,7 +30,10 @@ AM_CFLAGS = -Wall -Os -mmcu=$(MMCU) -DF_CPU=$(MHZ)000000 -I $(includedir) -ffunc
 # debugging symbols, then run objcopy on it to convert it to hex.
 #
 .elf.hex :
+	$(STRIP) -s $<
 	$(OBJCOPY) -O ihex -j .text -j .data $< $@
+	@echo -e "\n\n--- Requires `$(OBJDUMP) -h grbl.elf | grep .bss | awk '{print "ibase=16 ; " toupper($$3) }' | bc` bytes of SRAM"
+	@avr-size *.hex *.elf *.o
 
 
 # Instructions for building the hex file.
