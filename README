@@ -28,21 +28,24 @@ start typing commands.
 
 === OPTIONS ===
 The configure script has the following environment variables that you
-can customize:
+can customize.  Below is a list of them along with their defaults
+in brackets:
 
-  MMCU        "Default processor type. (atmega328p)"
-  MHZ         "Default processor speed in MHz. (16)"
+  MMCU        "AVR processor type (atmega328p)"
+  MHZ         "AVR processor speed in MHz. (16)"
   AVRDUDE_PARTNO
-              "Default avrdude part number id. (m328p)"
+              "avrdude part number id. (m328p)"
   AVRDUDE_PROGRAMMER
-              "Default avrdude programmer id. (arduino)"
+              "avrdude programmer id. (arduino)"
   AVRDUDE_SERIAL_PORT
-              "Default avrdude serial port parameter. (/dev/ttyACM0)"
+              "avrdude serial port. (/dev/ttyACM0)"
   AVRDUDEFLAGS
-              "Default avrdude flags. (-D)"
+              "Extra avrdude flags. (-D)"
 
-For example, to install grbl onto an Arduino Mega using an AVR ISP2 
-programmer and setting avrdude fuses, you could run the commands like:
+To use the options, just specify them on the command line when you
+run configure.  For example, to install grbl onto an Arduino Mega 
+using an AVR ISP2 programmer and set custom avrdude fuses, you would 
+run the following commands:
 
    ./configure MMCU=atmega2560 MHZ=16 \
       AVRDUDE_PARTNO=m2560 \
@@ -52,7 +55,8 @@ programmer and setting avrdude fuses, you could run the commands like:
    make install
 
 I've never actually used one of these programmer things but in theory 
-it should work.
+it should work.  This package has been tested using both Ubuntu 10.04 
+and 11.10 on a plain old arduino Uno and confirmed to work.
 
 
 Shawn Wilson <shawn@ch2a.ca>
