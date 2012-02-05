@@ -25,6 +25,19 @@
 # Set the CPU type when compiling.
 AM_CFLAGS = -Wall -Os -mmcu=$(MMCU) -DF_CPU=$(MHZ)000000 -I $(includedir) -ffunction-sections
 
+# Instructions for building the hex file.
+noinst_PROGRAMS = grbl.elf 
+noinst_HEADERS = config.h limits.h planner.h serial.h stepper.h \
+   eeprom.h motion_control.h print.h settings.h gcode.h nuts_bolts.h \
+   protocol.h spindle_control.h
+grbl_elf_SOURCES = main.c eeprom.c planner.c serial.c stepper.c \
+   gcode.c motion_control.c print.c settings.c limits.c nuts_bolts.c \
+   protocol.c  spindle_control.c
+grbl_elf_LDADD = -lm 
+grbl_elf_LDFLAGS = --gc-sections
+noinst_DATA = grbl.hex
+
+
 #
 # To Make a hex file from an normal binary (aka elf), we strip out all
 # debugging symbols, then run objcopy on it to convert it to hex.
@@ -34,16 +47,6 @@ AM_CFLAGS = -Wall -Os -mmcu=$(MMCU) -DF_CPU=$(MHZ)000000 -I $(includedir) -ffunc
 	$(OBJCOPY) -O ihex -j .text -j .data $< $@
 	@echo -e "\n\n--- Requires `$(OBJDUMP) -h grbl.elf | grep .bss | awk '{print "ibase=16 ; " toupper($$3) }' | bc` bytes of SRAM"
 	@avr-size *.hex *.elf *.o
-
-
-# Instructions for building the hex file.
-noinst_PROGRAMS = grbl.elf 
-grbl_elf_SOURCES = main.c eeprom.c planner.c serial.c stepper.c \
-   gcode.c motion_control.c print.c settings.c limits.c nuts_bolts.c \
-   protocol.c  spindle_control.c
-grbl_elf_LDADD = -lm 
-grbl_elf_LDFLAGS = --gc-sections
-noinst_DATA = grbl.hex
 
 
 #
