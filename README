@@ -1,0 +1,61 @@
+This is an autotools package for building the grbl firmware and 
+uploading it to an Arduino.  
+
+By default, the configure options are set up to compile the firmware for
+a plain vanilla Arduino Uno and upload the firmware on /dev/ttyACM0. 
+
+=== PREREQUISITES ===
+To compile the grbl firmware, you must have the AVR gcc build environment
+installed.  On ubunutu or any Debian-based system, you can do this by 
+running the command:
+
+   sudo apt-get install gcc-avr avr-libc avrdude
+
+
+=== USAGE ===
+To install grbl onto an Arduino Uno, just plug in the Uno to your PC
+and run the following commands:
+
+   ./configure 
+   make
+   make install
+
+As long as your Uno picked up /dev/ttyACM0 for the serial port, the above
+commands should work w/ no problems.  To confirm it's working, install
+minicom, configure it to connect to /dev/ttyACM0 at 9600 bps and 
+start typing commands.
+
+
+=== OPTIONS ===
+The configure script has the following environment variables that you
+can customize:
+
+  MMCU        "Default processor type. (atmega328p)"
+  MHZ         "Default processor speed in MHz. (16)"
+  AVRDUDE_PARTNO
+              "Default avrdude part number id. (m328p)"
+  AVRDUDE_PROGRAMMER
+              "Default avrdude programmer id. (arduino)"
+  AVRDUDE_SERIAL_PORT
+              "Default avrdude serial port parameter. (/dev/ttyACM0)"
+  AVRDUDEFLAGS
+              "Default avrdude flags. (-D)"
+
+For example, to install grbl onto an Arduino Mega using an AVR ISP2 
+programmer and setting avrdude fuses, you could run the commands like:
+
+   ./configure MMCU=atmega2560 MHZ=16 \
+      AVRDUDE_PARTNO=m2560 \
+      AVRDUDE_PROGRAMMER=avrisp2 \
+      AVRDUDEFLAGS="-U hfuse:w:0xd2:m -U lfuse:w:0xff:m"
+   make
+   make install
+
+I've never actually used one of these programmer things but in theory 
+it should work.
+
+
+Shawn Wilson <shawn@ch2a.ca>
+
+Feb 2012
+
