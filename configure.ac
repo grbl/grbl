@@ -130,7 +130,7 @@ case "${OBJCOPY}" in
 esac
 case "${OBJDUMP}" in
    *avr-objdump*) ;;
-   *) AC_MSG_ERROR(Wrong objdump found; You need avr-objcopy installed!) ;;
+   *) AC_MSG_ERROR(Wrong objdump found; You need avr-objdump installed!) ;;
 esac
 
 AC_PROG_INSTALL
