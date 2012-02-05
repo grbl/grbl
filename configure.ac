@@ -45,7 +45,7 @@
 #
 
 
-AC_INIT(arduino-pkg, 1.0)
+AC_INIT(grbl, 0.7)
 AC_PREREQ(2.59)
 
 # Set the default --host parameter to 'avr'.

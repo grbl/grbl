@@ -23,26 +23,24 @@
 #
 
 # Set the CPU type when compiling.
-AM_CFLAGS = -Wall -Os -mmcu=$(MMCU) -DF_CPU=$(MHZ)000000 -I $(includedir) 
-AM_CXXFLAGS = -Wall -Os -mmcu=$(MMCU) -DF_CPU=$(MHZ)000000 -I $(includedir) 
-AM_LDFLAGS = -L /usr/local/lib/$(MMCU)-$(MHZ)
+AM_CFLAGS = -Wall -Os -mmcu=$(MMCU) -DF_CPU=$(MHZ)000000 -I $(includedir) -ffunction-sections
 
 #
 # To Make a hex file from an normal binary (aka elf), we strip out all
 # debugging symbols, then run objcopy on it to convert it to hex.
 #
 .elf.hex :
-	$(STRIP) -s $< 
-	$(OBJCOPY) -O ihex -R .eeprom $< $@
+	$(OBJCOPY) -O ihex -j .text -j .data $< $@
 
 
 # Instructions for building the hex file.
-noinst_PROGRAMS = main.elf 
-main_elf_SOURCES = main.c eeprom.c planner.c serial.c stepper.c \
+noinst_PROGRAMS = grbl.elf 
+grbl_elf_SOURCES = main.c eeprom.c planner.c serial.c stepper.c \
    gcode.c motion_control.c print.c settings.c limits.c nuts_bolts.c \
    protocol.c  spindle_control.c
-main_elf_LDADD = -lm $(EXTRALIBS)
-noinst_DATA = sketch.hex
+grbl_elf_LDADD = -lm 
+grbl_elf_LDFLAGS = --gc-sections
+noinst_DATA = grbl.hex
 
 
 #
@@ -54,5 +52,4 @@ clean-local:
 
 # On installation, run avrdude to upload the sketch to the arduino.
 install-data-hook:
-	avrdude -p $(AVRDUDE_PARTNO) -c $(AVRDUDE_PROGRAMMER) -P$(AVRDUDE_SERIAL_PORT) -D -Uflash:w:sketch.hex:i
-
+	avrdude -p $(AVRDUDE_PARTNO) -c $(AVRDUDE_PROGRAMMER) -P$(AVRDUDE_SERIAL_PORT) -D -Uflash:w:grbl.hex:i
