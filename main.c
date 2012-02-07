@@ -34,7 +34,7 @@
 #include "settings.h"
 #include "serial.h"
 
-int main(void)
+int grbl_main(void)
 {
   sei(); // Enable interrupts
   
