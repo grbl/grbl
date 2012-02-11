@@ -30,8 +30,9 @@
 #include "nuts_bolts.h"
 #include "planner.h"
 #include "limits.h"
-#include <pthread.h>
+#include "dev_misc.h"
 
+#include <pthread.h>
 #include <stdlib.h>
 #include <unistd.h>
 #include <stdio.h>
@@ -45,8 +46,9 @@ timer_t timerid;
 
 int simul_running = 1;
 void do_step(int direction, int axis);
-extern int cnc_head_x;
-extern int cnc_head_y;
+extern int init_graphics();
+extern double cnc_head_x;
+extern double cnc_head_y;
 
 // Some useful constants
 #define STEP_MASK ((1<<X_STEP_BIT)|(1<<Y_STEP_BIT)|(1<<Z_STEP_BIT)) // All step bits
@@ -56,31 +58,25 @@ extern int cnc_head_y;
 #define TICKS_PER_MICROSECOND (F_CPU/1000000)
 #define CYCLES_PER_ACCELERATION_TICK ((TICKS_PER_MICROSECOND*1000000)/ACCELERATION_TICKS_PER_SECOND)
 
-// Stepper state variable. Contains running data and trapezoid variables.
-typedef struct {
-	// Used by the bresenham line algorithm
-	int32_t counter_x,        // Counter variables for the bresenham line tracer
-		counter_y, 
-		counter_z;
-	uint32_t event_count;
-	uint32_t step_events_completed;  // The number of step events left in current motion
-
-	// Used by the trapezoid generator
-	uint32_t cycles_per_step_event;        // The number of machine cycles between each step event
-	uint32_t trapezoid_tick_cycle_counter; // The cycles since last trapezoid_tick. Used to generate ticks at a steady
-	// pace without allocating a separate timer
-	uint32_t trapezoid_adjusted_rate;      // The current rate of step_events according to the trapezoid generator
-	uint32_t min_safe_rate;  // Minimum safe rate for full deceleration rate reduction step. Otherwise halves step_rate.
-} stepper_t;
-
-static stepper_t st;
 static block_t *current_block;  // A pointer to the block currently being traced
 
-// Used by the stepper driver interrupt
-static uint8_t step_pulse_time; // Step pulse reset time after step rise
+// Variables used by The Stepper Driver Interrupt
 static uint8_t out_bits;        // The next stepping-bits to be output
-static volatile uint8_t busy;   // True when SIG_OUTPUT_COMPARE1A is being serviced. Used to avoid retriggering that handler.
-int volatile do_int = 0;
+static int32_t counter_x,       // Counter variables for the bresenham line tracer
+	       counter_y, 
+	       counter_z;       
+static uint32_t step_events_completed; // The number of step events executed in the current block
+static volatile uint8_t busy; // true when SIG_OUTPUT_COMPARE1A is being serviced. Used to avoid retriggering that handler.
+volatile int do_int = 0;
+
+// Variables used by the trapezoid generation
+static uint32_t cycles_per_step_event;        // The number of machine cycles between each step event
+static uint32_t trapezoid_tick_cycle_counter; // The cycles since last trapezoid_tick. Used to generate ticks at a steady
+// pace without allocating a separate timer
+static uint32_t trapezoid_adjusted_rate;      // The current rate of step_events according to the trapezoid generator
+static uint32_t min_safe_rate;  // Minimum safe rate for full deceleration rate reduction step. Otherwise halves step_rate.
+static uint8_t cycle_start;     // Cycle start flag to indicate program start and block processing.
+
 //         __________________________
 //        /|                        |\     _________________         ^
 //       / |                        | \   /|               |\        |
@@ -104,26 +100,40 @@ static void set_step_events_per_minute(uint32_t steps_per_minute);
 static void st_wake_up() 
 {
 	// Initialize stepper output bits
-	out_bits = (0) ^ (settings.invert_mask); 
-	// Set step pulse time. Ad hoc computation from oscilloscope.
-	step_pulse_time = -(((settings.pulse_microseconds-2)*TICKS_PER_MICROSECOND) >> 3);
+	//out_bits = (0) ^ (settings.invert_mask); 
 	// Enable steppers by resetting the stepper disable port
-	//  STEPPERS_DISABLE_PORT &= ~(1<<STEPPERS_DISABLE_BIT);
+	//STEPPERS_DISABLE_PORT &= ~(1<<STEPPERS_DISABLE_BIT);
 	// Enable stepper driver interrupt
-	do_int = 1; 
+	// TIMSK1 |= (1<<OCIE1A);
+	do_int = 1;
 }
 
 // Stepper shutdown
-void st_go_idle() 
+static void st_go_idle() 
 {
+	// Cycle finished. Set flag to false.
+	cycle_start = false; 
 	// Disable stepper driver interrupt
-	do_int = 0;
+	//TIMSK1 &= ~(1<<OCIE1A); 
 	// Force stepper dwell to lock axes for a defined amount of time to ensure the axes come to a complete
 	// stop and not drift from residual inertial forces at the end of the last movement.
-#ifdef STEPPER_IDLE_LOCK_TIME
-	//   _delay_ms(STEPPER_IDLE_LOCK_TIME);   
+#if STEPPER_IDLE_LOCK_TIME
+	//    delay_ms(STEPPER_IDLE_LOCK_TIME);   
 #endif
 	// Disable steppers by setting stepper disable
+	//STEPPERS_DISABLE_PORT |= (1<<STEPPERS_DISABLE_BIT);
+	do_int = 0;
+	printf("going idle!!!\n");
+}
+
+// Initializes the trapezoid generator from the current block. Called whenever a new 
+// block begins.
+static void trapezoid_generator_reset() 
+{
+	trapezoid_adjusted_rate = current_block->initial_rate;
+	min_safe_rate = current_block->rate_delta + (current_block->rate_delta >> 1); // 1.5 x rate_delta
+	trapezoid_tick_cycle_counter = CYCLES_PER_ACCELERATION_TICK/2; // Start halfway for midpoint rule.
+	set_step_events_per_minute(trapezoid_adjusted_rate); // Initialize cycles_per_step_event
 }
 
 // This function determines an acceleration velocity change every CYCLES_PER_ACCELERATION_TICK by
@@ -131,198 +141,24 @@ void st_go_idle()
 // step_events occur significantly more often than the acceleration velocity iterations.
 static uint8_t iterate_trapezoid_cycle_counter() 
 {
-	st.trapezoid_tick_cycle_counter += st.cycles_per_step_event;  
-	if(st.trapezoid_tick_cycle_counter > CYCLES_PER_ACCELERATION_TICK) {
-		st.trapezoid_tick_cycle_counter -= CYCLES_PER_ACCELERATION_TICK;
+	trapezoid_tick_cycle_counter += cycles_per_step_event;  
+	if(trapezoid_tick_cycle_counter > CYCLES_PER_ACCELERATION_TICK) {
+		trapezoid_tick_cycle_counter -= CYCLES_PER_ACCELERATION_TICK;
 		return(true);
 	} else {
 		return(false);
 	}
 }          
 
-
 // "The Stepper Driver Interrupt" - This timer interrupt is the workhorse of Grbl. It is executed at the rate set with
 // config_step_timer. It pops blocks from the block_buffer and executes them by pulsing the stepper pins appropriately. 
 // It is supported by The Stepper Port Reset Interrupt which it uses to reset the stepper port after each pulse. 
 // The bresenham line tracer algorithm controls all three stepper outputs simultaneously with these two interrupts.
-static void handler(int sig, siginfo_t *si, void *uc)
-{        
-	if(do_int ){
-		if (busy) { return; } // The busy-flag is used to avoid reentering this interrupt
-		if(out_bits & (1<<X_STEP_BIT)) {
-			if(out_bits & (1<<X_DIRECTION_BIT)) {
-				do_step(DIR_FORWARD, X_AXIS);
-			} else {
-				do_step(DIR_BACKWARD, X_AXIS);
-			}
-		}	
-		if(out_bits & (1<<Y_STEP_BIT)) {
-			if(out_bits & (1<<Y_DIRECTION_BIT)) {
-				do_step(DIR_FORWARD, Y_AXIS);
-			} else {
-				do_step(DIR_BACKWARD, Y_AXIS);
-			}	
-		}
-		if(out_bits & (1<<Z_STEP_BIT)) {
-			if(out_bits & (1<<Z_DIRECTION_BIT)) {
-				do_step(DIR_FORWARD, Z_AXIS);
-			} else {
-				do_step(DIR_BACKWARD, Z_AXIS);
-			}
-		}
-		//  TCNT2 = step_pulse_time; // Reload timer counter
-		//  TCCR2B = (1<<CS21); // Begin timer2. Full speed, 1/8 prescaler
 
-		busy = true;
-		// Re-enable interrupts to allow ISR_TIMER2_OVERFLOW to trigger on-time and allow serial communications
-		// regardless of time in this handler. The following code prepares the stepper driver for the next
-		// step interrupt compare and will always finish before returning to the main program.
-		//sei();
-
-		// If there is no current block, attempt to pop one from the buffer
-		if (current_block == NULL) {
-			// Anything in the buffer? If so, initialize next motion.
-			current_block = plan_get_current_block();
-			if (current_block != NULL) {
-				if (!sys.feed_hold) { 
-					// During feed hold, do not update rate and trap counter. Keep decelerating.
-					st.trapezoid_adjusted_rate = current_block->initial_rate;
-					set_step_events_per_minute(st.trapezoid_adjusted_rate); // Initialize cycles_per_step_event
-					st.trapezoid_tick_cycle_counter = CYCLES_PER_ACCELERATION_TICK/2; // Start halfway for midpoint rule.
-				}
-				st.min_safe_rate = current_block->rate_delta + (current_block->rate_delta >> 1); // 1.5 x rate_delta
-				st.counter_x = -(current_block->step_event_count >> 1);
-				st.counter_y = st.counter_x;
-				st.counter_z = st.counter_x;
-				st.event_count = current_block->step_event_count;
-				st.step_events_completed = 0;     
-			} else {
-				st_go_idle();
-				sys.cycle_start = false;
-				bit_true(sys.execute,EXEC_CYCLE_STOP); // Flag main program for cycle end
-			}    
-		} 
-
-		if (current_block != NULL) {
-			// Execute step displacement profile by bresenham line algorithm
-			out_bits = current_block->direction_bits;
-			st.counter_x += current_block->steps_x;
-			if (st.counter_x > 0) {
-				out_bits |= (1<<X_STEP_BIT);
-				st.counter_x -= st.event_count;
-				if (out_bits & (1<<X_DIRECTION_BIT)) { sys.position[X_AXIS]--; }
-				else { sys.position[X_AXIS]++; }
-			}
-			st.counter_y += current_block->steps_y;
-			if (st.counter_y > 0) {
-				out_bits |= (1<<Y_STEP_BIT);
-				st.counter_y -= st.event_count;
-				if (out_bits & (1<<Y_DIRECTION_BIT)) { sys.position[Y_AXIS]--; }
-				else { sys.position[Y_AXIS]++; }
-			}
-			st.counter_z += current_block->steps_z;
-			if (st.counter_z > 0) {
-				out_bits |= (1<<Z_STEP_BIT);
-				st.counter_z -= st.event_count;
-				if (out_bits & (1<<Z_DIRECTION_BIT)) { sys.position[Z_AXIS]--; }
-				else { sys.position[Z_AXIS]++; }
-			}
-
-			st.step_events_completed++; // Iterate step events
-
-			// While in block steps, check for de/ac-celeration events and execute them accordingly.
-			if (st.step_events_completed < current_block->step_event_count) {
-				if (sys.feed_hold) {
-					// Check for and execute feed hold by enforcing a steady deceleration from the moment of 
-					// execution. The rate of deceleration is limited by rate_delta and will never decelerate
-					// faster or slower than in normal operation. If the distance required for the feed hold 
-					// deceleration spans more than one block, the initial rate of the following blocks are not
-					// updated and deceleration is continued according to their corresponding rate_delta.
-					// NOTE: The trapezoid tick cycle counter is not updated intentionally. This ensures that 
-					// the deceleration is smooth regardless of where the feed hold is initiated and if the
-					// deceleration distance spans multiple blocks.
-					if ( iterate_trapezoid_cycle_counter() ) {                    
-						// If deceleration complete, set system flags and shutdown steppers.
-						if (st.trapezoid_adjusted_rate <= current_block->rate_delta) {
-							// Just go idle. Do not NULL current block. The bresenham algorithm variables must
-							// remain intact to ensure the stepper path is exactly the same. Feed hold is still
-							// active and is released after the buffer has been reinitialized.
-							st_go_idle();
-							sys.cycle_start = false;
-							bit_true(sys.execute,EXEC_CYCLE_STOP); // Flag main program that feed hold is complete.
-						} else {
-							st.trapezoid_adjusted_rate -= current_block->rate_delta;
-							set_step_events_per_minute(st.trapezoid_adjusted_rate);
-						}      
-					}
-
-				} else {
-					// The trapezoid generator always checks step event location to ensure de/ac-celerations are 
-					// executed and terminated at exactly the right time. This helps prevent over/under-shooting
-					// the target position and speed. 
-					// NOTE: By increasing the ACCELERATION_TICKS_PER_SECOND in config.h, the resolution of the 
-					// discrete velocity changes increase and accuracy can increase as well to a point. Numerical 
-					// round-off errors can effect this, if set too high. This is important to note if a user has 
-					// very high acceleration and/or feedrate requirements for their machine.
-					if (st.step_events_completed < current_block->accelerate_until) {
-						// Iterate cycle counter and check if speeds need to be increased.
-						if ( iterate_trapezoid_cycle_counter() ) {
-							st.trapezoid_adjusted_rate += current_block->rate_delta;
-							if (st.trapezoid_adjusted_rate >= current_block->nominal_rate) {
-								// Reached nominal rate a little early. Cruise at nominal rate until decelerate_after.
-								st.trapezoid_adjusted_rate = current_block->nominal_rate;
-							}
-							set_step_events_per_minute(st.trapezoid_adjusted_rate);
-						}
-					} else if (st.step_events_completed >= current_block->decelerate_after) {
-						// Reset trapezoid tick cycle counter to make sure that the deceleration is performed the
-						// same every time. Reset to CYCLES_PER_ACCELERATION_TICK/2 to follow the midpoint rule for
-						// an accurate approximation of the deceleration curve.
-						if (st.step_events_completed == current_block-> decelerate_after) {
-							st.trapezoid_tick_cycle_counter = CYCLES_PER_ACCELERATION_TICK/2;
-						} else {
-							// Iterate cycle counter and check if speeds need to be reduced.
-							if ( iterate_trapezoid_cycle_counter() ) {  
-								// NOTE: We will only do a full speed reduction if the result is more than the minimum safe 
-								// rate, initialized in trapezoid reset as 1.5 x rate_delta. Otherwise, reduce the speed by
-								// half increments until finished. The half increments are guaranteed not to exceed the 
-								// CNC acceleration limits, because they will never be greater than rate_delta. This catches
-								// small errors that might leave steps hanging after the last trapezoid tick or a very slow
-								// step rate at the end of a full stop deceleration in certain situations. The half rate 
-								// reductions should only be called once or twice per block and create a nice smooth 
-								// end deceleration.
-								if (st.trapezoid_adjusted_rate > st.min_safe_rate) {
-									st.trapezoid_adjusted_rate -= current_block->rate_delta;
-								} else {
-									st.trapezoid_adjusted_rate >>= 1; // Bit shift divide by 2
-								}
-								if (st.trapezoid_adjusted_rate < current_block->final_rate) {
-									// Reached final rate a little early. Cruise to end of block at final rate.
-									st.trapezoid_adjusted_rate = current_block->final_rate;
-								}
-								set_step_events_per_minute(st.trapezoid_adjusted_rate);
-							}
-						}
-					} else {
-						// No accelerations. Make sure we cruise exactly at the nominal rate.
-						if (st.trapezoid_adjusted_rate != current_block->nominal_rate) {
-							st.trapezoid_adjusted_rate = current_block->nominal_rate;
-							set_step_events_per_minute(st.trapezoid_adjusted_rate);
-						}
-					}
-				}            
-			} else {   
-				// If current block is finished, reset pointer 
-				current_block = NULL;
-				plan_discard_current_block();
-			}
-		}
-		out_bits ^= settings.invert_mask;  // Apply stepper invert mask    
-		busy = false;
-	}
-
+void restart_handler_timer()
+{
 	struct itimerspec its;
-	long long freq_nanosecs = st.cycles_per_step_event*1000;
+	long long freq_nanosecs = cycles_per_step_event*1000;
 	its.it_value.tv_sec = freq_nanosecs / 1000000000;
 	its.it_value.tv_nsec = freq_nanosecs % 1000000000;
 	its.it_interval.tv_sec = its.it_value.tv_sec;
@@ -330,30 +166,156 @@ static void handler(int sig, siginfo_t *si, void *uc)
 
 	if (timer_settime(timerid, 0, &its, NULL) == -1)
 		printf("timer_settime error\n");
-}	
+}
 
-/*
+static void handler(int sig, siginfo_t *si, void *uc)
+{        
+	restart_handler_timer();
+	if(!do_int) {
+		return;
+	}
+	if (busy) { return; } // The busy-flag is used to avoid reentering this interrupt
+	if(out_bits & (1<<X_STEP_BIT)) {
+		if(out_bits & (1<<X_DIRECTION_BIT)) {
+			do_step(DIR_FORWARD, X_AXIS);
+		} else {
+			do_step(DIR_BACKWARD, X_AXIS);
+		}
+	}	
+	if(out_bits & (1<<Y_STEP_BIT)) {
+		if(out_bits & (1<<Y_DIRECTION_BIT)) {
+			do_step(DIR_FORWARD, Y_AXIS);
+		} else {
+			do_step(DIR_BACKWARD, Y_AXIS);
+		}	
+	}
+	if(out_bits & (1<<Z_STEP_BIT)) {
+		if(out_bits & (1<<Z_DIRECTION_BIT)) {
+			do_step(DIR_FORWARD, Z_AXIS);
+		} else {
+			do_step(DIR_BACKWARD, Z_AXIS);
+		}
+	}
+	busy = true;
+	// Re-enable interrupts to allow ISR_TIMER2_OVERFLOW to trigger on-time and allow serial communications
+	// regardless of time in this handler. The following code prepares the stepper driver for the next
+	// step interrupt compare and will always finish before returning to the main program.
+	//sei(); 
+
+	// If there is no current block, attempt to pop one from the buffer
+	if (current_block == NULL) {
+		// Anything in the buffer? If so, initialize next motion.
+		current_block = plan_get_current_block();
+		if (current_block != NULL) {
+			trapezoid_generator_reset();
+			counter_x = -(current_block->step_event_count >> 1);
+			counter_y = counter_x;
+			counter_z = counter_x;
+			step_events_completed = 0;     
+		} else {
+			st_go_idle();
+		}    
+	} 
+
+	if (current_block != NULL) {
+		// Execute step displacement profile by bresenham line algorithm
+		out_bits = current_block->direction_bits;
+		counter_x += current_block->steps_x;
+		if (counter_x > 0) {
+			out_bits |= (1<<X_STEP_BIT);
+			counter_x -= current_block->step_event_count;
+		}
+		counter_y += current_block->steps_y;
+		if (counter_y > 0) {
+			out_bits |= (1<<Y_STEP_BIT);
+			counter_y -= current_block->step_event_count;
+		}
+		counter_z += current_block->steps_z;
+		if (counter_z > 0) {
+			out_bits |= (1<<Z_STEP_BIT);
+			counter_z -= current_block->step_event_count;
+		}
+
+		step_events_completed++; // Iterate step events
+
+		// While in block steps, check for de/ac-celeration events and execute them accordingly.
+		if (step_events_completed < current_block->step_event_count) {
+			// The trapezoid generator always checks step event location to ensure de/ac-celerations are 
+			// executed and terminated at exactly the right time. This helps prevent over/under-shooting
+			// the target position and speed. 
+			// NOTE: By increasing the ACCELERATION_TICKS_PER_SECOND in config.h, the resolution of the 
+			// discrete velocity changes increase and accuracy can increase as well to a point. Numerical 
+			// round-off errors can effect this, if set too high. This is important to note if a user has 
+			// very high acceleration and/or feedrate requirements for their machine.
+			if (step_events_completed < current_block->accelerate_until) {
+				// Iterate cycle counter and check if speeds need to be increased.
+				if ( iterate_trapezoid_cycle_counter() ) {
+					trapezoid_adjusted_rate += current_block->rate_delta;
+					if (trapezoid_adjusted_rate >= current_block->nominal_rate) {
+						// Reached nominal rate a little early. Cruise at nominal rate until decelerate_after.
+						trapezoid_adjusted_rate = current_block->nominal_rate;
+					}
+					set_step_events_per_minute(trapezoid_adjusted_rate);
+				}
+			} else if (step_events_completed >= current_block->decelerate_after) {
+				// Reset trapezoid tick cycle counter to make sure that the deceleration is performed the
+				// same every time. Reset to CYCLES_PER_ACCELERATION_TICK/2 to follow the midpoint rule for
+				// an accurate approximation of the deceleration curve.
+				if (step_events_completed == current_block-> decelerate_after) {
+					trapezoid_tick_cycle_counter = CYCLES_PER_ACCELERATION_TICK/2;
+				} else {
+					// Iterate cycle counter and check if speeds need to be reduced.
+					if ( iterate_trapezoid_cycle_counter() ) {  
+						// NOTE: We will only do a full speed reduction if the result is more than the minimum safe 
+						// rate, initialized in trapezoid reset as 1.5 x rate_delta. Otherwise, reduce the speed by
+						// half increments until finished. The half increments are guaranteed not to exceed the 
+						// CNC acceleration limits, because they will never be greater than rate_delta. This catches
+						// small errors that might leave steps hanging after the last trapezoid tick or a very slow
+						// step rate at the end of a full stop deceleration in certain situations. The half rate 
+						// reductions should only be called once or twice per block and create a nice smooth 
+						// end deceleration.
+						if (trapezoid_adjusted_rate > min_safe_rate) {
+							trapezoid_adjusted_rate -= current_block->rate_delta;
+						} else {
+							trapezoid_adjusted_rate >>= 1; // Bit shift divide by 2
+						}
+						if (trapezoid_adjusted_rate < current_block->final_rate) {
+							// Reached final rate a little early. Cruise to end of block at final rate.
+							trapezoid_adjusted_rate = current_block->final_rate;
+						}
+						set_step_events_per_minute(trapezoid_adjusted_rate);
+					}
+				}
+			} else {
+				// No accelerations. Make sure we cruise exactly at the nominal rate.
+				if (trapezoid_adjusted_rate != current_block->nominal_rate) {
+					trapezoid_adjusted_rate = current_block->nominal_rate;
+					set_step_events_per_minute(trapezoid_adjusted_rate);
+				}
+			}
+
+		} else {   
+			// If current block is finished, reset pointer 
+			current_block = NULL;
+			plan_discard_current_block();
+		}
+	}
+//	out_bits ^= settings.invert_mask;  // Apply stepper invert mask    
+	busy=false;
+}
+
 // This interrupt is set up by ISR_TIMER1_COMPAREA when it sets the motor port bits. It resets
 // the motor port after a short period (settings.pulse_microseconds) completing one step cycle.
 // TODO: It is possible for the serial interrupts to delay this interrupt by a few microseconds, if
 // they execute right before this interrupt. Not a big deal, but could use some TLC at some point.
-ISR(TIMER2_OVF_vect)
-{
+/*
+   ISR(TIMER2_OVF_vect)
+   {
 // Reset stepping pins (leave the direction pins)
 STEPPING_PORT = (STEPPING_PORT & ~STEP_MASK) | (settings.invert_mask & STEP_MASK); 
 TCCR2B = 0; // Disable Timer2 to prevent re-entering this interrupt when it's not needed. 
 }
 */
-
-// Reset and clear stepper subsystem variables
-void st_reset()
-{
-	memset(&st, 0, sizeof(st));
-	set_step_events_per_minute(MINIMUM_STEPS_PER_MINUTE);
-	current_block = NULL;
-	busy = false;
-}
-
 // Initialize and start the stepper motor subsystem
 void st_init()
 {
@@ -397,7 +359,7 @@ void st_init()
 
 	/* Start the timer */
 
-	freq_nanosecs = st.cycles_per_step_event*1000;
+	freq_nanosecs = cycles_per_step_event*1000;
 	its.it_value.tv_sec = freq_nanosecs / 1000000000;
 	its.it_value.tv_nsec = freq_nanosecs % 1000000000;
 	its.it_interval.tv_sec = its.it_value.tv_sec;
@@ -419,65 +381,84 @@ void st_init()
 	init_graphics();
 }
 
+// Block until all buffered steps are executed
+void st_synchronize()
+{
+	while(plan_get_current_block()) { sleep_mode(); }    
+}
+
+/*
+// Configures the prescaler and ceiling of timer 1 to produce the given rate as accurately as possible.
+// Returns the actual number of cycles per interrupt
+   static uint32_t config_step_timer(uint32_t cycles)
+   {
+   uint16_t ceiling;
+   uint16_t prescaler;
+   uint32_t actual_cycles;
+   if (cycles <= 0xffffL) {
+   ceiling = cycles;
+   prescaler = 0; // prescaler: 0
+   actual_cycles = ceiling;
+   } else if (cycles <= 0x7ffffL) {
+   ceiling = cycles >> 3;
+   prescaler = 1; // prescaler: 8
+   actual_cycles = ceiling * 8L;
+   } else if (cycles <= 0x3fffffL) {
+   ceiling =  cycles >> 6;
+   prescaler = 2; // prescaler: 64
+   actual_cycles = ceiling * 64L;
+   } else if (cycles <= 0xffffffL) {
+   ceiling =  (cycles >> 8);
+   prescaler = 3; // prescaler: 256
+   actual_cycles = ceiling * 256L;
+   } else if (cycles <= 0x3ffffffL) {
+   ceiling = (cycles >> 10);
+   prescaler = 4; // prescaler: 1024
+   actual_cycles = ceiling * 1024L;    
+   } else {
+// Okay, that was slower than we actually go. Just set the slowest speed
+ceiling = 0xffff;
+prescaler = 4;
+actual_cycles = 0xffff * 1024;
+}
+// Set prescaler
+TCCR1B = (TCCR1B & ~(0x07<<CS10)) | ((prescaler+1)<<CS10);
+// Set ceiling
+OCR1A = ceiling;
+return(actual_cycles);
+}
+*/
+
 static void set_step_events_per_minute(uint32_t steps_per_minute) 
 {
 	if (steps_per_minute < MINIMUM_STEPS_PER_MINUTE) { steps_per_minute = MINIMUM_STEPS_PER_MINUTE; }
 	//microseconds//
-	st.cycles_per_step_event = (1000000/steps_per_minute*60);  
-
+	cycles_per_step_event = (1000000/steps_per_minute*60);  
 }
 
-// Planner external interface to start stepper interrupt and execute the blocks in queue. Called
-// by the main program functions: planner auto-start and run-time command execution.
+void st_go_home()
+{
+	limits_go_home();  
+	plan_set_current_position(0,0,0);
+}
+
+// Planner external interface to start stepper interrupt and execute the blocks in queue.
 void st_cycle_start() 
 {
-	if (!sys.cycle_start) {
-		if (!sys.feed_hold) {
-			sys.cycle_start = true;
-			st_wake_up();
-		}
+	if (!cycle_start) {
+		cycle_start = true;
+		st_wake_up();
 	}
 }
-
-// Execute a feed hold with deceleration, only during cycle. Called by main program.
-void st_feed_hold() 
-{
-	if (!sys.feed_hold) {
-		if (sys.cycle_start) {
-			sys.auto_start = false; // Disable planner auto start upon feed hold.
-			sys.feed_hold = true;
-		}
-	}
-}
-
-// Reinitializes the cycle plan and stepper system after a feed hold for a resume. Called by 
-// runtime command execution in the main program, ensuring that the planner re-plans safely.
-// NOTE: Bresenham algorithm variables are still maintained through both the planner and stepper
-// cycle reinitializations. The stepper path should continue exactly as if nothing has happened.
-// Only the planner de/ac-celerations profiles and stepper rates have been updated.
-void st_cycle_reinitialize()
-{
-	if (current_block != NULL) {
-		// Replan buffer from the feed hold stop location.
-		plan_cycle_reinitialize(current_block->step_event_count - st.step_events_completed);
-		// Update initial rate and timers after feed hold.
-		st.trapezoid_adjusted_rate = 0; // Resumes from rest
-		set_step_events_per_minute(st.trapezoid_adjusted_rate);
-		st.trapezoid_tick_cycle_counter = CYCLES_PER_ACCELERATION_TICK/2; // Start halfway for midpoint rule.
-		st.step_events_completed = 0;
-	}
-	sys.feed_hold = false; // Release feed hold. Cycle is ready to re-start.
-}
-
 
 void do_step(int direction, int axis)
 {
-	int step = 0;
+	double step = 0;
 	if(direction == DIR_FORWARD) {
-		step = -4;///DEFAULT_X_STEPS_PER_MM;
+		step = -(1/(DEFAULT_X_STEPS_PER_MM/MICROSTEPS));
 	}
 	else {
-		step = 4;///DEFAULT_y_STEPS_PER_MM;
+		step = (1/(DEFAULT_Y_STEPS_PER_MM/MICROSTEPS));
 	}
 	switch(axis) {
 		case X_AXIS:
@@ -490,4 +471,3 @@ void do_step(int direction, int axis)
 			break;
 	}
 }
-

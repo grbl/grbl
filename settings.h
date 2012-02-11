@@ -32,6 +32,19 @@
 // when firmware is upgraded. Always stored in byte 0 of eeprom
 #define SETTINGS_VERSION 4
 
+// Default settings (used when resetting eeprom-settings)
+#define MICROSTEPS 8
+#define DEFAULT_X_STEPS_PER_MM (94.488188976378*MICROSTEPS)
+#define DEFAULT_Y_STEPS_PER_MM (94.488188976378*MICROSTEPS)
+#define DEFAULT_Z_STEPS_PER_MM (94.488188976378*MICROSTEPS)
+#define DEFAULT_STEP_PULSE_MICROSECONDS 30
+#define DEFAULT_MM_PER_ARC_SEGMENT 0.1
+#define DEFAULT_RAPID_FEEDRATE 500.0 // mm/min
+#define DEFAULT_FEEDRATE 500.0
+#define DEFAULT_ACCELERATION (DEFAULT_FEEDRATE*60*60/10.0) // mm/min^2
+#define DEFAULT_JUNCTION_DEVIATION 0.05 // mm
+#define DEFAULT_STEPPING_INVERT_MASK ((1<<X_STEP_BIT)|(1<<Y_STEP_BIT)|(1<<Z_STEP_BIT))
+
 // Current global settings (persisted in EEPROM from byte 1 onwards)
 typedef struct {
   double steps_per_mm[3];

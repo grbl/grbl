@@ -96,7 +96,7 @@ SDL_Surface* drawtext(TTF_Font *fonttodraw, char fgR, char fgG, char fgB, char f
 
 
 void loadmedia();
-void mainloop();
+void * mainloop(void *nop);
 void GetInput();
 void do_thinking();
 void Draw();
@@ -110,8 +110,8 @@ int PlayerPaddleVel;
 int CompPaddleX;
 int CompPaddleVel;
 
-int cnc_head_x = 0;
-int cnc_head_y = 0;
+double cnc_head_x = 0;
+double cnc_head_y = 0;
 
 struct coord{
 	int x;
@@ -172,13 +172,13 @@ void loadmedia()
 	font = loadfont("arch/simulator/media/FreeSans.ttf", POINTSIZE);
 } 
 
-void mainloop(void *nop)
+void * mainloop(void *nop)
 {
 	curr.y = 0;
 	curr.x = 0;
 
+	int looptime = SDL_GetTicks();
 	while (running) {
-		int looptime;
 		GetInput();
 		do_thinking();
 		Draw();
@@ -189,6 +189,7 @@ void mainloop(void *nop)
 		}
 		looptime = SDL_GetTicks();
 	}
+	return NULL;
 }
 
 void GetInput()
@@ -232,8 +233,8 @@ void GetInput()
 
 void do_thinking()
 {
-	curr.x =  cnc_head_x + 40;
-	curr.y = cnc_head_y + 40;
+	curr.x = (int)(cnc_head_x + 40.0);
+	curr.y = (int)(cnc_head_y + 40.0);
 //	printf("updated to x: %i, y: %i", curr.x,curr.y);
 }
 

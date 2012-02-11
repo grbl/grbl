@@ -28,9 +28,9 @@ void limits_init() {
   //LIMIT_DDR &= ~(LIMIT_MASK);
 }
 
+/*
 static void homing_cycle(bool x_axis, bool y_axis, bool z_axis, bool reverse_direction, uint32_t microseconds_per_pulse) 
 {
-/*
   // First home the Z axis
   uint32_t step_delay = microseconds_per_pulse - settings.pulse_microseconds;
   uint8_t out_bits = DIRECTION_MASK;
@@ -75,10 +75,12 @@ static void homing_cycle(bool x_axis, bool y_axis, bool z_axis, bool reverse_dir
     delay_us(settings.pulse_microseconds);
     STEPPING_PORT ^= out_bits & STEP_MASK;
     delay_us(step_delay);
-  }*/
+  }
   return;
 }
+*/
 
+/*
 static void approach_limit_switch(bool x, bool y, bool z) {
   homing_cycle(x, y, z, false, 100000);
 }
@@ -87,6 +89,7 @@ static void leave_limit_switch(bool x, bool y, bool z) {
   homing_cycle(x, y, z, true, 500000);
 }
 
+*/
 void limits_go_home() {
 /*
   st_synchronize();

@@ -25,6 +25,7 @@
 #include <math.h>       
 #include <stdlib.h>
 
+#include "dev_misc.h"
 #include "planner.h"
 #include "nuts_bolts.h"
 #include "stepper.h"
@@ -359,8 +360,8 @@ void plan_buffer_line(double x, double y, double z, double feed_rate, uint8_t in
   delta_mm[X_AXIS] = (target[X_AXIS]-position[X_AXIS])/settings.steps_per_mm[X_AXIS];
   delta_mm[Y_AXIS] = (target[Y_AXIS]-position[Y_AXIS])/settings.steps_per_mm[Y_AXIS];
   delta_mm[Z_AXIS] = (target[Z_AXIS]-position[Z_AXIS])/settings.steps_per_mm[Z_AXIS];
-  block->millimeters = sqrt(square(delta_mm[X_AXIS]) + square(delta_mm[Y_AXIS]) + 
-                            square(delta_mm[Z_AXIS]));
+  block->millimeters = sqrt((delta_mm[X_AXIS] * delta_mm[X_AXIS]) + (delta_mm[Y_AXIS] * delta_mm[Y_AXIS]) + 
+				(delta_mm[Z_AXIS] * delta_mm[Z_AXIS]));
   double inverse_millimeters = 1.0/block->millimeters;  // Inverse millimeters to remove multiple divides	
   
   // Calculate speed in mm/minute for each axis. No divide by zero due to previous checks.
