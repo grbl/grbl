@@ -19,7 +19,7 @@
   along with Grbl.  If not, see <http://www.gnu.org/licenses/>.
 */
 
-#include <avr/io.h>
+#include <dev_misc.h>
 #include "protocol.h"
 #include "gcode.h"
 #include "serial.h"
@@ -28,7 +28,6 @@
 #include "config.h"
 #include <math.h>
 #include "nuts_bolts.h"
-#include <avr/pgmspace.h>
 #define LINE_BUFFER_SIZE 50
 
 static char line[LINE_BUFFER_SIZE]; // Line to be executed. Zero-terminated.

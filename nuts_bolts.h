@@ -42,7 +42,4 @@
 // a pointer to the result variable. Returns true when it succeeds
 int read_double(char *line, uint8_t *char_counter, double *double_ptr);
 
-// Delays variable-defined milliseconds. Compiler compatibility fix for _delay_ms().
-void delay_ms(uint16_t ms);
-
 #endif

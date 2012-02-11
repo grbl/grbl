@@ -19,13 +19,12 @@
   along with Grbl.  If not, see <http://www.gnu.org/licenses/>.
 */
 
-#include <avr/io.h>
+#include "dev_misc.h"
 #include <math.h>
 #include "nuts_bolts.h"
 #include "settings.h"
 #include "eeprom.h"
 #include "print.h"
-#include <avr/pgmspace.h>
 #include "protocol.h"
 #include "config.h"
 
@@ -41,19 +40,6 @@ typedef struct {
   uint8_t invert_mask;
   double mm_per_arc_segment;
 } settings_v1_t;
-
-// Default settings (used when resetting eeprom-settings)
-#define MICROSTEPS 8
-#define DEFAULT_X_STEPS_PER_MM (94.488188976378*MICROSTEPS)
-#define DEFAULT_Y_STEPS_PER_MM (94.488188976378*MICROSTEPS)
-#define DEFAULT_Z_STEPS_PER_MM (94.488188976378*MICROSTEPS)
-#define DEFAULT_STEP_PULSE_MICROSECONDS 30
-#define DEFAULT_MM_PER_ARC_SEGMENT 0.1
-#define DEFAULT_RAPID_FEEDRATE 500.0 // mm/min
-#define DEFAULT_FEEDRATE 500.0
-#define DEFAULT_ACCELERATION (DEFAULT_FEEDRATE*60*60/10.0) // mm/min^2
-#define DEFAULT_JUNCTION_DEVIATION 0.05 // mm
-#define DEFAULT_STEPPING_INVERT_MASK ((1<<X_STEP_BIT)|(1<<Y_STEP_BIT)|(1<<Z_STEP_BIT))
 
 void settings_reset() {
   settings.steps_per_mm[X_AXIS] = DEFAULT_X_STEPS_PER_MM;

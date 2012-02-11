@@ -17,19 +17,20 @@
   You should have received a copy of the GNU General Public License
   along with Grbl.  If not, see <http://www.gnu.org/licenses/>.
 */
-  
-#include <util/delay.h>
-#include <avr/io.h>
+ 
+#include "dev_misc.h" 
 #include "stepper.h"
 #include "settings.h"
 #include "nuts_bolts.h"
 #include "config.h"
 
 void limits_init() {
-  LIMIT_DDR &= ~(LIMIT_MASK);
+  //LIMIT_DDR &= ~(LIMIT_MASK);
 }
 
-static void homing_cycle(bool x_axis, bool y_axis, bool z_axis, bool reverse_direction, uint32_t microseconds_per_pulse) {
+/*
+static void homing_cycle(bool x_axis, bool y_axis, bool z_axis, bool reverse_direction, uint32_t microseconds_per_pulse) 
+{
   // First home the Z axis
   uint32_t step_delay = microseconds_per_pulse - settings.pulse_microseconds;
   uint8_t out_bits = DIRECTION_MASK;
@@ -71,13 +72,15 @@ static void homing_cycle(bool x_axis, bool y_axis, bool z_axis, bool reverse_dir
     // Check if we are done
     if(!(x_axis || y_axis || z_axis)) { return; }
     STEPPING_PORT |= out_bits & STEP_MASK;
-    _delay_us(settings.pulse_microseconds);
+    delay_us(settings.pulse_microseconds);
     STEPPING_PORT ^= out_bits & STEP_MASK;
-    _delay_us(step_delay);
+    delay_us(step_delay);
   }
   return;
 }
+*/
 
+/*
 static void approach_limit_switch(bool x, bool y, bool z) {
   homing_cycle(x, y, z, false, 100000);
 }
@@ -86,7 +89,9 @@ static void leave_limit_switch(bool x, bool y, bool z) {
   homing_cycle(x, y, z, true, 500000);
 }
 
+*/
 void limits_go_home() {
+/*
   st_synchronize();
   // Store the current limit switch state
   uint8_t original_limit_state = LIMIT_PIN;
@@ -100,4 +105,5 @@ void limits_go_home() {
     limit_switches_present & (1<<X_LIMIT_BIT), 
     limit_switches_present & (1<<Y_LIMIT_BIT),
     limit_switches_present & (1<<Z_LIMIT_BIT));
+*/
 }

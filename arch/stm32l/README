@@ -1,0 +1,8 @@
+Flashing:
+
+first run stlink:
+../../../stlink/gdbserver/st-util -s1 
+
+and then:
+
+arm-none-eabi-gdb -x ./stm32_flash.gdb

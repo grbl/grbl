@@ -24,8 +24,8 @@
 
 
 #include <math.h>
-#include <avr/pgmspace.h>
 #include "serial.h"
+#include "dev_misc.h"
 
 #ifndef DECIMAL_PLACES
 #define DECIMAL_PLACES 3
@@ -41,9 +41,7 @@ void printString(const char *s)
 // Print a string stored in PGM-memory
 void printPgmString(const char *s)
 {
-  char c;
-  while ((c = pgm_read_byte_near(s++)))
-    serial_write(c);
+	dev_print_flash(s);
 }
 
 void printIntegerInBase(unsigned long n, unsigned long base)

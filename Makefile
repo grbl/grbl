@@ -1,94 +1,138 @@
-#  Part of Grbl
+ #####
+ # Stephen Caudle, Copyright (C) 2010.
+ #
+ #
+ # This program is free software; you can redistribute it and/or modify
+ # it under the terms of the GNU General Public License as published by
+ # the Free Software Foundation; either version 3 of the License, or
+ # (at your option) any later version.
+ #
+ # This program is distributed in the hope that it will be useful, but
+ # WITHOUT ANY WARRANTY; without even the implied warranty of MERCHANTABILITY
+ # or FITNESS FOR A PARTICULAR PURPOSE. See the GNU General Public License
+ # for more details.
+ #
+ # You should have received a copy of the GNU General Public License along
+ # with this program; if not, write to the Free Software Foundation, Inc.,
+ # 59 Temple Place, Suite 330, Boston, MA 02111-1307 USA
+ #####
+
+#	adjusted by chrisu_de for various projects.
 #
-#  Copyright (c) 2009-2011 Simen Svale Skogsrud
-#
-#  Grbl is free software: you can redistribute it and/or modify
-#  it under the terms of the GNU General Public License as published by
-#  the Free Software Foundation, either version 3 of the License, or
-#  (at your option) any later version.
-#
-#  Grbl is distributed in the hope that it will be useful,
-#  but WITHOUT ANY WARRANTY; without even the implied warranty of
-#  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-#  GNU General Public License for more details.
-#
-#  You should have received a copy of the GNU General Public License
-#  along with Grbl.  If not, see <http://www.gnu.org/licenses/>.
 
+#change your device: 
+# 	avr
+# 	freertos_lpc17
+#	stm32l
+#	simulator
 
-# This is a prototype Makefile. Modify it according to your needs.
-# You should at least check the settings for
-# DEVICE ....... The AVR device you compile for
-# CLOCK ........ Target AVR clock rate in Hertz
-# OBJECTS ...... The object files created from your source files. This list is
-#                usually the same as the list of source files with suffix ".o".
-# PROGRAMMER ... Options to avrdude which define the hardware you use for
-#                uploading to the AVR and the interface where this hardware
-#                is connected.
-# FUSES ........ Parameters for avrdude to flash the fuses appropriately.
+ifeq ($(ARCH),)
+#ARCH = stm32l
+ARCH = mbed_lpc17
+#ARCH = avr
+#ARCH = simulator
+endif
 
-DEVICE     = atmega328p
-CLOCK      = 16000000
-PROGRAMMER = -c avrisp2 -P usb
-OBJECTS    = main.o motion_control.o gcode.o spindle_control.o serial.o protocol.o stepper.o \
-             eeprom.o settings.o planner.o nuts_bolts.o limits.o print.o
-# FUSES      = -U hfuse:w:0xd9:m -U lfuse:w:0x24:m
-FUSES      = -U hfuse:w:0xd2:m -U lfuse:w:0xff:m
-# update that line with this when programmer is back up: 
-# FUSES      = -U hfuse:w:0xd7:m -U lfuse:w:0xff:m 
+DEVICE_DIR  = arch/$(ARCH)
+-include $(DEVICE_DIR)/Makefile
 
-# Tune the lines below only if you know what you are doing:
+# Directory for output files (lst, obj, dep, elf, map, hex, bin etc.)
+OUTDIR = build
 
-AVRDUDE = avrdude $(PROGRAMMER) -p $(DEVICE) -B 10 -F 
-COMPILE = avr-gcc -Wall -Os -DF_CPU=$(CLOCK) -mmcu=$(DEVICE) -I. -ffunction-sections
+# Target file name (without extension).
+TARGET = grbl-$(ARCH)
 
-# symbolic targets:
-all:	grbl.hex
+# Source files:
+SRC += main.c 
+SRC += nuts_bolts.c
+SRC += motion_control.c 
+SRC += gcode.c
+SRC += spindle_control.c
+SRC += protocol.c
+SRC += settings.c
+SRC += planner.c
+SRC += limits.c
+SRC += print.c
 
-.c.o:
-	$(COMPILE) -c $< -o $@ 
+#include device specific files
+SRC += $(patsubst %,$(DEVICE_DIR)/%,$(DEV_SRC))
 
-.S.o:
-	$(COMPILE) -x assembler-with-cpp -c $< -o $@
-# "-x assembler-with-cpp" should not be necessary since this is the default
-# file type for the .S (with capital S) extension. However, upper case
-# characters are not always preserved on Windows. To ensure WinAVR
-# compatibility define the file type manually.
+# List any extra directories to look for include files here.
+INCDIRS  += $(DEVICE_DIR) 
+INCDIRS  += $(patsubst %,$(DEVICE_DIR)/%,$(DEV_INC))
 
-.c.s:
-	$(COMPILE) -S $< -o $@
+CFLAGS += $(patsubst %,-I%,$(INCDIRS)) -I.
+CFLAGS += -std=gnu99
+CFLAGS += -Wall
 
-flash:	all
-	$(AVRDUDE) -U flash:w:grbl.hex:i
+# Define programs and commands.
+CC      = $(TCHAIN_PREFIX)gcc
+AR      = $(TCHAIN_PREFIX)ar
+OBJCOPY = $(TCHAIN_PREFIX)objcopy
+OBJDUMP = $(TCHAIN_PREFIX)objdump
+SIZE    = $(TCHAIN_PREFIX)size
+NM      = $(TCHAIN_PREFIX)nm
+GDB     = $(TCHAIN_PREFIX)gdb
+REMOVE  = rm -rf
 
-fuse:
-	$(AVRDUDE) $(FUSES)
+# List of all source files without directory and file-extension.
+ALLSRCBASE = $(notdir $(basename $(SRC)))
 
-# Xcode uses the Makefile targets "", "clean" and "install"
-install: flash fuse
+# Define all object files.
+ALLOBJ     = $(addprefix $(OUTDIR)/, $(addsuffix .o, $(ALLSRCBASE)))
 
-# if you use a bootloader, change the command below appropriately:
-load: all
-	bootloadHID grbl.hex
+default: all
 
+# Default target.
+all: $(OUTDIR)/$(TARGET).elf
+
+# Program the device.
+flash: $(OUTDIR)/$(TARGET).elf
+	@echo "Flashing to device"
+	$(FLASH_COMMAND)
+
+# Link: create ELF output file from object files.
+.SECONDARY : $(OUTDIR)/$(TARGET).elf
+.PRECIOUS : $(ALLOBJ)
+$(OUTDIR)/$(TARGET).elf: $(ALLOBJ)
+	@echo
+	@echo "**** Linking :" $@
+	@$(LINK_COMMAND)
+
+# Compile: create object files from C source files.
+define COMPILE_C_SOURCE
+$(OUTDIR)/$(notdir $(basename $(1))).o : $(1)
+##	@echo
+	@echo "**** Compiling :" $$< "->" $$@
+	@$(CC) -c $$(CFLAGS) $$< -o $$@
+endef
+$(foreach src, $(SRC), $(eval $(call COMPILE_C_SOURCE, $(src))))
+
+# Target: clean project.
 clean:
-	rm -f grbl.hex main.elf $(OBJECTS)
+	@echo "cleaned build"
+	@$(REMOVE) $(OUTDIR)
 
-# file targets:
-main.elf: $(OBJECTS)
-	$(COMPILE) -o main.elf $(OBJECTS) -lm -Wl,--gc-sections
+test: 	
+	@echo "STM32:"
+	@make clean	
+	@make ARCH=stm32l
+	
+	@echo "Compiling freertos_lpc17"
+	@make clean	
+	@make ARCH=freertos_lpc17
+	
+	@echo "Compiling avr:"
+	@make clean	
+	@make ARCH=avr
+	
+	@echo "Compiling simulator"
+	@make clean	
+	@make ARCH=simulator
 
-grbl.hex: main.elf
-	rm -f grbl.hex
-	avr-objcopy -j .text -j .data -O ihex main.elf grbl.hex
-	avr-objdump -h main.elf | grep .bss | ruby -e 'puts "\n\n--- Requires %s bytes of SRAM" % STDIN.read.match(/0[0-9a-f]+\s/)[0].to_i(16)'
-	avr-size *.hex *.elf *.o
-# If you have an EEPROM section, you must also create a hex file for the
-# EEPROM and add it to the "flash" target.
 
-# Targets for code debugging and analysis:
-disasm:	main.elf
-	avr-objdump -d main.elf
+# Create output files directory
+$(shell mkdir -p $(OUTDIR))
 
-cpp:
-	$(COMPILE) -E main.c 
+# Listing of phony targets.
+.PHONY: all build lss clean program flash

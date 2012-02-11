@@ -18,10 +18,6 @@
   along with Grbl.  If not, see <http://www.gnu.org/licenses/>.
 */
 
-#include <avr/io.h>
-#include <avr/sleep.h>
-#include <avr/interrupt.h>
-#include <util/delay.h>
 #include "config.h"
 #include "planner.h"
 #include "stepper.h"
@@ -30,13 +26,13 @@
 #include "gcode.h"
 #include "protocol.h"
 #include "limits.h"
-
+#include "dev_misc.h"
 #include "settings.h"
 #include "serial.h"
 
-int main(void)
+int grbl_main(void)
 {
-  sei(); // Enable interrupts
+  dev_enable_ints(); // Enable interrupts
   
   serial_init(BAUD_RATE);
   protocol_init();        
