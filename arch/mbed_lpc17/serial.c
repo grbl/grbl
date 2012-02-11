@@ -32,11 +32,6 @@ void serial_init(long baud)
 	// already initialised before the start of the FreeRTOS scheduler
 }
 
-void dev_print_flash(const char *s)
-{
-	uart_printf(s);
-}
-
 void serial_write(uint8_t data) {
 	uart_putc(data);
 }

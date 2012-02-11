@@ -8,6 +8,11 @@
 #include "led.h"
 #include "dev_misc.h"
 
+void dev_print_flash(const char *s)
+{
+	uart_printf(s);	
+}
+
 void dev_enable_ints()
 {
 //	sei();

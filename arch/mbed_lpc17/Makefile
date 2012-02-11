@@ -63,7 +63,7 @@ LDFLAGS = -nostartfiles -Wl,-Map=$(OUTDIR)/$(TARGET).map,--cref,--gc-sections
 LDFLAGS += -lc
 LDFLAGS += -lm
 LDFLAGS += -lgcc
-LDFLAGS +=-T arch/lpc17_mbed/hardware/rdb1768_Debug.ld 
+LDFLAGS +=-T arch/mbed_lpc17/hardware/rdb1768_Debug.ld 
 
 FLASH_COMMAND  = $(OBJCOPY) -O binary $(OUTDIR)/$(TARGET).elf $(OUTDIR)/$(TARGET).bin &&\
 		cp $(OUTDIR)/$(TARGET).bin -f /media/MBED
