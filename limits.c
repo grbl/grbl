@@ -76,9 +76,9 @@ static void homing_cycle(bool x_axis, bool y_axis, bool z_axis, bool reverse_dir
     // Check if we are done
     if(!(x_axis || y_axis || z_axis)) { return; }
     STEPPING_PORT |= out_bits & STEP_MASK;
-    _delay_us(settings.pulse_microseconds);
+    delay_us(settings.pulse_microseconds);
     STEPPING_PORT ^= out_bits & STEP_MASK;
-    _delay_us(step_delay);
+    delay_us(step_delay);
   }
   return;
 }

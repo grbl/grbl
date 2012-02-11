@@ -14,9 +14,10 @@ Grbl includes full acceleration management with look ahead. That means the contr
   - New run-time command control: Feed hold (pause), Cycle start (resume), Reset (abort), Status reporting
   - Controlled feed hold with deceleration to ensure no skipped steps and loss of location.
   - After feed hold, cycle accelerations are re-planned and may be resumed.
-  - Work offset(G92) and machine coordinate system support.
-  - Program stop(M0,M1*,M2,M30) initial support. Pallet shuttle not supported.
-  - System reset re-initializes grbl without resetting the Arduino and retains machine/home position.
+  - Re-factored g-code parser with robust error-checking.
+  - Work coordinate system (G54), offsets(G92), and machine coordinate system support. G10 work coordinate settings support. (Up to 6 work coordinate systems(G54-G59) available as a compile-time option.)
+  - Program stop(M0,M1*,M2,M30) initial support. Optional stop to do.
+  - System reset re-initializes grbl without resetting the Arduino and retains machine/home position and work coordinates.
   - Restructured planner and stepper modules to become independent and ready for future features.
   - Planned features: Jog mode, status reporting, runtime settings such as toggling block delete, XON/XOFF flow control.
   - Reduce serial read buffer to 128 characters and increased write buffer to 64 characters.

@@ -65,6 +65,10 @@
 #define CMD_CYCLE_START '~'
 #define CMD_RESET 0x18 // ctrl-x
 
+// Specifies the number of work coordinate systems grbl will support (G54 - G59).
+// This parameter must be one or greater, currently supporting up to a value of 6.
+#define N_COORDINATE_SYSTEM 1
+
 // This parameter sets the delay time before disabling the steppers after the final block of movement.
 // A short delay ensures the steppers come to a complete stop and the residual inertial force in the 
 // CNC axes don't cause the axes to drift off position. This is particularly important when manually 

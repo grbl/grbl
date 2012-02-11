@@ -24,7 +24,7 @@
 #include "config.h"
 #include "planner.h"
 
-#include <avr/io.h>
+#include <stdint.h>
 
 // TODO: Deprecated. Need to update for new version.
 

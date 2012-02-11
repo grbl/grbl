@@ -21,6 +21,7 @@
 
 #ifndef nuts_bolts_h
 #define nuts_bolts_h
+#include <config.h>
 #include <string.h>
 #include <stdint.h>
 #include <stdbool.h>
@@ -70,8 +71,13 @@ typedef struct {
 
   int32_t position[3];           // Real-time machine (aka home) position vector in steps. 
                                  // NOTE: This may need to be a volatile variable, if problems arise. 
-  int32_t coord_offset[3];       // Retains the G92 coordinate offset (work coordinates) relative to
-                                 // machine zero in steps.
+
+  uint8_t coord_select;          // Active work coordinate system number. Default: 0=G54.
+  double coord_system[N_COORDINATE_SYSTEM][3]; // Work coordinate systems (G54+). Stores offset from
+  															 // absolute machine position in mm.
+                                 // Rows: Work system number (0=G54,1=G55,...5=G59), Columns: XYZ Offsets
+  double coord_offset[3];        // Retains the G92 coordinate offset (work coordinates) relative to
+                                 // machine zero in mm.
                           
   volatile uint8_t cycle_start;  // Cycle start flag. Set by stepper subsystem or main program. 
   volatile uint8_t execute;      // Global system runtime executor bitflag variable. See EXEC bitmasks.
@@ -85,5 +91,8 @@ int read_double(char *line, uint8_t *char_counter, double *double_ptr);
 
 // Delays variable-defined milliseconds. Compiler compatibility fix for _delay_ms().
 void delay_ms(uint16_t ms);
+
+// Delays variable-defined microseconds. Compiler compatibility fix for _delay_us().
+void delay_us(uint16_t us);
 
 #endif

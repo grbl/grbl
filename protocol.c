@@ -53,6 +53,10 @@ static void status_message(int status_code)
       printPgmString(PSTR("Unsupported statement\r\n")); break;
       case STATUS_FLOATING_POINT_ERROR:
       printPgmString(PSTR("Floating point error\r\n")); break;
+      case STATUS_MODAL_GROUP_VIOLATION:
+      printPgmString(PSTR("Modal group violation\r\n")); break;
+      case STATUS_INVALID_COMMAND:
+      printPgmString(PSTR("Invalid command\r\n")); break;
       default:
       printInteger(status_code);
       printPgmString(PSTR("\r\n"));
@@ -74,7 +78,7 @@ void protocol_status_report()
  // short line segments and interface setups that require real-time status reports (5-20Hz).
 
  // **Under construction** Bare-bones status report. Provides real-time machine position relative to 
- // the system power on location (0,0,0) and work coordinate position, updatable by the G92 command.
+ // the system power on location (0,0,0) and work coordinate position (G54 and G92 applied).
  // The following are still needed: user setting of output units (mm|inch), compressed (non-human 
  // readable) data for interfaces?, save last known position in EEPROM?, code optimizations, solidify
  // the reporting schemes, move to a separate .c file for easy user accessibility, and setting the
@@ -87,16 +91,16 @@ void protocol_status_report()
    printString("MPos:["); printFloat(print_position[X_AXIS]/(settings.steps_per_mm[X_AXIS]*MM_PER_INCH));
    printString(","); printFloat(print_position[Y_AXIS]/(settings.steps_per_mm[Y_AXIS]*MM_PER_INCH));
    printString(","); printFloat(print_position[Z_AXIS]/(settings.steps_per_mm[Z_AXIS]*MM_PER_INCH));
-   printString("],WPos:["); printFloat((print_position[X_AXIS]-sys.coord_offset[X_AXIS])/(settings.steps_per_mm[X_AXIS]*MM_PER_INCH));
-   printString(","); printFloat((print_position[Y_AXIS]-sys.coord_offset[Y_AXIS])/(settings.steps_per_mm[Y_AXIS]*MM_PER_INCH));
-   printString(","); printFloat((print_position[Z_AXIS]-sys.coord_offset[Z_AXIS])/(settings.steps_per_mm[Z_AXIS]*MM_PER_INCH));
+   printString("],WPos:["); printFloat((print_position[X_AXIS]/settings.steps_per_mm[X_AXIS]-sys.coord_system[sys.coord_select][X_AXIS]-sys.coord_offset[X_AXIS])/MM_PER_INCH);
+   printString(","); printFloat((print_position[Y_AXIS]/settings.steps_per_mm[Y_AXIS]-sys.coord_system[sys.coord_select][Y_AXIS]-sys.coord_offset[Y_AXIS])/MM_PER_INCH);
+   printString(","); printFloat((print_position[Z_AXIS]/settings.steps_per_mm[Z_AXIS]-sys.coord_system[sys.coord_select][Z_AXIS]-sys.coord_offset[Z_AXIS])/MM_PER_INCH);
  #else
    printString("MPos:["); printFloat(print_position[X_AXIS]/(settings.steps_per_mm[X_AXIS]));
    printString(","); printFloat(print_position[Y_AXIS]/(settings.steps_per_mm[Y_AXIS]));
    printString(","); printFloat(print_position[Z_AXIS]/(settings.steps_per_mm[Z_AXIS]));
-   printString("],WPos:["); printFloat((print_position[X_AXIS]-sys.coord_offset[X_AXIS])/(settings.steps_per_mm[X_AXIS]));
-   printString(","); printFloat((print_position[Y_AXIS]-sys.coord_offset[Y_AXIS])/(settings.steps_per_mm[Y_AXIS]));
-   printString(","); printFloat((print_position[Z_AXIS]-sys.coord_offset[Z_AXIS])/(settings.steps_per_mm[Z_AXIS]));
+   printString("],WPos:["); printFloat(print_position[X_AXIS]/settings.steps_per_mm[X_AXIS]-sys.coord_system[sys.coord_select][X_AXIS]-sys.coord_offset[X_AXIS]);
+   printString(","); printFloat(print_position[Y_AXIS]/settings.steps_per_mm[Y_AXIS]-sys.coord_system[sys.coord_select][Y_AXIS]-sys.coord_offset[Y_AXIS]);
+   printString(","); printFloat(print_position[Z_AXIS]/settings.steps_per_mm[Z_AXIS]-sys.coord_system[sys.coord_select][Z_AXIS]-sys.coord_offset[Z_AXIS]);
  #endif
  printString("]\r\n");
 }

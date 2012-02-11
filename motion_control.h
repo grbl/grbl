@@ -25,10 +25,6 @@
 #include <avr/io.h>
 #include "planner.h"
 
-// NOTE: Although the following function structurally belongs in this module, there is nothing to do but
-// to forward the request to the planner.
-#define mc_set_coordinate_offset(x, y, z) plan_set_coordinate_offset(x, y, z) 
-
 // Execute linear motion in absolute millimeter coordinates. Feed rate given in millimeters/second
 // unless invert_feed_rate is true. Then the feed_rate means that the motion should be completed in
 // (1 minute)/feed_rate time.

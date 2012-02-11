@@ -344,6 +344,8 @@ void plan_synchronize()
 // Add a new linear movement to the buffer. x, y and z is the signed, absolute target position in 
 // millimeters. Feed rate specifies the speed of the motion. If feed rate is inverted, the feed
 // rate is taken to mean "frequency" and would complete the operation in 1/feed_rate minutes.
+// All position data passed to the planner must be in terms of machine position to keep the planner 
+// independent of any coordinate system changes and offsets, which are handled by the g-code parser.
 // NOTE: Assumes buffer is available. Buffer checks are handled at a higher level by motion_control.
 void plan_buffer_line(double x, double y, double z, double feed_rate, uint8_t invert_feed_rate) 
 {
@@ -471,36 +473,7 @@ void plan_buffer_line(double x, double y, double z, double feed_rate, uint8_t in
   planner_recalculate(); 
 }
 
-// Apply G92 coordinate offsets and update planner position vector.
-void plan_set_coordinate_offset(double x, double y, double z) 
-{
-  // To correlate status reporting work position correctly, the planner must force the steppers to
-  // empty the block buffer and synchronize with the planner, as the real-time machine position and 
-  // the planner position at the end of the buffer can be and are usually different. This function is
-  // only called with a G92, which typically is used only at the beginning of a g-code program or 
-  // between different operations.
-  // TODO: Find a robust way to avoid a planner synchronize, but this may require a bit of ingenuity.
-  plan_synchronize();
-  
-  // Update the system coordinate offsets from machine zero
-  sys.coord_offset[X_AXIS] += pl.position[X_AXIS]; 
-  sys.coord_offset[Y_AXIS] += pl.position[Y_AXIS];
-  sys.coord_offset[Z_AXIS] += pl.position[Z_AXIS];
-  
-  memset(&pl, 0, sizeof(pl)); // Clear planner variables. Assume start from rest.
-  
-  // Update planner position and coordinate offset vectors
-  int32_t new_position[3];
-  new_position[X_AXIS] = lround(x*settings.steps_per_mm[X_AXIS]);
-  new_position[Y_AXIS] = lround(y*settings.steps_per_mm[Y_AXIS]);
-  new_position[Z_AXIS] = lround(z*settings.steps_per_mm[Z_AXIS]); 
-  plan_set_current_position(new_position[X_AXIS],new_position[Y_AXIS],new_position[Z_AXIS]); 
-  sys.coord_offset[X_AXIS] -= pl.position[X_AXIS];
-  sys.coord_offset[Y_AXIS] -= pl.position[Y_AXIS];
-  sys.coord_offset[Z_AXIS] -= pl.position[Z_AXIS];
-}
-
-// Reset the planner position vector (in steps)
+// Reset the planner position vector (in steps). Called by the system abort routine.
 void plan_set_current_position(int32_t x, int32_t y, int32_t z)
 {
   pl.position[X_AXIS] = x;

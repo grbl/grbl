@@ -69,9 +69,6 @@ block_t *plan_get_current_block();
 // Reset the planner position vector (in steps)
 void plan_set_current_position(int32_t x, int32_t y, int32_t z);
 
-// Apply G92 coordinate offsets and update planner position vector. Called by g-code parser.
-void plan_set_coordinate_offset(double x, double y, double z);
-
 // Reinitialize plan with a partially completed block
 void plan_cycle_reinitialize(int32_t step_events_remaining);
 
