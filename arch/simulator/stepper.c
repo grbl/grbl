@@ -44,7 +44,7 @@ timer_t timerid;
 #define DIR_FORWARD 1
 #define DIR_BACKWARD 0
 
-int simul_running = 1;
+extern int exit_app;
 void do_step(int direction, int axis);
 extern int init_graphics();
 extern double cnc_head_x;
@@ -157,6 +157,12 @@ static uint8_t iterate_trapezoid_cycle_counter()
 
 void restart_handler_timer()
 {
+	if(exit_app) {
+		timer_delete(timerid);
+		exit(0);
+		return;
+	}
+		
 	struct itimerspec its;
 	long long freq_nanosecs = cycles_per_step_event*1000;
 	its.it_value.tv_sec = freq_nanosecs / 1000000000;
@@ -367,9 +373,6 @@ void st_init()
 
 	if (timer_settime(timerid, 0, &its, NULL) == -1)
 		printf("timer_settime error\n");
-
-	/* Sleep for a while; meanwhile, the timer may expire
-	   multiple times */
 
 	/* Unlock the timer signal, so that timer notification
 	   can be delivered */

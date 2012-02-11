@@ -8,16 +8,16 @@
 #define FPS 20
 #define PlayerPaddleY (SCREEN_HEIGHT - (SCREEN_HEIGHT / 10))
 #define CompPaddleY (SCREEN_HEIGHT / 10)
-/*SDL Includes. If your include paths are different, change these accordingly.*/
 
 #define SCREEN_WIDTH 640     
 #define SCREEN_HEIGHT 480 
 #define COLOR_DEPTH 16
 #define POINTSIZE 20
-/*Defines that make it easy for us to change the screen properties without even changing the functions.*/
 
 #define COLORKEY 255, 0, 255 
 /*The colorkey that will not be included in sprites when they are blitted onto the screen.*/ 
+
+extern int exit_app;
 
 /*******************************DECLARATIONS*************************************************/
 enum textquality {solid=1, shaded, blended};
@@ -189,6 +189,7 @@ void * mainloop(void *nop)
 		}
 		looptime = SDL_GetTicks();
 	}
+	exit_app = 1;
 	return NULL;
 }
 

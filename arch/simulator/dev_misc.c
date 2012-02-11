@@ -3,6 +3,7 @@
 #include <stdio.h>
 #include <unistd.h>
 
+int exit_app = 0;
 
 void dev_print_flash(const char *s) // FLASH_STORED needs to be defined
 {
@@ -38,6 +39,6 @@ extern int grbl_main();
 int main() 
 {
 	printf("starting\n");
-	grbl_main();	
+	grbl_main();
 }
 
