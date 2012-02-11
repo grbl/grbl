@@ -3,7 +3,7 @@
 
 #include <stdbool.h>
 
-#define PSTR	  
+#define PSTR	 /**/ 
 
 //functions needed from the main app:
 extern char uart_getc();

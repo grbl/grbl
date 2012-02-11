@@ -22,7 +22,7 @@
 #ifndef motion_control_h
 #define motion_control_h
 
-#include <avr/io.h>
+#include <stdint.h>
 #include "planner.h"
 
 // NOTE: Although the following functions structurally belongs in this module, there is nothing to do but

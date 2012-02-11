@@ -21,7 +21,7 @@
 #ifndef spindle_control_h
 #define spindle_control_h 
 
-#include <avr/io.h>
+#include <stdint.h>
 
 void spindle_init();
 void spindle_run(int direction, uint32_t rpm);

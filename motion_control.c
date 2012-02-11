@@ -19,16 +19,15 @@
   along with Grbl.  If not, see <http://www.gnu.org/licenses/>.
 */
 
-#include <avr/io.h>
 #include "settings.h"
 #include "config.h"
 #include "motion_control.h"
-#include <util/delay.h>
 #include <math.h>
 #include <stdlib.h>
 #include "nuts_bolts.h"
 #include "stepper.h"
 #include "planner.h"
+#include "dev_misc.h"
 
 // Execute dwell in seconds. Maximum time delay is > 18 hours, more than enough for any application.
 void mc_dwell(double seconds) 
@@ -37,7 +36,7 @@ void mc_dwell(double seconds)
    st_synchronize();
    delay_ms(floor(1000*(seconds-i))); // Delay millisecond remainder
    while (i > 0) {
-     _delay_ms(1000); // Delay one second
+     delay_ms(1000); // Delay one second
      i--;
    }
 }

@@ -33,6 +33,11 @@ void delay_us(double time_us)
 	_delay_us(time_us);
 }
 
+void sleep_mode()
+{
+
+}
+
 extern int grbl_main();
 int main() 
 {

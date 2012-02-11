@@ -21,6 +21,8 @@
 #ifndef protocol_h
 #define protocol_h
 
+#include <stdint.h>
+
 #define STATUS_OK 0
 #define STATUS_BAD_NUMBER_FORMAT 1
 #define STATUS_EXPECTED_COMMAND_LETTER 2

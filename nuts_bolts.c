@@ -21,7 +21,6 @@
 #include "nuts_bolts.h"
 #include <stdint.h>
 #include <stdlib.h>
-#include <util/delay.h>
 
 int read_double(char *line, uint8_t *char_counter, double *double_ptr)                  
 {

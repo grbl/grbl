@@ -28,7 +28,7 @@
 
 ifeq ($(ARCH),)
 #ARCH = stm32l
-#ARCH = mbed_lc17
+ARCH = mbed_lpc17
 #ARCH = avr
 #ARCH = simulator
 endif
