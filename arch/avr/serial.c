@@ -27,7 +27,7 @@
 
 
 #ifdef __AVR_ATmega328P__
-#define RX_BUFFER_SIZE 256
+#define RX_BUFFER_SIZE 255
 #else
 #define RX_BUFFER_SIZE 64
 #endif
@@ -105,8 +105,10 @@ uint8_t serial_read()
     return SERIAL_NO_DATA;
   } else {
     uint8_t data = rx_buffer[rx_buffer_tail];
-    rx_buffer_tail++;
-    if (rx_buffer_tail == RX_BUFFER_SIZE) { rx_buffer_tail = 0; }
+    if (rx_buffer_tail == RX_BUFFER_SIZE)  
+      rx_buffer_tail = 0; 
+    else
+      rx_buffer_tail++;
     return data;
   }
 }
