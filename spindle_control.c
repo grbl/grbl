@@ -23,6 +23,7 @@
 #include "motion_control.h"
 #include "config.h"
 #include "planner.h"
+#include "stepper.h"
 
 #include <stdint.h>
 
@@ -32,6 +33,8 @@ static int current_direction;
 
 void spindle_init()
 {
+  SPINDLE_ENABLE_DDR |= (1<<SPINDLE_ENABLE_BIT);
+  SPINDLE_DIRECTION_DDR |= (1<<SPINDLE_DIRECTION_BIT);  
   spindle_run(0, 0);
 }
 
