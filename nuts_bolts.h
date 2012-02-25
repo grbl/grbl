@@ -21,10 +21,11 @@
 
 #ifndef nuts_bolts_h
 #define nuts_bolts_h
-#include <config.h>
+
 #include <string.h>
 #include <stdint.h>
 #include <stdbool.h>
+#include "config.h"
 
 #define false 0
 #define true 1

@@ -114,6 +114,14 @@
 // time step. Also, keep in mind that the Arduino delay timer is not very accurate for long delays.
 #define DWELL_TIME_STEP 50 // Integer (1-255) (milliseconds)
 
+// FOR ADVANCED USERS ONLY: Toggles XON/XOFF software flow control for serial communications. 
+// Officially not supported due to problems involving USB-to-serial chip latency (Atmega8U2/FTDI)
+// when connecting to an Arduino through the USB port. This problem has to do with having no control
+// of the USB packets and causing standard terminal programs not being able to honor the XON/XOFF 
+// control characters on time. However, with specially programmed UI's or avoiding the USB interface
+// completely, XON/XOFF flow control should work. In any case, please report any successes to grbl
+// administrators!
+#define ENABLE_XONXOFF 0 // Boolean. Default disabled.
 
 // -----------------------------------------------
 
