@@ -569,7 +569,7 @@ static int next_statement(char *letter, double *double_ptr, char *line, uint8_t 
   - Evaluation of expressions
   - Variables
   - Multiple home locations
-  - Multiple coordinate systems (May be added in the future)
+  - Multiple coordinate systems (Additional ones maybe added in config.h)
   - Probing
   - Override control
   - Tool changes

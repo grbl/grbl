@@ -111,24 +111,24 @@ ISR(USART_UDRE_vect)
   uint8_t tail = tx_buffer_tail;
   
   #if ENABLE_XONXOFF
-    switch (flow_ctrl) {
-      case SEND_XOFF: UDR0 = XOFF_CHAR; flow_ctrl = XOFF_SENT; break;
-      case SEND_XON: UDR0 = XON_CHAR; flow_ctrl = XON_SENT; break;
-      default:  
+    if (flow_ctrl == SEND_XOFF) { 
+      UDR0 = XOFF_CHAR; 
+      flow_ctrl = XOFF_SENT; 
+    } else if (flow_ctrl == SEND_XON) { 
+      UDR0 = XON_CHAR; 
+      flow_ctrl = XON_SENT; 
+    } else
   #endif
+  { 
+    // Send a byte from the buffer	
+    UDR0 = tx_buffer[tail];
   
-  // Send a byte from the buffer	
-  UDR0 = tx_buffer[tail];
-
-  // Update tail position
-  tail++;
-  if (tail == TX_BUFFER_SIZE) { tail = 0; }
-
-  tx_buffer_tail = tail;
-
-  #if ENABLE_XONXOFF
-    }
-  #endif
+    // Update tail position
+    tail++;
+    if (tail == TX_BUFFER_SIZE) { tail = 0; }
+  
+    tx_buffer_tail = tail;
+  }
   
   // Turn off Data Register Empty Interrupt to stop tx-streaming if this concludes the transfer
   if (tail == tx_buffer_head) { UCSR0B &= ~(1 << UDRIE0); }
@@ -144,7 +144,7 @@ uint8_t serial_read()
     if (rx_buffer_tail == RX_BUFFER_SIZE) { rx_buffer_tail = 0; }
 
     #if ENABLE_XONXOFF
-      if ((get_rx_buffer_count() < RX_BUFFER_LOW) && flow_ctrl != XON_SENT) { 
+      if ((get_rx_buffer_count() < RX_BUFFER_LOW) && flow_ctrl == XOFF_SENT) { 
         flow_ctrl = SEND_XON;
         UCSR0B |=  (1 << UDRIE0); // Force TX
       }
@@ -183,7 +183,7 @@ ISR(USART_RX_vect)
         rx_buffer_head = next_head;    
         
         #if ENABLE_XONXOFF
-          if ((get_rx_buffer_count() >= RX_BUFFER_FULL) && flow_ctrl != XOFF_SENT) {
+          if ((get_rx_buffer_count() >= RX_BUFFER_FULL) && flow_ctrl == XON_SENT) {
             flow_ctrl = SEND_XOFF;
             UCSR0B |=  (1 << UDRIE0); // Force TX
           } 

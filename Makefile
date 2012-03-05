@@ -40,7 +40,7 @@ FUSES      = -U hfuse:w:0xd2:m -U lfuse:w:0xff:m
 # Tune the lines below only if you know what you are doing:
 
 AVRDUDE = avrdude $(PROGRAMMER) -p $(DEVICE) -B 10 -F 
-COMPILE = avr-gcc -Wall -Os -DF_CPU=$(CLOCK) -mmcu=$(DEVICE) -I. -ffunction-sections
+COMPILE = avr-gcc -Wall -Os -DF_CPU=$(CLOCK) -mmcu=$(DEVICE) -I. -ffunction-sections 
 
 # symbolic targets:
 all:	grbl.hex
@@ -81,8 +81,7 @@ main.elf: $(OBJECTS)
 grbl.hex: main.elf
 	rm -f grbl.hex
 	avr-objcopy -j .text -j .data -O ihex main.elf grbl.hex
-	avr-objdump -h main.elf | grep .bss | ruby -e 'puts "\n\n--- Requires %s bytes of SRAM" % STDIN.read.match(/0[0-9a-f]+\s/)[0].to_i(16)'
-	avr-size *.hex *.elf *.o
+	avr-size -C --mcu=$(DEVICE) main.elf
 # If you have an EEPROM section, you must also create a hex file for the
 # EEPROM and add it to the "flash" target.
 

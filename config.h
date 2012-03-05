@@ -115,12 +115,15 @@
 #define DWELL_TIME_STEP 50 // Integer (1-255) (milliseconds)
 
 // FOR ADVANCED USERS ONLY: Toggles XON/XOFF software flow control for serial communications. 
-// Officially not supported due to problems involving USB-to-serial chip latency (Atmega8U2/FTDI)
-// when connecting to an Arduino through the USB port. This problem has to do with having no control
-// of the USB packets and causing standard terminal programs not being able to honor the XON/XOFF 
-// control characters on time. However, with specially programmed UI's or avoiding the USB interface
-// completely, XON/XOFF flow control should work. In any case, please report any successes to grbl
-// administrators!
+// Officially not supported due to problems involving the Atmega8U2 USB-to-serial chips on current
+// future Arduinos boards. The firmware on these chips do not support XON/XOFF flow control 
+// characters and the intermediate buffer in the chips cause latency and overflow problems with
+// standard terminal programs. However, using specifically-programmed UI's to manage this latency 
+// problem has been confirmed to work, as well as, using older FTDI FT232RL-based Arduinos
+// (Duemilanove) since their firmaware correctly manage the XON/XOFF characters. Other unconfirmed
+// methods include using an FTDI board/cable or directly communicate on the RX/TX pins on the 
+// Arduino, both of which circumvent the Atmega8U2 chip altogether. In any case, please report any
+// successes to grbl administrators!
 #define ENABLE_XONXOFF 0 // Boolean. Default disabled.
 
 // -----------------------------------------------
