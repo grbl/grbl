@@ -200,4 +200,4 @@ void serial_reset_read_buffer()
   #if ENABLE_XONXOFF
     flow_ctrl = XON_SENT;
   #endif
-}  
+}

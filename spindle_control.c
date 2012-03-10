@@ -3,6 +3,7 @@
   Part of Grbl
 
   Copyright (c) 2009-2011 Simen Svale Skogsrud
+  Copyright (c) 2012 Sungeun K. Jeon
 
   Grbl is free software: you can redistribute it and/or modify
   it under the terms of the GNU General Public License as published by
@@ -27,22 +28,26 @@
 
 #include <stdint.h>
 
-// TODO: Deprecated. Need to update for new version.
-
-static int current_direction;
+static uint8_t current_direction;
 
 void spindle_init()
 {
+  current_direction = 0;
   SPINDLE_ENABLE_DDR |= (1<<SPINDLE_ENABLE_BIT);
   SPINDLE_DIRECTION_DDR |= (1<<SPINDLE_DIRECTION_BIT);  
-  spindle_run(0, 0);
+  spindle_stop();
+}
+
+void spindle_stop()
+{
+  SPINDLE_ENABLE_PORT &= ~(1<<SPINDLE_ENABLE_BIT);
 }
 
 void spindle_run(int direction, uint32_t rpm) 
 {
   if (direction != current_direction) {
     plan_synchronize();
-    if(direction) {
+    if (direction) {
       if(direction > 0) {
         SPINDLE_DIRECTION_PORT &= ~(1<<SPINDLE_DIRECTION_BIT);
       } else {
@@ -50,13 +55,8 @@ void spindle_run(int direction, uint32_t rpm)
       }
       SPINDLE_ENABLE_PORT |= 1<<SPINDLE_ENABLE_BIT;
     } else {
-      SPINDLE_ENABLE_PORT &= ~(1<<SPINDLE_ENABLE_BIT);      
+      spindle_stop();     
     }
     current_direction = direction;
   }
-}
-
-void spindle_stop()
-{
-  spindle_run(0, 0);
 }

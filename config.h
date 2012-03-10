@@ -115,8 +115,8 @@
 #define DWELL_TIME_STEP 50 // Integer (1-255) (milliseconds)
 
 // FOR ADVANCED USERS ONLY: Toggles XON/XOFF software flow control for serial communications. 
-// Officially not supported due to problems involving the Atmega8U2 USB-to-serial chips on current
-// future Arduinos boards. The firmware on these chips do not support XON/XOFF flow control 
+// Officially not supported due to problems involving the Atmega8U2 USB-to-serial chips on all 
+// new and future Arduinos. The firmware on these chips do not support XON/XOFF flow control 
 // characters and the intermediate buffer in the chips cause latency and overflow problems with
 // standard terminal programs. However, using specifically-programmed UI's to manage this latency 
 // problem has been confirmed to work, as well as, using older FTDI FT232RL-based Arduinos
@@ -140,5 +140,13 @@
   #define DECIMAL_PLACES 2  // mm-mode
   #define DECIMAL_MULTIPLIER 100
 #endif
+
+//  Limit step rate for homing
+#define LIMIT_STEP_RATE 1  	// (mm/min)
+
+// Debounce delay is the time delay the controller waits for a "good" signal from the limit switch.
+// A delay of 3ms to 5ms is a good starting value.
+#define LIMIT_DEBOUNCE_DELAY 5 // (milliseconds)
+
 
 #endif
