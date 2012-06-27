@@ -19,9 +19,11 @@ Grbl includes full acceleration management with look ahead. That means the contr
   - Program stop(M0,M1*,M2,M30) initial support. Optional stop to do.
   - System reset re-initializes grbl without resetting the Arduino and retains machine/home position and work coordinates.
   - Restructured planner and stepper modules to become independent and ready for future features.
-  - Planned features: Jog mode, status reporting, runtime settings such as toggling block delete, XON/XOFF flow control.
-  - Reduce serial read buffer to 128 characters and increased write buffer to 64 characters.
-  - Misc bug fixes and removed deprecated acceleration enabled code.
+  - Reduced serial read buffer to 128 characters and increased write buffer to 64 characters.
+  - Misc bug fixes and removed deprecated acceleration enabled code.  
+  - Planned features: Jog mode, full-featured status reporting, runtime settings such as toggling block delete.
+  - Advanced compile-time options: Up to 6 work coordinate systems(G54-G59), XON/XOFF flow control (limited support), direction and step pulse time delay.
+  
 
 *Important note for Atmega 168 users:* Going forward, support for Atmega 168 will be dropped due to its limited memory and speed. However, legacy Grbl v0.51 "in the branch called 'v0_51' is still available for use.
 

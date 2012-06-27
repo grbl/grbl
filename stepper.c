@@ -62,6 +62,10 @@ static uint8_t step_pulse_time; // Step pulse reset time after step rise
 static uint8_t out_bits;        // The next stepping-bits to be output
 static volatile uint8_t busy;   // True when SIG_OUTPUT_COMPARE1A is being serviced. Used to avoid retriggering that handler.
 
+#if STEP_PULSE_DELAY > 0
+  static uint8_t step_bits;  // Stores out_bits output to complete the step pulse delay
+#endif
+
 //         __________________________
 //        /|                        |\     _________________         ^
 //       / |                        | \   /|               |\        |
@@ -86,8 +90,16 @@ static void st_wake_up()
 {
   // Initialize stepper output bits
   out_bits = (0) ^ (settings.invert_mask); 
-  // Set step pulse time. Ad hoc computation from oscilloscope.
-  step_pulse_time = -(((settings.pulse_microseconds-2)*TICKS_PER_MICROSECOND) >> 3);
+  // Initialize step pulse timing from settings. Here to ensure updating after re-writing.
+  #if STEP_PULSE_DELAY > 0
+    // Set total step pulse time after direction pin set. Ad hoc computation from oscilloscope.
+    step_pulse_time = -(((settings.pulse_microseconds+STEP_PULSE_DELAY-2)*TICKS_PER_MICROSECOND) >> 3);
+    // Set delay between direction pin write and step command.
+    OCR2A = -(((settings.pulse_microseconds)*TICKS_PER_MICROSECOND) >> 3);
+  #else // Normal operation
+    // Set step pulse time. Ad hoc computation from oscilloscope. Uses two's complement.
+    step_pulse_time = -(((settings.pulse_microseconds-2)*TICKS_PER_MICROSECOND) >> 3);
+  #endif
   // Enable steppers by resetting the stepper disable port
   STEPPERS_DISABLE_PORT &= ~(1<<STEPPERS_DISABLE_BIT);
   // Enable stepper driver interrupt
@@ -101,7 +113,7 @@ void st_go_idle()
   TIMSK1 &= ~(1<<OCIE1A); 
   // Force stepper dwell to lock axes for a defined amount of time to ensure the axes come to a complete
   // stop and not drift from residual inertial forces at the end of the last movement.
-  #ifdef STEPPER_IDLE_LOCK_TIME
+  #if STEPPER_IDLE_LOCK_TIME > 0
     _delay_ms(STEPPER_IDLE_LOCK_TIME);   
   #endif
   // Disable steppers by setting stepper disable
@@ -133,7 +145,11 @@ ISR(TIMER1_COMPA_vect)
   // Set the direction pins a couple of nanoseconds before we step the steppers
   STEPPING_PORT = (STEPPING_PORT & ~DIRECTION_MASK) | (out_bits & DIRECTION_MASK);
   // Then pulse the stepping pins
-  STEPPING_PORT = (STEPPING_PORT & ~STEP_MASK) | out_bits;
+  #if STEP_PULSE_DELAY > 0
+    step_bits = (STEPPING_PORT & ~STEP_MASK) | out_bits; // Store out_bits to prevent overwriting.
+  #else  // Normal operation
+    STEPPING_PORT = (STEPPING_PORT & ~STEP_MASK) | out_bits;
+  #endif
   // Enable step pulse reset timer so that The Stepper Port Reset Interrupt can reset the signal after
   // exactly settings.pulse_microseconds microseconds, independent of the main Timer1 prescaler.
   TCNT2 = step_pulse_time; // Reload timer counter
@@ -298,6 +314,18 @@ ISR(TIMER2_OVF_vect)
   TCCR2B = 0; // Disable Timer2 to prevent re-entering this interrupt when it's not needed. 
 }
 
+#if STEP_PULSE_DELAY > 0
+  // This interrupt is used only when STEP_PULSE_DELAY is enabled. Here, the step pulse is
+  // initiated after the STEP_PULSE_DELAY time period has elapsed. The ISR TIMER2_OVF interrupt
+  // will then trigger after the appropriate settings.pulse_microseconds, as in normal operation.
+  // The new timing between direction, step pulse, and step complete events are setup in the
+  // st_wake_up() routine.
+  ISR(TIMER2_COMPA_vect) 
+  { 
+    STEPPING_PORT = step_bits; // Begin step pulse.
+  }
+#endif
+
 // Reset and clear stepper subsystem variables
 void st_reset()
 {
@@ -314,7 +342,7 @@ void st_init()
   STEPPING_DDR |= STEPPING_MASK;
   STEPPING_PORT = (STEPPING_PORT & ~STEPPING_MASK) | settings.invert_mask;
   STEPPERS_DISABLE_DDR |= 1<<STEPPERS_DISABLE_BIT;
-  
+
   // waveform generation = 0100 = CTC
   TCCR1B &= ~(1<<WGM13);
   TCCR1B |=  (1<<WGM12);
@@ -329,7 +357,11 @@ void st_init()
   TCCR2A = 0; // Normal operation
   TCCR2B = 0; // Disable timer until needed.
   TIMSK2 |= (1<<TOIE2);      
-
+  
+  #if STEP_PULSE_DELAY > 0
+    TIMSK2 |= (1<<OCIE2A); // Enable Timer2 Compare Match A interrupt
+  #endif
+  
   // Start in the idle state
   st_go_idle();
 }

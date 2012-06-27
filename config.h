@@ -75,7 +75,7 @@
 // entering g-code into grbl, i.e. locating part zero or simple manual machining. If the axes drift,
 // grbl has no way to know this has happened, since stepper motors are open-loop control. Depending
 // on the machine, this parameter may need to be larger or smaller than the default time.
-// NOTE: If commented out, the delay will not be compiled.
+// NOTE: If set to zero, the delay will not be compiled.
 #define STEPPER_IDLE_LOCK_TIME 25 // (milliseconds) - Integer > 0
 
 // The temporal resolution of the acceleration management subsystem. Higher number give smoother
@@ -114,19 +114,36 @@
 // time step. Also, keep in mind that the Arduino delay timer is not very accurate for long delays.
 #define DWELL_TIME_STEP 50 // Integer (1-255) (milliseconds)
 
-// FOR ADVANCED USERS ONLY: Toggles XON/XOFF software flow control for serial communications. 
-// Officially not supported due to problems involving the Atmega8U2 USB-to-serial chips on all 
-// new and future Arduinos. The firmware on these chips do not support XON/XOFF flow control 
-// characters and the intermediate buffer in the chips cause latency and overflow problems with
-// standard terminal programs. However, using specifically-programmed UI's to manage this latency 
-// problem has been confirmed to work, as well as, using older FTDI FT232RL-based Arduinos
-// (Duemilanove) since their firmaware correctly manage the XON/XOFF characters. Other unconfirmed
-// methods include using an FTDI board/cable or directly communicate on the RX/TX pins on the 
-// Arduino, both of which circumvent the Atmega8U2 chip altogether. In any case, please report any
-// successes to grbl administrators!
+// ---------------------------------------------------------------------------------------
+// FOR ADVANCED USERS ONLY: 
+
+// Toggles XON/XOFF software flow control for serial communications. Not officially supported
+// due to problems involving the Atmega8U2 USB-to-serial chips on current Arduinos. The firmware
+// on these chips do not support XON/XOFF flow control characters and the intermediate buffer 
+// in the chips cause latency and overflow problems with standard terminal programs. However, 
+// using specifically-programmed UI's to manage this latency problem has been confirmed to work.
+// As well as, older FTDI FT232RL-based Arduinos(Duemilanove) are known to work with standard
+// terminal programs since their firmware correctly manage these XON/XOFF characters. In any
+// case, please report any successes to grbl administrators!
 #define ENABLE_XONXOFF 0 // Boolean. Default disabled.
 
-// -----------------------------------------------
+// Creates a delay between the direction pin setting and corresponding step pulse by creating
+// another interrupt (Timer2 compare) to manage it. The main Grbl interrupt (Timer1 compare) 
+// sets the direction pins, and does not immediately set the stepper pins, as it would in 
+// normal operation. The Timer2 compare fires next to set the stepper pins after the step 
+// pulse delay time, and Timer2 overflow will complete the step pulse, except now delayed 
+// by the step pulse time plus the step pulse delay. (Thanks langwadt for the idea!)
+//   This is an experimental feature that should only be used if your setup requires a longer
+// delay between direction and step pin settings (some opto coupler based drivers), as it may
+// adversely effect Grbl's high-end performance (>10kHz). Please notify Grbl administrators 
+// of your successes or difficulties, as we will monitor this and possibly integrate this as a 
+// standard feature for future releases. However, we suggest to first try our direction delay
+// hack/solution posted in the Wiki involving inverting the stepper pin mask.
+// NOTE: If set greater than zero, step pulse delay will be compiled and enabled. Also, the 
+// total delay added with the Grbl settings pulse microseconds must not exceed 127 ms.
+#define STEP_PULSE_DELAY 0 // Step pulse delay in microseconds. Default disabled.
+
+// ---------------------------------------------------------------------------------------
 
 // TODO: The following options are set as compile-time options for now, until the next EEPROM 
 // settings version has solidified. 
