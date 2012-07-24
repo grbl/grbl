@@ -43,6 +43,13 @@ typedef struct {
   double mm_per_arc_segment;
   double acceleration;
   double junction_deviation;
+  // This parameter sets the delay time before disabling the steppers after the final block of movement.
+  // A short delay ensures the steppers come to a complete stop and the residual inertial force in the 
+  // CNC axes don't cause the axes to drift off position. This is particularly important when manually 
+  // entering g-code into grbl, i.e. locating part zero or simple manual machining. If the axes drift,
+  // grbl has no way to know this has happened, since stepper motors are open-loop control. Depending
+  // on the machine, this parameter may need to be larger or smaller than the default time.
+  uint16_t idle_lock_time;
 } settings_t;
 extern settings_t settings;
 

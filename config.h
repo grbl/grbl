@@ -56,15 +56,6 @@
 #define SPINDLE_DIRECTION_PORT PORTB
 #define SPINDLE_DIRECTION_BIT 5
 
-// This parameter sets the delay time before disabling the steppers after the final block of movement.
-// A short delay ensures the steppers come to a complete stop and the residual inertial force in the 
-// CNC axes don't cause the axes to drift off position. This is particularly important when manually 
-// entering g-code into grbl, i.e. locating part zero or simple manual machining. If the axes drift,
-// grbl has no way to know this has happened, since stepper motors are open-loop control. Depending
-// on the machine, this parameter may need to be larger or smaller than the default time.
-// NOTE: If defined 0, the delay will not be compiled.
-#define STEPPER_IDLE_LOCK_TIME 25 // (milliseconds) - Integer >= 0
-
 // The temporal resolution of the acceleration management subsystem. Higher number give smoother
 // acceleration but may impact performance.
 // NOTE: Increasing this parameter will help any resolution related issues, especially with machines 
