@@ -54,6 +54,7 @@ typedef struct {
 #define DEFAULT_ACCELERATION (DEFAULT_FEEDRATE*60*60/10.0) // mm/min^2
 #define DEFAULT_JUNCTION_DEVIATION 0.05 // mm
 #define DEFAULT_STEPPING_INVERT_MASK ((1<<X_STEP_BIT)|(1<<Y_STEP_BIT)|(1<<Z_STEP_BIT))
+#define DEFAULT_IDLE_LOCK_TIME 25 // ms
 
 void settings_reset() {
   settings.steps_per_mm[X_AXIS] = DEFAULT_X_STEPS_PER_MM;
@@ -66,6 +67,7 @@ void settings_reset() {
   settings.mm_per_arc_segment = DEFAULT_MM_PER_ARC_SEGMENT;
   settings.invert_mask = DEFAULT_STEPPING_INVERT_MASK;
   settings.junction_deviation = DEFAULT_JUNCTION_DEVIATION;
+  settings.idle_lock_time = DEFAULT_IDLE_LOCK_TIME;
 }
 
 void settings_dump() {
@@ -81,6 +83,8 @@ void settings_dump() {
   printPgmString(PSTR(")\r\n$8 = ")); printFloat(settings.acceleration/(60*60)); // Convert from mm/min^2 for human readability
   printPgmString(PSTR(" (acceleration in mm/sec^2)\r\n$9 = ")); printFloat(settings.junction_deviation);
   printPgmString(PSTR(" (cornering junction deviation in mm)"));
+  printPgmString(PSTR("\r\n$10 = ")); printInteger(settings.idle_lock_time);
+  printPgmString(PSTR(" (stepper idle lock time in ms [0 = never unlock])"));
   printPgmString(PSTR("\r\n'$x=value' to set parameter or just '$' to dump current settings\r\n"));
 }
 
@@ -167,6 +171,7 @@ void settings_store_setting(int parameter, double value) {
     case 7: settings.invert_mask = trunc(value); break;
     case 8: settings.acceleration = value*60*60; break; // Convert to mm/min^2 for grbl internal use.
     case 9: settings.junction_deviation = fabs(value); break;
+	case 10: settings.idle_lock_time = value; break;
     default: 
       printPgmString(PSTR("Unknown parameter\r\n"));
       return;

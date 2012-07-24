@@ -98,11 +98,12 @@ static void st_go_idle()
   TIMSK1 &= ~(1<<OCIE1A); 
   // Force stepper dwell to lock axes for a defined amount of time to ensure the axes come to a complete
   // stop and not drift from residual inertial forces at the end of the last movement.
-  #if STEPPER_IDLE_LOCK_TIME
-    _delay_ms(STEPPER_IDLE_LOCK_TIME);   
-  #endif
-  // Disable steppers by setting stepper disable
-  STEPPERS_DISABLE_PORT |= (1<<STEPPERS_DISABLE_BIT);
+  if(settings.idle_lock_time != 0)
+  {
+    _delay_ms(settings.idle_lock_time);   
+	// Disable steppers by setting stepper disable
+	STEPPERS_DISABLE_PORT |= (1<<STEPPERS_DISABLE_BIT);
+  }
 }
 
 // Initializes the trapezoid generator from the current block. Called whenever a new 
