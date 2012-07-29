@@ -100,8 +100,10 @@ static void st_wake_up()
     // Set step pulse time. Ad hoc computation from oscilloscope. Uses two's complement.
     step_pulse_time = -(((settings.pulse_microseconds-2)*TICKS_PER_MICROSECOND) >> 3);
   #endif
-  // Enable steppers by resetting the stepper disable port
-  STEPPERS_DISABLE_PORT &= ~(1<<STEPPERS_DISABLE_BIT);
+  #ifdef STEPPERS_DISABLE
+    // Enable steppers by resetting the stepper disable port
+    STEPPERS_DISABLE_PORT &= ~(1<<STEPPERS_DISABLE_BIT);
+  #endif
   // Enable stepper driver interrupt
   TIMSK1 |= (1<<OCIE1A);
 }
@@ -116,8 +118,10 @@ void st_go_idle()
   #if STEPPER_IDLE_LOCK_TIME > 0
     _delay_ms(STEPPER_IDLE_LOCK_TIME);   
   #endif
-  // Disable steppers by setting stepper disable
-  STEPPERS_DISABLE_PORT |= (1<<STEPPERS_DISABLE_BIT);
+  #ifdef STEPPERS_DISABLE
+    // Disable steppers by setting stepper disable
+    STEPPERS_DISABLE_PORT |= (1<<STEPPERS_DISABLE_BIT);
+  #endif
 }
 
 // This function determines an acceleration velocity change every CYCLES_PER_ACCELERATION_TICK by
@@ -341,7 +345,9 @@ void st_init()
   // Configure directions of interface pins
   STEPPING_DDR |= STEPPING_MASK;
   STEPPING_PORT = (STEPPING_PORT & ~STEPPING_MASK) | settings.invert_mask;
-  STEPPERS_DISABLE_DDR |= 1<<STEPPERS_DISABLE_BIT;
+  #ifdef STEPPERS_DISABLE
+    STEPPERS_DISABLE_DDR |= 1<<STEPPERS_DISABLE_BIT;
+  #endif
 
   // waveform generation = 0100 = CTC
   TCCR1B &= ~(1<<WGM13);

@@ -34,7 +34,9 @@ void spindle_init()
 {
   current_direction = 0;
   SPINDLE_ENABLE_DDR |= (1<<SPINDLE_ENABLE_BIT);
-  SPINDLE_DIRECTION_DDR |= (1<<SPINDLE_DIRECTION_BIT);  
+  #ifdef SPINDLE_DIRECTION
+    SPINDLE_DIRECTION_DDR |= (1<<SPINDLE_DIRECTION_BIT);  
+  #endif
   spindle_stop();
 }
 
@@ -48,11 +50,13 @@ void spindle_run(int direction, uint32_t rpm)
   if (direction != current_direction) {
     plan_synchronize();
     if (direction) {
-      if(direction > 0) {
-        SPINDLE_DIRECTION_PORT &= ~(1<<SPINDLE_DIRECTION_BIT);
-      } else {
-        SPINDLE_DIRECTION_PORT |= 1<<SPINDLE_DIRECTION_BIT;
-      }
+      #ifdef SPINDLE_DIRECTION
+        if(direction > 0) {
+          SPINDLE_DIRECTION_PORT &= ~(1<<SPINDLE_DIRECTION_BIT);
+        } else {
+          SPINDLE_DIRECTION_PORT |= 1<<SPINDLE_DIRECTION_BIT;
+        }
+      #endif
       SPINDLE_ENABLE_PORT |= 1<<SPINDLE_ENABLE_BIT;
     } else {
       spindle_stop();     

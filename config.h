@@ -36,6 +36,9 @@
 #define Y_DIRECTION_BIT    6  // Uno Digital Pin 6
 #define Z_DIRECTION_BIT    7  // Uno Digital Pin 7
 
+// Uncomment the next line to enable support for a Stepper Power On/Off control
+// line, for drivers that have/use one.
+//#define STEPPERS_DISABLE
 #define STEPPERS_DISABLE_DDR    DDRB
 #define STEPPERS_DISABLE_PORT   PORTB
 #define STEPPERS_DISABLE_BIT    0  // Uno Digital Pin 8
@@ -50,6 +53,9 @@
 #define SPINDLE_ENABLE_PORT PORTB
 #define SPINDLE_ENABLE_BIT 4  // Uno Digital Pin 12
 
+// Uncomment the next line to enable support for a Spindle Direction (CW or CCW)
+// control line, for drivers that have/use one.
+//#define SPINDLE_DIRECTION
 #define SPINDLE_DIRECTION_DDR DDRB
 #define SPINDLE_DIRECTION_PORT PORTB
 #define SPINDLE_DIRECTION_BIT 5  // Uno Digital Pin 13
