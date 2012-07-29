@@ -28,9 +28,6 @@
 #include "motion_control.h"
 #include "planner.h"
 
-// TODO: Deprecated. Need to update for new version. Sys.position now tracks position relative
-// to the home position. Limits should update this vector directly.
-
 void limits_init() {
   LIMIT_DDR &= ~(LIMIT_MASK);
 }
@@ -103,4 +100,6 @@ void limits_go_home() {
   approach_limit_switch(true, true, false);  // Then home the x and y axis
   // Now carefully leave the limit switches
   leave_limit_switch(true, true, true);
+  // Conclude that this is machine zero
+  sys.position[X_AXIS] = sys.position[Y_AXIS] = sys.position[Z_AXIS] = 0;
 }
