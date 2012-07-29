@@ -49,8 +49,8 @@ typedef struct {
 #define DEFAULT_Z_STEPS_PER_MM (94.488188976378*MICROSTEPS)
 #define DEFAULT_STEP_PULSE_MICROSECONDS 30
 #define DEFAULT_MM_PER_ARC_SEGMENT 0.1
-#define DEFAULT_RAPID_FEEDRATE 500.0 // mm/min
-#define DEFAULT_FEEDRATE 500.0
+#define DEFAULT_RAPID_FEEDRATE 600.0 // mm/min, fast but not too fast: safety first!
+#define DEFAULT_FEEDRATE 60.0 // mm/min, very slow to make it obvious to the machinist that they forgot to supply F: safety first!
 #define DEFAULT_ACCELERATION (DEFAULT_FEEDRATE*60*60/10.0) // mm/min^2
 #define DEFAULT_JUNCTION_DEVIATION 0.05 // mm
 #define DEFAULT_STEPPING_INVERT_MASK ((1<<X_STEP_BIT)|(1<<Y_STEP_BIT)|(1<<Z_STEP_BIT))

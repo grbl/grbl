@@ -26,7 +26,6 @@
 #include <avr/sleep.h>
 
 // Some useful constants
-#define LIMIT_MASK ((1<<X_LIMIT_BIT)|(1<<Y_LIMIT_BIT)|(1<<Z_LIMIT_BIT)) // All limit bits
 #define STEP_MASK ((1<<X_STEP_BIT)|(1<<Y_STEP_BIT)|(1<<Z_STEP_BIT)) // All step bits
 #define DIRECTION_MASK ((1<<X_DIRECTION_BIT)|(1<<Y_DIRECTION_BIT)|(1<<Z_DIRECTION_BIT)) // All direction bits
 #define STEPPING_MASK (STEP_MASK | DIRECTION_MASK) // All stepping-related bits (step/direction)
@@ -37,9 +36,9 @@ void st_init();
 // Immediately disables steppers
 void st_go_idle();
 
-// Reset the stepper subsystem variables       
+// Reset the stepper subsystem variables
 void st_reset();
-             
+
 // Notify the stepper subsystem to start executing the g-code program in buffer.
 void st_cycle_start();
 

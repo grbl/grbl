@@ -21,6 +21,8 @@
 #ifndef limits_h
 #define limits_h 
 
+#define LIMIT_MASK ((1<<X_LIMIT_BIT)|(1<<Y_LIMIT_BIT)|(1<<Z_LIMIT_BIT)) // All limit bits
+
 // initialize the limits module
 void limits_init();
 
