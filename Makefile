@@ -41,6 +41,7 @@ FUSES      = -U hfuse:w:0xd2:m -U lfuse:w:0xff:m
 
 AVRDUDE = avrdude $(PROGRAMMER) -p $(DEVICE) -B 10 -F 
 COMPILE = avr-gcc -Wall -Os -DF_CPU=$(CLOCK) -mmcu=$(DEVICE) -I. -ffunction-sections 
+OBJDUMP = avr-objdump
 
 # symbolic targets:
 all:	grbl.hex
@@ -73,6 +74,9 @@ load: all
 
 clean:
 	rm -f grbl.hex main.elf $(OBJECTS)
+
+functionsbysize: $(OBJECTS)
+	@$(OBJDUMP) -h $^ | grep '\.text\.' | perl -ne '/\.text\.(\S+)\s+([0-9a-f]+)/ && printf "%u\t%s\n", eval("0x$$2"), $$1;' | sort -n
 
 # file targets:
 main.elf: $(OBJECTS)
