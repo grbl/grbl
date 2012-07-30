@@ -32,6 +32,7 @@
 #include "limits.h"
 #include "settings.h"
 #include "serial.h"
+#include "cpump.h"
 
 // Declare system global variable structure
 system_t sys; 
@@ -72,6 +73,9 @@ int main(void)
       protocol_init(); // Clear incoming line data
       plan_init(); // Clear block buffer and planner variables
       gc_init(); // Set g-code parser to default state
+      #ifdef CHARGE_PUMP
+        cpump_init(); // Fire up Charge Pump to wake up servo controller as following calls may try to move things
+      #endif
       spindle_init();
       limits_init();
       st_reset(); // Clear stepper subsystem variables.

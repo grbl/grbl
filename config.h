@@ -27,14 +27,14 @@
 #define BAUD_RATE 9600
 
 // Define pin-assignments
-#define STEPPING_DDR       DDRD
-#define STEPPING_PORT      PORTD
-#define X_STEP_BIT         2  // Uno Digital Pin 2
-#define Y_STEP_BIT         3  // Uno Digital Pin 3
-#define Z_STEP_BIT         4  // Uno Digital Pin 4
-#define X_DIRECTION_BIT    5  // Uno Digital Pin 5
-#define Y_DIRECTION_BIT    6  // Uno Digital Pin 6
-#define Z_DIRECTION_BIT    7  // Uno Digital Pin 7
+#define STEPPING_DDR       DDRC
+#define STEPPING_PORT      PORTC
+#define X_STEP_BIT         0  // Uno Analog Pin 0
+#define Y_STEP_BIT         1  // Uno Analog Pin 1
+#define Z_STEP_BIT         2  // Uno Analog Pin 2
+#define X_DIRECTION_BIT    3  // Uno Analog Pin 3
+#define Y_DIRECTION_BIT    4  // Uno Analog Pin 4
+#define Z_DIRECTION_BIT    5  // Uno Analog Pin 5
 
 // Uncomment the next line to enable support for a Stepper Power On/Off control
 // line, for drivers that have/use one.
@@ -43,22 +43,30 @@
 #define STEPPERS_DISABLE_PORT   PORTB
 #define STEPPERS_DISABLE_BIT    0  // Uno Digital Pin 8
 
-#define LIMIT_DDR     DDRB
-#define LIMIT_PIN     PINB
-#define X_LIMIT_BIT   1  // Uno Digital Pin 9
-#define Y_LIMIT_BIT   2  // Uno Digital Pin 10
-#define Z_LIMIT_BIT   3  // Uno Digital Pin 11
+#define LIMIT_DDR     DDRD
+#define LIMIT_PIN     PIND
+#define X_LIMIT_BIT   2  // Uno Digital Pin 2
+#define Y_LIMIT_BIT   3  // Uno Digital Pin 3
+#define Z_LIMIT_BIT   4  // Uno Digital Pin 4
 
-#define SPINDLE_ENABLE_DDR DDRB
-#define SPINDLE_ENABLE_PORT PORTB
-#define SPINDLE_ENABLE_BIT 4  // Uno Digital Pin 12
+#define SPINDLE_ENABLE_DDR DDRD
+#define SPINDLE_ENABLE_PORT PORTD
+#define SPINDLE_ENABLE_BIT 5  // Uno Digital Pin 5
+
+// Uncomment the next line to enable support for a Charge Pump/Watchdog signal
+// line. This will generate a 12.5kHz 50% duty cycle square wave signal on D6
+// which can then be connected to the Charge Pump/Watchdog input of your servo
+// controller. The pin is hardcoded because the signal is generated in hardware
+// using Timer 0, Channel A which is, in turn, tied to PD6 (which corresponds
+// to Digital 6 on the Arduino).
+#define CHARGE_PUMP
 
 // Uncomment the next line to enable support for a Spindle Direction (CW or CCW)
 // control line, for drivers that have/use one.
 //#define SPINDLE_DIRECTION
-#define SPINDLE_DIRECTION_DDR DDRB
-#define SPINDLE_DIRECTION_PORT PORTB
-#define SPINDLE_DIRECTION_BIT 5  // Uno Digital Pin 13
+#define SPINDLE_DIRECTION_DDR DDRD
+#define SPINDLE_DIRECTION_PORT PORTD
+#define SPINDLE_DIRECTION_BIT 7  // Uno Digital Pin 7
 
 // Define runtime command special characters. These characters are 'picked-off' directly from the
 // serial read data stream and are not passed to the grbl line execution parser. Select characters
