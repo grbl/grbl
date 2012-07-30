@@ -89,7 +89,7 @@ static void set_step_events_per_minute(uint32_t steps_per_minute);
 static void st_wake_up() 
 {
   // Initialize stepper output bits
-  out_bits = (0) ^ (settings.invert_mask); 
+  out_bits = (0) ^ (settings.invert_mask_stepdir); 
   // Initialize step pulse timing from settings. Here to ensure updating after re-writing.
   #if STEP_PULSE_DELAY > 0
     // Set total step pulse time after direction pin set. Ad hoc computation from oscilloscope.
@@ -303,7 +303,7 @@ ISR(TIMER1_COMPA_vect)
       plan_discard_current_block();
     }
   }
-  out_bits ^= settings.invert_mask;  // Apply stepper invert mask    
+  out_bits ^= settings.invert_mask_stepdir;  // Apply stepper invert mask    
   busy = false;
 }
 
@@ -314,7 +314,7 @@ ISR(TIMER1_COMPA_vect)
 ISR(TIMER2_OVF_vect)
 {
   // Reset stepping pins (leave the direction pins)
-  STEPPING_PORT = (STEPPING_PORT & ~STEP_MASK) | (settings.invert_mask & STEP_MASK); 
+  STEPPING_PORT = (STEPPING_PORT & ~STEP_MASK) | (settings.invert_mask_stepdir & STEP_MASK); 
   TCCR2B = 0; // Disable Timer2 to prevent re-entering this interrupt when it's not needed. 
 }
 
@@ -344,7 +344,7 @@ void st_init()
 {
   // Configure directions of interface pins
   STEPPING_DDR |= STEPPING_MASK;
-  STEPPING_PORT = (STEPPING_PORT & ~STEPPING_MASK) | settings.invert_mask;
+  STEPPING_PORT = (STEPPING_PORT & ~STEPPING_MASK) | settings.invert_mask_stepdir;
   #ifdef STEPPERS_DISABLE
     STEPPERS_DISABLE_DDR |= 1<<STEPPERS_DISABLE_BIT;
   #endif

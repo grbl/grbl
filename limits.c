@@ -47,17 +47,22 @@ static void homing_cycle(bool x_axis, bool y_axis, bool z_axis, bool reverse_dir
   }
 
   // Apply the global invert mask
-  out_bits ^= settings.invert_mask;
+  out_bits ^= settings.invert_mask_stepdir;
 
   // Set direction pins
   STEPPING_PORT = (STEPPING_PORT & ~DIRECTION_MASK) | (out_bits & DIRECTION_MASK);
 
   for(;;) {
     limit_bits = LIMIT_PIN;
+
     if (reverse_direction) {
       // Invert limit_bits if this is a reverse homing_cycle
       limit_bits ^= LIMIT_MASK;
     }
+
+    // Apply the global invert mask
+    limit_bits ^= settings.invert_mask_limit;
+
     if (x_axis && !(limit_bits & (1<<X_LIMIT_BIT))) {
       x_axis = false;
       out_bits ^= (1<<X_STEP_BIT);
@@ -70,6 +75,7 @@ static void homing_cycle(bool x_axis, bool y_axis, bool z_axis, bool reverse_dir
       z_axis = false;
       out_bits ^= (1<<Z_STEP_BIT);
     }
+
     // Check if we are done
     if(!(x_axis || y_axis || z_axis)) { return; }
     STEPPING_PORT |= out_bits & STEP_MASK;
