@@ -21,6 +21,7 @@
   along with Grbl.  If not, see <http://www.gnu.org/licenses/>.
 */
 
+#include "config.h"
 #include "cpump.h"
 
 #include <avr/io.h>
@@ -28,9 +29,13 @@
 void cpump_init()
 {
 #ifdef CHARGE_PUMP
+  // Setup OC0A as output
+  CHARGE_PUMP_DDR |= _BV(CHARGE_PUMP_BIT);
+
+  // Setup timer 0, channel A for 12.5kHz
   OCR0A = F_CPU / (25000UL << 3); // Faster than multiplying by 8
-  TCCR0A = _BV(WGM02); // CTC mode
-  TCCR0B = _BV(COM0A0) | _BV(CS01); // Toggle OC2A on compare and 1/8 prescaler
+  TCCR0A = _BV(COM0A0) | _BV(WGM01); // Toggle OC0A on compare and CTC mode
+  TCCR0B = _BV(CS01); // 1/8 prescaler
   TIMSK0 = 0; // No interrupts
 #endif
 }

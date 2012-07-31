@@ -60,6 +60,8 @@
 // using Timer 0, Channel A which is, in turn, tied to PD6 (which corresponds
 // to Digital 6 on the Arduino).
 #define CHARGE_PUMP
+#define CHARGE_PUMP_DDR DDRD 
+#define CHARGE_PUMP_BIT 6 // Uno Digital Pin 6, for reference only, not configurable
 
 // Uncomment the next line to enable support for a Spindle Direction (CW or CCW)
 // control line, for drivers that have/use one.
