@@ -33,10 +33,8 @@ static uint8_t current_direction;
 void spindle_init()
 {
   current_direction = 0;
-  SPINDLE_ENABLE_DDR |= (1<<SPINDLE_ENABLE_BIT);
-  #ifdef SPINDLE_DIRECTION
-    SPINDLE_DIRECTION_DDR |= (1<<SPINDLE_DIRECTION_BIT);  
-  #endif
+  // SPINDLE_ENABLE and SPINDLE_DIRECTION set as outputs by SETUP_IO() in
+  // config.h called from main()
   spindle_stop();
 }
 
@@ -59,7 +57,7 @@ void spindle_run(int direction, uint32_t rpm)
       #endif
       SPINDLE_ENABLE_PORT |= 1<<SPINDLE_ENABLE_BIT;
     } else {
-      spindle_stop();     
+      spindle_stop();
     }
     current_direction = direction;
   }

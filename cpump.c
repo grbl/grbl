@@ -29,8 +29,7 @@
 void cpump_init()
 {
 #ifdef CHARGE_PUMP
-  // Setup OC0A as output
-  CHARGE_PUMP_DDR |= _BV(CHARGE_PUMP_BIT);
+  // Setting up OC0A as output done by SETUP_IO() in config.h called from main()
 
   // Setup timer 0, channel A for 12.5kHz
   OCR0A = F_CPU / (25000UL << 3); // Faster than multiplying by 8

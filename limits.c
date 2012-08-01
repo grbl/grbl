@@ -29,7 +29,7 @@
 #include "planner.h"
 
 void limits_init() {
-  LIMIT_DDR &= ~(LIMIT_MASK);
+  // I/O lines as inputs done by SETUP_IO() in config.h called from main()
 }
 
 static void homing_cycle(bool x_axis, bool y_axis, bool z_axis, bool reverse_direction, uint32_t microseconds_per_pulse) {

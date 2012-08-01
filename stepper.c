@@ -342,12 +342,9 @@ void st_reset()
 // Initialize and start the stepper motor subsystem
 void st_init()
 {
-  // Configure directions of interface pins
-  STEPPING_DDR |= STEPPING_MASK;
+  // Configure directions of interface pins done by SETUP_IO() in config.h
+  // called from main()
   STEPPING_PORT = (STEPPING_PORT & ~STEPPING_MASK) | settings.invert_mask_stepdir;
-  #ifdef STEPPERS_DISABLE
-    STEPPERS_DISABLE_DDR |= 1<<STEPPERS_DISABLE_BIT;
-  #endif
 
   // waveform generation = 0100 = CTC
   TCCR1B &= ~(1<<WGM13);
