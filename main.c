@@ -32,6 +32,7 @@
 #include "limits.h"
 #include "settings.h"
 #include "serial.h"
+#include "cpump.h"
 
 // Declare system global variable structure
 system_t sys; 
@@ -40,19 +41,20 @@ int main(void)
 {
   // Initialize system
   serial_init(BAUD_RATE); // Setup serial baud rate and interrupts
+  SETUP_IO(); // Setup pin directions globally
   st_init(); // Setup stepper pins and interrupt timers
   sei(); // Enable interrupts
 
   memset(&sys, 0, sizeof(sys));  // Clear all system variables
   sys.abort = true;   // Set abort to complete initialization
-                    
+
   for(;;) {
-  
+
     // Execute system reset upon a system abort, where the main program will return to this loop.
     // Once here, it is safe to re-initialize the system. At startup, the system will automatically
     // reset to finish the initialization process.
     if (sys.abort) {
-      
+
       // Retain last known machine position and work coordinate offset(s). If the system abort
       // occurred while in motion, machine position is not guaranteed, since a hard stop can cause
       // the steppers to lose steps. Always perform a feedhold before an abort, if maintaining
@@ -72,16 +74,19 @@ int main(void)
       protocol_init(); // Clear incoming line data
       plan_init(); // Clear block buffer and planner variables
       gc_init(); // Set g-code parser to default state
+      #ifdef CHARGE_PUMP
+        cpump_init(); // Fire up Charge Pump to wake up servo controller as following calls may try to move things
+      #endif
       spindle_init();
       limits_init();
       st_reset(); // Clear stepper subsystem variables.
-      
+
       // Reload last known machine position and work systems. G92 coordinate offsets are reset.
       memcpy(sys.position, last_position, sizeof(last_position)); // sys.position[] = last_position[]
       memcpy(sys.coord_system, last_coord_system, sizeof(last_coord_system)); // sys.coord_system[] = last_coord_system[]
       gc_set_current_position(last_position[X_AXIS],last_position[Y_AXIS],last_position[Z_AXIS]);
       plan_set_current_position(last_position[X_AXIS],last_position[Y_AXIS],last_position[Z_AXIS]);
-      
+
       // Set system runtime defaults
       // TODO: Eventual move to EEPROM from config.h when all of the new settings are worked out. 
       // Mainly to avoid having to maintain several different versions.
@@ -90,10 +95,10 @@ int main(void)
       #endif
       // TODO: Install G20/G21 unit default into settings and load appropriate settings.
     }
-    
+
     protocol_execute_runtime();
     protocol_process(); // ... process the serial protocol
-    
+
   }
   return 0;   /* never reached */
 }

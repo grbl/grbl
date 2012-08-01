@@ -1,8 +1,11 @@
 /*
-  limits.h - code pertaining to limit-switches and performing the homing cycle
+  cpump.h - charge pump methods
   Part of Grbl
 
-  Copyright (c) 2009-2011 Simen Svale Skogsrud
+  Written by Radu - Eosif Mihailescu in July 2012.
+  I choose to claim no copyright over the contents of this file. This would
+  normally mean I'm placing it in the public domain however, in this case, the
+  project-wide license (GNU GPL) applies. NOTE: IANAL, so ask yours if in doubt.
 
   Grbl is free software: you can redistribute it and/or modify
   it under the terms of the GNU General Public License as published by
@@ -18,17 +21,9 @@
   along with Grbl.  If not, see <http://www.gnu.org/licenses/>.
 */
 
-#ifndef limits_h
-#define limits_h
+#ifndef cpump_h
+#define cpump_h 
 
-#include <avr/io.h>
-
-#define LIMIT_MASK (_BV(X_LIMIT_BIT) | _BV(Y_LIMIT_BIT) | _BV(Z_LIMIT_BIT)) // All limit bits
-
-// initialize the limits module
-void limits_init();
-
-// perform the homing cycle
-void limits_go_home();
+void cpump_init();
 
 #endif

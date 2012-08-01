@@ -38,7 +38,8 @@ typedef struct {
   uint8_t pulse_microseconds;
   double default_feed_rate;
   double default_seek_rate;
-  uint8_t invert_mask;
+  uint8_t invert_mask_stepdir;
+  uint8_t invert_mask_limit;
   double mm_per_arc_segment;
   double acceleration;
   double junction_deviation;

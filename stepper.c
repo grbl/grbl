@@ -89,7 +89,7 @@ static void set_step_events_per_minute(uint32_t steps_per_minute);
 static void st_wake_up() 
 {
   // Initialize stepper output bits
-  out_bits = (0) ^ (settings.invert_mask); 
+  out_bits = (0) ^ (settings.invert_mask_stepdir); 
   // Initialize step pulse timing from settings. Here to ensure updating after re-writing.
   #if STEP_PULSE_DELAY > 0
     // Set total step pulse time after direction pin set. Ad hoc computation from oscilloscope.
@@ -100,8 +100,10 @@ static void st_wake_up()
     // Set step pulse time. Ad hoc computation from oscilloscope. Uses two's complement.
     step_pulse_time = -(((settings.pulse_microseconds-2)*TICKS_PER_MICROSECOND) >> 3);
   #endif
-  // Enable steppers by resetting the stepper disable port
-  STEPPERS_DISABLE_PORT &= ~(1<<STEPPERS_DISABLE_BIT);
+  #ifdef STEPPERS_DISABLE
+    // Enable steppers by resetting the stepper disable port
+    STEPPERS_DISABLE_PORT &= ~(1<<STEPPERS_DISABLE_BIT);
+  #endif
   // Enable stepper driver interrupt
   TIMSK1 |= (1<<OCIE1A);
 }
@@ -116,8 +118,10 @@ void st_go_idle()
   #if STEPPER_IDLE_LOCK_TIME > 0
     _delay_ms(STEPPER_IDLE_LOCK_TIME);   
   #endif
-  // Disable steppers by setting stepper disable
-  STEPPERS_DISABLE_PORT |= (1<<STEPPERS_DISABLE_BIT);
+  #ifdef STEPPERS_DISABLE
+    // Disable steppers by setting stepper disable
+    STEPPERS_DISABLE_PORT |= (1<<STEPPERS_DISABLE_BIT);
+  #endif
 }
 
 // This function determines an acceleration velocity change every CYCLES_PER_ACCELERATION_TICK by
@@ -139,9 +143,9 @@ inline static uint8_t iterate_trapezoid_cycle_counter()
 // It is supported by The Stepper Port Reset Interrupt which it uses to reset the stepper port after each pulse. 
 // The bresenham line tracer algorithm controls all three stepper outputs simultaneously with these two interrupts.
 ISR(TIMER1_COMPA_vect)
-{        
+{
   if (busy) { return; } // The busy-flag is used to avoid reentering this interrupt
-  
+
   // Set the direction pins a couple of nanoseconds before we step the steppers
   STEPPING_PORT = (STEPPING_PORT & ~DIRECTION_MASK) | (out_bits & DIRECTION_MASK);
   // Then pulse the stepping pins
@@ -153,14 +157,14 @@ ISR(TIMER1_COMPA_vect)
   // Enable step pulse reset timer so that The Stepper Port Reset Interrupt can reset the signal after
   // exactly settings.pulse_microseconds microseconds, independent of the main Timer1 prescaler.
   TCNT2 = step_pulse_time; // Reload timer counter
-  TCCR2B = (1<<CS21); // Begin timer2. Full speed, 1/8 prescaler
+  TCCR2B = _BV(CS21); // Start Timer2, 1/8 prescaler
 
   busy = true;
   // Re-enable interrupts to allow ISR_TIMER2_OVERFLOW to trigger on-time and allow serial communications
   // regardless of time in this handler. The following code prepares the stepper driver for the next
   // step interrupt compare and will always finish before returning to the main program.
   sei();
-  
+
   // If there is no current block, attempt to pop one from the buffer
   if (current_block == NULL) {
     // Anything in the buffer? If so, initialize next motion.
@@ -299,7 +303,7 @@ ISR(TIMER1_COMPA_vect)
       plan_discard_current_block();
     }
   }
-  out_bits ^= settings.invert_mask;  // Apply stepper invert mask    
+  out_bits ^= settings.invert_mask_stepdir;  // Apply stepper invert mask    
   busy = false;
 }
 
@@ -310,7 +314,7 @@ ISR(TIMER1_COMPA_vect)
 ISR(TIMER2_OVF_vect)
 {
   // Reset stepping pins (leave the direction pins)
-  STEPPING_PORT = (STEPPING_PORT & ~STEP_MASK) | (settings.invert_mask & STEP_MASK); 
+  STEPPING_PORT = (STEPPING_PORT & ~STEP_MASK) | (settings.invert_mask_stepdir & STEP_MASK); 
   TCCR2B = 0; // Disable Timer2 to prevent re-entering this interrupt when it's not needed. 
 }
 
@@ -338,30 +342,24 @@ void st_reset()
 // Initialize and start the stepper motor subsystem
 void st_init()
 {
-  // Configure directions of interface pins
-  STEPPING_DDR |= STEPPING_MASK;
-  STEPPING_PORT = (STEPPING_PORT & ~STEPPING_MASK) | settings.invert_mask;
-  STEPPERS_DISABLE_DDR |= 1<<STEPPERS_DISABLE_BIT;
+  // Configure directions of interface pins done by SETUP_IO() in config.h
+  // called from main()
+  STEPPING_PORT = (STEPPING_PORT & ~STEPPING_MASK) | settings.invert_mask_stepdir;
 
   // waveform generation = 0100 = CTC
-  TCCR1B &= ~(1<<WGM13);
-  TCCR1B |=  (1<<WGM12);
-  TCCR1A &= ~(1<<WGM11); 
-  TCCR1A &= ~(1<<WGM10);
-
+  TCCR1B = _BV(WGM12);
   // output mode = 00 (disconnected)
-  TCCR1A &= ~(3<<COM1A0); 
-  TCCR1A &= ~(3<<COM1B0); 
-	
+  TCCR1A = 0; // Prescaler is set later, when timer is started
+
   // Configure Timer 2
   TCCR2A = 0; // Normal operation
   TCCR2B = 0; // Disable timer until needed.
-  TIMSK2 |= (1<<TOIE2);      
-  
+  TIMSK2 = _BV(TOIE2); // ONLY TOIE2, unless the below compiles
+
   #if STEP_PULSE_DELAY > 0
-    TIMSK2 |= (1<<OCIE2A); // Enable Timer2 Compare Match A interrupt
+    TIMSK2 |= _BV(1<<OCIE2A); // Add Timer2 Compare Match A interrupt
   #endif
-  
+
   // Start in the idle state
   st_go_idle();
 }
@@ -375,32 +373,32 @@ static uint32_t config_step_timer(uint32_t cycles)
   uint32_t actual_cycles;
   if (cycles <= 0xffffL) {
     ceiling = cycles;
-    prescaler = 0; // prescaler: 0
+    prescaler = _BV(CS10); // prescaler: 1
     actual_cycles = ceiling;
   } else if (cycles <= 0x7ffffL) {
     ceiling = cycles >> 3;
-    prescaler = 1; // prescaler: 8
+    prescaler = _BV(CS11); // prescaler: 1/8
     actual_cycles = ceiling * 8L;
   } else if (cycles <= 0x3fffffL) {
     ceiling =  cycles >> 6;
-    prescaler = 2; // prescaler: 64
+    prescaler = _BV(CS10) | _BV(CS11); // prescaler: 1/64
     actual_cycles = ceiling * 64L;
   } else if (cycles <= 0xffffffL) {
     ceiling =  (cycles >> 8);
-    prescaler = 3; // prescaler: 256
+    prescaler = _BV(CS12); // prescaler: 1/256
     actual_cycles = ceiling * 256L;
   } else if (cycles <= 0x3ffffffL) {
     ceiling = (cycles >> 10);
-    prescaler = 4; // prescaler: 1024
-    actual_cycles = ceiling * 1024L;    
+    prescaler = _BV(CS12) | _BV(CS10); // prescaler: 1/1024
+    actual_cycles = ceiling * 1024L;
   } else {
     // Okay, that was slower than we actually go. Just set the slowest speed
     ceiling = 0xffff;
-    prescaler = 4;
+    prescaler = _BV(CS12) | _BV(CS10);
     actual_cycles = 0xffff * 1024;
   }
   // Set prescaler
-  TCCR1B = (TCCR1B & ~(0x07<<CS10)) | ((prescaler+1)<<CS10);
+  TCCR1B = (TCCR1B & ~(_BV(CS21) | _BV(CS11) | _BV(CS10))) | prescaler;
   // Set ceiling
   OCR1A = ceiling;
   return(actual_cycles);

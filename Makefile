@@ -31,7 +31,7 @@ DEVICE     = atmega328p
 CLOCK      = 16000000
 PROGRAMMER = -c avrisp2 -P usb
 OBJECTS    = main.o motion_control.o gcode.o spindle_control.o serial.o protocol.o stepper.o \
-             eeprom.o settings.o planner.o nuts_bolts.o limits.o print.o
+             eeprom.o settings.o planner.o nuts_bolts.o limits.o print.o cpump.o
 # FUSES      = -U hfuse:w:0xd9:m -U lfuse:w:0x24:m
 FUSES      = -U hfuse:w:0xd2:m -U lfuse:w:0xff:m
 # update that line with this when programmer is back up: 
@@ -41,6 +41,7 @@ FUSES      = -U hfuse:w:0xd2:m -U lfuse:w:0xff:m
 
 AVRDUDE = avrdude $(PROGRAMMER) -p $(DEVICE) -B 10 -F 
 COMPILE = avr-gcc -Wall -Os -DF_CPU=$(CLOCK) -mmcu=$(DEVICE) -I. -ffunction-sections 
+OBJDUMP = avr-objdump
 
 # symbolic targets:
 all:	grbl.hex
@@ -73,6 +74,9 @@ load: all
 
 clean:
 	rm -f grbl.hex main.elf $(OBJECTS)
+
+functionsbysize: $(OBJECTS)
+	@$(OBJDUMP) -h $^ | grep '\.text\.' | perl -ne '/\.text\.(\S+)\s+([0-9a-f]+)/ && printf "%u\t%s\n", eval("0x$$2"), $$1;' | sort -n
 
 # file targets:
 main.elf: $(OBJECTS)
