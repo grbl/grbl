@@ -314,7 +314,7 @@ ISR(TIMER1_COMPA_vect)
 ISR(TIMER2_OVF_vect)
 {
   // Reset stepping pins (leave the direction pins)
-  STEPPING_PIN = STEP_MASK; // Reset to previous state via toggle
+  STEPPING_PORT = (STEPPING_PORT & ~STEP_MASK) | (settings.invert_mask_stepdir & STEP_MASK); 
   TCCR2B = 0; // Disable Timer2 to prevent re-entering this interrupt when it's not needed. 
 }
 

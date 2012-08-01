@@ -83,7 +83,7 @@ static void homing_cycle(bool x_axis, bool y_axis, bool z_axis, bool reverse_dir
     // e.g. when the STEP lines are inverted
     STEPPING_PORT = (STEPPING_PORT & ~STEP_MASK) | (out_bits & STEP_MASK);
     delay_us(settings.pulse_microseconds);
-    STEPPING_PIN = STEP_MASK; // End pulse via toggle, saves one port access
+    STEPPING_PIN = (out_bits & STEP_MASK); // End pulse via toggle, saves one port access
     delay_us(step_delay);
   }
   return;
@@ -93,7 +93,8 @@ static void homing_cycle(bool x_axis, bool y_axis, bool z_axis, bool reverse_dir
 // Y have identical resolutions and Z has more -- we're looking for the slowest
 // going one, i.e. the one with the least resolution, thus X makes a good
 // candidate
-#define FEEDRATE_TO_PERIOD_US(f) (1.0 / (f) / 60 * settings.steps_per_mm[X_AXIS] * 100000)
+#define FEEDRATE_TO_PERIOD_US(f) \
+  ((60.0 / ((f) * settings.steps_per_mm[X_AXIS])) * 1000000.0)
 
 static void approach_limit_switch(bool x, bool y, bool z) {
   homing_cycle(x, y, z, false, FEEDRATE_TO_PERIOD_US(settings.default_seek_rate));
