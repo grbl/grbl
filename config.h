@@ -28,6 +28,7 @@
 
 // Define pin-assignments
 #define STEPPING_PORT      PORTC
+#define STEPPING_PIN       PINC
 #define X_STEP_BIT         0  // Uno Analog Pin 0
 #define Y_STEP_BIT         1  // Uno Analog Pin 1
 #define Z_STEP_BIT         2  // Uno Analog Pin 2

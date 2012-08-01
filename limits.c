@@ -37,9 +37,9 @@ static void homing_cycle(bool x_axis, bool y_axis, bool z_axis, bool reverse_dir
   uint8_t out_bits = DIRECTION_MASK;
   uint8_t limit_bits;
 
-  if (x_axis) { out_bits |= (1<<X_STEP_BIT); }
-  if (y_axis) { out_bits |= (1<<Y_STEP_BIT); }
-  if (z_axis) { out_bits |= (1<<Z_STEP_BIT); }
+  if (x_axis) { out_bits |= _BV(X_STEP_BIT); }
+  if (y_axis) { out_bits |= _BV(Y_STEP_BIT); }
+  if (z_axis) { out_bits |= _BV(Z_STEP_BIT); }
 
   // Invert direction bits if this is a reverse homing_cycle
   if (reverse_direction) {
@@ -49,7 +49,8 @@ static void homing_cycle(bool x_axis, bool y_axis, bool z_axis, bool reverse_dir
   // Apply the global invert mask
   out_bits ^= settings.invert_mask_stepdir;
 
-  // Set direction pins
+  // Set direction pins, can't use |= because we may have 1 -> 0 transitions,
+  // e.g. when reverse_direction is true
   STEPPING_PORT = (STEPPING_PORT & ~DIRECTION_MASK) | (out_bits & DIRECTION_MASK);
 
   for(;;) {
@@ -63,24 +64,26 @@ static void homing_cycle(bool x_axis, bool y_axis, bool z_axis, bool reverse_dir
     // Apply the global invert mask
     limit_bits ^= settings.invert_mask_limit;
 
-    if (x_axis && !(limit_bits & (1<<X_LIMIT_BIT))) {
+    if (x_axis && !(limit_bits & _BV(X_LIMIT_BIT))) {
       x_axis = false;
-      out_bits ^= (1<<X_STEP_BIT);
+      out_bits ^= _BV(X_STEP_BIT);
     }
-    if (y_axis && !(limit_bits & (1<<Y_LIMIT_BIT))) {
+    if (y_axis && !(limit_bits & _BV(Y_LIMIT_BIT))) {
       y_axis = false;
-      out_bits ^= (1<<Y_STEP_BIT);
+      out_bits ^= _BV(Y_STEP_BIT);
     }
-    if (z_axis && !(limit_bits & (1<<Z_LIMIT_BIT))) {
+    if (z_axis && !(limit_bits & _BV(Z_LIMIT_BIT))) {
       z_axis = false;
-      out_bits ^= (1<<Z_STEP_BIT);
+      out_bits ^= _BV(Z_STEP_BIT);
     }
 
     // Check if we are done
     if(!(x_axis || y_axis || z_axis)) { return; }
-    STEPPING_PORT |= out_bits & STEP_MASK;
+    // Send stepping pulse, can't use |= because we may have 1 -> 0 transitions,
+    // e.g. when the STEP lines are inverted
+    STEPPING_PORT = (STEPPING_PORT & ~STEP_MASK) | (out_bits & STEP_MASK);
     delay_us(settings.pulse_microseconds);
-    STEPPING_PORT ^= out_bits & STEP_MASK;
+    STEPPING_PIN = STEP_MASK; // End pulse via toggle, saves one port access
     delay_us(step_delay);
   }
   return;
@@ -90,14 +93,14 @@ static void homing_cycle(bool x_axis, bool y_axis, bool z_axis, bool reverse_dir
 // Y have identical resolutions and Z has more -- we're looking for the slowest
 // going one, i.e. the one with the least resolution, thus X makes a good
 // candidate
-#define FEEDRATE_TO_PERIOD(f) (1.0 / (f) / 60 * settings.steps_per_mm[X_AXIS])
+#define FEEDRATE_TO_PERIOD_US(f) (1.0 / (f) / 60 * settings.steps_per_mm[X_AXIS] * 100000)
 
 static void approach_limit_switch(bool x, bool y, bool z) {
-  homing_cycle(x, y, z, false, FEEDRATE_TO_PERIOD(settings.default_seek_rate));
+  homing_cycle(x, y, z, false, FEEDRATE_TO_PERIOD_US(settings.default_seek_rate));
 }
 
 static void leave_limit_switch(bool x, bool y, bool z) {
-  homing_cycle(x, y, z, true, FEEDRATE_TO_PERIOD(settings.default_feed_rate));
+  homing_cycle(x, y, z, true, FEEDRATE_TO_PERIOD_US(settings.default_feed_rate));
 }
 
 void limits_go_home() {
