@@ -529,10 +529,11 @@ uint8_t gc_execute_line(char *line)
   if (gc.program_flow) {
     plan_synchronize(); // Finish all remaining buffered motions. Program paused when complete.
     sys.auto_start = false; // Disable auto cycle start.
-    gc.program_flow = PROGRAM_FLOW_RUNNING; // Re-enable program flow after pause complete.
     
-    // If complete, reset to reload defaults (G92.2,G54,G17,G90,G94,M48,G40,M5,M9)
+    // If complete, reset to reload defaults (G92.2,G54,G17,G90,G94,M48,G40,M5,M9). Otherwise,
+    // re-enable program flow after pause complete, where cycle start will resume the program.
     if (gc.program_flow == PROGRAM_FLOW_COMPLETED) { sys.abort = true; }
+    else { gc.program_flow = PROGRAM_FLOW_RUNNING; }
   }    
   
   return(gc.status_code);
