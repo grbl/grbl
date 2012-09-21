@@ -54,6 +54,18 @@
 #define SPINDLE_DIRECTION_PORT PORTB
 #define SPINDLE_DIRECTION_BIT 5  // Uno Digital Pin 13
 
+#define COOLANT_FLOOD_DDR   DDRC
+#define COOLANT_FLOOD_PORT   PORTC
+#define COOLANT_FLOOD_BIT  0  // Uno Analog Pin 0
+
+#define ENABLE_M7 0 // DISABLED BY DEFAULT: To enable, change to '1' and recompile.
+#if ENABLE_M7
+  #define COOLANT_MIST_DDR   DDRC
+  #define COOLANT_MIST_PORT   PORTC
+  #define COOLANT_MIST_BIT  1 // Uno Analog Pin 1
+#endif  
+
+
 // Define runtime command special characters. These characters are 'picked-off' directly from the
 // serial read data stream and are not passed to the grbl line execution parser. Select characters
 // that do not and must not exist in the streamed g-code program. ASCII control characters may be 

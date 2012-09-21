@@ -43,7 +43,7 @@ void spindle_stop()
   SPINDLE_ENABLE_PORT &= ~(1<<SPINDLE_ENABLE_BIT);
 }
 
-void spindle_run(int direction, uint32_t rpm) 
+void spindle_run(int8_t direction, uint16_t rpm) 
 {
   if (direction != current_direction) {
     plan_synchronize();

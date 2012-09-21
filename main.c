@@ -26,6 +26,7 @@
 #include "nuts_bolts.h"
 #include "stepper.h"
 #include "spindle_control.h"
+#include "coolant_control.h"
 #include "motion_control.h"
 #include "gcode.h"
 #include "protocol.h"
@@ -73,6 +74,7 @@ int main(void)
       plan_init(); // Clear block buffer and planner variables
       gc_init(); // Set g-code parser to default state
       spindle_init();
+      coolant_init();
       limits_init();
       st_reset(); // Clear stepper subsystem variables.
       
