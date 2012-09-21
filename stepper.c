@@ -91,7 +91,7 @@ static void st_wake_up()
   // Initialize stepper output bits
   out_bits = (0) ^ (settings.invert_mask); 
   // Initialize step pulse timing from settings. Here to ensure updating after re-writing.
-  #if STEP_PULSE_DELAY > 0
+  #ifdef STEP_PULSE_DELAY
     // Set total step pulse time after direction pin set. Ad hoc computation from oscilloscope.
     step_pulse_time = -(((settings.pulse_microseconds+STEP_PULSE_DELAY-2)*TICKS_PER_MICROSECOND) >> 3);
     // Set delay between direction pin write and step command.
@@ -113,7 +113,7 @@ void st_go_idle()
   TIMSK1 &= ~(1<<OCIE1A); 
   // Force stepper dwell to lock axes for a defined amount of time to ensure the axes come to a complete
   // stop and not drift from residual inertial forces at the end of the last movement.
-  #if STEPPER_IDLE_LOCK_TIME > 0
+  #ifdef STEPPER_IDLE_LOCK_TIME
     _delay_ms(STEPPER_IDLE_LOCK_TIME);   
   #endif
   // Disable steppers by setting stepper disable
@@ -145,7 +145,7 @@ ISR(TIMER1_COMPA_vect)
   // Set the direction pins a couple of nanoseconds before we step the steppers
   STEPPING_PORT = (STEPPING_PORT & ~DIRECTION_MASK) | (out_bits & DIRECTION_MASK);
   // Then pulse the stepping pins
-  #if STEP_PULSE_DELAY > 0
+  #ifdef STEP_PULSE_DELAY
     step_bits = (STEPPING_PORT & ~STEP_MASK) | out_bits; // Store out_bits to prevent overwriting.
   #else  // Normal operation
     STEPPING_PORT = (STEPPING_PORT & ~STEP_MASK) | out_bits;
@@ -314,7 +314,7 @@ ISR(TIMER2_OVF_vect)
   TCCR2B = 0; // Disable Timer2 to prevent re-entering this interrupt when it's not needed. 
 }
 
-#if STEP_PULSE_DELAY > 0
+#ifdef STEP_PULSE_DELAY
   // This interrupt is used only when STEP_PULSE_DELAY is enabled. Here, the step pulse is
   // initiated after the STEP_PULSE_DELAY time period has elapsed. The ISR TIMER2_OVF interrupt
   // will then trigger after the appropriate settings.pulse_microseconds, as in normal operation.
@@ -358,7 +358,7 @@ void st_init()
   TCCR2B = 0; // Disable timer until needed.
   TIMSK2 |= (1<<TOIE2);      
   
-  #if STEP_PULSE_DELAY > 0
+  #ifdef STEP_PULSE_DELAY
     TIMSK2 |= (1<<OCIE2A); // Enable Timer2 Compare Match A interrupt
   #endif
   
@@ -371,36 +371,36 @@ void st_init()
 static uint32_t config_step_timer(uint32_t cycles)
 {
   uint16_t ceiling;
-  uint16_t prescaler;
+  uint8_t prescaler;
   uint32_t actual_cycles;
   if (cycles <= 0xffffL) {
     ceiling = cycles;
-    prescaler = 0; // prescaler: 0
+    prescaler = 1; // prescaler: 0
     actual_cycles = ceiling;
   } else if (cycles <= 0x7ffffL) {
     ceiling = cycles >> 3;
-    prescaler = 1; // prescaler: 8
+    prescaler = 2; // prescaler: 8
     actual_cycles = ceiling * 8L;
   } else if (cycles <= 0x3fffffL) {
     ceiling =  cycles >> 6;
-    prescaler = 2; // prescaler: 64
+    prescaler = 3; // prescaler: 64
     actual_cycles = ceiling * 64L;
   } else if (cycles <= 0xffffffL) {
     ceiling =  (cycles >> 8);
-    prescaler = 3; // prescaler: 256
+    prescaler = 4; // prescaler: 256
     actual_cycles = ceiling * 256L;
   } else if (cycles <= 0x3ffffffL) {
     ceiling = (cycles >> 10);
-    prescaler = 4; // prescaler: 1024
+    prescaler = 5; // prescaler: 1024
     actual_cycles = ceiling * 1024L;    
   } else {
     // Okay, that was slower than we actually go. Just set the slowest speed
     ceiling = 0xffff;
-    prescaler = 4;
+    prescaler = 6;
     actual_cycles = 0xffff * 1024;
   }
   // Set prescaler
-  TCCR1B = (TCCR1B & ~(0x07<<CS10)) | ((prescaler+1)<<CS10);
+  TCCR1B = (TCCR1B & ~(0x07<<CS10)) | (prescaler<<CS10);
   // Set ceiling
   OCR1A = ceiling;
   return(actual_cycles);

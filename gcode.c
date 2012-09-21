@@ -216,7 +216,7 @@ uint8_t gc_execute_line(char *line)
           case 3: gc.spindle_direction = 1; break;
           case 4: gc.spindle_direction = -1; break;
           case 5: gc.spindle_direction = 0; break;
-          #if ENABLE_M7
+          #ifdef ENABLE_M7
             case 7: gc.coolant_mode = COOLANT_MIST_ENABLE; break;
           #endif
           case 8: gc.coolant_mode = COOLANT_FLOOD_ENABLE; break;
@@ -578,16 +578,16 @@ static int next_statement(char *letter, double *double_ptr, char *line, uint8_t 
   - Evaluation of expressions
   - Variables
   - Multiple home locations
-  - Multiple coordinate systems (Up to 6 may be added via config.h)
   - Probing
   - Override control
   - Tool changes
-
+   
+   (*) Indicates optional parameter, enabled through config.h and re-compile
    group 0 = {G92.2, G92.3} (Non modal: Cancel and re-enable G92 offsets)
    group 1 = {G38.2, G81 - G89} (Motion modes: straight probe, canned cycles)
    group 6 = {M6} (Tool change)
-   group 8 = {M7} coolant (M7 mist may be enabled via config.h)
+   group 8 = {*M7} enable mist coolant
    group 9 = {M48, M49} enable/disable feed and speed override switches
-   group 12 = {G55, G56, G57, G58, G59, G59.1, G59.2, G59.3} coordinate system selection
+   group 12 = {*G55, *G56, *G57, *G58, *G59, G59.1, G59.2, G59.3} coordinate system selection
    group 13 = {G61, G61.1, G64} path control mode
 */

@@ -39,7 +39,7 @@ void coolant_init()
 
 void coolant_stop()
 {
-  #if ENABLE_M7
+  #ifdef ENABLE_M7
     COOLANT_MIST_PORT &= ~(1 << COOLANT_MIST_BIT);
   #endif
   COOLANT_FLOOD_PORT &= ~(1 << COOLANT_FLOOD_BIT);
@@ -53,7 +53,7 @@ void coolant_run(uint8_t mode)
     plan_synchronize(); // Ensure coolant turns on when specified in program.
     if (mode == COOLANT_FLOOD_ENABLE) { 
       COOLANT_FLOOD_PORT |= (1 << COOLANT_FLOOD_BIT);
-    #if ENABLE_M7  
+    #ifdef ENABLE_M7  
       } else if (mode == COOLANT_MIST_ENABLE) {
           COOLANT_MIST_PORT |= (1 << COOLANT_MIST_BIT);
     #endif
