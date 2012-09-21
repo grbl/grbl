@@ -27,26 +27,26 @@
 #                is connected.
 # FUSES ........ Parameters for avrdude to flash the fuses appropriately.
 
-DEVICE     = atmega328p
+DEVICE     ?= atmega328p
 CLOCK      = 16000000
-PROGRAMMER = -c avrisp2 -P usb
+PROGRAMMER ?= -c avrisp2 -P usb
 OBJECTS    = main.o motion_control.o gcode.o spindle_control.o serial.o protocol.o stepper.o \
              eeprom.o settings.o planner.o nuts_bolts.o limits.o print.o
 # FUSES      = -U hfuse:w:0xd9:m -U lfuse:w:0x24:m
 FUSES      = -U hfuse:w:0xd2:m -U lfuse:w:0xff:m
-# update that line with this when programmer is back up: 
-# FUSES      = -U hfuse:w:0xd7:m -U lfuse:w:0xff:m 
+# update that line with this when programmer is back up:
+# FUSES      = -U hfuse:w:0xd7:m -U lfuse:w:0xff:m
 
 # Tune the lines below only if you know what you are doing:
 
-AVRDUDE = avrdude $(PROGRAMMER) -p $(DEVICE) -B 10 -F 
-COMPILE = avr-gcc -Wall -Os -DF_CPU=$(CLOCK) -mmcu=$(DEVICE) -I. -ffunction-sections 
+AVRDUDE = avrdude $(PROGRAMMER) -p $(DEVICE) -B 10 -F
+COMPILE = avr-gcc -Wall -Os -DF_CPU=$(CLOCK) -mmcu=$(DEVICE) -I. -ffunction-sections
 
 # symbolic targets:
 all:	grbl.hex
 
 .c.o:
-	$(COMPILE) -c $< -o $@ 
+	$(COMPILE) -c $< -o $@
 
 .S.o:
 	$(COMPILE) -x assembler-with-cpp -c $< -o $@
@@ -90,4 +90,4 @@ disasm:	main.elf
 	avr-objdump -d main.elf
 
 cpp:
-	$(COMPILE) -E main.c 
+	$(COMPILE) -E main.c
