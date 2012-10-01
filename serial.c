@@ -42,7 +42,7 @@ uint8_t tx_buffer[TX_BUFFER_SIZE];
 uint8_t tx_buffer_head = 0;
 volatile uint8_t tx_buffer_tail = 0;
 
-#if ENABLE_XONXOFF
+#ifdef ENABLE_XONXOFF
   #define RX_BUFFER_FULL 96 // XOFF high watermark
   #define RX_BUFFER_LOW 64 // XON low watermark
   #define SEND_XOFF 1
@@ -110,7 +110,7 @@ ISR(USART_UDRE_vect)
   // Temporary tx_buffer_tail (to optimize for volatile)
   uint8_t tail = tx_buffer_tail;
   
-  #if ENABLE_XONXOFF
+  #ifdef ENABLE_XONXOFF
     if (flow_ctrl == SEND_XOFF) { 
       UDR0 = XOFF_CHAR; 
       flow_ctrl = XOFF_SENT; 
@@ -143,7 +143,7 @@ uint8_t serial_read()
     rx_buffer_tail++;
     if (rx_buffer_tail == RX_BUFFER_SIZE) { rx_buffer_tail = 0; }
 
-    #if ENABLE_XONXOFF
+    #ifdef ENABLE_XONXOFF
       if ((get_rx_buffer_count() < RX_BUFFER_LOW) && flow_ctrl == XOFF_SENT) { 
         flow_ctrl = SEND_XON;
         UCSR0B |=  (1 << UDRIE0); // Force TX
@@ -182,7 +182,7 @@ ISR(USART_RX_vect)
         rx_buffer[rx_buffer_head] = data;
         rx_buffer_head = next_head;    
         
-        #if ENABLE_XONXOFF
+        #ifdef ENABLE_XONXOFF
           if ((get_rx_buffer_count() >= RX_BUFFER_FULL) && flow_ctrl == XON_SENT) {
             flow_ctrl = SEND_XOFF;
             UCSR0B |=  (1 << UDRIE0); // Force TX
@@ -197,7 +197,7 @@ void serial_reset_read_buffer()
 {
   rx_buffer_tail = rx_buffer_head;
 
-  #if ENABLE_XONXOFF
+  #ifdef ENABLE_XONXOFF
     flow_ctrl = XON_SENT;
   #endif
 }

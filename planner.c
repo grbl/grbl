@@ -481,6 +481,12 @@ void plan_set_current_position(int32_t x, int32_t y, int32_t z)
   pl.position[Z_AXIS] = z;
 }
 
+// Clear planner position vector. Called by homing routine.
+void plan_clear_position()
+{
+  clear_vector(pl.position);
+}
+
 // Re-initialize buffer plan with a partially completed block, assumed to exist at the buffer tail.
 // Called after a steppers have come to a complete stop for a feed hold and the cycle is stopped.
 void plan_cycle_reinitialize(int32_t step_events_remaining) 

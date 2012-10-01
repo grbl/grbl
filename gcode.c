@@ -114,6 +114,12 @@ void gc_set_current_position(int32_t x, int32_t y, int32_t z)
   gc.position[Z_AXIS] = z/settings.steps_per_mm[Z_AXIS]; 
 }
 
+// Clears and zeros g-code parser position. Called by homing routine.
+void gc_clear_position()
+{
+  clear_vector(gc.position);
+}
+
 static float to_millimeters(double value) 
 {
   return(gc.inches_mode ? (value * MM_PER_INCH) : value);
@@ -336,7 +342,7 @@ uint8_t gc_execute_line(char *line)
         mc_line(target[X_AXIS], target[Y_AXIS], target[Z_AXIS], settings.default_seek_rate, false);
       }
       mc_go_home(); 
-      clear_vector(gc.position); // Assumes home is at [0,0,0]
+//      clear_vector(gc.position); // Assumes home is at [0,0,0]
       axis_words = 0; // Axis words used. Lock out from motion modes by clearing flags.
       break;      
     case NON_MODAL_SET_COORDINATE_OFFSET:

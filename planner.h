@@ -69,6 +69,9 @@ block_t *plan_get_current_block();
 // Reset the planner position vector (in steps)
 void plan_set_current_position(int32_t x, int32_t y, int32_t z);
 
+// Clear the planner position vector
+void plan_clear_position();
+
 // Reinitialize plan with a partially completed block
 void plan_cycle_reinitialize(int32_t step_events_remaining);
 

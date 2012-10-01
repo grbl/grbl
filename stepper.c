@@ -31,7 +31,6 @@
 #include "nuts_bolts.h"
 #include <avr/interrupt.h>
 #include "planner.h"
-#include "limits.h"
 
 // Some useful constants
 #define TICKS_PER_MICROSECOND (F_CPU/1000000)
@@ -299,7 +298,7 @@ ISR(TIMER1_COMPA_vect)
       plan_discard_current_block();
     }
   }
-  out_bits ^= settings.invert_mask;  // Apply stepper invert mask    
+  out_bits ^= settings.invert_mask;  // Apply step and direction invert mask    
   busy = false;
 }
 
@@ -396,7 +395,7 @@ static uint32_t config_step_timer(uint32_t cycles)
   } else {
     // Okay, that was slower than we actually go. Just set the slowest speed
     ceiling = 0xffff;
-    prescaler = 6;
+    prescaler = 5;
     actual_cycles = 0xffff * 1024;
   }
   // Set prescaler

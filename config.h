@@ -40,29 +40,32 @@
 #define STEPPERS_DISABLE_PORT   PORTB
 #define STEPPERS_DISABLE_BIT    0  // Uno Digital Pin 8
 
-#define LIMIT_DDR     DDRB
-#define LIMIT_PIN     PINB
-#define X_LIMIT_BIT   1  // Uno Digital Pin 9
-#define Y_LIMIT_BIT   2  // Uno Digital Pin 10
-#define Z_LIMIT_BIT   3  // Uno Digital Pin 11
+#define LIMIT_DDR       DDRB
+#define LIMIT_PIN       PINB
+#define X_LIMIT_BIT     1  // Uno Digital Pin 9
+#define Y_LIMIT_BIT     2  // Uno Digital Pin 10
+#define Z_LIMIT_BIT     3  // Uno Digital Pin 11
+// #define LIMIT_INT       PCIE0  // Pin change interrupt settings
+// #define LIMIT_INT_vect  PCINT0_vect
+// #define LIMIT_PCMSK     PCMSK0
 
-#define SPINDLE_ENABLE_DDR DDRB
-#define SPINDLE_ENABLE_PORT PORTB
-#define SPINDLE_ENABLE_BIT 4  // Uno Digital Pin 12
+#define SPINDLE_ENABLE_DDR   DDRB
+#define SPINDLE_ENABLE_PORT  PORTB
+#define SPINDLE_ENABLE_BIT   4  // Uno Digital Pin 12
 
-#define SPINDLE_DIRECTION_DDR DDRB
-#define SPINDLE_DIRECTION_PORT PORTB
-#define SPINDLE_DIRECTION_BIT 5  // Uno Digital Pin 13
+#define SPINDLE_DIRECTION_DDR   DDRB
+#define SPINDLE_DIRECTION_PORT  PORTB
+#define SPINDLE_DIRECTION_BIT   5  // Uno Digital Pin 13
 
 #define COOLANT_FLOOD_DDR   DDRC
-#define COOLANT_FLOOD_PORT   PORTC
-#define COOLANT_FLOOD_BIT  0  // Uno Analog Pin 0
+#define COOLANT_FLOOD_PORT  PORTC
+#define COOLANT_FLOOD_BIT   0  // Uno Analog Pin 0
 
 //   #define ENABLE_M7  // Mist coolant disabled by default. Uncomment to enable.
 #ifdef ENABLE_M7
   #define COOLANT_MIST_DDR   DDRC
-  #define COOLANT_MIST_PORT   PORTC
-  #define COOLANT_MIST_BIT  1 // Uno Analog Pin 1
+  #define COOLANT_MIST_PORT  PORTC
+  #define COOLANT_MIST_BIT   1 // Uno Analog Pin 1
 #endif  
 
 // Define runtime command special characters. These characters are 'picked-off' directly from the
@@ -86,7 +89,7 @@
 // entering g-code into grbl, i.e. locating part zero or simple manual machining. If the axes drift,
 // grbl has no way to know this has happened, since stepper motors are open-loop control. Depending
 // on the machine, this parameter may need to be larger or smaller than the default time.
-// NOTE: If the define commented, the delay will not be compiled.
+// NOTE: If the define commented, the stepper lock will be disabled upon compiling.
 #define STEPPER_IDLE_LOCK_TIME 25 // (milliseconds) - Integer > 0
 
 // The temporal resolution of the acceleration management subsystem. Higher number give smoother
@@ -150,14 +153,15 @@
 // of your successes or difficulties, as we will monitor this and possibly integrate this as a 
 // standard feature for future releases. However, we suggest to first try our direction delay
 // hack/solution posted in the Wiki involving inverting the stepper pin mask.
-// NOTE: Uncomment to enable. The recommended delay should be > 3us but not exceed a total
-// time of 127us when added with the Grbl settings pulse microsecond.
+// NOTE: Uncomment to enable. The recommended delay should be > 3us and the total step pulse
+// time, which includes the Grbl settings pulse microseconds, should not exceed 127us.
 // #define STEP_PULSE_DELAY 5 // Step pulse delay in microseconds. Default disabled.
 
 // ---------------------------------------------------------------------------------------
 
 // TODO: The following options are set as compile-time options for now, until the next EEPROM 
-// settings version has solidified. 
+// settings version has solidified. This is to prevent having to support dozens of different
+// incremental settings versions.
 #define CYCLE_AUTO_START 1    // Cycle auto-start boolean flag for the planner.
 #define BLOCK_DELETE_ENABLE 0 // Block delete enable/disable flag during g-code parsing
 #define REPORT_INCH_MODE 0    // Status reporting unit mode (1 = inch, 0 = mm)
@@ -170,11 +174,8 @@
 #endif
 
 //  Limit step rate for homing
-#define LIMIT_STEP_RATE 1  	// (mm/min)
-
-// Debounce delay is the time delay the controller waits for a "good" signal from the limit switch.
-// A delay of 3ms to 5ms is a good starting value.
-#define LIMIT_DEBOUNCE_DELAY 5 // (milliseconds)
-
+#define LIMIT_DEBOUNCE 50  // Limit switch debounce delay (in ms)
+// #define LIMIT_INVERT_MASK 0 //
+// #define LIMIT_NORMAL_HIGH 1 // Normal low 0 or normal high 1
 
 #endif
