@@ -38,7 +38,7 @@
 
 // Useful macros
 #define clear_vector(a) memset(a, 0, sizeof(a))
-#define clear_vector_double(a) memset(a, 0.0, sizeof(a))
+#define clear_vector_float(a) memset(a, 0.0, sizeof(a))
 #define max(a,b) (((a) > (b)) ? (a) : (b))
 #define min(a,b) (((a) < (b)) ? (a) : (b))
 
@@ -74,10 +74,10 @@ typedef struct {
                                  // NOTE: This may need to be a volatile variable, if problems arise. 
 
   uint8_t coord_select;          // Active work coordinate system number. Default: 0=G54.
-  double coord_system[N_COORDINATE_SYSTEM][3]; // Work coordinate systems (G54+). Stores offset from
+  float coord_system[N_COORDINATE_SYSTEM][3]; // Work coordinate systems (G54+). Stores offset from
   															 // absolute machine position in mm.
                                  // Rows: Work system number (0=G54,1=G55,...5=G59), Columns: XYZ Offsets
-  double coord_offset[3];        // Retains the G92 coordinate offset (work coordinates) relative to
+  float coord_offset[3];        // Retains the G92 coordinate offset (work coordinates) relative to
                                  // machine zero in mm.
                           
   volatile uint8_t cycle_start;  // Cycle start flag. Set by stepper subsystem or main program. 
@@ -86,9 +86,9 @@ typedef struct {
 extern system_t sys;
 
 // Read a floating point value from a string. Line points to the input buffer, char_counter 
-// is the indexer pointing to the current character of the line, while double_ptr is 
+// is the indexer pointing to the current character of the line, while float_ptr is 
 // a pointer to the result variable. Returns true when it succeeds
-int read_double(char *line, uint8_t *char_counter, double *double_ptr);
+int read_float(char *line, uint8_t *char_counter, float *float_ptr);
 
 // Delays variable-defined milliseconds. Compiler compatibility fix for _delay_ms().
 void delay_ms(uint16_t ms);

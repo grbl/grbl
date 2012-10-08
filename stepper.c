@@ -304,8 +304,10 @@ ISR(TIMER1_COMPA_vect)
 
 // This interrupt is set up by ISR_TIMER1_COMPAREA when it sets the motor port bits. It resets
 // the motor port after a short period (settings.pulse_microseconds) completing one step cycle.
-// TODO: It is possible for the serial interrupts to delay this interrupt by a few microseconds, if
-// they execute right before this interrupt. Not a big deal, but could use some TLC at some point.
+// NOTE: Interrupt collisions between the serial and stepper interrupts can cause delays by
+// a few microseconds, if they execute right before one another. Not a big deal, but can
+// cause issues at high step rates if another high frequency asynchronous interrupt is 
+// added to Grbl.
 ISR(TIMER2_OVF_vect)
 {
   // Reset stepping pins (leave the direction pins)
@@ -355,12 +357,11 @@ void st_init()
   // Configure Timer 2
   TCCR2A = 0; // Normal operation
   TCCR2B = 0; // Disable timer until needed.
-  TIMSK2 |= (1<<TOIE2);      
-  
+  TIMSK2 |= (1<<TOIE2); // Enable Timer2 Overflow interrupt     
   #ifdef STEP_PULSE_DELAY
     TIMSK2 |= (1<<OCIE2A); // Enable Timer2 Compare Match A interrupt
   #endif
-  
+
   // Start in the idle state
   st_go_idle();
 }
@@ -452,5 +453,3 @@ void st_cycle_reinitialize()
   }
   sys.feed_hold = false; // Release feed hold. Cycle is ready to re-start.
 }
-
-

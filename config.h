@@ -42,6 +42,7 @@
 
 #define LIMIT_DDR       DDRB
 #define LIMIT_PIN       PINB
+#define LIMIT_PORT      PORTB
 #define X_LIMIT_BIT     1  // Uno Digital Pin 9
 #define Y_LIMIT_BIT     2  // Uno Digital Pin 10
 #define Z_LIMIT_BIT     3  // Uno Digital Pin 11
@@ -175,7 +176,5 @@
 
 //  Limit step rate for homing
 #define LIMIT_DEBOUNCE 50  // Limit switch debounce delay (in ms)
-// #define LIMIT_INVERT_MASK 0 //
-// #define LIMIT_NORMAL_HIGH 1 // Normal low 0 or normal high 1
 
 #endif

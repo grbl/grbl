@@ -33,13 +33,13 @@ settings_t settings;
 
 // Version 1 outdated settings record
 typedef struct {
-  double steps_per_mm[3];
+  float steps_per_mm[3];
   uint8_t microsteps;
   uint8_t pulse_microseconds;
-  double default_feed_rate;
-  double default_seek_rate;
+  float default_feed_rate;
+  float default_seek_rate;
   uint8_t invert_mask;
-  double mm_per_arc_segment;
+  float mm_per_arc_segment;
 } settings_v1_t;
 
 // Default settings (used when resetting eeprom-settings)
@@ -89,20 +89,20 @@ void settings_dump() {
 // Parameter lines are on the form '$4=374.3' or '$' to dump current settings
 uint8_t settings_execute_line(char *line) {
   uint8_t char_counter = 1;
-  double parameter, value;
+  float parameter, value;
   if(line[0] != '$') { 
     return(STATUS_UNSUPPORTED_STATEMENT); 
   }
   if(line[char_counter] == 0) { 
     settings_dump(); return(STATUS_OK); 
   }
-  if(!read_double(line, &char_counter, &parameter)) {
+  if(!read_float(line, &char_counter, &parameter)) {
     return(STATUS_BAD_NUMBER_FORMAT);
   };
   if(line[char_counter++] != '=') { 
     return(STATUS_UNSUPPORTED_STATEMENT); 
   }
-  if(!read_double(line, &char_counter, &value)) {
+  if(!read_float(line, &char_counter, &value)) {
     return(STATUS_BAD_NUMBER_FORMAT);
   }
   if(line[char_counter] != 0) { 
@@ -158,7 +158,7 @@ int read_settings() {
 }
 
 // A helper method to set settings from command line
-void settings_store_setting(int parameter, double value) {
+void settings_store_setting(int parameter, float value) {
   switch(parameter) {
     case 0: case 1: case 2:
     if (value <= 0.0) {

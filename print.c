@@ -105,7 +105,7 @@ void printInteger(long n)
   print_uint32_base10(n);
 }
 
-void printFloat(double n)
+void printFloat(float n)
 {
   if (n < 0) {
     serial_write('-');

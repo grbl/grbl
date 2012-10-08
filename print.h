@@ -33,6 +33,6 @@ void printInteger(long n);
 
 void print_uint8_base2(uint8_t n);
 
-void printFloat(double n);
+void printFloat(float n);
 
 #endif

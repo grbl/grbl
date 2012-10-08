@@ -46,8 +46,8 @@ typedef struct {
   int32_t position[3];             // The planner position of the tool in absolute steps. Kept separate
                                    // from g-code position for movements requiring multiple line motions,
                                    // i.e. arcs, canned cycles, and backlash compensation.
-  double previous_unit_vec[3];     // Unit vector of previous path line segment
-  double previous_nominal_speed;   // Nominal speed of previous path line segment
+  float previous_unit_vec[3];     // Unit vector of previous path line segment
+  float previous_nominal_speed;   // Nominal speed of previous path line segment
 } planner_t;
 static planner_t pl;
 
@@ -72,7 +72,7 @@ static uint8_t prev_block_index(uint8_t block_index)
 
 // Calculates the distance (not time) it takes to accelerate from initial_rate to target_rate using the 
 // given acceleration:
-static double estimate_acceleration_distance(double initial_rate, double target_rate, double acceleration) 
+static float estimate_acceleration_distance(float initial_rate, float target_rate, float acceleration) 
 {
   return( (target_rate*target_rate-initial_rate*initial_rate)/(2*acceleration) );
 }
@@ -91,7 +91,7 @@ static double estimate_acceleration_distance(double initial_rate, double target_
 // you started at speed initial_rate and accelerated until this point and want to end at the final_rate after
 // a total travel of distance. This can be used to compute the intersection point between acceleration and
 // deceleration in the cases where the trapezoid has no plateau (i.e. never reaches maximum speed)
-static double intersection_distance(double initial_rate, double final_rate, double acceleration, double distance) 
+static float intersection_distance(float initial_rate, float final_rate, float acceleration, float distance) 
 {
   return( (2*acceleration*distance-initial_rate*initial_rate+final_rate*final_rate)/(4*acceleration) );
 }
@@ -102,7 +102,7 @@ static double intersection_distance(double initial_rate, double final_rate, doub
 // NOTE: sqrt() reimplimented here from prior version due to improved planner logic. Increases speed
 // in time critical computations, i.e. arcs or rapid short lines from curves. Guaranteed to not exceed
 // BLOCK_BUFFER_SIZE calls per planner cycle.
-static double max_allowable_speed(double acceleration, double target_velocity, double distance) 
+static float max_allowable_speed(float acceleration, float target_velocity, float distance) 
 {
   return( sqrt(target_velocity*target_velocity-2*acceleration*distance) );
 }
@@ -162,7 +162,7 @@ static void planner_forward_pass_kernel(block_t *previous, block_t *current, blo
   // If nominal length is true, max junction speed is guaranteed to be reached. No need to recheck.  
   if (!previous->nominal_length_flag) {
     if (previous->entry_speed < current->entry_speed) {
-      double entry_speed = min( current->entry_speed,
+      float entry_speed = min( current->entry_speed,
         max_allowable_speed(-settings.acceleration,previous->entry_speed,previous->millimeters) );
 
       // Check for junction speed change
@@ -205,7 +205,7 @@ static void planner_forward_pass()
 // The factors represent a factor of braking and must be in the range 0.0-1.0.
 // This converts the planner parameters to the data required by the stepper controller.
 // NOTE: Final rates must be computed in terms of their respective blocks.
-static void calculate_trapezoid_for_block(block_t *block, double entry_factor, double exit_factor) 
+static void calculate_trapezoid_for_block(block_t *block, float entry_factor, float exit_factor) 
 {  
   block->initial_rate = ceil(block->nominal_rate*entry_factor); // (step/min)
   block->final_rate = ceil(block->nominal_rate*exit_factor); // (step/min)
@@ -347,7 +347,7 @@ void plan_synchronize()
 // All position data passed to the planner must be in terms of machine position to keep the planner 
 // independent of any coordinate system changes and offsets, which are handled by the g-code parser.
 // NOTE: Assumes buffer is available. Buffer checks are handled at a higher level by motion_control.
-void plan_buffer_line(double x, double y, double z, double feed_rate, uint8_t invert_feed_rate) 
+void plan_buffer_line(float x, float y, float z, float feed_rate, uint8_t invert_feed_rate) 
 {
   // Prepare to set up new block
   block_t *block = &block_buffer[block_buffer_head];
@@ -374,17 +374,17 @@ void plan_buffer_line(double x, double y, double z, double feed_rate, uint8_t in
   if (block->step_event_count == 0) { return; };
   
   // Compute path vector in terms of absolute step target and current positions
-  double delta_mm[3];
+  float delta_mm[3];
   delta_mm[X_AXIS] = (target[X_AXIS]-pl.position[X_AXIS])/settings.steps_per_mm[X_AXIS];
   delta_mm[Y_AXIS] = (target[Y_AXIS]-pl.position[Y_AXIS])/settings.steps_per_mm[Y_AXIS];
   delta_mm[Z_AXIS] = (target[Z_AXIS]-pl.position[Z_AXIS])/settings.steps_per_mm[Z_AXIS];
   block->millimeters = sqrt(delta_mm[X_AXIS]*delta_mm[X_AXIS] + delta_mm[Y_AXIS]*delta_mm[Y_AXIS] + 
                             delta_mm[Z_AXIS]*delta_mm[Z_AXIS]);
-  double inverse_millimeters = 1.0/block->millimeters;  // Inverse millimeters to remove multiple divides	
+  float inverse_millimeters = 1.0/block->millimeters;  // Inverse millimeters to remove multiple divides	
   
   // Calculate speed in mm/minute for each axis. No divide by zero due to previous checks.
   // NOTE: Minimum stepper speed is limited by MINIMUM_STEPS_PER_MINUTE in stepper.c
-  double inverse_minute;
+  float inverse_minute;
   if (!invert_feed_rate) {
     inverse_minute = feed_rate * inverse_millimeters;
   } else {
@@ -404,7 +404,7 @@ void plan_buffer_line(double x, double y, double z, double feed_rate, uint8_t in
         settings.acceleration / (60 * ACCELERATION_TICKS_PER_SECOND )); // (step/min/acceleration_tick)
 
   // Compute path unit vector                            
-  double unit_vec[3];
+  float unit_vec[3];
 
   unit_vec[X_AXIS] = delta_mm[X_AXIS]*inverse_millimeters;
   unit_vec[Y_AXIS] = delta_mm[Y_AXIS]*inverse_millimeters;
@@ -419,13 +419,13 @@ void plan_buffer_line(double x, double y, double z, double feed_rate, uint8_t in
   // path width or max_jerk in the previous grbl version. This approach does not actually deviate 
   // from path, but used as a robust way to compute cornering speeds, as it takes into account the
   // nonlinearities of both the junction angle and junction velocity.
-  double vmax_junction = MINIMUM_PLANNER_SPEED; // Set default max junction speed
+  float vmax_junction = MINIMUM_PLANNER_SPEED; // Set default max junction speed
 
   // Skip first block or when previous_nominal_speed is used as a flag for homing and offset cycles.
   if ((block_buffer_head != block_buffer_tail) && (pl.previous_nominal_speed > 0.0)) {
     // Compute cosine of angle between previous and current path. (prev_unit_vec is negative)
     // NOTE: Max junction velocity is computed without sin() or acos() by trig half angle identity.
-    double cos_theta = - pl.previous_unit_vec[X_AXIS] * unit_vec[X_AXIS] 
+    float cos_theta = - pl.previous_unit_vec[X_AXIS] * unit_vec[X_AXIS] 
                        - pl.previous_unit_vec[Y_AXIS] * unit_vec[Y_AXIS] 
                        - pl.previous_unit_vec[Z_AXIS] * unit_vec[Z_AXIS] ;
                          
@@ -435,7 +435,7 @@ void plan_buffer_line(double x, double y, double z, double feed_rate, uint8_t in
       // Skip and avoid divide by zero for straight junctions at 180 degrees. Limit to min() of nominal speeds.
       if (cos_theta > -0.95) {
         // Compute maximum junction velocity based on maximum acceleration and junction deviation
-        double sin_theta_d2 = sqrt(0.5*(1.0-cos_theta)); // Trig half angle identity. Always positive.
+        float sin_theta_d2 = sqrt(0.5*(1.0-cos_theta)); // Trig half angle identity. Always positive.
         vmax_junction = min(vmax_junction,
           sqrt(settings.acceleration * settings.junction_deviation * sin_theta_d2/(1.0-sin_theta_d2)) );
       }
@@ -444,7 +444,7 @@ void plan_buffer_line(double x, double y, double z, double feed_rate, uint8_t in
   block->max_entry_speed = vmax_junction;
   
   // Initialize block entry speed. Compute based on deceleration to user-defined MINIMUM_PLANNER_SPEED.
-  double v_allowable = max_allowable_speed(-settings.acceleration,MINIMUM_PLANNER_SPEED,block->millimeters);
+  float v_allowable = max_allowable_speed(-settings.acceleration,MINIMUM_PLANNER_SPEED,block->millimeters);
   block->entry_speed = min(vmax_junction, v_allowable);
 
   // Initialize planner efficiency flags

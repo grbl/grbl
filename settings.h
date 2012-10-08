@@ -33,15 +33,15 @@
 
 // Current global settings (persisted in EEPROM from byte 1 onwards)
 typedef struct {
-  double steps_per_mm[3];
+  float steps_per_mm[3];
   uint8_t microsteps;
   uint8_t pulse_microseconds;
-  double default_feed_rate;
-  double default_seek_rate;
+  float default_feed_rate;
+  float default_seek_rate;
   uint8_t invert_mask;
-  double mm_per_arc_segment;
-  double acceleration;
-  double junction_deviation;
+  float mm_per_arc_segment;
+  float acceleration;
+  float junction_deviation;
 } settings_t;
 extern settings_t settings;
 
@@ -55,6 +55,6 @@ void settings_dump();
 uint8_t settings_execute_line(char *line);
 
 // A helper method to set new settings from command line
-void settings_store_setting(int parameter, double value);
+void settings_store_setting(int parameter, float value);
 
 #endif

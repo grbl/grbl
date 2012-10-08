@@ -245,7 +245,7 @@ void protocol_process()
           // Enable comments flag and ignore all characters until ')' or EOL.
           iscomment = true;
         } else if (char_counter >= LINE_BUFFER_SIZE-1) {
-          // Throw away any characters beyond the end of the line buffer
+          // Throw away any characters beyond the end of the line buffer          
         } else if (c >= 'a' && c <= 'z') { // Upcase lowercase
           line[char_counter++] = c-'a'+'A';
         } else {

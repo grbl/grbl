@@ -45,7 +45,7 @@
 // However, this keeps the memory requirements lower since it doesn't have to call and hold two 
 // plan_buffer_lines in memory. Grbl only has to retain the original line input variables during a
 // backlash segment(s).
-void mc_line(double x, double y, double z, double feed_rate, uint8_t invert_feed_rate)
+void mc_line(float x, float y, float z, float feed_rate, uint8_t invert_feed_rate)
 {
   // TODO: Backlash compensation may be installed here. Only need direction info to track when
   // to insert a backlash line motion(s) before the intended line motion. Requires its own
@@ -80,23 +80,23 @@ void mc_line(double x, double y, double z, double feed_rate, uint8_t invert_feed
 // for vector transformation direction.
 // The arc is approximated by generating a huge number of tiny, linear segments. The length of each 
 // segment is configured in settings.mm_per_arc_segment.  
-void mc_arc(double *position, double *target, double *offset, uint8_t axis_0, uint8_t axis_1, 
-  uint8_t axis_linear, double feed_rate, uint8_t invert_feed_rate, double radius, uint8_t isclockwise)
+void mc_arc(float *position, float *target, float *offset, uint8_t axis_0, uint8_t axis_1, 
+  uint8_t axis_linear, float feed_rate, uint8_t invert_feed_rate, float radius, uint8_t isclockwise)
 {      
-  double center_axis0 = position[axis_0] + offset[axis_0];
-  double center_axis1 = position[axis_1] + offset[axis_1];
-  double linear_travel = target[axis_linear] - position[axis_linear];
-  double r_axis0 = -offset[axis_0];  // Radius vector from center to current location
-  double r_axis1 = -offset[axis_1];
-  double rt_axis0 = target[axis_0] - center_axis0;
-  double rt_axis1 = target[axis_1] - center_axis1;
+  float center_axis0 = position[axis_0] + offset[axis_0];
+  float center_axis1 = position[axis_1] + offset[axis_1];
+  float linear_travel = target[axis_linear] - position[axis_linear];
+  float r_axis0 = -offset[axis_0];  // Radius vector from center to current location
+  float r_axis1 = -offset[axis_1];
+  float rt_axis0 = target[axis_0] - center_axis0;
+  float rt_axis1 = target[axis_1] - center_axis1;
   
   // CCW angle between position and target from circle center. Only one atan2() trig computation required.
-  double angular_travel = atan2(r_axis0*rt_axis1-r_axis1*rt_axis0, r_axis0*rt_axis0+r_axis1*rt_axis1);
+  float angular_travel = atan2(r_axis0*rt_axis1-r_axis1*rt_axis0, r_axis0*rt_axis0+r_axis1*rt_axis1);
   if (angular_travel < 0) { angular_travel += 2*M_PI; }
   if (isclockwise) { angular_travel -= 2*M_PI; }
   
-  double millimeters_of_travel = hypot(angular_travel*radius, fabs(linear_travel));
+  float millimeters_of_travel = hypot(angular_travel*radius, fabs(linear_travel));
   if (millimeters_of_travel == 0.0) { return; }
   uint16_t segments = floor(millimeters_of_travel/settings.mm_per_arc_segment);
   // Multiply inverse feed_rate to compensate for the fact that this movement is approximated
@@ -104,8 +104,8 @@ void mc_arc(double *position, double *target, double *offset, uint8_t axis_0, ui
   // all segments.
   if (invert_feed_rate) { feed_rate *= segments; }
  
-  double theta_per_segment = angular_travel/segments;
-  double linear_per_segment = linear_travel/segments;
+  float theta_per_segment = angular_travel/segments;
+  float linear_per_segment = linear_travel/segments;
   
   /* Vector rotation by transformation matrix: r is the original vector, r_T is the rotated vector,
      and phi is the angle of rotation. Based on the solution approach by Jens Geisler.
@@ -133,13 +133,13 @@ void mc_arc(double *position, double *target, double *offset, uint8_t axis_0, ui
      This is important when there are successive arc motions. 
   */
   // Vector rotation matrix values
-  double cos_T = 1-0.5*theta_per_segment*theta_per_segment; // Small angle approximation
-  double sin_T = theta_per_segment;
+  float cos_T = 1-0.5*theta_per_segment*theta_per_segment; // Small angle approximation
+  float sin_T = theta_per_segment;
   
-  double arc_target[3];
-  double sin_Ti;
-  double cos_Ti;
-  double r_axisi;
+  float arc_target[3];
+  float sin_Ti;
+  float cos_Ti;
+  float r_axisi;
   uint16_t i;
   int8_t count = 0;
 
@@ -179,7 +179,7 @@ void mc_arc(double *position, double *target, double *offset, uint8_t axis_0, ui
 
 
 // Execute dwell in seconds.
-void mc_dwell(double seconds) 
+void mc_dwell(float seconds) 
 {
    uint16_t i = floor(1000/DWELL_TIME_STEP*seconds);
    plan_synchronize();
@@ -200,5 +200,5 @@ void mc_go_home()
   // Upon completion, reset all internal position vectors (g-code parser, planner, system)
   gc_clear_position();
   plan_clear_position();
-  clear_vector_double(sys.position);
+  clear_vector_float(sys.position);
 }

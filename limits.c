@@ -35,18 +35,19 @@
 
 void limits_init() 
 {
-  LIMIT_DDR &= ~(LIMIT_MASK);
+  LIMIT_DDR &= ~(LIMIT_MASK); // Input pin
+  LIMIT_PORT |= (LIMIT_MASK); // Enable internal pull-up resistors for normal high
 }
 
 // Moves all specified axes in same specified direction (positive=true, negative=false)
 // and at the homing rate. Homing is a special motion case, where there is only an 
 // acceleration followed by abrupt asynchronous stops by each axes reaching their limit 
-// switch independently. Instead of showhorning homing cycles into the main stepper 
+// switch independently. Instead of shoehorning homing cycles into the main stepper 
 // algorithm and overcomplicate things, a stripped-down, lite version of the stepper 
 // algorithm is written here. This also lets users hack and tune this code freely for
 // their own particular needs without affecting the rest of Grbl.
 // NOTE: Only the abort runtime command can interrupt this process.
-static void homing_cycle(bool x_axis, bool y_axis, bool z_axis, int8_t pos_dir, double homing_rate) 
+static void homing_cycle(bool x_axis, bool y_axis, bool z_axis, int8_t pos_dir, float homing_rate) 
 {
   // Determine governing axes with finest step resolution per distance for the Bresenham
   // algorithm. This solves the issue when homing multiple axes that have different 
@@ -67,7 +68,7 @@ static void homing_cycle(bool x_axis, bool y_axis, bool z_axis, int8_t pos_dir, 
   // used in the main planner to account for distance traveled when moving multiple axes.
   // NOTE: When axis acceleration independence is installed, this will be updated to move
   // all axes at their maximum acceleration and rate.
-  double ds = step_event_count/sqrt(x_axis+y_axis+z_axis);
+  float ds = step_event_count/sqrt(x_axis+y_axis+z_axis);
 
   // Compute the adjusted step rate change with each acceleration tick. (in step/min/acceleration_tick)
   uint32_t delta_rate = ceil( ds*settings.acceleration/(60*ACCELERATION_TICKS_PER_SECOND));
@@ -180,5 +181,5 @@ void limits_go_home()
     limit_switches_present & (1<<X_LIMIT_BIT), 
     limit_switches_present & (1<<Y_LIMIT_BIT),
     limit_switches_present & (1<<Z_LIMIT_BIT));
-  delay_ms(LIMIT_DEBOUNCE); // Delay to debounce signal before leaving limit switches    
+  delay_ms(LIMIT_DEBOUNCE); // Delay to debounce signal before exiting routine
 }
