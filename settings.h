@@ -3,7 +3,7 @@
   Part of Grbl
 
   Copyright (c) 2009-2011 Simen Svale Skogsrud
-  Copyright (c) 2011 Sungeun K. Jeon
+  Copyright (c) 2011-2012 Sungeun K. Jeon
   
   Grbl is free software: you can redistribute it and/or modify
   it under the terms of the GNU General Public License as published by
@@ -29,7 +29,11 @@
 
 // Version of the EEPROM data. Will be used to migrate existing data from older versions of Grbl
 // when firmware is upgraded. Always stored in byte 0 of eeprom
-#define SETTINGS_VERSION 4
+#define SETTINGS_VERSION 50
+
+// Define bit flag masks in settings.flag.
+#define FLAG_BIT_HOMING_ENABLE      bit(0)
+//#define FLAG_BIT_AUTO_START         bit(1)
 
 // Current global settings (persisted in EEPROM from byte 1 onwards)
 typedef struct {
@@ -42,6 +46,11 @@ typedef struct {
   float mm_per_arc_segment;
   float acceleration;
   float junction_deviation;
+  uint8_t flags;  // Contains default toggles
+  float homing_feed_rate;
+  float homing_seek_rate;
+  uint16_t homing_debounce_delay;
+  uint8_t stepper_idle_lock_time;
 } settings_t;
 extern settings_t settings;
 

@@ -57,6 +57,8 @@ static void status_message(int status_code)
       printPgmString(PSTR("Modal group violation\r\n")); break;
       case STATUS_INVALID_COMMAND:
       printPgmString(PSTR("Invalid command\r\n")); break;
+      case STATUS_SETTING_DISABLED:
+      printPgmString(PSTR("Grbl setting disabled\r\n")); break;
       default:
       printInteger(status_code);
       printPgmString(PSTR("\r\n"));

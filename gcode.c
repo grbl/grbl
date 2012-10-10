@@ -179,7 +179,13 @@ uint8_t gc_execute_line(char *line)
           case 19: select_plane(Y_AXIS, Z_AXIS, X_AXIS); break;
           case 20: gc.inches_mode = true; break;
           case 21: gc.inches_mode = false; break;
-          case 28: case 30: non_modal_action = NON_MODAL_GO_HOME; break;
+          case 28: case 30: 
+            if (bit_istrue(settings.flags,FLAG_BIT_HOMING_ENABLE)) {
+              non_modal_action = NON_MODAL_GO_HOME; 
+            } else {
+              FAIL(STATUS_SETTING_DISABLED);
+            }
+            break;
           case 53: absolute_override = true; break;
           case 54: case 55: case 56: case 57: case 58: case 59:
             int_value -= 54; // Compute coordinate system row index (0=G54,1=G55,...)

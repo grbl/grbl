@@ -112,9 +112,7 @@ void st_go_idle()
   TIMSK1 &= ~(1<<OCIE1A); 
   // Force stepper dwell to lock axes for a defined amount of time to ensure the axes come to a complete
   // stop and not drift from residual inertial forces at the end of the last movement.
-  #ifdef STEPPER_IDLE_LOCK_TIME
-    _delay_ms(STEPPER_IDLE_LOCK_TIME);   
-  #endif
+  delay_ms(settings.stepper_idle_lock_time);   
   // Disable steppers by setting stepper disable
   STEPPERS_DISABLE_PORT |= (1<<STEPPERS_DISABLE_BIT);
 }

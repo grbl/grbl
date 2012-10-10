@@ -28,6 +28,7 @@
 #define STATUS_FLOATING_POINT_ERROR 4
 #define STATUS_MODAL_GROUP_VIOLATION 5
 #define STATUS_INVALID_COMMAND 6
+#define STATUS_SETTING_DISABLED 7
 
 // Initialize the serial protocol
 void protocol_init();

@@ -3,7 +3,7 @@
   Part of Grbl
 
   Copyright (c) 2009-2011 Simen Svale Skogsrud
-  Copyright (c) 2011 Sungeun K. Jeon  
+  Copyright (c) 2011-2012 Sungeun K. Jeon  
 
   Grbl is free software: you can redistribute it and/or modify
   it under the terms of the GNU General Public License as published by
@@ -42,6 +42,19 @@ typedef struct {
   float mm_per_arc_segment;
 } settings_v1_t;
 
+// Version 2,3,4 outdated settings record
+typedef struct {
+  float steps_per_mm[3];
+  uint8_t microsteps;
+  uint8_t pulse_microseconds;
+  float default_feed_rate;
+  float default_seek_rate;
+  uint8_t invert_mask;
+  float mm_per_arc_segment;
+  float acceleration;
+  float junction_deviation;
+} settings_v2_v4_t;
+
 // Default settings (used when resetting eeprom-settings)
 #define MICROSTEPS 8
 #define DEFAULT_X_STEPS_PER_MM (94.488188976378*MICROSTEPS)
@@ -54,7 +67,15 @@ typedef struct {
 #define DEFAULT_ACCELERATION (DEFAULT_FEEDRATE*60*60/10.0) // mm/min^2
 #define DEFAULT_JUNCTION_DEVIATION 0.05 // mm
 #define DEFAULT_STEPPING_INVERT_MASK ((1<<X_STEP_BIT)|(1<<Y_STEP_BIT)|(1<<Z_STEP_BIT))
-// #define DEFAULT_AUTO_START 1 // Boolean
+
+// Developmental default settings
+#define DEFAULT_HOMING_ENABLE 0  // false
+#define DEFAULT_HOMING_RAPID_FEEDRATE 250.0 // mm/min
+#define DEFAULT_HOMING_FEEDRATE 50 // mm/min
+#define DEFAULT_HOMING_DEBOUNCE_DELAY 100 // msec (0-65k)
+#define DEFAULT_STEPPER_IDLE_LOCK_TIME 25 // msec (0-255)
+// #define DEFAULT_AUTO_START 1 // true
+// #define DEFAULT_BLOCK_DELETE 0  // false
 
 void settings_reset() {
   settings.steps_per_mm[X_AXIS] = DEFAULT_X_STEPS_PER_MM;
@@ -81,8 +102,12 @@ void settings_dump() {
   printPgmString(PSTR(" (step port invert mask. binary = ")); print_uint8_base2(settings.invert_mask);  
   printPgmString(PSTR(")\r\n$8 = ")); printFloat(settings.acceleration/(60*60)); // Convert from mm/min^2 for human readability
   printPgmString(PSTR(" (acceleration in mm/sec^2)\r\n$9 = ")); printFloat(settings.junction_deviation);
-  printPgmString(PSTR(" (cornering junction deviation in mm)"));//\r\n$10 = ")); // printInteger(settings.auto_start);
-//   printPgmString(PSTR(" (auto-start boolean)"));
+  printPgmString(PSTR(" (cornering junction deviation in mm)\r\n$10 = ")); printInteger(bit_istrue(settings.flags,FLAG_BIT_HOMING_ENABLE));
+  printPgmString(PSTR(" (boolean homing enable)\r\n$11 = ")); printFloat(settings.homing_feed_rate);
+  printPgmString(PSTR(" (mm/min homing feed rate)\r\n$12 = ")); printFloat(settings.homing_seek_rate);
+  printPgmString(PSTR(" (mm/min homing seek rate)\r\n$13 = ")); printInteger(settings.homing_debounce_delay);
+  printPgmString(PSTR(" (milliseconds homing debounce delay)\r\n$14 = ")); printInteger(settings.stepper_idle_lock_time);
+  printPgmString(PSTR(" (milliseconds stepper idle lock time)\r\n")); 
   printPgmString(PSTR("\r\n'$x=value' to set parameter or just '$' to dump current settings\r\n"));
 }
 
@@ -126,33 +151,60 @@ int read_settings() {
     if (!(memcpy_from_eeprom_with_checksum((char*)&settings, 1, sizeof(settings_t)))) {
       return(false);
     }
-  } else if (version == 1) {
-    // Migrate from settings version 1
-    if (!(memcpy_from_eeprom_with_checksum((char*)&settings, 1, sizeof(settings_v1_t)))) {
+  } else {
+    // Incrementally update the old versions until up-to-date.
+    if (version == 1) {
+      // Migrate from settings version 1 to version 4.
+      if (!(memcpy_from_eeprom_with_checksum((char*)&settings, 1, sizeof(settings_v1_t)))) {
+        return(false);
+      }
+      settings.acceleration = DEFAULT_ACCELERATION;
+      settings.junction_deviation = DEFAULT_JUNCTION_DEVIATION;
+    } else if ((version == 2) || (version == 3)) {
+      // Migrate from settings version 2 and 3 to version 4.
+      if (!(memcpy_from_eeprom_with_checksum((char*)&settings, 1, sizeof(settings_v2_v4_t)))) {
+        return(false);
+      }
+      if (version == 2) { settings.junction_deviation = DEFAULT_JUNCTION_DEVIATION; }    
+      settings.acceleration *= 3600; // Convert to mm/min^2 from mm/sec^2
+    } 
+    if (version <= 4) {
+      // Migrate from settings version 4 to current version.
+      if (!(memcpy_from_eeprom_with_checksum((char*)&settings, 1, sizeof(settings_v2_v4_t)))) {
+        return(false);
+      }
+      
+      settings.flags = 0;
+      // if (DEFAULT_AUTO_START) { settings.flags |= FLAG_BIT_AUTO_START; }
+      if (DEFAULT_HOMING_ENABLE) { settings.flags |= FLAG_BIT_HOMING_ENABLE; }  
+      settings.homing_feed_rate = DEFAULT_HOMING_FEEDRATE;
+      settings.homing_seek_rate = DEFAULT_HOMING_RAPID_FEEDRATE;
+      settings.homing_debounce_delay = DEFAULT_HOMING_DEBOUNCE_DELAY;
+      settings.stepper_idle_lock_time = DEFAULT_STEPPER_IDLE_LOCK_TIME;
+        
+      write_settings();
+      
+    } else if (version >= 50) {
+      // Developmental settings. Version numbers greater than or equal to 50 are temporary.
+      // Currently, this will update the user settings to v4 and the remainder of the settings
+      // should be re-written to the default value, if the developmental version number changed.
+      
+      // Grab settings regardless of error.
+      memcpy_from_eeprom_with_checksum((char*)&settings, 1, sizeof(settings_t));
+
+      settings.flags = 0;
+      // if (DEFAULT_AUTO_START) { settings.flags |= FLAG_BIT_AUTO_START; }
+      if (DEFAULT_HOMING_ENABLE) { settings.flags |= FLAG_BIT_HOMING_ENABLE; }  
+      settings.homing_feed_rate = DEFAULT_HOMING_FEEDRATE;
+      settings.homing_seek_rate = DEFAULT_HOMING_RAPID_FEEDRATE;
+      settings.homing_debounce_delay = DEFAULT_HOMING_DEBOUNCE_DELAY;
+      settings.stepper_idle_lock_time = DEFAULT_STEPPER_IDLE_LOCK_TIME;
+      
+      write_settings();
+      
+    } else {      
       return(false);
     }
-    settings.acceleration = DEFAULT_ACCELERATION;
-    settings.junction_deviation = DEFAULT_JUNCTION_DEVIATION;
-//     settings.auto_start = DEFAULT_AUTO_START;
-    write_settings();
-  } else if ((version == 2) || (version == 3)) {
-    // Migrate from settings version 2 and 3
-    if (!(memcpy_from_eeprom_with_checksum((char*)&settings, 1, sizeof(settings_t)))) {
-      return(false);
-    }
-    if (version == 2) { settings.junction_deviation = DEFAULT_JUNCTION_DEVIATION; }    
-    settings.acceleration *= 3600; // Convert to mm/min^2 from mm/sec^2
-//     settings.auto_start = DEFAULT_AUTO_START;
-    write_settings();
-//   } else if (version == 4) {
-//     // Migrate from settings version 4
-//     if (!(memcpy_from_eeprom_with_checksum((char*)&settings, 1, sizeof(settings_t)))) {
-//       return(false);
-//     }
-//     settings.auto_start = DEFAULT_AUTO_START;
-//     write_settings();
-  } else {      
-    return(false);
   }
   return(true);
 }
@@ -178,7 +230,16 @@ void settings_store_setting(int parameter, float value) {
     case 7: settings.invert_mask = trunc(value); break;
     case 8: settings.acceleration = value*60*60; break; // Convert to mm/min^2 for grbl internal use.
     case 9: settings.junction_deviation = fabs(value); break;
-//     case 10: settings.auto_start = value; break;
+    case 10:
+      if (value) { 
+        settings.flags |= FLAG_BIT_HOMING_ENABLE; 
+        printPgmString(PSTR("Install all axes limit switches before use\r\n")); 
+      } else { settings.flags &= ~FLAG_BIT_HOMING_ENABLE; }
+      break;
+    case 11: settings.homing_feed_rate = value; break;
+    case 12: settings.homing_seek_rate = value; break;
+    case 13: settings.homing_debounce_delay = round(value); break;
+    case 14: settings.stepper_idle_lock_time = round(value); break;
     default: 
       printPgmString(PSTR("Unknown parameter\r\n"));
       return;
