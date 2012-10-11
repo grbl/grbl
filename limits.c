@@ -80,9 +80,8 @@ static void homing_cycle(bool x_axis, bool y_axis, bool z_axis, int8_t pos_dir,
   uint32_t dt_min = lround(1000000*60/(ds*homing_rate)); // Cruising (usec/step)
   uint32_t dt = 1000000*60/MINIMUM_STEPS_PER_MINUTE; // Initial (usec/step)
       
-  // Determine default out_bits set. Direction fixed and step pin inverted
-  uint8_t out_bits0 = DIRECTION_MASK; 
-  out_bits0 ^= settings.invert_mask;  // Apply the global step and direction invert mask
+  // Set default out_bits. 
+  uint8_t out_bits0 = settings.invert_mask;
   if (!pos_dir) { out_bits0 ^= DIRECTION_MASK; }   // Invert bits, if negative dir.
   
   // Initialize stepping variables

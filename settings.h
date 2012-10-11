@@ -29,11 +29,12 @@
 
 // Version of the EEPROM data. Will be used to migrate existing data from older versions of Grbl
 // when firmware is upgraded. Always stored in byte 0 of eeprom
-#define SETTINGS_VERSION 50
+#define SETTINGS_VERSION 51
 
 // Define bit flag masks in settings.flag.
 #define FLAG_BIT_HOMING_ENABLE      bit(0)
 //#define FLAG_BIT_AUTO_START         bit(1)
+//#define FLAG_BIT_INCHES_MODE            bit(2)
 
 // Current global settings (persisted in EEPROM from byte 1 onwards)
 typedef struct {

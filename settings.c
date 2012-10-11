@@ -75,19 +75,32 @@ typedef struct {
 #define DEFAULT_HOMING_DEBOUNCE_DELAY 100 // msec (0-65k)
 #define DEFAULT_STEPPER_IDLE_LOCK_TIME 25 // msec (0-255)
 // #define DEFAULT_AUTO_START 1 // true
+// #define DEFAULT_INCHES_MODE 1 // true
 // #define DEFAULT_BLOCK_DELETE 0  // false
 
-void settings_reset() {
-  settings.steps_per_mm[X_AXIS] = DEFAULT_X_STEPS_PER_MM;
-  settings.steps_per_mm[Y_AXIS] = DEFAULT_Y_STEPS_PER_MM;
-  settings.steps_per_mm[Z_AXIS] = DEFAULT_Z_STEPS_PER_MM;
-  settings.pulse_microseconds = DEFAULT_STEP_PULSE_MICROSECONDS;
-  settings.default_feed_rate = DEFAULT_FEEDRATE;
-  settings.default_seek_rate = DEFAULT_RAPID_FEEDRATE;
-  settings.acceleration = DEFAULT_ACCELERATION;
-  settings.mm_per_arc_segment = DEFAULT_MM_PER_ARC_SEGMENT;
-  settings.invert_mask = DEFAULT_STEPPING_INVERT_MASK;
-  settings.junction_deviation = DEFAULT_JUNCTION_DEVIATION;
+void settings_reset(bool reset_all) {
+  // Reset all settings or only the migration settings to the new version.
+  if (reset_all) {
+    settings.steps_per_mm[X_AXIS] = DEFAULT_X_STEPS_PER_MM;
+    settings.steps_per_mm[Y_AXIS] = DEFAULT_Y_STEPS_PER_MM;
+    settings.steps_per_mm[Z_AXIS] = DEFAULT_Z_STEPS_PER_MM;
+    settings.pulse_microseconds = DEFAULT_STEP_PULSE_MICROSECONDS;
+    settings.default_feed_rate = DEFAULT_FEEDRATE;
+    settings.default_seek_rate = DEFAULT_RAPID_FEEDRATE;
+    settings.acceleration = DEFAULT_ACCELERATION;
+    settings.mm_per_arc_segment = DEFAULT_MM_PER_ARC_SEGMENT;
+    settings.invert_mask = DEFAULT_STEPPING_INVERT_MASK;
+    settings.junction_deviation = DEFAULT_JUNCTION_DEVIATION;
+  }
+  // New settings since last version
+  settings.flags = 0;
+  // if (DEFAULT_AUTO_START) { settings.flags |= FLAG_BIT_AUTO_START; }
+  // if (DEFAULT_INCHES_MODE) { settings.flags |= FLAG_BIT_INCHES_MODE; }
+  if (DEFAULT_HOMING_ENABLE) { settings.flags |= FLAG_BIT_HOMING_ENABLE; }  
+  settings.homing_feed_rate = DEFAULT_HOMING_FEEDRATE;
+  settings.homing_seek_rate = DEFAULT_HOMING_RAPID_FEEDRATE;
+  settings.homing_debounce_delay = DEFAULT_HOMING_DEBOUNCE_DELAY;
+  settings.stepper_idle_lock_time = DEFAULT_STEPPER_IDLE_LOCK_TIME;
 }
 
 void settings_dump() {
@@ -107,7 +120,7 @@ void settings_dump() {
   printPgmString(PSTR(" (mm/min homing feed rate)\r\n$12 = ")); printFloat(settings.homing_seek_rate);
   printPgmString(PSTR(" (mm/min homing seek rate)\r\n$13 = ")); printInteger(settings.homing_debounce_delay);
   printPgmString(PSTR(" (milliseconds homing debounce delay)\r\n$14 = ")); printInteger(settings.stepper_idle_lock_time);
-  printPgmString(PSTR(" (milliseconds stepper idle lock time)\r\n")); 
+  printPgmString(PSTR(" (milliseconds stepper idle lock time)")); 
   printPgmString(PSTR("\r\n'$x=value' to set parameter or just '$' to dump current settings\r\n"));
 }
 
@@ -172,18 +185,9 @@ int read_settings() {
       // Migrate from settings version 4 to current version.
       if (!(memcpy_from_eeprom_with_checksum((char*)&settings, 1, sizeof(settings_v2_v4_t)))) {
         return(false);
-      }
-      
-      settings.flags = 0;
-      // if (DEFAULT_AUTO_START) { settings.flags |= FLAG_BIT_AUTO_START; }
-      if (DEFAULT_HOMING_ENABLE) { settings.flags |= FLAG_BIT_HOMING_ENABLE; }  
-      settings.homing_feed_rate = DEFAULT_HOMING_FEEDRATE;
-      settings.homing_seek_rate = DEFAULT_HOMING_RAPID_FEEDRATE;
-      settings.homing_debounce_delay = DEFAULT_HOMING_DEBOUNCE_DELAY;
-      settings.stepper_idle_lock_time = DEFAULT_STEPPER_IDLE_LOCK_TIME;
-        
+      }     
+      settings_reset(false);        
       write_settings();
-      
     } else if (version >= 50) {
       // Developmental settings. Version numbers greater than or equal to 50 are temporary.
       // Currently, this will update the user settings to v4 and the remainder of the settings
@@ -191,17 +195,8 @@ int read_settings() {
       
       // Grab settings regardless of error.
       memcpy_from_eeprom_with_checksum((char*)&settings, 1, sizeof(settings_t));
-
-      settings.flags = 0;
-      // if (DEFAULT_AUTO_START) { settings.flags |= FLAG_BIT_AUTO_START; }
-      if (DEFAULT_HOMING_ENABLE) { settings.flags |= FLAG_BIT_HOMING_ENABLE; }  
-      settings.homing_feed_rate = DEFAULT_HOMING_FEEDRATE;
-      settings.homing_seek_rate = DEFAULT_HOMING_RAPID_FEEDRATE;
-      settings.homing_debounce_delay = DEFAULT_HOMING_DEBOUNCE_DELAY;
-      settings.stepper_idle_lock_time = DEFAULT_STEPPER_IDLE_LOCK_TIME;
-      
+      settings_reset(false);
       write_settings();
-      
     } else {      
       return(false);
     }
@@ -252,7 +247,7 @@ void settings_store_setting(int parameter, float value) {
 void settings_init() {
   if(!read_settings()) {
     printPgmString(PSTR("Warning: Failed to read EEPROM settings. Using defaults.\r\n"));
-    settings_reset();
+    settings_reset(true);
     write_settings();
     settings_dump();
   }
