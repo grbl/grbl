@@ -160,6 +160,9 @@ void limits_go_home()
 {
   plan_synchronize();  // Empty all motions in buffer.
   
+  // Enable steppers by resetting the stepper disable port
+  STEPPERS_DISABLE_PORT &= ~(1<<STEPPERS_DISABLE_BIT);
+  
   // Jog all axes toward home to engage their limit switches at faster homing seek rate.
   homing_cycle(false, false, true, true, false, settings.homing_seek_rate); // First jog the z axis
   homing_cycle(true, true, false, true, false, settings.homing_seek_rate);   // Then jog the x and y axis
@@ -179,4 +182,7 @@ void limits_go_home()
       delay_ms(settings.homing_debounce_delay);
     }
   }
+
+  // Disable steppers by setting stepper disable
+  STEPPERS_DISABLE_PORT |= (1<<STEPPERS_DISABLE_BIT);
 }

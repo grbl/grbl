@@ -79,7 +79,7 @@ void print_uint8_base2(uint8_t n)
 
 static void print_uint32_base10(unsigned long n)
 { 
-  unsigned char buf[32]; 
+  unsigned char buf[10]; 
   uint8_t i = 0;
   
   if (n == 0) {
@@ -105,7 +105,7 @@ void printInteger(long n)
   print_uint32_base10(n);
 }
 
-void printFloat(float n)
+void printFloat(double n)
 {
   if (n < 0) {
     serial_write('-');
