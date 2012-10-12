@@ -162,13 +162,6 @@
 #define CYCLE_AUTO_START 1    // Cycle auto-start boolean flag for the planner.
 #define BLOCK_DELETE_ENABLE 0 // Block delete enable/disable flag during g-code parsing
 #define REPORT_INCH_MODE 0    // Status reporting unit mode (1 = inch, 0 = mm)
-#if REPORT_INCH_MODE
-  #define DECIMAL_PLACES 3
-  #define DECIMAL_MULTIPLIER 1000 // 10^DECIMAL_PLACES
-#else
-  #define DECIMAL_PLACES 2  // mm-mode
-  #define DECIMAL_MULTIPLIER 100
-#endif
 
 // This parameter sets the delay time before disabling the steppers after the final block of movement.
 // A short delay ensures the steppers come to a complete stop and the residual inertial force in the 

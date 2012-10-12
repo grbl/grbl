@@ -121,7 +121,7 @@ void delay_ms(uint16_t ms)
 // Delays variable defined microseconds. Compiler compatibility fix for _delay_us(),
 // which only accepts constants in future compiler releases. Written to perform more 
 // efficiently with larger delays, as the counter adds parasitic time in each iteration.
-void delay_us(uint16_t us) 
+void delay_us(uint32_t us) 
 {
   while (us) {
     if (us < 10) { 

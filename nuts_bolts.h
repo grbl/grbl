@@ -94,6 +94,6 @@ int read_float(char *line, uint8_t *char_counter, float *float_ptr);
 void delay_ms(uint16_t ms);
 
 // Delays variable-defined microseconds. Compiler compatibility fix for _delay_us().
-void delay_us(uint16_t us);
+void delay_us(uint32_t us);
 
 #endif
