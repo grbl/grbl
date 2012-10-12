@@ -27,6 +27,7 @@
 #include <avr/pgmspace.h>
 #include "config.h"
 #include "serial.h"
+#include "settings.h"
 
 void printString(const char *s)
 {
@@ -88,12 +89,12 @@ static void print_uint32_base10(unsigned long n)
   } 
   
   while (n > 0) {
-    buf[i++] = n % 10;
+    buf[i++] = n % 10 + '0';
     n /= 10;
   }
-  
+    
   for (; i > 0; i--)
-    serial_write('0' + buf[i - 1]);
+    serial_write(buf[i-1]);
 }
 
 void printInteger(long n)
@@ -105,27 +106,43 @@ void printInteger(long n)
   print_uint32_base10(n);
 }
 
-void printFloat(double n)
+// Convert float to string by immediately converting to a long integer, which contains
+// more digits than a float. Number of decimal places, which are tracked by a counter,
+// may be set by the user. The integer is then efficiently converted to a string.
+void printFloat(float n)
 {
   if (n < 0) {
     serial_write('-');
     n = -n;
   }
-  n += 0.5/DECIMAL_MULTIPLIER; // Add rounding factor
- 
-  long integer_part;
-  integer_part = (int)n;
-  print_uint32_base10(integer_part);
-  
-  serial_write('.');
-  
-  n -= integer_part;
-  int decimals = DECIMAL_PLACES;  
-  uint8_t decimal_part;  
-  while(decimals-- > 0) {
-    n *= 10;
-    decimal_part = (int) n;
-    serial_write('0'+decimal_part);
-    n -= decimal_part;
+
+  uint8_t decimals = settings.decimal_places;
+  while (decimals >= 2) { // Quickly convert values expected to be E0 to E-4.
+    n *= 100;
+    decimals -= 2;
   }
+  if (decimals) { n *= 10; }
+  n += 0.5; // Add rounding factor. Ensures carryover through entire value.
+    
+  // Generate digits backwards and store in string.
+  unsigned char buf[10]; 
+  uint8_t i = 0;
+  uint32_t a = (long)n;  
+  buf[settings.decimal_places] = '.'; // Place decimal point, even if decimal places are zero.
+  while(a > 0) {
+    if (i == settings.decimal_places) { i++; } // Skip decimal point location
+    buf[i++] = (a % 10) + '0'; // Get digit
+    a /= 10;
+  }
+  while (i < settings.decimal_places) { 
+     buf[i++] = '0'; // Fill in zeros to decimal point for (n < 1)
+  }
+  if (i == settings.decimal_places) { // Fill in leading zero, if needed.
+    i++;
+    buf[i++] = '0'; 
+  }   
+  
+  // Print the generated string.
+  for (; i > 0; i--)
+    serial_write(buf[i-1]);
 }

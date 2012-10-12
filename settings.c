@@ -77,6 +77,7 @@ typedef struct {
 // #define DEFAULT_AUTO_START 1 // true
 // #define DEFAULT_INCHES_MODE 1 // true
 // #define DEFAULT_BLOCK_DELETE 0  // false
+#define DEFAULT_DECIMAL_PLACES 3
 
 void settings_reset(bool reset_all) {
   // Reset all settings or only the migration settings to the new version.
@@ -101,6 +102,7 @@ void settings_reset(bool reset_all) {
   settings.homing_seek_rate = DEFAULT_HOMING_RAPID_FEEDRATE;
   settings.homing_debounce_delay = DEFAULT_HOMING_DEBOUNCE_DELAY;
   settings.stepper_idle_lock_time = DEFAULT_STEPPER_IDLE_LOCK_TIME;
+  settings.decimal_places = DEFAULT_DECIMAL_PLACES;
 }
 
 void settings_dump() {
@@ -120,7 +122,8 @@ void settings_dump() {
   printPgmString(PSTR(" (mm/min homing feed rate)\r\n$12 = ")); printFloat(settings.homing_seek_rate);
   printPgmString(PSTR(" (mm/min homing seek rate)\r\n$13 = ")); printInteger(settings.homing_debounce_delay);
   printPgmString(PSTR(" (milliseconds homing debounce delay)\r\n$14 = ")); printInteger(settings.stepper_idle_lock_time);
-  printPgmString(PSTR(" (milliseconds stepper idle lock time)")); 
+  printPgmString(PSTR(" (milliseconds stepper idle lock time)\r\n$15 = ")); printInteger(settings.decimal_places);
+  printPgmString(PSTR(" (float decimal places)")); 
   printPgmString(PSTR("\r\n'$x=value' to set parameter or just '$' to dump current settings\r\n"));
 }
 
@@ -235,6 +238,7 @@ void settings_store_setting(int parameter, float value) {
     case 12: settings.homing_seek_rate = value; break;
     case 13: settings.homing_debounce_delay = round(value); break;
     case 14: settings.stepper_idle_lock_time = round(value); break;
+    case 15: settings.decimal_places = round(value); break;
     default: 
       printPgmString(PSTR("Unknown parameter\r\n"));
       return;
