@@ -419,6 +419,12 @@ void plan_buffer_line(float x, float y, float z, float feed_rate, uint8_t invert
   // path width or max_jerk in the previous grbl version. This approach does not actually deviate 
   // from path, but used as a robust way to compute cornering speeds, as it takes into account the
   // nonlinearities of both the junction angle and junction velocity.
+  // NOTE: This is basically an exact path mode (G61), but it doesn't come to a complete stop unless
+  // the junction deviation value is high. In the future, if continuous mode (G64) is desired, the
+  // math here is exactly the same. Instead of motioning all the way to junction point, the machine
+  // will just need to follow the arc circle defined above and check if the arc radii are no longer
+  // than half of either line segment to ensure no overlapping. Right now, the Arduino likely doesn't
+  // have the horsepower to do these calculations at high feed rates.
   float vmax_junction = MINIMUM_PLANNER_SPEED; // Set default max junction speed
 
   // Skip first block or when previous_nominal_speed is used as a flag for homing and offset cycles.

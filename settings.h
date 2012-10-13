@@ -29,7 +29,7 @@
 
 // Version of the EEPROM data. Will be used to migrate existing data from older versions of Grbl
 // when firmware is upgraded. Always stored in byte 0 of eeprom
-#define SETTINGS_VERSION 52
+#define SETTINGS_VERSION 53
 
 // Define bit flag masks in settings.flag.
 #define FLAG_BIT_HOMING_ENABLE      bit(0)
@@ -67,5 +67,7 @@ uint8_t settings_execute_line(char *line);
 
 // A helper method to set new settings from command line
 void settings_store_setting(int parameter, float value);
+
+// int8_t settings_execute_startup();
 
 #endif

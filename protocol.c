@@ -32,13 +32,11 @@
 #include "stepper.h"
 #include "planner.h"
 
-#define LINE_BUFFER_SIZE 50
-
 static char line[LINE_BUFFER_SIZE]; // Line to be executed. Zero-terminated.
 static uint8_t char_counter; // Last character counter in line variable.
 static uint8_t iscomment; // Comment/block delete flag for processor to ignore comment characters.
 
-static void status_message(int status_code) 
+void protocol_status_message(int8_t status_code) 
 {
   if (status_code == 0) {
     printPgmString(PSTR("ok\r\n"));
@@ -220,10 +218,10 @@ void protocol_process()
 
       if (char_counter > 0) {// Line is complete. Then execute!
         line[char_counter] = 0; // Terminate string
-        status_message(protocol_execute_line(line));
+        protocol_status_message(protocol_execute_line(line));
       } else { 
         // Empty or comment line. Skip block.
-        status_message(STATUS_OK); // Send status message for syncing purposes.
+        protocol_status_message(STATUS_OK); // Send status message for syncing purposes.
       }
       char_counter = 0; // Reset line buffer index
       iscomment = false; // Reset comment flag

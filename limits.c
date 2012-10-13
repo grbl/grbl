@@ -30,6 +30,7 @@
 #include "motion_control.h"
 #include "planner.h"
 #include "protocol.h"
+#include "limits.h"
 
 #define MICROSECONDS_PER_ACCELERATION_TICK  (1000000/ACCELERATION_TICKS_PER_SECOND)
 
@@ -76,9 +77,11 @@ static void homing_cycle(bool x_axis, bool y_axis, bool z_axis, int8_t pos_dir,
   
   // Nominal and initial time increment per step. Nominal should always be greater then 3
   // usec, since they are based on the same parameters as the main stepper routine. Initial
-  // is based on the MINIMUM_STEPS_PER_MINUTE config.
+  // is based on the MINIMUM_STEPS_PER_MINUTE config. Since homing feed can be very slow,
+  // disable acceleration when rates are below MINIMUM_STEPS_PER_MINUTE.
   uint32_t dt_min = lround(1000000*60/(ds*homing_rate)); // Cruising (usec/step)
   uint32_t dt = 1000000*60/MINIMUM_STEPS_PER_MINUTE; // Initial (usec/step)
+  if (dt > dt_min) { dt = dt_min; } // Disable acceleration for very slow rates.
       
   // Set default out_bits. 
   uint8_t out_bits0 = settings.invert_mask;
@@ -164,8 +167,8 @@ void limits_go_home()
   STEPPERS_DISABLE_PORT &= ~(1<<STEPPERS_DISABLE_BIT);
   
   // Jog all axes toward home to engage their limit switches at faster homing seek rate.
-  homing_cycle(false, false, true, true, false, settings.homing_seek_rate); // First jog the z axis
-  homing_cycle(true, true, false, true, false, settings.homing_seek_rate);   // Then jog the x and y axis
+  homing_cycle(false, false, true, true, false, settings.homing_seek_rate);  // First jog the z axis
+  homing_cycle(true, true, false, true, false, settings.homing_seek_rate);  // Then jog the x and y axis
   delay_ms(settings.homing_debounce_delay); // Delay to debounce signal
     
   // Now in proximity of all limits. Carefully leave and approach switches in multiple cycles
@@ -183,6 +186,9 @@ void limits_go_home()
     }
   }
 
+  delay_ms(settings.stepper_idle_lock_time);
   // Disable steppers by setting stepper disable
-  STEPPERS_DISABLE_PORT |= (1<<STEPPERS_DISABLE_BIT);
+  if (settings.stepper_idle_lock_time != 0xff) {
+    STEPPERS_DISABLE_PORT |= (1<<STEPPERS_DISABLE_BIT);
+  }
 }

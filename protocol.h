@@ -30,6 +30,8 @@
 #define STATUS_INVALID_COMMAND 6
 #define STATUS_SETTING_DISABLED 7
 
+#define LINE_BUFFER_SIZE 50
+
 // Initialize the serial protocol
 void protocol_init();
 
@@ -42,5 +44,8 @@ uint8_t protocol_execute_line(char *line);
 
 // Checks and executes a runtime command at various stop points in main program
 void protocol_execute_runtime();
+
+// Prints g-code parser status message.
+void protocol_status_message(int8_t status_code);
 
 #endif

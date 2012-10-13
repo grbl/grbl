@@ -104,6 +104,8 @@ void gc_init()
   gc.feed_rate = settings.default_feed_rate;
   select_plane(X_AXIS, Y_AXIS, Z_AXIS);
   gc.absolute_mode = true;
+  
+//  protocol_status_message(settings_execute_startup());
 }
 
 // Sets g-code parser position in mm. Input in steps. Called by the system abort routine.
@@ -180,6 +182,7 @@ uint8_t gc_execute_line(char *line)
           case 20: gc.inches_mode = true; break;
           case 21: gc.inches_mode = false; break;
           case 28: case 30: 
+            // NOTE: G28.1, G30.1 sets home position parameters. Not currently supported.
             if (bit_istrue(settings.flags,FLAG_BIT_HOMING_ENABLE)) {
               non_modal_action = NON_MODAL_GO_HOME; 
             } else {
@@ -259,7 +262,7 @@ uint8_t gc_execute_line(char *line)
   char_counter = 0;
   while(next_statement(&letter, &value, line, &char_counter)) {
     switch(letter) {
-      case 'G': case 'M': break; // Ignore command statements
+      case 'G': case 'M': case 'N': break; // Ignore command statements and line numbers
       case 'F': 
         if (value <= 0) { FAIL(STATUS_INVALID_COMMAND); } // Must be greater than zero
         if (gc.inverse_feed_rate_mode) {

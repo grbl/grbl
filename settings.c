@@ -105,6 +105,10 @@ void settings_reset(bool reset_all) {
   settings.decimal_places = DEFAULT_DECIMAL_PLACES;
 }
 
+// static void settings_startup_string(char *buf) {
+//   memcpy_from_eeprom_with_checksum((char*)buf,512, 4);
+// }
+
 void settings_dump() {
   printPgmString(PSTR("$0 = ")); printFloat(settings.steps_per_mm[X_AXIS]);
   printPgmString(PSTR(" (steps/mm x)\r\n$1 = ")); printFloat(settings.steps_per_mm[Y_AXIS]);
@@ -124,12 +128,18 @@ void settings_dump() {
   printPgmString(PSTR(" (milliseconds homing debounce delay)\r\n$14 = ")); printInteger(settings.stepper_idle_lock_time);
   printPgmString(PSTR(" (milliseconds stepper idle lock time)\r\n$15 = ")); printInteger(settings.decimal_places);
   printPgmString(PSTR(" (float decimal places)")); 
+  
+//   char buf[4];
+//   settings_startup_string((char *)buf);
+//   printPgmString(PSTR("\r\n Startup: ")); printString(buf);
+  
   printPgmString(PSTR("\r\n'$x=value' to set parameter or just '$' to dump current settings\r\n"));
 }
 
 // Parameter lines are on the form '$4=374.3' or '$' to dump current settings
 uint8_t settings_execute_line(char *line) {
   uint8_t char_counter = 1;
+//  unsigned char letter;
   float parameter, value;
   if(line[0] != '$') { 
     return(STATUS_UNSUPPORTED_STATEMENT); 
@@ -137,6 +147,23 @@ uint8_t settings_execute_line(char *line) {
   if(line[char_counter] == 0) { 
     settings_dump(); return(STATUS_OK); 
   }
+//   if(line[char_counter] >= 'A' || line[char_counter] <= 'Z') {
+//     letter = line[char_counter++];
+//     if(line[char_counter++] != '=') { 
+//       return(STATUS_UNSUPPORTED_STATEMENT); 
+//     }
+//     for (char_counter = 0; char_counter < LINE_BUFFER_SIZE-3; char_counter++) {
+//       line[char_counter] = line[char_counter+3];
+//     }
+//     uint8_t status = gc_execute_line(line);
+//     if (status) { return(status); }
+//     else { settings_store_startup_line(line); }
+//     
+//     
+//     // Opt stop and block delete are referred to as switches.
+//     // How to store home position and work offsets real-time??
+//     
+//   } else {
   if(!read_float(line, &char_counter, &parameter)) {
     return(STATUS_BAD_NUMBER_FORMAT);
   };
@@ -151,11 +178,16 @@ uint8_t settings_execute_line(char *line) {
   }
   settings_store_setting(parameter, value);
   return(STATUS_OK);
+//   }
 }
 
 void write_settings() {
   eeprom_put_char(0, SETTINGS_VERSION);
   memcpy_to_eeprom_with_checksum(1, (char*)&settings, sizeof(settings_t));
+//   
+//   char buf[4]; buf[0] = 'G'; buf[1] = '2'; buf[2] = '0'; buf[3] = 0;
+//   memcpy_to_eeprom_with_checksum(512, (char*)buf, 4);
+//   
 }
 
 int read_settings() {
@@ -254,5 +286,16 @@ void settings_init() {
     settings_reset(true);
     write_settings();
     settings_dump();
-  }
+  }  
 }
+
+// int8_t settings_execute_startup() {
+// 
+//   char buf[4];
+//   settings_startup_string((char *)buf);
+//   uint8_t i = 0;
+//   while (i < 4) {
+//     serial_write(buf[i++]);
+//   }
+//   return(gc_execute_line(buf));
+// }

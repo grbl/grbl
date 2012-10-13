@@ -112,9 +112,11 @@ void st_go_idle()
   TIMSK1 &= ~(1<<OCIE1A); 
   // Force stepper dwell to lock axes for a defined amount of time to ensure the axes come to a complete
   // stop and not drift from residual inertial forces at the end of the last movement.
-  delay_ms(settings.stepper_idle_lock_time);   
+  delay_ms(settings.stepper_idle_lock_time);
   // Disable steppers by setting stepper disable
-  STEPPERS_DISABLE_PORT |= (1<<STEPPERS_DISABLE_BIT);
+  if (settings.stepper_idle_lock_time != 0xff) {
+    STEPPERS_DISABLE_PORT |= (1<<STEPPERS_DISABLE_BIT);
+  }
 }
 
 // This function determines an acceleration velocity change every CYCLES_PER_ACCELERATION_TICK by
