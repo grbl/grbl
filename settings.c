@@ -69,14 +69,16 @@ typedef struct {
 #define DEFAULT_STEPPING_INVERT_MASK ((1<<X_STEP_BIT)|(1<<Y_STEP_BIT)|(1<<Z_STEP_BIT))
 
 // Developmental default settings
+#define DEFAULT_REPORT_INCHES 0 // false
+#define DEFAULT_AUTO_START 1 // true
+#define DEFAULT_HARD_LIMIT_ENABLE 0  // false
 #define DEFAULT_HOMING_ENABLE 0  // false
+#define DEFAULT_HOMING_DIR_MASK 0 // move positive dir
 #define DEFAULT_HOMING_RAPID_FEEDRATE 250.0 // mm/min
 #define DEFAULT_HOMING_FEEDRATE 50 // mm/min
 #define DEFAULT_HOMING_DEBOUNCE_DELAY 100 // msec (0-65k)
+#define DEFAULT_HOMING_PULLOFF 1 // mm
 #define DEFAULT_STEPPER_IDLE_LOCK_TIME 25 // msec (0-255)
-// #define DEFAULT_AUTO_START 1 // true
-// #define DEFAULT_INCHES_MODE 1 // true
-// #define DEFAULT_BLOCK_DELETE 0  // false
 #define DEFAULT_DECIMAL_PLACES 3
 
 void settings_reset(bool reset_all) {
@@ -95,12 +97,14 @@ void settings_reset(bool reset_all) {
   }
   // New settings since last version
   settings.flags = 0;
-  // if (DEFAULT_AUTO_START) { settings.flags |= FLAG_BIT_AUTO_START; }
-  // if (DEFAULT_INCHES_MODE) { settings.flags |= FLAG_BIT_INCHES_MODE; }
-  if (DEFAULT_HOMING_ENABLE) { settings.flags |= FLAG_BIT_HOMING_ENABLE; }  
+  if (DEFAULT_AUTO_START) { settings.flags |= BITFLAG_AUTO_START; }
+  if (DEFAULT_HARD_LIMIT_ENABLE) { settings.flags |= BITFLAG_HARD_LIMIT_ENABLE; }
+  if (DEFAULT_HOMING_ENABLE) { settings.flags |= BITFLAG_HOMING_ENABLE; }
+  settings.homing_dir_mask = DEFAULT_HOMING_DIR_MASK;
   settings.homing_feed_rate = DEFAULT_HOMING_FEEDRATE;
   settings.homing_seek_rate = DEFAULT_HOMING_RAPID_FEEDRATE;
   settings.homing_debounce_delay = DEFAULT_HOMING_DEBOUNCE_DELAY;
+  settings.homing_pulloff = DEFAULT_HOMING_PULLOFF;
   settings.stepper_idle_lock_time = DEFAULT_STEPPER_IDLE_LOCK_TIME;
   settings.decimal_places = DEFAULT_DECIMAL_PLACES;
 }
@@ -111,23 +115,29 @@ void settings_reset(bool reset_all) {
 
 void settings_dump() {
   printPgmString(PSTR("$0 = ")); printFloat(settings.steps_per_mm[X_AXIS]);
-  printPgmString(PSTR(" (steps/mm x)\r\n$1 = ")); printFloat(settings.steps_per_mm[Y_AXIS]);
-  printPgmString(PSTR(" (steps/mm y)\r\n$2 = ")); printFloat(settings.steps_per_mm[Z_AXIS]);
-  printPgmString(PSTR(" (steps/mm z)\r\n$3 = ")); printInteger(settings.pulse_microseconds);
-  printPgmString(PSTR(" (microseconds step pulse)\r\n$4 = ")); printFloat(settings.default_feed_rate);
-  printPgmString(PSTR(" (mm/min default feed rate)\r\n$5 = ")); printFloat(settings.default_seek_rate);
-  printPgmString(PSTR(" (mm/min default seek rate)\r\n$6 = ")); printFloat(settings.mm_per_arc_segment);
-  printPgmString(PSTR(" (mm/arc segment)\r\n$7 = ")); printInteger(settings.invert_mask); 
-  printPgmString(PSTR(" (step port invert mask. binary = ")); print_uint8_base2(settings.invert_mask);  
+  printPgmString(PSTR(" (x axis, steps/mm)\r\n$1 = ")); printFloat(settings.steps_per_mm[Y_AXIS]);
+  printPgmString(PSTR(" (y axis, steps/mm)\r\n$2 = ")); printFloat(settings.steps_per_mm[Z_AXIS]);
+  printPgmString(PSTR(" (z axis, steps/mm)\r\n$3 = ")); printInteger(settings.pulse_microseconds);
+  printPgmString(PSTR(" (step pulse, usec)\r\n$4 = ")); printFloat(settings.default_feed_rate);
+  printPgmString(PSTR(" (default feed rate, mm/min)\r\n$5 = ")); printFloat(settings.default_seek_rate);
+  printPgmString(PSTR(" (default seek rate, mm/min)\r\n$6 = ")); printFloat(settings.mm_per_arc_segment);
+  printPgmString(PSTR(" (arc resolution, mm/segment)\r\n$7 = ")); printInteger(settings.invert_mask); 
+  printPgmString(PSTR(" (step port invert mask, int:binary = ")); print_uint8_base2(settings.invert_mask);  
   printPgmString(PSTR(")\r\n$8 = ")); printFloat(settings.acceleration/(60*60)); // Convert from mm/min^2 for human readability
-  printPgmString(PSTR(" (acceleration in mm/sec^2)\r\n$9 = ")); printFloat(settings.junction_deviation);
-  printPgmString(PSTR(" (cornering junction deviation in mm)\r\n$10 = ")); printInteger(bit_istrue(settings.flags,FLAG_BIT_HOMING_ENABLE));
-  printPgmString(PSTR(" (boolean homing enable)\r\n$11 = ")); printFloat(settings.homing_feed_rate);
-  printPgmString(PSTR(" (mm/min homing feed rate)\r\n$12 = ")); printFloat(settings.homing_seek_rate);
-  printPgmString(PSTR(" (mm/min homing seek rate)\r\n$13 = ")); printInteger(settings.homing_debounce_delay);
-  printPgmString(PSTR(" (milliseconds homing debounce delay)\r\n$14 = ")); printInteger(settings.stepper_idle_lock_time);
-  printPgmString(PSTR(" (milliseconds stepper idle lock time)\r\n$15 = ")); printInteger(settings.decimal_places);
-  printPgmString(PSTR(" (float decimal places)")); 
+  printPgmString(PSTR(" (acceleration, mm/sec^2)\r\n$9 = ")); printFloat(settings.junction_deviation);
+  printPgmString(PSTR(" (cornering junction deviation, mm)\r\n$10 = ")); printInteger(bit_istrue(settings.flags,BITFLAG_REPORT_INCHES));
+  printPgmString(PSTR(" (status report inches, bool)\r\n$11 = ")); printInteger(bit_istrue(settings.flags,BITFLAG_AUTO_START));
+  printPgmString(PSTR(" (auto start enable, bool)\r\n$12 = ")); printInteger(bit_istrue(settings.flags,BITFLAG_HARD_LIMIT_ENABLE));
+  printPgmString(PSTR(" (hard limit enable, bool)\r\n$13 = ")); printInteger(bit_istrue(settings.flags,BITFLAG_HOMING_ENABLE));
+  printPgmString(PSTR(" (homing enable, bool)\r\n$14 = ")); printInteger(settings.homing_dir_mask);
+  printPgmString(PSTR(" (homing direction mask, int:binary = ")); print_uint8_base2(settings.homing_dir_mask);  
+  printPgmString(PSTR(")\r\n$15 = ")); printFloat(settings.homing_feed_rate);
+  printPgmString(PSTR(" (homing feed rate, mm/min)\r\n$16 = ")); printFloat(settings.homing_seek_rate);
+  printPgmString(PSTR(" (homing seek rate, mm/min)\r\n$17 = ")); printInteger(settings.homing_debounce_delay);
+  printPgmString(PSTR(" (homing debounce delay, msec)\r\n$18 = ")); printFloat(settings.homing_pulloff);
+  printPgmString(PSTR(" (homing pull-off travel, mm)\r\n$19 = ")); printInteger(settings.stepper_idle_lock_time);
+  printPgmString(PSTR(" (stepper idle lock time, msec)\r\n$20 = ")); printInteger(settings.decimal_places);
+  printPgmString(PSTR(" (decimal places, int)")); 
   
 //   char buf[4];
 //   settings_startup_string((char *)buf);
@@ -262,15 +272,35 @@ void settings_store_setting(int parameter, float value) {
     case 9: settings.junction_deviation = fabs(value); break;
     case 10:
       if (value) { 
-        settings.flags |= FLAG_BIT_HOMING_ENABLE; 
-        printPgmString(PSTR("Install all axes limit switches before use\r\n")); 
-      } else { settings.flags &= ~FLAG_BIT_HOMING_ENABLE; }
+        settings.flags |= BITFLAG_REPORT_INCHES; 
+      } else { settings.flags &= ~BITFLAG_REPORT_INCHES; }
       break;
-    case 11: settings.homing_feed_rate = value; break;
-    case 12: settings.homing_seek_rate = value; break;
-    case 13: settings.homing_debounce_delay = round(value); break;
-    case 14: settings.stepper_idle_lock_time = round(value); break;
-    case 15: settings.decimal_places = round(value); break;
+    case 11:
+      if (value) { 
+        settings.flags |= BITFLAG_AUTO_START; 
+      } else { settings.flags &= ~BITFLAG_AUTO_START; }
+      break;
+    case 12:
+      if (value) { 
+        settings.flags |= BITFLAG_HARD_LIMIT_ENABLE; 
+      } else { settings.flags &= ~BITFLAG_HARD_LIMIT_ENABLE; }
+      break;
+    case 13:
+      if (value) { 
+        settings.flags |= BITFLAG_HOMING_ENABLE; 
+        printPgmString(PSTR("Install all axes limit switches before use\r\n")); 
+      } else { settings.flags &= ~BITFLAG_HOMING_ENABLE; }
+      break;
+    case 14: settings.homing_dir_mask = trunc(value); break;
+    case 15: settings.homing_feed_rate = value; break;
+    case 16: settings.homing_seek_rate = value; break;
+    case 17: settings.homing_debounce_delay = round(value); break;
+    case 18: settings.homing_pulloff = value; break;
+    case 19:
+       settings.stepper_idle_lock_time = round(value);
+       // TODO: Immediately check and toggle steppers from always enable or disable?
+       break;
+    case 20: settings.decimal_places = round(value); break;
     default: 
       printPgmString(PSTR("Unknown parameter\r\n"));
       return;

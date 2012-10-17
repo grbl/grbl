@@ -165,7 +165,11 @@ ISR(USART_RX_vect)
     case CMD_STATUS_REPORT: sys.execute |= EXEC_STATUS_REPORT; break; // Set as true
     case CMD_CYCLE_START:   sys.execute |= EXEC_CYCLE_START; break; // Set as true
     case CMD_FEED_HOLD:     sys.execute |= EXEC_FEED_HOLD; break; // Set as true
-    case CMD_RESET: 
+    case CMD_RESET:
+      sys.alarm |= EXEC_ALARM; // Set alarm to allow subsystem disable for certain settings.
+      
+      // TODO: When Grbl system status is installed, set position lost state if the cycle is active.
+      
       // Immediately force stepper and spindle subsystem idle at an interrupt level.
       if (!(sys.execute & EXEC_RESET)) { // Force stop only first time.
         st_go_idle();  

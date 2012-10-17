@@ -108,7 +108,8 @@ void gc_init()
 //  protocol_status_message(settings_execute_startup());
 }
 
-// Sets g-code parser position in mm. Input in steps. Called by the system abort routine.
+// Sets g-code parser position in mm. Input in steps. Called by the system abort and hard
+// limit pull-off routines.
 void gc_set_current_position(int32_t x, int32_t y, int32_t z) 
 {
   gc.position[X_AXIS] = x/settings.steps_per_mm[X_AXIS];
@@ -183,7 +184,7 @@ uint8_t gc_execute_line(char *line)
           case 21: gc.inches_mode = false; break;
           case 28: case 30: 
             // NOTE: G28.1, G30.1 sets home position parameters. Not currently supported.
-            if (bit_istrue(settings.flags,FLAG_BIT_HOMING_ENABLE)) {
+            if (bit_istrue(settings.flags,BITFLAG_HOMING_ENABLE)) {
               non_modal_action = NON_MODAL_GO_HOME; 
             } else {
               FAIL(STATUS_SETTING_DISABLED);

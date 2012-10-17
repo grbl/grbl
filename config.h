@@ -46,9 +46,9 @@
 #define X_LIMIT_BIT     1  // Uno Digital Pin 9
 #define Y_LIMIT_BIT     2  // Uno Digital Pin 10
 #define Z_LIMIT_BIT     3  // Uno Digital Pin 11
-// #define LIMIT_INT       PCIE0  // Pin change interrupt settings
-// #define LIMIT_INT_vect  PCINT0_vect
-// #define LIMIT_PCMSK     PCMSK0
+#define LIMIT_INT       PCIE0  // Pin change interrupt settings
+#define LIMIT_INT_vect  PCINT0_vect
+#define LIMIT_PCMSK     PCMSK0
 
 #define SPINDLE_ENABLE_DDR   DDRB
 #define SPINDLE_ENABLE_PORT  PORTB
@@ -159,9 +159,7 @@
 // TODO: The following options are set as compile-time options for now, until the next EEPROM 
 // settings version has solidified. This is to prevent having to support dozens of different
 // incremental settings versions.
-#define CYCLE_AUTO_START 1    // Cycle auto-start boolean flag for the planner.
 #define BLOCK_DELETE_ENABLE 0 // Block delete enable/disable flag during g-code parsing
-#define REPORT_INCH_MODE 0    // Status reporting unit mode (1 = inch, 0 = mm)
 
 // This parameter sets the delay time before disabling the steppers after the final block of movement.
 // A short delay ensures the steppers come to a complete stop and the residual inertial force in the 

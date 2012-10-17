@@ -196,9 +196,30 @@ void mc_dwell(float seconds)
 // Execute homing cycle to locate and set machine zero.
 void mc_go_home()
 {
-  limits_go_home();
+  plan_synchronize();  // Empty all motions in buffer before homing.
+  PCICR &= ~(1 << LIMIT_INT);   // Disable hard limits pin change interrupt
+
+  limits_go_home(); // Perform homing routine.
+
   // Upon completion, reset all internal position vectors (g-code parser, planner, system)
   gc_clear_position();
   plan_clear_position();
   clear_vector_float(sys.position);
+  
+  // If hard limits enabled, move all axes off limit switches before enabling the hard limit
+  // pin change interrupt. This should help prevent the switches from falsely tripping.
+  // NOTE: G-code parser was circumvented so its position needs to be updated explicitly.
+  if (bit_istrue(settings.flags,BITFLAG_HARD_LIMIT_ENABLE)) {
+    int8_t x_dir, y_dir, z_dir;
+    x_dir = y_dir = z_dir = 1;
+    if (bit_istrue(settings.homing_dir_mask,bit(X_DIRECTION_BIT))) { x_dir = -1; }
+    if (bit_istrue(settings.homing_dir_mask,bit(Y_DIRECTION_BIT))) { y_dir = -1; }
+    if (bit_istrue(settings.homing_dir_mask,bit(Z_DIRECTION_BIT))) { z_dir = -1; }
+    mc_line(x_dir*settings.homing_pulloff, y_dir*settings.homing_pulloff, 
+            z_dir*settings.homing_pulloff, settings.homing_feed_rate, false);
+    st_cycle_start(); // Nothing should be in the buffer except this motion. 
+    plan_synchronize(); // Make sure the motion completes.
+    gc_set_current_position(sys.position[X_AXIS],sys.position[Y_AXIS],sys.position[Z_AXIS]);
+    PCICR |= (1 << LIMIT_INT);  // Re-enable hard limits.
+  }
 }

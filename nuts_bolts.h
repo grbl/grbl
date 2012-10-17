@@ -35,6 +35,7 @@
 #define Z_AXIS 2
 
 #define MM_PER_INCH (25.4)
+#define INCH_PER_MM (0.03937)
 
 // Useful macros
 #define clear_vector(a) memset(a, 0, sizeof(a))
@@ -60,16 +61,29 @@
 #define EXEC_CYCLE_STOP     bit(2) // bitmask 00000100
 #define EXEC_FEED_HOLD      bit(3) // bitmask 00001000
 #define EXEC_RESET          bit(4) // bitmask 00010000
-// #define                  bit(5) // bitmask 00100000
+#define EXEC_ALARM          bit(5) // bitmask 00100000
 // #define                  bit(6) // bitmask 01000000
 // #define                  bit(7) // bitmask 10000000
+
+// Define bit flag masks for sys.switches. (8 flag limit)
+#define BITFLAG_BLOCK_DELETE  bit(0)
+#define BITFLAG_SINGLE_BLOCK  bit(1)
+#define BITFLAG_OPT_STOP      bit(2)
+// #define                    bit(3)
+// #define                    bit(4)
+// #define                    bit(5)
+// #define                    bit(6)
+// #define                    bit(7)
 
 // Define global system variables
 typedef struct {
   uint8_t abort;                 // System abort flag. Forces exit back to main loop for reset.
   uint8_t feed_hold;             // Feed hold flag. Held true during feed hold. Released when ready to resume.
   uint8_t auto_start;            // Planner auto-start flag. Toggled off during feed hold. Defaulted by settings.
-
+  uint8_t alarm;                 // Alarm mode. Causes all functions to immediately cease until a system abort
+                                 // is issued by the user.
+//   uint8_t switches;              // Switches state bitflag variable. For settings not governed by g-code.
+  
   int32_t position[3];           // Real-time machine (aka home) position vector in steps. 
                                  // NOTE: This may need to be a volatile variable, if problems arise. 
 
@@ -82,6 +96,7 @@ typedef struct {
                           
   volatile uint8_t cycle_start;  // Cycle start flag. Set by stepper subsystem or main program. 
   volatile uint8_t execute;      // Global system runtime executor bitflag variable. See EXEC bitmasks.
+  
 } system_t;
 extern system_t sys;
 

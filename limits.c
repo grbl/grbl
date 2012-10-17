@@ -38,7 +38,30 @@ void limits_init()
 {
   LIMIT_DDR &= ~(LIMIT_MASK); // Set as input pins
   LIMIT_PORT |= (LIMIT_MASK); // Enable internal pull-up resistors. Normal high operation.
+
+  if bit_istrue(settings.flags,BITFLAG_HARD_LIMIT_ENABLE) {
+    MCUCR = (1<<ISC01) | (0<<ISC00); //1 0 triggers at a falling edge.
+    LIMIT_PCMSK |= LIMIT_MASK;   // Enable specific pins of the Pin Change Interrupt
+    PCICR |= (1 << LIMIT_INT);   // Enable Pin Change Interrupt
+  }
 }
+
+// This is the Limit Pin Change Interrupt, which handles the hard limit feature. This is
+// called when Grbl detects a falling edge on a limit pin.
+// NOTE: Do not attach an e-stop to the limit pins, because this interrupt is disabled during
+// homing cycles and will not respond correctly. Upon user request or need, there may be a
+// special pinout for an e-stop, but it is generally recommended to just directly connect
+// your e-stop switch to the Arduino reset pin, since it is the most correct way to do this.
+ISR(LIMIT_INT_vect) 
+{
+  // Kill all processes upon hard limit event.
+  st_go_idle(); // Immediately stop stepper motion
+  spindle_stop(); // Stop spindle
+  sys.auto_start = false; // Disable auto cycle start.
+  sys.execute |= EXEC_ALARM;
+  // TODO: When Grbl system status is installed, update here to indicate loss of position.
+}
+
 
 // Moves all specified axes in same specified direction (positive=true, negative=false)
 // and at the homing rate. Homing is a special motion case, where there is only an 
@@ -85,6 +108,7 @@ static void homing_cycle(bool x_axis, bool y_axis, bool z_axis, int8_t pos_dir,
       
   // Set default out_bits. 
   uint8_t out_bits0 = settings.invert_mask;
+  out_bits0 ^= (settings.homing_dir_mask & DIRECTION_MASK); // Apply homing direction settings
   if (!pos_dir) { out_bits0 ^= DIRECTION_MASK; }   // Invert bits, if negative dir.
   
   // Initialize stepping variables
@@ -160,11 +184,8 @@ static void homing_cycle(bool x_axis, bool y_axis, bool z_axis, int8_t pos_dir,
 
 
 void limits_go_home() 
-{
-  plan_synchronize();  // Empty all motions in buffer.
-  
-  // Enable steppers by resetting the stepper disable port
-  STEPPERS_DISABLE_PORT &= ~(1<<STEPPERS_DISABLE_BIT);
+{  
+  STEPPERS_DISABLE_PORT &= ~(1<<STEPPERS_DISABLE_BIT); // Enable steppers, but not the cycle.
   
   // Jog all axes toward home to engage their limit switches at faster homing seek rate.
   homing_cycle(false, false, true, true, false, settings.homing_seek_rate);  // First jog the z axis
@@ -186,9 +207,5 @@ void limits_go_home()
     }
   }
 
-  delay_ms(settings.stepper_idle_lock_time);
-  // Disable steppers by setting stepper disable
-  if (settings.stepper_idle_lock_time != 0xff) {
-    STEPPERS_DISABLE_PORT |= (1<<STEPPERS_DISABLE_BIT);
-  }
+  st_go_idle(); // Call main stepper shutdown routine.  
 }

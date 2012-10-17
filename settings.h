@@ -29,12 +29,13 @@
 
 // Version of the EEPROM data. Will be used to migrate existing data from older versions of Grbl
 // when firmware is upgraded. Always stored in byte 0 of eeprom
-#define SETTINGS_VERSION 53
+#define SETTINGS_VERSION 55
 
 // Define bit flag masks in settings.flag.
-#define FLAG_BIT_HOMING_ENABLE      bit(0)
-//#define FLAG_BIT_AUTO_START         bit(1)
-//#define FLAG_BIT_INCHES_MODE            bit(2)
+#define BITFLAG_REPORT_INCHES      bit(0)
+#define BITFLAG_AUTO_START         bit(1)
+#define BITFLAG_HARD_LIMIT_ENABLE  bit(2)
+#define BITFLAG_HOMING_ENABLE      bit(3)
 
 // Current global settings (persisted in EEPROM from byte 1 onwards)
 typedef struct {
@@ -48,9 +49,11 @@ typedef struct {
   float acceleration;
   float junction_deviation;
   uint8_t flags;  // Contains default toggles
+  uint8_t homing_dir_mask;
   float homing_feed_rate;
   float homing_seek_rate;
   uint16_t homing_debounce_delay;
+  float homing_pulloff;
   uint8_t stepper_idle_lock_time;
   uint8_t decimal_places;
 } settings_t;
