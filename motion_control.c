@@ -217,7 +217,7 @@ void mc_go_home()
     if (bit_istrue(settings.homing_dir_mask,bit(Z_DIRECTION_BIT))) { z_dir = -1; }
     mc_line(x_dir*settings.homing_pulloff, y_dir*settings.homing_pulloff, 
             z_dir*settings.homing_pulloff, settings.homing_feed_rate, false);
-    st_cycle_start(); // Nothing should be in the buffer except this motion. 
+    st_cycle_start(); // Move it. Nothing should be in the buffer except this motion. 
     plan_synchronize(); // Make sure the motion completes.
     gc_set_current_position(sys.position[X_AXIS],sys.position[Y_AXIS],sys.position[Z_AXIS]);
     PCICR |= (1 << LIMIT_INT);  // Re-enable hard limits.

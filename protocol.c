@@ -57,6 +57,8 @@ void protocol_status_message(int8_t status_code)
       printPgmString(PSTR("Invalid command\r\n")); break;
       case STATUS_SETTING_DISABLED:
       printPgmString(PSTR("Grbl setting disabled\r\n")); break;
+      case STATUS_HARD_LIMIT:
+      printPgmString(PSTR("Limit triggered <Check and Reset>\r\n")); break;
       default:
       printInteger(status_code);
       printPgmString(PSTR("\r\n"));
@@ -141,6 +143,7 @@ void protocol_execute_runtime()
     
     // System alarm. Something has gone wrong. Disable everything until system reset.
     if (rt_exec & EXEC_ALARM) {
+      protocol_status_message(STATUS_HARD_LIMIT);
       while (bit_isfalse(sys.execute,EXEC_RESET)) { sleep_mode(); }
       bit_false(sys.execute,EXEC_ALARM);
     } 

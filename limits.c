@@ -39,27 +39,34 @@ void limits_init()
   LIMIT_DDR &= ~(LIMIT_MASK); // Set as input pins
   LIMIT_PORT |= (LIMIT_MASK); // Enable internal pull-up resistors. Normal high operation.
 
-  if bit_istrue(settings.flags,BITFLAG_HARD_LIMIT_ENABLE) {
-    MCUCR = (1<<ISC01) | (0<<ISC00); //1 0 triggers at a falling edge.
+  if (bit_istrue(settings.flags,BITFLAG_HARD_LIMIT_ENABLE)) {
     LIMIT_PCMSK |= LIMIT_MASK;   // Enable specific pins of the Pin Change Interrupt
     PCICR |= (1 << LIMIT_INT);   // Enable Pin Change Interrupt
   }
 }
 
-// This is the Limit Pin Change Interrupt, which handles the hard limit feature. This is
-// called when Grbl detects a falling edge on a limit pin.
+// This is the Limit Pin Change Interrupt, which handles the hard limit feature.
 // NOTE: Do not attach an e-stop to the limit pins, because this interrupt is disabled during
 // homing cycles and will not respond correctly. Upon user request or need, there may be a
 // special pinout for an e-stop, but it is generally recommended to just directly connect
 // your e-stop switch to the Arduino reset pin, since it is the most correct way to do this.
 ISR(LIMIT_INT_vect) 
 {
-  // Kill all processes upon hard limit event.
-  st_go_idle(); // Immediately stop stepper motion
-  spindle_stop(); // Stop spindle
-  sys.auto_start = false; // Disable auto cycle start.
-  sys.execute |= EXEC_ALARM;
-  // TODO: When Grbl system status is installed, update here to indicate loss of position.
+  // Only enter if the system alarm is not active.
+  if (bit_isfalse(sys.execute,EXEC_ALARM)) { 
+    // Kill all processes upon hard limit event.
+    if ((LIMIT_PIN & LIMIT_MASK) ^ LIMIT_MASK) {
+      st_go_idle(); // Immediately stop stepper motion
+      spindle_stop(); // Stop spindle
+      sys.auto_start = false; // Disable auto cycle start.
+      sys.execute |= EXEC_ALARM;
+      // TODO: When Grbl system status is installed, update here to indicate loss of position.
+    } 
+    // else {
+    //   TODO: When leaving a switch, this interrupt can be activated upon detecting a pin
+    //   change to high. If so, need to start a countdown timer to check the pin again after
+    //   a debounce period to not falsely re-engage the alarm.
+  }
 }
 
 

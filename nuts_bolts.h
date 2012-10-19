@@ -80,8 +80,6 @@ typedef struct {
   uint8_t abort;                 // System abort flag. Forces exit back to main loop for reset.
   uint8_t feed_hold;             // Feed hold flag. Held true during feed hold. Released when ready to resume.
   uint8_t auto_start;            // Planner auto-start flag. Toggled off during feed hold. Defaulted by settings.
-  uint8_t alarm;                 // Alarm mode. Causes all functions to immediately cease until a system abort
-                                 // is issued by the user.
 //   uint8_t switches;              // Switches state bitflag variable. For settings not governed by g-code.
   
   int32_t position[3];           // Real-time machine (aka home) position vector in steps. 
