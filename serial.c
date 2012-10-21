@@ -169,6 +169,7 @@ ISR(USART_RX_vect)
       sys.execute |= EXEC_ALARM; // Set alarm to allow subsystem disable for certain settings.
       
       // TODO: When Grbl system status is installed, set position lost state if the cycle is active.
+      // if (sys.cycle_start) { POSITION LOST } 
       
       // Immediately force stepper and spindle subsystem idle at an interrupt level.
       if (!(sys.execute & EXEC_RESET)) { // Force stop only first time.

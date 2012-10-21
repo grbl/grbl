@@ -150,9 +150,10 @@
 // of your successes or difficulties, as we will monitor this and possibly integrate this as a 
 // standard feature for future releases. However, we suggest to first try our direction delay
 // hack/solution posted in the Wiki involving inverting the stepper pin mask.
-// NOTE: Uncomment to enable. The recommended delay should be > 3us and the total step pulse
-// time, which includes the Grbl settings pulse microseconds, should not exceed 127us.
-// #define STEP_PULSE_DELAY 5 // Step pulse delay in microseconds. Default disabled.
+// NOTE: Uncomment to enable. The recommended delay must be > 3us and the total step pulse
+// time, which includes the Grbl settings pulse microseconds, must not exceed 127us. Reported
+// successful values for certain setups have ranged from 10 to 20us.
+// #define STEP_PULSE_DELAY 10 // Step pulse delay in microseconds. Default disabled.
 
 // ---------------------------------------------------------------------------------------
 
@@ -167,7 +168,8 @@
 // entering g-code into grbl, i.e. locating part zero or simple manual machining. If the axes drift,
 // grbl has no way to know this has happened, since stepper motors are open-loop control. Depending
 // on the machine, this parameter may need to be larger or smaller than the default time.
-// NOTE: If the define commented, the stepper lock will be disabled upon compiling.
+// NOTE: If set to zero, no lock will occur. If set to max 255, the lock will never release, in other
+// words, the steppers never disable for users that require this.
 // -> NOW INSTALLED IN SETTINGS #define STEPPER_IDLE_LOCK_TIME 25 // (milliseconds) - Integer > 0
 
 

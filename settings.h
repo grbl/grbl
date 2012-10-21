@@ -31,7 +31,7 @@
 // when firmware is upgraded. Always stored in byte 0 of eeprom
 #define SETTINGS_VERSION 55
 
-// Define bit flag masks in settings.flag.
+// Define bit flag masks for the boolean settings in settings.flag.
 #define BITFLAG_REPORT_INCHES      bit(0)
 #define BITFLAG_AUTO_START         bit(1)
 #define BITFLAG_HARD_LIMIT_ENABLE  bit(2)
@@ -48,14 +48,14 @@ typedef struct {
   float mm_per_arc_segment;
   float acceleration;
   float junction_deviation;
-  uint8_t flags;  // Contains default toggles
+  uint8_t flags;  // Contains default boolean settings
   uint8_t homing_dir_mask;
   float homing_feed_rate;
   float homing_seek_rate;
   uint16_t homing_debounce_delay;
   float homing_pulloff;
-  uint8_t stepper_idle_lock_time;
-  uint8_t decimal_places;
+  uint8_t stepper_idle_lock_time; // If max value 255, steppers do not disable.
+  uint8_t decimal_places; 
 } settings_t;
 extern settings_t settings;
 
@@ -66,10 +66,10 @@ void settings_init();
 void settings_dump();
 
 // Handle settings command
-uint8_t settings_execute_line(char *line);
+int8_t settings_execute_line(char *line);
 
 // A helper method to set new settings from command line
-void settings_store_setting(int parameter, float value);
+int8_t settings_store_setting(int parameter, float value);
 
 // int8_t settings_execute_startup();
 

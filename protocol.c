@@ -36,34 +36,70 @@ static char line[LINE_BUFFER_SIZE]; // Line to be executed. Zero-terminated.
 static uint8_t char_counter; // Last character counter in line variable.
 static uint8_t iscomment; // Comment/block delete flag for processor to ignore comment characters.
 
+// Prints all status messages, an 'ok' or 'error', after Grbl has processed a line of incoming
+// serial data, whether this was a g-code block or grbl setting command.
 void protocol_status_message(int8_t status_code) 
 {
-  if (status_code == 0) {
+  // TODO: Compile time option to only return numeric codes for GUIs.
+  if (status_code == 0) { // STATUS_OK
     printPgmString(PSTR("ok\r\n"));
   } else {
     printPgmString(PSTR("error: "));
-    switch(status_code) {          
-      case STATUS_BAD_NUMBER_FORMAT:
-      printPgmString(PSTR("Bad number format\r\n")); break;
-      case STATUS_EXPECTED_COMMAND_LETTER:
-      printPgmString(PSTR("Expected command letter\r\n")); break;
-      case STATUS_UNSUPPORTED_STATEMENT:
-      printPgmString(PSTR("Unsupported statement\r\n")); break;
-      case STATUS_FLOATING_POINT_ERROR:
-      printPgmString(PSTR("Floating point error\r\n")); break;
-      case STATUS_MODAL_GROUP_VIOLATION:
-      printPgmString(PSTR("Modal group violation\r\n")); break;
-      case STATUS_INVALID_COMMAND:
-      printPgmString(PSTR("Invalid command\r\n")); break;
-      case STATUS_SETTING_DISABLED:
-      printPgmString(PSTR("Grbl setting disabled\r\n")); break;
-      case STATUS_HARD_LIMIT:
-      printPgmString(PSTR("Limit triggered <Check and Reset>\r\n")); break;
-      default:
-      printInteger(status_code);
-      printPgmString(PSTR("\r\n"));
+    // All critical error codes are greater than zero. These are defined to be any error
+    // that may cause damage by crashing or improper g-code inputs and that are susceptible
+    // to Grbl's alarm mode which will stop all processes, if the user enables this option.
+    if (status_code > 0) { 
+      // TODO: Install option to enter alarm mode upon any critical error.
+      switch(status_code) {          
+        case STATUS_BAD_NUMBER_FORMAT:
+        printPgmString(PSTR("Bad number format")); break;
+        case STATUS_EXPECTED_COMMAND_LETTER:
+        printPgmString(PSTR("Expected command letter")); break;
+        case STATUS_UNSUPPORTED_STATEMENT:
+        printPgmString(PSTR("Unsupported statement")); break;
+        case STATUS_FLOATING_POINT_ERROR:
+        printPgmString(PSTR("Floating point error")); break;
+        case STATUS_MODAL_GROUP_VIOLATION:
+        printPgmString(PSTR("Modal group violation")); break;
+        case STATUS_INVALID_STATEMENT:
+        printPgmString(PSTR("Invalid gcode statement")); break;
+        case STATUS_SETTING_DISABLED:
+        printPgmString(PSTR("Grbl setting disabled")); break;
+        case STATUS_HARD_LIMIT:
+        printPgmString(PSTR("Limit triggered <Check and Reset>")); break;
+      }
+    // All other non-critical error codes are less than zero. These are defined to be any
+    // error that is not susceptible to the alarm mode. Typically settings responses.
+    } else {
+      switch(status_code) {
+        case STATUS_SETTING_INVALID:
+        printPgmString(PSTR("Invalid setting statement")); break;
+        case STATUS_SETTING_STEPS_NEG:
+        printPgmString(PSTR("Steps/mm must be > 0.0")); break;
+        case STATUS_SETTING_STEP_PULSE_MIN:
+        printPgmString(PSTR("Step pulse must be >= 3 microseconds")); break;
+      }
     }
+    printPgmString(PSTR("\r\n"));
   }
+}
+
+
+// Prints Grbl warning messages. This serves as a centralized method to provide additional
+// user feedback for things that do not pass through the protocol_execute_line() function.
+// This includes things like initialization checks or setup warnings when features are
+// enabled. This function maybe called from anywhere in Grbl at the point of concern.
+void protocol_warning_message(int8_t warning_code)
+{
+  // TODO: Install silence warning messages option in settings
+  printPgmString(PSTR("warning: "));
+  switch(warning_code) {
+    case WARNING_HOMING_ENABLE:
+      printPgmString(PSTR("Install all axes limit switches before use")); break;
+    case WARNING_SETTING_READ_FAIL:
+      printPgmString(PSTR("Failed to read EEPROM settings. Using defaults")); break;
+  }
+  printPgmString(PSTR("\r\n"));
 }
 
 
@@ -99,10 +135,11 @@ void protocol_status_report()
    if (bit_istrue(settings.flags,BITFLAG_REPORT_INCHES)) { print_position[i] *= INCH_PER_MM; }
    printFloat(print_position[i]);
    if (i < 2) { printPgmString(PSTR(",")); }
+   else { printPgmString(PSTR("]")); }
  }
  
  // Report work position
- printPgmString(PSTR("],WPos:[")); 
+ printPgmString(PSTR(",WPos:[")); 
  for (i=0; i<= 2; i++) {
    if (bit_istrue(settings.flags,BITFLAG_REPORT_INCHES)) {
      print_position[i] -= (sys.coord_system[sys.coord_select][i]+sys.coord_offset[i])*INCH_PER_MM;
@@ -111,9 +148,10 @@ void protocol_status_report()
    }
    printFloat(print_position[i]);
    if (i < 2) { printPgmString(PSTR(",")); }
+   else { printPgmString(PSTR("]")); }
  }
    
- printPgmString(PSTR("]\r\n"));
+ printPgmString(PSTR("\r\n"));
 }
 
 
@@ -133,7 +171,7 @@ void protocol_init()
 // point where the execution time from the last check point may be more than a fraction of a second.
 // This is a way to execute runtime commands asynchronously (aka multitasking) with grbl's g-code
 // parsing and planning functions. This function also serves as an interface for the interrupts to 
-// set the system runtime flags, where only the main program to handles them, removing the need to
+// set the system runtime flags, where only the main program handles them, removing the need to
 // define more computationally-expensive volatile variables.
 // NOTE: The sys.execute variable flags are set by the serial read subprogram, except where noted.
 void protocol_execute_runtime()
@@ -185,7 +223,7 @@ void protocol_execute_runtime()
 
 
 // Executes one line of input according to protocol
-uint8_t protocol_execute_line(char *line) 
+int8_t protocol_execute_line(char *line) 
 {     
   if(line[0] == '$') {
   

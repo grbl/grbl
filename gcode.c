@@ -265,7 +265,7 @@ uint8_t gc_execute_line(char *line)
     switch(letter) {
       case 'G': case 'M': case 'N': break; // Ignore command statements and line numbers
       case 'F': 
-        if (value <= 0) { FAIL(STATUS_INVALID_COMMAND); } // Must be greater than zero
+        if (value <= 0) { FAIL(STATUS_INVALID_STATEMENT); } // Must be greater than zero
         if (gc.inverse_feed_rate_mode) {
           inverse_feed_rate = to_millimeters(value); // seconds per motion for this motion only
         } else {          
@@ -277,11 +277,11 @@ uint8_t gc_execute_line(char *line)
       case 'P': p = value; break;                    
       case 'R': r = to_millimeters(value); break;
       case 'S': 
-        if (value < 0) { FAIL(STATUS_INVALID_COMMAND); } // Cannot be negative
+        if (value < 0) { FAIL(STATUS_INVALID_STATEMENT); } // Cannot be negative
         gc.spindle_speed = value;
         break;
       case 'T': 
-        if (value < 0) { FAIL(STATUS_INVALID_COMMAND); } // Cannot be negative
+        if (value < 0) { FAIL(STATUS_INVALID_STATEMENT); } // Cannot be negative
         gc.tool = trunc(value); 
         break;
       case 'X': target[X_AXIS] = to_millimeters(value); bit_true(axis_words,bit(X_AXIS)); break;
@@ -299,7 +299,7 @@ uint8_t gc_execute_line(char *line)
      NOTE: Independent non-motion/settings parameters are set out of this order for code efficiency 
      and simplicity purposes, but this should not affect proper g-code execution. */
   
-  //  ([M6]: Tool change execution should be executed here.)
+  //  ([M6]: Tool change should be executed here.)
   
   // [M3,M4,M5]: Update spindle state
   spindle_run(gc.spindle_direction, gc.spindle_speed);
@@ -313,7 +313,7 @@ uint8_t gc_execute_line(char *line)
   switch (non_modal_action) {
     case NON_MODAL_DWELL:
       if (p < 0) { // Time cannot be negative.
-        FAIL(STATUS_INVALID_COMMAND); 
+        FAIL(STATUS_INVALID_STATEMENT); 
       } else { 
         mc_dwell(p); 
       }
@@ -323,7 +323,7 @@ uint8_t gc_execute_line(char *line)
       if (l != 2 || (int_value < 1 || int_value > N_COORDINATE_SYSTEM)) { // L2 only. P1=G54, P2=G55, ... 
         FAIL(STATUS_UNSUPPORTED_STATEMENT); 
       } else if (!axis_words) { // No axis words.
-        FAIL(STATUS_INVALID_COMMAND);
+        FAIL(STATUS_INVALID_STATEMENT);
       } else {
         int_value--; // Adjust p to be inline with row array index. 
         // Update axes defined only in block. Always in machine coordinates. Can change non-active system.
@@ -358,7 +358,7 @@ uint8_t gc_execute_line(char *line)
       break;      
     case NON_MODAL_SET_COORDINATE_OFFSET:
       if (!axis_words) { // No axis words
-        FAIL(STATUS_INVALID_COMMAND);
+        FAIL(STATUS_INVALID_STATEMENT);
       } else {
         // Update axes defined only in block. Offsets current system to defined value. Does not update when
         // active coordinate system is selected, but is still active unless G92.1 disables it. 
@@ -384,12 +384,12 @@ uint8_t gc_execute_line(char *line)
     // G1,G2,G3 require F word in inverse time mode.  
     if ( gc.inverse_feed_rate_mode ) { 
       if (inverse_feed_rate < 0 && gc.motion_mode != MOTION_MODE_CANCEL) {
-        FAIL(STATUS_INVALID_COMMAND);
+        FAIL(STATUS_INVALID_STATEMENT);
       }
     }
     // Absolute override G53 only valid with G0 and G1 active.
     if ( absolute_override && !(gc.motion_mode == MOTION_MODE_SEEK || gc.motion_mode == MOTION_MODE_LINEAR)) {
-      FAIL(STATUS_INVALID_COMMAND);
+      FAIL(STATUS_INVALID_STATEMENT);
     }
     // Report any errors.  
     if (gc.status_code) { return(gc.status_code); }
@@ -414,14 +414,14 @@ uint8_t gc_execute_line(char *line)
   
     switch (gc.motion_mode) {
       case MOTION_MODE_CANCEL: 
-        if (axis_words) { FAIL(STATUS_INVALID_COMMAND); } // No axis words allowed while active.
+        if (axis_words) { FAIL(STATUS_INVALID_STATEMENT); } // No axis words allowed while active.
         break;
       case MOTION_MODE_SEEK:
-        if (!axis_words) { FAIL(STATUS_INVALID_COMMAND);} 
+        if (!axis_words) { FAIL(STATUS_INVALID_STATEMENT);} 
         else { mc_line(target[X_AXIS], target[Y_AXIS], target[Z_AXIS], settings.default_seek_rate, false); }
         break;
       case MOTION_MODE_LINEAR:
-        if (!axis_words) { FAIL(STATUS_INVALID_COMMAND);} 
+        if (!axis_words) { FAIL(STATUS_INVALID_STATEMENT);} 
         else { mc_line(target[X_AXIS], target[Y_AXIS], target[Z_AXIS], 
           (gc.inverse_feed_rate_mode) ? inverse_feed_rate : gc.feed_rate, gc.inverse_feed_rate_mode); }
         break;
@@ -430,7 +430,7 @@ uint8_t gc_execute_line(char *line)
         // format arc mode, also check for at least one of the IJK axes of the selected plane was sent.
         if ( !( bit_false(axis_words,bit(gc.plane_axis_2)) ) || 
              ( !r && !offset[gc.plane_axis_0] && !offset[gc.plane_axis_1] ) ) { 
-          FAIL(STATUS_INVALID_COMMAND);
+          FAIL(STATUS_INVALID_STATEMENT);
         } else {
           if (r != 0) { // Arc Radius Mode
             /* 

@@ -147,13 +147,11 @@ void settings_dump() {
 }
 
 // Parameter lines are on the form '$4=374.3' or '$' to dump current settings
-uint8_t settings_execute_line(char *line) {
-  uint8_t char_counter = 1;
+// NOTE: Assumes '$' already exists in line[0], which is checked by protocol.c.
+int8_t settings_execute_line(char *line) {
+  uint8_t char_counter = 1; 
 //  unsigned char letter;
   float parameter, value;
-  if(line[0] != '$') { 
-    return(STATUS_UNSUPPORTED_STATEMENT); 
-  }
   if(line[char_counter] == 0) { 
     settings_dump(); return(STATUS_OK); 
   }
@@ -175,19 +173,18 @@ uint8_t settings_execute_line(char *line) {
 //     
 //   } else {
   if(!read_float(line, &char_counter, &parameter)) {
-    return(STATUS_BAD_NUMBER_FORMAT);
-  };
+    return(STATUS_SETTING_INVALID);
+  }
   if(line[char_counter++] != '=') { 
-    return(STATUS_UNSUPPORTED_STATEMENT); 
+    return(STATUS_SETTING_INVALID); 
   }
   if(!read_float(line, &char_counter, &value)) {
-    return(STATUS_BAD_NUMBER_FORMAT);
+    return(STATUS_SETTING_INVALID);
   }
   if(line[char_counter] != 0) { 
-    return(STATUS_UNSUPPORTED_STATEMENT); 
+    return(STATUS_SETTING_INVALID); 
   }
-  settings_store_setting(parameter, value);
-  return(STATUS_OK);
+  return(settings_store_setting(parameter, value));
 //   }
 }
 
@@ -250,20 +247,14 @@ int read_settings() {
 }
 
 // A helper method to set settings from command line
-void settings_store_setting(int parameter, float value) {
+int8_t settings_store_setting(int parameter, float value) {
   switch(parameter) {
     case 0: case 1: case 2:
-    if (value <= 0.0) {
-      printPgmString(PSTR("Steps/mm must be > 0.0\r\n"));
-      return;
-    }
-    settings.steps_per_mm[parameter] = value; break;
+      if (value <= 0.0) { return(STATUS_SETTING_STEPS_NEG); } 
+      settings.steps_per_mm[parameter] = value; break;
     case 3: 
-    if (value < 3) {
-      printPgmString(PSTR("Step pulse must be >= 3 microseconds\r\n"));
-      return;
-    }
-    settings.pulse_microseconds = round(value); break;
+      if (value < 3) { return(STATUS_SETTING_STEP_PULSE_MIN); }
+      settings.pulse_microseconds = round(value); break;
     case 4: settings.default_feed_rate = value; break;
     case 5: settings.default_seek_rate = value; break;
     case 6: settings.mm_per_arc_segment = value; break;
@@ -288,7 +279,7 @@ void settings_store_setting(int parameter, float value) {
     case 13:
       if (value) { 
         settings.flags |= BITFLAG_HOMING_ENABLE; 
-        printPgmString(PSTR("Install all axes limit switches before use\r\n")); 
+        protocol_warning_message(WARNING_HOMING_ENABLE);
       } else { settings.flags &= ~BITFLAG_HOMING_ENABLE; }
       break;
     case 14: settings.homing_dir_mask = trunc(value); break;
@@ -302,17 +293,16 @@ void settings_store_setting(int parameter, float value) {
        break;
     case 20: settings.decimal_places = round(value); break;
     default: 
-      printPgmString(PSTR("Unknown parameter\r\n"));
-      return;
+      return(STATUS_SETTING_INVALID);
   }
   write_settings();
-  printPgmString(PSTR("Stored new setting\r\n"));
+  return(STATUS_OK);
 }
 
 // Initialize the config subsystem
 void settings_init() {
   if(!read_settings()) {
-    printPgmString(PSTR("Warning: Failed to read EEPROM settings. Using defaults.\r\n"));
+    protocol_warning_message(WARNING_SETTING_READ_FAIL);
     settings_reset(true);
     write_settings();
     settings_dump();
