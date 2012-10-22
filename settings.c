@@ -148,7 +148,7 @@ void settings_dump() {
 
 // Parameter lines are on the form '$4=374.3' or '$' to dump current settings
 // NOTE: Assumes '$' already exists in line[0], which is checked by protocol.c.
-int8_t settings_execute_line(char *line) {
+uint8_t settings_execute_line(char *line) {
   uint8_t char_counter = 1; 
 //  unsigned char letter;
   float parameter, value;
@@ -173,16 +173,16 @@ int8_t settings_execute_line(char *line) {
 //     
 //   } else {
   if(!read_float(line, &char_counter, &parameter)) {
-    return(STATUS_SETTING_INVALID);
+    return(STATUS_BAD_NUMBER_FORMAT);
   }
   if(line[char_counter++] != '=') { 
-    return(STATUS_SETTING_INVALID); 
+    return(STATUS_UNSUPPORTED_STATEMENT); 
   }
   if(!read_float(line, &char_counter, &value)) {
-    return(STATUS_SETTING_INVALID);
+    return(STATUS_BAD_NUMBER_FORMAT);
   }
   if(line[char_counter] != 0) { 
-    return(STATUS_SETTING_INVALID); 
+    return(STATUS_UNSUPPORTED_STATEMENT); 
   }
   return(settings_store_setting(parameter, value));
 //   }
@@ -247,7 +247,7 @@ int read_settings() {
 }
 
 // A helper method to set settings from command line
-int8_t settings_store_setting(int parameter, float value) {
+uint8_t settings_store_setting(int parameter, float value) {
   switch(parameter) {
     case 0: case 1: case 2:
       if (value <= 0.0) { return(STATUS_SETTING_STEPS_NEG); } 
@@ -279,7 +279,7 @@ int8_t settings_store_setting(int parameter, float value) {
     case 13:
       if (value) { 
         settings.flags |= BITFLAG_HOMING_ENABLE; 
-        protocol_warning_message(WARNING_HOMING_ENABLE);
+        protocol_misc_message(MESSAGE_HOMING_ENABLE);
       } else { settings.flags &= ~BITFLAG_HOMING_ENABLE; }
       break;
     case 14: settings.homing_dir_mask = trunc(value); break;
@@ -293,7 +293,7 @@ int8_t settings_store_setting(int parameter, float value) {
        break;
     case 20: settings.decimal_places = round(value); break;
     default: 
-      return(STATUS_SETTING_INVALID);
+      return(STATUS_INVALID_STATEMENT);
   }
   write_settings();
   return(STATUS_OK);
@@ -302,7 +302,7 @@ int8_t settings_store_setting(int parameter, float value) {
 // Initialize the config subsystem
 void settings_init() {
   if(!read_settings()) {
-    protocol_warning_message(WARNING_SETTING_READ_FAIL);
+    protocol_status_message(STATUS_SETTING_READ_FAIL);
     settings_reset(true);
     write_settings();
     settings_dump();

@@ -26,8 +26,7 @@
 #include <avr/sleep.h>
 #include "serial.h"
 #include "config.h"
-#include "stepper.h"
-#include "spindle_control.h"
+#include "motion_control.h"
 #include "nuts_bolts.h"
 #include "protocol.h"
 
@@ -166,16 +165,8 @@ ISR(USART_RX_vect)
     case CMD_CYCLE_START:   sys.execute |= EXEC_CYCLE_START; break; // Set as true
     case CMD_FEED_HOLD:     sys.execute |= EXEC_FEED_HOLD; break; // Set as true
     case CMD_RESET:
-      sys.execute |= EXEC_ALARM; // Set alarm to allow subsystem disable for certain settings.
-      
-      // TODO: When Grbl system status is installed, set position lost state if the cycle is active.
-      // if (sys.cycle_start) { POSITION LOST } 
-      
       // Immediately force stepper and spindle subsystem idle at an interrupt level.
-      if (!(sys.execute & EXEC_RESET)) { // Force stop only first time.
-        st_go_idle();  
-        spindle_stop();
-      }
+      if (!(sys.execute & EXEC_RESET)) { mc_alarm(); } // Stop only first time.
       sys.execute |= EXEC_RESET; // Set as true
       break;
     default: // Write character to buffer    

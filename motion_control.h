@@ -43,4 +43,7 @@ void mc_dwell(float seconds);
 // Send the tool home (not implemented)
 void mc_go_home();
 
+// Kills all motion and sets system alarm
+void mc_alarm();
+
 #endif

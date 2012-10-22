@@ -36,68 +36,54 @@ static char line[LINE_BUFFER_SIZE]; // Line to be executed. Zero-terminated.
 static uint8_t char_counter; // Last character counter in line variable.
 static uint8_t iscomment; // Comment/block delete flag for processor to ignore comment characters.
 
-// Prints all status messages, an 'ok' or 'error', after Grbl has processed a line of incoming
-// serial data, whether this was a g-code block or grbl setting command.
-void protocol_status_message(int8_t status_code) 
+// Method to handle status messages, from an 'ok' to report any 'error' that has occurred.
+// Errors can originate from the g-code parser, settings module, or a critical error, such
+// as a triggered hard limit.
+void protocol_status_message(uint8_t status_code) 
 {
   // TODO: Compile time option to only return numeric codes for GUIs.
   if (status_code == 0) { // STATUS_OK
     printPgmString(PSTR("ok\r\n"));
   } else {
     printPgmString(PSTR("error: "));
-    // All critical error codes are greater than zero. These are defined to be any error
-    // that may cause damage by crashing or improper g-code inputs and that are susceptible
-    // to Grbl's alarm mode which will stop all processes, if the user enables this option.
-    if (status_code > 0) { 
-      // TODO: Install option to enter alarm mode upon any critical error.
-      switch(status_code) {          
-        case STATUS_BAD_NUMBER_FORMAT:
-        printPgmString(PSTR("Bad number format")); break;
-        case STATUS_EXPECTED_COMMAND_LETTER:
-        printPgmString(PSTR("Expected command letter")); break;
-        case STATUS_UNSUPPORTED_STATEMENT:
-        printPgmString(PSTR("Unsupported statement")); break;
-        case STATUS_FLOATING_POINT_ERROR:
-        printPgmString(PSTR("Floating point error")); break;
-        case STATUS_MODAL_GROUP_VIOLATION:
-        printPgmString(PSTR("Modal group violation")); break;
-        case STATUS_INVALID_STATEMENT:
-        printPgmString(PSTR("Invalid gcode statement")); break;
-        case STATUS_SETTING_DISABLED:
-        printPgmString(PSTR("Grbl setting disabled")); break;
-        case STATUS_HARD_LIMIT:
-        printPgmString(PSTR("Limit triggered <Check and Reset>")); break;
-      }
-    // All other non-critical error codes are less than zero. These are defined to be any
-    // error that is not susceptible to the alarm mode. Typically settings responses.
-    } else {
-      switch(status_code) {
-        case STATUS_SETTING_INVALID:
-        printPgmString(PSTR("Invalid setting statement")); break;
-        case STATUS_SETTING_STEPS_NEG:
-        printPgmString(PSTR("Steps/mm must be > 0.0")); break;
-        case STATUS_SETTING_STEP_PULSE_MIN:
-        printPgmString(PSTR("Step pulse must be >= 3 microseconds")); break;
-      }
+    switch(status_code) {          
+      case STATUS_BAD_NUMBER_FORMAT:
+      printPgmString(PSTR("Bad number format")); break;
+      case STATUS_EXPECTED_COMMAND_LETTER:
+      printPgmString(PSTR("Expected command letter")); break;
+      case STATUS_UNSUPPORTED_STATEMENT:
+      printPgmString(PSTR("Unsupported statement")); break;
+      case STATUS_FLOATING_POINT_ERROR:
+      printPgmString(PSTR("Floating point error")); break;
+      case STATUS_MODAL_GROUP_VIOLATION:
+      printPgmString(PSTR("Modal group violation")); break;
+      case STATUS_INVALID_STATEMENT:
+      printPgmString(PSTR("Invalid statement")); break;
+      case STATUS_HARD_LIMIT:
+      printPgmString(PSTR("<ALARM> Limit triggered")); break;
+      case STATUS_SETTING_DISABLED:
+      printPgmString(PSTR("Grbl setting disabled")); break;
+      case STATUS_SETTING_STEPS_NEG:
+      printPgmString(PSTR("Steps/mm must be > 0.0")); break;
+      case STATUS_SETTING_STEP_PULSE_MIN:
+      printPgmString(PSTR("Step pulse must be >= 3 microseconds")); break;
+      case STATUS_SETTING_READ_FAIL:
+      printPgmString(PSTR("Failed to read EEPROM settings. Using defaults")); break;
     }
     printPgmString(PSTR("\r\n"));
   }
 }
 
 
-// Prints Grbl warning messages. This serves as a centralized method to provide additional
-// user feedback for things that do not pass through the protocol_execute_line() function.
-// This includes things like initialization checks or setup warnings when features are
-// enabled. This function maybe called from anywhere in Grbl at the point of concern.
-void protocol_warning_message(int8_t warning_code)
+// Prints miscellaneous messages. This serves as a centralized method to provide additional
+// user feedback for things that do not pass through the protocol_execute_line() function
+// and are not errors or confirmations, such as setup warnings.
+void protocol_misc_message(uint8_t message_code)
 {
-  // TODO: Install silence warning messages option in settings
-  printPgmString(PSTR("warning: "));
-  switch(warning_code) {
-    case WARNING_HOMING_ENABLE:
-      printPgmString(PSTR("Install all axes limit switches before use")); break;
-    case WARNING_SETTING_READ_FAIL:
-      printPgmString(PSTR("Failed to read EEPROM settings. Using defaults")); break;
+  // TODO: Install silence misc messages option in settings
+  switch(message_code) {
+    case MESSAGE_HOMING_ENABLE:
+      printPgmString(PSTR("warning: Install all axes limit switches before use")); break;
   }
   printPgmString(PSTR("\r\n"));
 }
@@ -181,7 +167,6 @@ void protocol_execute_runtime()
     
     // System alarm. Something has gone wrong. Disable everything until system reset.
     if (rt_exec & EXEC_ALARM) {
-      protocol_status_message(STATUS_HARD_LIMIT);
       while (bit_isfalse(sys.execute,EXEC_RESET)) { sleep_mode(); }
       bit_false(sys.execute,EXEC_ALARM);
     } 
@@ -223,7 +208,7 @@ void protocol_execute_runtime()
 
 
 // Executes one line of input according to protocol
-int8_t protocol_execute_line(char *line) 
+uint8_t protocol_execute_line(char *line) 
 {     
   if(line[0] == '$') {
   
@@ -255,6 +240,9 @@ int8_t protocol_execute_line(char *line)
 
   } else {
     return(gc_execute_line(line));    // Everything else is gcode
+    // TODO: Install option to set system alarm upon any error code received back from the
+    // the g-code parser. This is a common safety feature on CNCs to help prevent crashes
+    // if the g-code doesn't perform as intended.
   }
 }
 

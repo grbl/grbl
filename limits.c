@@ -56,16 +56,14 @@ ISR(LIMIT_INT_vect)
   if (bit_isfalse(sys.execute,EXEC_ALARM)) { 
     // Kill all processes upon hard limit event.
     if ((LIMIT_PIN & LIMIT_MASK) ^ LIMIT_MASK) {
-      st_go_idle(); // Immediately stop stepper motion
-      spindle_stop(); // Stop spindle
-      sys.auto_start = false; // Disable auto cycle start.
-      sys.execute |= EXEC_ALARM;
-      // TODO: When Grbl system status is installed, update here to indicate loss of position.
+      mc_alarm(); // Initiate system kill.
+      protocol_status_message(STATUS_HARD_LIMIT); // Print ok in interrupt since system killed.
     } 
     // else {
     //   TODO: When leaving a switch, this interrupt can be activated upon detecting a pin
     //   change to high. If so, need to start a countdown timer to check the pin again after
-    //   a debounce period to not falsely re-engage the alarm.
+    //   a debounce period to not falsely re-engage the alarm. Not essential, but *could* be
+    //   a minor annoyance.
   }
 }
 

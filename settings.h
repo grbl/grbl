@@ -66,10 +66,10 @@ void settings_init();
 void settings_dump();
 
 // Handle settings command
-int8_t settings_execute_line(char *line);
+uint8_t settings_execute_line(char *line);
 
 // A helper method to set new settings from command line
-int8_t settings_store_setting(int parameter, float value);
+uint8_t settings_store_setting(int parameter, float value);
 
 // int8_t settings_execute_startup();
 

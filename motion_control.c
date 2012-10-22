@@ -25,6 +25,8 @@
 #include "config.h"
 #include "gcode.h"
 #include "motion_control.h"
+#include "spindle_control.h"
+#include "coolant_control.h"
 #include <util/delay.h>
 #include <math.h>
 #include <stdlib.h>
@@ -221,5 +223,26 @@ void mc_go_home()
     plan_synchronize(); // Make sure the motion completes.
     gc_set_current_position(sys.position[X_AXIS],sys.position[Y_AXIS],sys.position[Z_AXIS]);
     PCICR |= (1 << LIMIT_INT);  // Re-enable hard limits.
+  }
+}
+
+
+// Method to immediately kill all motion and set system alarm. Used by system abort, hard limits,
+// and upon g-code parser error (when installed).
+void mc_alarm()
+{
+  // Only this function can set the system alarm. This is done to prevent multiple kill calls 
+  // by different processes.
+  if (bit_isfalse(sys.execute, EXEC_ALARM)) {
+    sys.execute |= EXEC_ALARM; // Set alarm to allow subsystem disable for certain settings.
+    sys.auto_start = false; // Disable auto cycle start.
+          
+    // TODO: When Grbl system status is installed, set position lost state if the cycle is active.
+    // if (sys.cycle_start) { POSITION LOST } 
+        
+    // Immediately force stepper, spindle, and coolant to stop.
+    st_go_idle();  
+    spindle_stop();
+    coolant_stop();
   }
 }
