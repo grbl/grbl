@@ -60,7 +60,7 @@ void protocol_status_message(uint8_t status_code)
       case STATUS_INVALID_STATEMENT:
       printPgmString(PSTR("Invalid statement")); break;
       case STATUS_HARD_LIMIT:
-      printPgmString(PSTR("<ALARM> Limit triggered")); break;
+      printPgmString(PSTR("Limit triggered")); break;
       case STATUS_SETTING_DISABLED:
       printPgmString(PSTR("Grbl setting disabled")); break;
       case STATUS_SETTING_STEPS_NEG:
@@ -77,13 +77,15 @@ void protocol_status_message(uint8_t status_code)
 
 // Prints miscellaneous messages. This serves as a centralized method to provide additional
 // user feedback for things that do not pass through the protocol_execute_line() function
-// and are not errors or confirmations, such as setup warnings.
+// and are not errors or confirmations, such as setup warnings and how to exit alarms.
 void protocol_misc_message(uint8_t message_code)
 {
   // TODO: Install silence misc messages option in settings
   switch(message_code) {
+    case MESSAGE_SYSTEM_ALARM:
+    printPgmString(PSTR("<ALARM: Reset to continue>")); break;
     case MESSAGE_HOMING_ENABLE:
-      printPgmString(PSTR("warning: Install all axes limit switches before use")); break;
+    printPgmString(PSTR("warning: Install all axes limit switches before use")); break;
   }
   printPgmString(PSTR("\r\n"));
 }
@@ -167,6 +169,7 @@ void protocol_execute_runtime()
     
     // System alarm. Something has gone wrong. Disable everything until system reset.
     if (rt_exec & EXEC_ALARM) {
+      if (bit_isfalse(sys.execute,EXEC_RESET)) { protocol_misc_message(MESSAGE_SYSTEM_ALARM); }
       while (bit_isfalse(sys.execute,EXEC_RESET)) { sleep_mode(); }
       bit_false(sys.execute,EXEC_ALARM);
     } 

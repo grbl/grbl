@@ -44,6 +44,7 @@
 #define STATUS_SETTING_READ_FAIL 11
 
 // Define Grbl misc message codes
+#define MESSAGE_SYSTEM_ALARM 0
 #define MESSAGE_HOMING_ENABLE 1
 
 
