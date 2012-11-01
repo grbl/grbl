@@ -35,6 +35,7 @@
 #include "gcode.h"
 #include "protocol.h"
 #include "limits.h"
+#include "report.h"
 #include "settings.h"
 #include "serial.h"
 
@@ -68,10 +69,9 @@ int main(void)
       // releases will auto-reset the machine position back to [0,0,0] if an abort is used while 
       // grbl is moving the machine.
       int32_t last_position[3];
-      float last_coord_system[N_COORDINATE_SYSTEM][3];
       memcpy(last_position, sys.position, sizeof(sys.position)); // last_position[] = sys.position[]
-      memcpy(last_coord_system, sys.coord_system, sizeof(sys.coord_system)); // last_coord_system[] = sys.coord_system[]
-
+      // TODO: Last coordinate system method.
+      
       // Reset system.
       memset(&sys, 0, sizeof(sys)); // Clear all system variables
       serial_reset_read_buffer(); // Clear serial read buffer
@@ -86,7 +86,6 @@ int main(void)
       
       // Reload last known machine position and work systems. G92 coordinate offsets are reset.
       memcpy(sys.position, last_position, sizeof(last_position)); // sys.position[] = last_position[]
-      memcpy(sys.coord_system, last_coord_system, sizeof(last_coord_system)); // sys.coord_system[] = last_coord_system[]
       gc_set_current_position(last_position[X_AXIS],last_position[Y_AXIS],last_position[Z_AXIS]);
       plan_set_current_position(last_position[X_AXIS],last_position[Y_AXIS],last_position[Z_AXIS]);
       
@@ -97,6 +96,8 @@ int main(void)
         sys.auto_start = true;
       }
       // TODO: Install G20/G21 unit default into settings and load appropriate settings.
+
+      report_init_message();
     }
     
     protocol_execute_runtime();

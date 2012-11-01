@@ -84,25 +84,32 @@ static volatile uint8_t busy;   // True when SIG_OUTPUT_COMPARE1A is being servi
 
 static void set_step_events_per_minute(uint32_t steps_per_minute);
 
-// Stepper state initialization
-static void st_wake_up() 
+// Stepper state initialization. Cycle should only start if the st.cycle_start flag is
+// enabled. Startup init and limits call this function but shouldn't start the cycle.
+void st_wake_up() 
 {
-  // Initialize stepper output bits
-  out_bits = (0) ^ (settings.invert_mask); 
-  // Initialize step pulse timing from settings. Here to ensure updating after re-writing.
-  #ifdef STEP_PULSE_DELAY
-    // Set total step pulse time after direction pin set. Ad hoc computation from oscilloscope.
-    step_pulse_time = -(((settings.pulse_microseconds+STEP_PULSE_DELAY-2)*TICKS_PER_MICROSECOND) >> 3);
-    // Set delay between direction pin write and step command.
-    OCR2A = -(((settings.pulse_microseconds)*TICKS_PER_MICROSECOND) >> 3);
-  #else // Normal operation
-    // Set step pulse time. Ad hoc computation from oscilloscope. Uses two's complement.
-    step_pulse_time = -(((settings.pulse_microseconds-2)*TICKS_PER_MICROSECOND) >> 3);
-  #endif
   // Enable steppers by resetting the stepper disable port
-  STEPPERS_DISABLE_PORT &= ~(1<<STEPPERS_DISABLE_BIT);
-  // Enable stepper driver interrupt
-  TIMSK1 |= (1<<OCIE1A);
+  if (bit_istrue(settings.flags,BITFLAG_INVERT_ST_ENABLE)) { 
+    STEPPERS_DISABLE_PORT |= (1<<STEPPERS_DISABLE_BIT); 
+  } else { 
+    STEPPERS_DISABLE_PORT &= ~(1<<STEPPERS_DISABLE_BIT);
+  }
+  if (sys.cycle_start) {
+    // Initialize stepper output bits
+    out_bits = (0) ^ (settings.invert_mask); 
+    // Initialize step pulse timing from settings. Here to ensure updating after re-writing.
+    #ifdef STEP_PULSE_DELAY
+      // Set total step pulse time after direction pin set. Ad hoc computation from oscilloscope.
+      step_pulse_time = -(((settings.pulse_microseconds+STEP_PULSE_DELAY-2)*TICKS_PER_MICROSECOND) >> 3);
+      // Set delay between direction pin write and step command.
+      OCR2A = -(((settings.pulse_microseconds)*TICKS_PER_MICROSECOND) >> 3);
+    #else // Normal operation
+      // Set step pulse time. Ad hoc computation from oscilloscope. Uses two's complement.
+      step_pulse_time = -(((settings.pulse_microseconds-2)*TICKS_PER_MICROSECOND) >> 3);
+    #endif
+    // Enable stepper driver interrupt
+    TIMSK1 |= (1<<OCIE1A);
+  }
 }
 
 // Stepper shutdown
@@ -110,12 +117,16 @@ void st_go_idle()
 {
   // Disable stepper driver interrupt
   TIMSK1 &= ~(1<<OCIE1A); 
-  // Force stepper dwell to lock axes for a defined amount of time to ensure the axes come to a complete
-  // stop and not drift from residual inertial forces at the end of the last movement.
-  delay_ms(settings.stepper_idle_lock_time);
   // Disable steppers only upon system alarm activated or by user setting to not be kept enabled.
   if ((settings.stepper_idle_lock_time != 0xff) || bit_istrue(sys.execute,EXEC_ALARM)) {
-    STEPPERS_DISABLE_PORT |= (1<<STEPPERS_DISABLE_BIT);
+    // Force stepper dwell to lock axes for a defined amount of time to ensure the axes come to a complete
+    // stop and not drift from residual inertial forces at the end of the last movement.
+    delay_ms(settings.stepper_idle_lock_time);
+    if (bit_istrue(settings.flags,BITFLAG_INVERT_ST_ENABLE)) { 
+      STEPPERS_DISABLE_PORT &= ~(1<<STEPPERS_DISABLE_BIT); 
+    } else { 
+      STEPPERS_DISABLE_PORT |= (1<<STEPPERS_DISABLE_BIT); 
+    }   
   }
 }
 
@@ -362,7 +373,8 @@ void st_init()
     TIMSK2 |= (1<<OCIE2A); // Enable Timer2 Compare Match A interrupt
   #endif
 
-  // Start in the idle state
+  // Start in the idle state, but first wake up to check for keep steppers enabled option.
+  st_wake_up();
   st_go_idle();
 }
 
@@ -414,12 +426,16 @@ static void set_step_events_per_minute(uint32_t steps_per_minute)
 
 // Planner external interface to start stepper interrupt and execute the blocks in queue. Called
 // by the main program functions: planner auto-start and run-time command execution.
+// TODO: Update sys.cycle_start and feed_hold variables to a sys.state variable. This state
+// variable will manage all of Grbl's processes and keep them separate.
 void st_cycle_start() 
 {
   if (!sys.cycle_start) {
     if (!sys.feed_hold) {
-      sys.cycle_start = true;
-      st_wake_up();
+      if (bit_isfalse(sys.execute,EXEC_ALARM)) {
+        sys.cycle_start = true; // Only place this variable is set true.
+        st_wake_up();
+      }
     }
   }
 }

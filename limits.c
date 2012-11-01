@@ -31,6 +31,7 @@
 #include "planner.h"
 #include "protocol.h"
 #include "limits.h"
+#include "report.h"
 
 #define MICROSECONDS_PER_ACCELERATION_TICK  (1000000/ACCELERATION_TICKS_PER_SECOND)
 
@@ -50,6 +51,11 @@ void limits_init()
 // homing cycles and will not respond correctly. Upon user request or need, there may be a
 // special pinout for an e-stop, but it is generally recommended to just directly connect
 // your e-stop switch to the Arduino reset pin, since it is the most correct way to do this.
+// TODO: This interrupt may be used to manage the homing cycle directly with the main stepper
+// interrupt without adding too much to it. All it would need is some way to stop one axis 
+// when its limit is triggered and continue the others. This may reduce some of the code, but
+// would make Grbl a little harder to read and understand down road. Holding off on this until
+// we move on to new hardware or flash space becomes an issue. If it ain't broke, don't fix it.
 ISR(LIMIT_INT_vect) 
 {
   // Only enter if the system alarm is not active.
@@ -57,13 +63,8 @@ ISR(LIMIT_INT_vect)
     // Kill all processes upon hard limit event.
     if ((LIMIT_PIN & LIMIT_MASK) ^ LIMIT_MASK) {
       mc_alarm(); // Initiate system kill.
-      protocol_status_message(STATUS_HARD_LIMIT); // Print ok in interrupt since system killed.
+      report_status_message(STATUS_HARD_LIMIT); // Print ok in interrupt since system killed.
     } 
-    // else {
-    //   TODO: When leaving a switch, this interrupt can be activated upon detecting a pin
-    //   change to high. If so, need to start a countdown timer to check the pin again after
-    //   a debounce period to not falsely re-engage the alarm. Not essential, but *could* be
-    //   a minor annoyance.
   }
 }
 
@@ -190,7 +191,8 @@ static void homing_cycle(bool x_axis, bool y_axis, bool z_axis, int8_t pos_dir,
 
 void limits_go_home() 
 {  
-  STEPPERS_DISABLE_PORT &= ~(1<<STEPPERS_DISABLE_BIT); // Enable steppers, but not the cycle.
+  // Enable only the steppers, not the cycle. Cycle should be complete.
+  st_wake_up();
   
   // Jog all axes toward home to engage their limit switches at faster homing seek rate.
   homing_cycle(false, false, true, true, false, settings.homing_seek_rate);  // First jog the z axis

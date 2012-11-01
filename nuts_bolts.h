@@ -30,7 +30,8 @@
 #define false 0
 #define true 1
 
-#define X_AXIS 0
+#define N_AXIS 3 // Number of axes
+#define X_AXIS 0 // Axis indexing value
 #define Y_AXIS 1
 #define Z_AXIS 2
 
@@ -39,7 +40,7 @@
 
 // Useful macros
 #define clear_vector(a) memset(a, 0, sizeof(a))
-#define clear_vector_float(a) memset(a, 0.0, sizeof(a))
+#define clear_vector_float(a) memset(a, 0.0, sizeof(float)*3)
 #define max(a,b) (((a) > (b)) ? (a) : (b))
 #define min(a,b) (((a) < (b)) ? (a) : (b))
 
@@ -75,6 +76,11 @@
 // #define                    bit(6)
 // #define                    bit(7)
 
+// Define Grbl system states for sys.state
+
+// Define position lost in states?
+
+
 // Define global system variables
 typedef struct {
   uint8_t abort;                 // System abort flag. Forces exit back to main loop for reset.
@@ -86,10 +92,9 @@ typedef struct {
                                  // NOTE: This may need to be a volatile variable, if problems arise. 
 
   uint8_t coord_select;          // Active work coordinate system number. Default: 0=G54.
-  float coord_system[N_COORDINATE_SYSTEM][3]; // Work coordinate systems (G54+). Stores offset from
-  															 // absolute machine position in mm.
-                                 // Rows: Work system number (0=G54,1=G55,...5=G59), Columns: XYZ Offsets
-  float coord_offset[3];        // Retains the G92 coordinate offset (work coordinates) relative to
+  float coord_system[N_AXIS];    // Current work coordinate system (G54+). Stores offset from absolute machine
+                                 // position in mm. Loaded from EEPROM when called.
+  float coord_offset[N_AXIS];    // Retains the G92 coordinate offset (work coordinates) relative to
                                  // machine zero in mm.
                           
   volatile uint8_t cycle_start;  // Cycle start flag. Set by stepper subsystem or main program. 

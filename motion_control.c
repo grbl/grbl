@@ -110,7 +110,7 @@ void mc_arc(float *position, float *target, float *offset, uint8_t axis_0, uint8
   float linear_per_segment = linear_travel/segments;
   
   /* Vector rotation by transformation matrix: r is the original vector, r_T is the rotated vector,
-     and phi is the angle of rotation. Based on the solution approach by Jens Geisler.
+     and phi is the angle of rotation. Solution approach by Jens Geisler.
          r_T = [cos(phi) -sin(phi);
                 sin(phi)  cos(phi] * r ;
      
@@ -150,14 +150,14 @@ void mc_arc(float *position, float *target, float *offset, uint8_t axis_0, uint8
 
   for (i = 1; i<segments; i++) { // Increment (segments-1)
     
-    if (count < N_ARC_CORRECTION) {
+    if (count < settings.n_arc_correction) {
       // Apply vector rotation matrix 
       r_axisi = r_axis0*sin_T + r_axis1*cos_T;
       r_axis0 = r_axis0*cos_T - r_axis1*sin_T;
       r_axis1 = r_axisi;
       count++;
     } else {
-      // Arc correction to radius vector. Computed only every N_ARC_CORRECTION increments.
+      // Arc correction to radius vector. Computed only every n_arc_correction increments.
       // Compute exact location by applying transformation matrix from initial radius vector(=-offset).
       cos_Ti = cos(i*theta_per_segment);
       sin_Ti = sin(i*theta_per_segment);
@@ -200,30 +200,33 @@ void mc_go_home()
 {
   plan_synchronize();  // Empty all motions in buffer before homing.
   PCICR &= ~(1 << LIMIT_INT);   // Disable hard limits pin change interrupt
+  plan_clear_position();
 
   limits_go_home(); // Perform homing routine.
 
-  // Upon completion, reset all internal position vectors (g-code parser, planner, system)
-  gc_clear_position();
+  // The machine should now be homed and machine zero has been located. Upon completion, 
+  // reset planner and system internal position vectors, but not gcode parser position yet.
   plan_clear_position();
   clear_vector_float(sys.position);
+
+  // Pull-off all axes from limit switches before continuing motion. This provides some initial
+  // clearance off the switches and should also help prevent them from falsely tripping when 
+  // hard limits are enabled.
+  int8_t x_dir, y_dir, z_dir;
+  x_dir = y_dir = z_dir = -1;
+  if (bit_istrue(settings.homing_dir_mask,bit(X_DIRECTION_BIT))) { x_dir = 1; }
+  if (bit_istrue(settings.homing_dir_mask,bit(Y_DIRECTION_BIT))) { y_dir = 1; }
+  if (bit_istrue(settings.homing_dir_mask,bit(Z_DIRECTION_BIT))) { z_dir = 1; }
+  mc_line(x_dir*settings.homing_pulloff, y_dir*settings.homing_pulloff, 
+          z_dir*settings.homing_pulloff, settings.homing_feed_rate, false);
+  st_cycle_start(); // Move it. Nothing should be in the buffer except this motion. 
+  plan_synchronize(); // Make sure the motion completes.
   
-  // If hard limits enabled, move all axes off limit switches before enabling the hard limit
-  // pin change interrupt. This should help prevent the switches from falsely tripping.
-  // NOTE: G-code parser was circumvented so its position needs to be updated explicitly.
-  if (bit_istrue(settings.flags,BITFLAG_HARD_LIMIT_ENABLE)) {
-    int8_t x_dir, y_dir, z_dir;
-    x_dir = y_dir = z_dir = 1;
-    if (bit_istrue(settings.homing_dir_mask,bit(X_DIRECTION_BIT))) { x_dir = -1; }
-    if (bit_istrue(settings.homing_dir_mask,bit(Y_DIRECTION_BIT))) { y_dir = -1; }
-    if (bit_istrue(settings.homing_dir_mask,bit(Z_DIRECTION_BIT))) { z_dir = -1; }
-    mc_line(x_dir*settings.homing_pulloff, y_dir*settings.homing_pulloff, 
-            z_dir*settings.homing_pulloff, settings.homing_feed_rate, false);
-    st_cycle_start(); // Move it. Nothing should be in the buffer except this motion. 
-    plan_synchronize(); // Make sure the motion completes.
-    gc_set_current_position(sys.position[X_AXIS],sys.position[Y_AXIS],sys.position[Z_AXIS]);
-    PCICR |= (1 << LIMIT_INT);  // Re-enable hard limits.
-  }
+  // Explicitly update the gcode parser position since it was circumvented by the pull-off maneuver.
+  gc_set_current_position(sys.position[X_AXIS],sys.position[Y_AXIS],sys.position[Z_AXIS]);
+
+  // If hard limits feature enabled, re-enable hard limits interrupt after homing cycle.
+  if (bit_istrue(settings.flags,BITFLAG_HARD_LIMIT_ENABLE)) { PCICR |= (1 << LIMIT_INT); }
 }
 
 
@@ -234,12 +237,8 @@ void mc_alarm()
   // Only this function can set the system alarm. This is done to prevent multiple kill calls 
   // by different processes.
   if (bit_isfalse(sys.execute, EXEC_ALARM)) {
-    sys.execute |= EXEC_ALARM; // Set alarm to allow subsystem disable for certain settings.
-    sys.auto_start = false; // Disable auto cycle start.
-          
-    // TODO: When Grbl system status is installed, set position lost state if the cycle is active.
-    // if (sys.cycle_start) { POSITION LOST } 
-        
+    // Set system alarm flag.
+    sys.execute |= EXEC_ALARM;
     // Immediately force stepper, spindle, and coolant to stop.
     st_go_idle();  
     spindle_stop();

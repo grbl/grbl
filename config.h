@@ -80,10 +80,6 @@
 #define CMD_CYCLE_START '~'
 #define CMD_RESET 0x18 // ctrl-x
 
-// Specifies the number of work coordinate systems grbl will support (G54 - G59).
-// This parameter must be one or greater, currently supporting up to a value of 6.
-#define N_COORDINATE_SYSTEM 1
-
 // The temporal resolution of the acceleration management subsystem. Higher number give smoother
 // acceleration but may impact performance.
 // NOTE: Increasing this parameter will help any resolution related issues, especially with machines 
@@ -105,13 +101,6 @@
 // This is primarily used to guarantee that the end of a movement is always reached and not stop to
 // never reach its target. This parameter should always be greater than zero.
 #define MINIMUM_STEPS_PER_MINUTE 800 // (steps/min) - Integer value only
-
-// Number of arc generation iterations by small angle approximation before exact arc trajectory 
-// correction. This parameter maybe decreased if there are issues with the accuracy of the arc
-// generations. In general, the default value is more than enough for the intended CNC applications
-// of grbl, and should be on the order or greater than the size of the buffer to help with the 
-// computational efficiency of generating arcs.
-#define N_ARC_CORRECTION 25 // Integer (1-255)
 
 // Time delay increments performed during a dwell. The default value is set at 50ms, which provides
 // a maximum time delay of roughly 55 minutes, more than enough for most any application. Increasing
@@ -172,5 +161,17 @@
 // words, the steppers never disable for users that require this.
 // -> NOW INSTALLED IN SETTINGS #define STEPPER_IDLE_LOCK_TIME 25 // (milliseconds) - Integer > 0
 
+// Number of arc generation iterations by small angle approximation before exact arc trajectory 
+// correction. This parameter maybe decreased if there are issues with the accuracy of the arc
+// generations. In general, the default value is more than enough for the intended CNC applications
+// of grbl, and should be on the order or greater than the size of the buffer to help with the 
+// computational efficiency of generating arcs.
+// -> NOW INSTALLED IN SETTINGS #define N_ARC_CORRECTION 25 // Integer (1-255)
+
+// Specifies the number of work coordinate systems grbl will support (G54 - G59).
+// This parameter must be one or greater, currently supporting up to a value of 6.
+// -> NOW CODED INTO SETTINGS.C #define N_COORDINATE_SYSTEM 6
+
+// TODO: Install compile-time option to send numeric status codes rather than strings.
 
 #endif

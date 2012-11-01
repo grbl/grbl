@@ -9,19 +9,24 @@ It accepts standards-compliant G-code and has been tested with the output of sev
 Grbl includes full acceleration management with look ahead. That means the controller will look up to 18 motions into the future and plan its velocities ahead to deliver smooth acceleration and jerk-free cornering.
 
 *Changelog for v0.8 from v0.7:*
-  - *ALPHA status: _Under heavy development. Code state may significantly change with each push as new features are integrated._*
+  - *BETA status: _Under development. Code state may significantly change with each push as new features are integrated._*
   - Major structural overhaul to allow for multi-tasking events and new feature sets
   - New run-time command control: Feed hold (pause), Cycle start (resume), Reset (abort), Status reporting
   - Controlled feed hold with deceleration to ensure no skipped steps and loss of location.
   - After feed hold, cycle accelerations are re-planned and may be resumed.
+  - Advanced homing cycle with direction and speed configuration options. (Requires limit switches.)
+  - Limit pins are held normal high with an internal pull-up resister. Wiring only requires a normally-open switch connected to ground. (For both ends of an axis, simply wire two in parallel into the same pin.)
+  - Hard limits option and plays nice with homing cycle, so switches can be used for both homing and hard limits.
   - Re-factored g-code parser with robust error-checking.
-  - Work coordinate system (G54), offsets(G92), and machine coordinate system support. G10 work coordinate settings support. (Up to 6 work coordinate systems(G54-G59) available as a compile-time option.)
+  - 6 work coordinate systems (G54-G59), offsets(G92), and machine coordinate system support. Work systems are stored in EEPROM and persistent.
+  - G10 L2 and L20 work coordinate settings support. L2 sets one or more axes values. L20 sets the current machine position to the specified work origin.
   - Program stop(M0,M1*,M2,M30) initial support. Optional stop to do.
+  - Coolant control(M7*,M8,M9) support. (M7 is a compile-time option).
   - System reset re-initializes grbl without resetting the Arduino and retains machine/home position and work coordinates.
   - Restructured planner and stepper modules to become independent and ready for future features.
-  - Reduced serial read buffer to 128 characters and increased write buffer to 64 characters.
+  - Settings re-factoring to allow configuration without compiling of most features. (Still in progress).
   - Misc bug fixes and removed deprecated acceleration enabled code.  
-  - Planned features: Jog mode, full-featured status reporting, runtime settings such as toggling block delete.
+  - Planned features: Axis acceleration and max speed individual settings, full-featured status reporting, runtime settings such as toggling block delete.
   - Advanced compile-time options: Up to 6 work coordinate systems(G54-G59), XON/XOFF flow control (limited support), direction and step pulse time delay.
   
 

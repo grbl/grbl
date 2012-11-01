@@ -28,21 +28,11 @@
 #include <avr/pgmspace.h>
 #include "protocol.h"
 #include "config.h"
+#include "report.h"
 
 settings_t settings;
 
-// Version 1 outdated settings record
-typedef struct {
-  float steps_per_mm[3];
-  uint8_t microsteps;
-  uint8_t pulse_microseconds;
-  float default_feed_rate;
-  float default_seek_rate;
-  uint8_t invert_mask;
-  float mm_per_arc_segment;
-} settings_v1_t;
-
-// Version 2,3,4 outdated settings record
+// Version 4 outdated settings record
 typedef struct {
   float steps_per_mm[3];
   uint8_t microsteps;
@@ -53,7 +43,7 @@ typedef struct {
   float mm_per_arc_segment;
   float acceleration;
   float junction_deviation;
-} settings_v2_v4_t;
+} settings_v4_t;
 
 // Default settings (used when resetting eeprom-settings)
 #define MICROSTEPS 8
@@ -71,6 +61,7 @@ typedef struct {
 // Developmental default settings
 #define DEFAULT_REPORT_INCHES 0 // false
 #define DEFAULT_AUTO_START 1 // true
+#define DEFAULT_INVERT_ST_ENABLE 0 // false
 #define DEFAULT_HARD_LIMIT_ENABLE 0  // false
 #define DEFAULT_HOMING_ENABLE 0  // false
 #define DEFAULT_HOMING_DIR_MASK 0 // move positive dir
@@ -80,6 +71,22 @@ typedef struct {
 #define DEFAULT_HOMING_PULLOFF 1 // mm
 #define DEFAULT_STEPPER_IDLE_LOCK_TIME 25 // msec (0-255)
 #define DEFAULT_DECIMAL_PLACES 3
+#define DEFAULT_N_ARC_CORRECTION 25
+
+
+void settings_write_coord_data(uint8_t coord_select, float *coord_data)
+{  
+  uint16_t addr = coord_select*(sizeof(float)*N_AXIS+1) + EEPROM_ADDR_PARAMETERS;
+  memcpy_to_eeprom_with_checksum(addr,(char*)coord_data, sizeof(float)*N_AXIS);
+}  
+
+
+void write_global_settings() 
+{
+  eeprom_put_char(0, SETTINGS_VERSION);
+  memcpy_to_eeprom_with_checksum(EEPROM_ADDR_GLOBAL, (char*)&settings, sizeof(settings_t));
+}
+
 
 void settings_reset(bool reset_all) {
   // Reset all settings or only the migration settings to the new version.
@@ -97,7 +104,9 @@ void settings_reset(bool reset_all) {
   }
   // New settings since last version
   settings.flags = 0;
+  if (DEFAULT_REPORT_INCHES) { settings.flags |= BITFLAG_REPORT_INCHES; }
   if (DEFAULT_AUTO_START) { settings.flags |= BITFLAG_AUTO_START; }
+  if (DEFAULT_INVERT_ST_ENABLE) { settings.flags |= BITFLAG_INVERT_ST_ENABLE; }
   if (DEFAULT_HARD_LIMIT_ENABLE) { settings.flags |= BITFLAG_HARD_LIMIT_ENABLE; }
   if (DEFAULT_HOMING_ENABLE) { settings.flags |= BITFLAG_HOMING_ENABLE; }
   settings.homing_dir_mask = DEFAULT_HOMING_DIR_MASK;
@@ -107,138 +116,56 @@ void settings_reset(bool reset_all) {
   settings.homing_pulloff = DEFAULT_HOMING_PULLOFF;
   settings.stepper_idle_lock_time = DEFAULT_STEPPER_IDLE_LOCK_TIME;
   settings.decimal_places = DEFAULT_DECIMAL_PLACES;
-}
-
-// static void settings_startup_string(char *buf) {
-//   memcpy_from_eeprom_with_checksum((char*)buf,512, 4);
-// }
-
-void settings_dump() {
-  printPgmString(PSTR("$0 = ")); printFloat(settings.steps_per_mm[X_AXIS]);
-  printPgmString(PSTR(" (x axis, steps/mm)\r\n$1 = ")); printFloat(settings.steps_per_mm[Y_AXIS]);
-  printPgmString(PSTR(" (y axis, steps/mm)\r\n$2 = ")); printFloat(settings.steps_per_mm[Z_AXIS]);
-  printPgmString(PSTR(" (z axis, steps/mm)\r\n$3 = ")); printInteger(settings.pulse_microseconds);
-  printPgmString(PSTR(" (step pulse, usec)\r\n$4 = ")); printFloat(settings.default_feed_rate);
-  printPgmString(PSTR(" (default feed rate, mm/min)\r\n$5 = ")); printFloat(settings.default_seek_rate);
-  printPgmString(PSTR(" (default seek rate, mm/min)\r\n$6 = ")); printFloat(settings.mm_per_arc_segment);
-  printPgmString(PSTR(" (arc resolution, mm/segment)\r\n$7 = ")); printInteger(settings.invert_mask); 
-  printPgmString(PSTR(" (step port invert mask, int:binary = ")); print_uint8_base2(settings.invert_mask);  
-  printPgmString(PSTR(")\r\n$8 = ")); printFloat(settings.acceleration/(60*60)); // Convert from mm/min^2 for human readability
-  printPgmString(PSTR(" (acceleration, mm/sec^2)\r\n$9 = ")); printFloat(settings.junction_deviation);
-  printPgmString(PSTR(" (cornering junction deviation, mm)\r\n$10 = ")); printInteger(bit_istrue(settings.flags,BITFLAG_REPORT_INCHES));
-  printPgmString(PSTR(" (status report inches, bool)\r\n$11 = ")); printInteger(bit_istrue(settings.flags,BITFLAG_AUTO_START));
-  printPgmString(PSTR(" (auto start enable, bool)\r\n$12 = ")); printInteger(bit_istrue(settings.flags,BITFLAG_HARD_LIMIT_ENABLE));
-  printPgmString(PSTR(" (hard limit enable, bool)\r\n$13 = ")); printInteger(bit_istrue(settings.flags,BITFLAG_HOMING_ENABLE));
-  printPgmString(PSTR(" (homing enable, bool)\r\n$14 = ")); printInteger(settings.homing_dir_mask);
-  printPgmString(PSTR(" (homing direction mask, int:binary = ")); print_uint8_base2(settings.homing_dir_mask);  
-  printPgmString(PSTR(")\r\n$15 = ")); printFloat(settings.homing_feed_rate);
-  printPgmString(PSTR(" (homing feed rate, mm/min)\r\n$16 = ")); printFloat(settings.homing_seek_rate);
-  printPgmString(PSTR(" (homing seek rate, mm/min)\r\n$17 = ")); printInteger(settings.homing_debounce_delay);
-  printPgmString(PSTR(" (homing debounce delay, msec)\r\n$18 = ")); printFloat(settings.homing_pulloff);
-  printPgmString(PSTR(" (homing pull-off travel, mm)\r\n$19 = ")); printInteger(settings.stepper_idle_lock_time);
-  printPgmString(PSTR(" (stepper idle lock time, msec)\r\n$20 = ")); printInteger(settings.decimal_places);
-  printPgmString(PSTR(" (decimal places, int)")); 
+  settings.n_arc_correction = DEFAULT_N_ARC_CORRECTION;
+  write_global_settings();
   
-//   char buf[4];
-//   settings_startup_string((char *)buf);
-//   printPgmString(PSTR("\r\n Startup: ")); printString(buf);
-  
-  printPgmString(PSTR("\r\n'$x=value' to set parameter or just '$' to dump current settings\r\n"));
+  // Zero all coordinate parameter data.
+  float coord_data[N_AXIS];
+  clear_vector_float(coord_data);
+  uint8_t i = 0;
+  for (i=0; i<=SETTING_INDEX_NCOORD; i++) {
+    settings_write_coord_data(i,coord_data);
+  }
 }
 
-// Parameter lines are on the form '$4=374.3' or '$' to dump current settings
-// NOTE: Assumes '$' already exists in line[0], which is checked by protocol.c.
-uint8_t settings_execute_line(char *line) {
-  uint8_t char_counter = 1; 
-//  unsigned char letter;
-  float parameter, value;
-  if(line[char_counter] == 0) { 
-    settings_dump(); return(STATUS_OK); 
+// Read selected coordinate data from EEPROM. Updates pointed coord_data value.
+uint8_t settings_read_coord_data(uint8_t coord_select, float *coord_data)
+{
+  uint16_t addr = coord_select*(sizeof(float)*N_AXIS+1) + EEPROM_ADDR_PARAMETERS;
+  if ((!memcpy_from_eeprom_with_checksum((char*)coord_data, addr, sizeof(float)*N_AXIS))) {
+    clear_vector_float(coord_data);  // Default zero vector
+    settings_write_coord_data(coord_select,coord_data);
+    return(false);
+  } else {
+    return(true);
   }
-//   if(line[char_counter] >= 'A' || line[char_counter] <= 'Z') {
-//     letter = line[char_counter++];
-//     if(line[char_counter++] != '=') { 
-//       return(STATUS_UNSUPPORTED_STATEMENT); 
-//     }
-//     for (char_counter = 0; char_counter < LINE_BUFFER_SIZE-3; char_counter++) {
-//       line[char_counter] = line[char_counter+3];
-//     }
-//     uint8_t status = gc_execute_line(line);
-//     if (status) { return(status); }
-//     else { settings_store_startup_line(line); }
-//     
-//     
-//     // Opt stop and block delete are referred to as switches.
-//     // How to store home position and work offsets real-time??
-//     
-//   } else {
-  if(!read_float(line, &char_counter, &parameter)) {
-    return(STATUS_BAD_NUMBER_FORMAT);
-  }
-  if(line[char_counter++] != '=') { 
-    return(STATUS_UNSUPPORTED_STATEMENT); 
-  }
-  if(!read_float(line, &char_counter, &value)) {
-    return(STATUS_BAD_NUMBER_FORMAT);
-  }
-  if(line[char_counter] != 0) { 
-    return(STATUS_UNSUPPORTED_STATEMENT); 
-  }
-  return(settings_store_setting(parameter, value));
-//   }
-}
+}  
 
-void write_settings() {
-  eeprom_put_char(0, SETTINGS_VERSION);
-  memcpy_to_eeprom_with_checksum(1, (char*)&settings, sizeof(settings_t));
-//   
-//   char buf[4]; buf[0] = 'G'; buf[1] = '2'; buf[2] = '0'; buf[3] = 0;
-//   memcpy_to_eeprom_with_checksum(512, (char*)buf, 4);
-//   
-}
 
-int read_settings() {
+uint8_t read_global_settings() {
   // Check version-byte of eeprom
   uint8_t version = eeprom_get_char(0);
   
   if (version == SETTINGS_VERSION) {
     // Read settings-record and check checksum
-    if (!(memcpy_from_eeprom_with_checksum((char*)&settings, 1, sizeof(settings_t)))) {
+    if (!(memcpy_from_eeprom_with_checksum((char*)&settings, EEPROM_ADDR_GLOBAL, sizeof(settings_t)))) {
       return(false);
     }
   } else {
-    // Incrementally update the old versions until up-to-date.
-    if (version == 1) {
-      // Migrate from settings version 1 to version 4.
-      if (!(memcpy_from_eeprom_with_checksum((char*)&settings, 1, sizeof(settings_v1_t)))) {
-        return(false);
-      }
-      settings.acceleration = DEFAULT_ACCELERATION;
-      settings.junction_deviation = DEFAULT_JUNCTION_DEVIATION;
-    } else if ((version == 2) || (version == 3)) {
-      // Migrate from settings version 2 and 3 to version 4.
-      if (!(memcpy_from_eeprom_with_checksum((char*)&settings, 1, sizeof(settings_v2_v4_t)))) {
-        return(false);
-      }
-      if (version == 2) { settings.junction_deviation = DEFAULT_JUNCTION_DEVIATION; }    
-      settings.acceleration *= 3600; // Convert to mm/min^2 from mm/sec^2
-    } 
     if (version <= 4) {
       // Migrate from settings version 4 to current version.
-      if (!(memcpy_from_eeprom_with_checksum((char*)&settings, 1, sizeof(settings_v2_v4_t)))) {
+      if (!(memcpy_from_eeprom_with_checksum((char*)&settings, 1, sizeof(settings_v4_t)))) {
         return(false);
       }     
       settings_reset(false);        
-      write_settings();
     } else if (version >= 50) {
       // Developmental settings. Version numbers greater than or equal to 50 are temporary.
       // Currently, this will update the user settings to v4 and the remainder of the settings
       // should be re-written to the default value, if the developmental version number changed.
       
       // Grab settings regardless of error.
-      memcpy_from_eeprom_with_checksum((char*)&settings, 1, sizeof(settings_t));
+      memcpy_from_eeprom_with_checksum((char*)&settings, 1, sizeof(settings_v4_t));
       settings_reset(false);
-      write_settings();
     } else {      
       return(false);
     }
@@ -246,11 +173,12 @@ int read_settings() {
   return(true);
 }
 
+
 // A helper method to set settings from command line
-uint8_t settings_store_setting(int parameter, float value) {
+uint8_t settings_store_global_setting(int parameter, float value) {
   switch(parameter) {
     case 0: case 1: case 2:
-      if (value <= 0.0) { return(STATUS_SETTING_STEPS_NEG); } 
+      if (value <= 0.0) { return(STATUS_SETTING_VALUE_NEG); } 
       settings.steps_per_mm[parameter] = value; break;
     case 3: 
       if (value < 3) { return(STATUS_SETTING_STEP_PULSE_MIN); }
@@ -267,45 +195,52 @@ uint8_t settings_store_setting(int parameter, float value) {
       } else { settings.flags &= ~BITFLAG_REPORT_INCHES; }
       break;
     case 11:
-      if (value) { 
+     if (value) { 
         settings.flags |= BITFLAG_AUTO_START; 
       } else { settings.flags &= ~BITFLAG_AUTO_START; }
       break;
     case 12:
+       if (value) { 
+        settings.flags |= BITFLAG_INVERT_ST_ENABLE; 
+      } else { settings.flags &= ~BITFLAG_INVERT_ST_ENABLE; }
+      break;
+    case 13:
       if (value) { 
         settings.flags |= BITFLAG_HARD_LIMIT_ENABLE; 
       } else { settings.flags &= ~BITFLAG_HARD_LIMIT_ENABLE; }
       break;
-    case 13:
+    case 14:
       if (value) { 
         settings.flags |= BITFLAG_HOMING_ENABLE; 
-        protocol_misc_message(MESSAGE_HOMING_ENABLE);
+        report_feedback_message(MESSAGE_HOMING_ENABLE);
       } else { settings.flags &= ~BITFLAG_HOMING_ENABLE; }
       break;
-    case 14: settings.homing_dir_mask = trunc(value); break;
-    case 15: settings.homing_feed_rate = value; break;
-    case 16: settings.homing_seek_rate = value; break;
-    case 17: settings.homing_debounce_delay = round(value); break;
-    case 18: settings.homing_pulloff = value; break;
-    case 19:
+    case 15: settings.homing_dir_mask = trunc(value); break;
+    case 16: settings.homing_feed_rate = value; break;
+    case 17: settings.homing_seek_rate = value; break;
+    case 18: settings.homing_debounce_delay = round(value); break;
+    case 19: 
+      if (value <= 0.0) { return(STATUS_SETTING_VALUE_NEG); } 
+      settings.homing_pulloff = value; break;
+    case 20:
        settings.stepper_idle_lock_time = round(value);
        // TODO: Immediately check and toggle steppers from always enable or disable?
        break;
-    case 20: settings.decimal_places = round(value); break;
+    case 21: settings.decimal_places = round(value); break;
+    case 22: settings.n_arc_correction = round(value); break;
     default: 
       return(STATUS_INVALID_STATEMENT);
   }
-  write_settings();
+  write_global_settings();
   return(STATUS_OK);
 }
 
 // Initialize the config subsystem
 void settings_init() {
-  if(!read_settings()) {
-    protocol_status_message(STATUS_SETTING_READ_FAIL);
+  if(!read_global_settings()) {
+    report_status_message(STATUS_SETTING_READ_FAIL);
     settings_reset(true);
-    write_settings();
-    settings_dump();
+    report_grbl_help();
   }  
 }
 

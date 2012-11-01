@@ -24,20 +24,35 @@
 
 #include <math.h>
 #include <inttypes.h>
+#include "nuts_bolts.h"
 
 #define GRBL_VERSION "0.8b"
 
 // Version of the EEPROM data. Will be used to migrate existing data from older versions of Grbl
 // when firmware is upgraded. Always stored in byte 0 of eeprom
-#define SETTINGS_VERSION 55
+#define SETTINGS_VERSION 56
 
 // Define bit flag masks for the boolean settings in settings.flag.
 #define BITFLAG_REPORT_INCHES      bit(0)
 #define BITFLAG_AUTO_START         bit(1)
-#define BITFLAG_HARD_LIMIT_ENABLE  bit(2)
-#define BITFLAG_HOMING_ENABLE      bit(3)
+#define BITFLAG_INVERT_ST_ENABLE   bit(2)
+#define BITFLAG_HARD_LIMIT_ENABLE  bit(3)
+#define BITFLAG_HOMING_ENABLE      bit(4)
 
-// Current global settings (persisted in EEPROM from byte 1 onwards)
+// Define EEPROM memory address location values for on-demand settings and parameters
+#define EEPROM_ADDR_GLOBAL 1
+#define EEPROM_ADDR_PARAMETERS 512
+#define EEPROM_ADDR_STARTUP_SCRIPT 768
+
+// Define EEPROM address indexing for coordinate parameters
+#define N_COORDINATE_SYSTEM 6  // Number of supported work coordinate systems (from index 1)
+#define SETTING_INDEX_NCOORD N_COORDINATE_SYSTEM+2 // Total number of system stored (from index 0)
+// NOTE: Work coordinate indices are (0=G54, 1=G55, ... , 6=G59)
+#define SETTING_INDEX_G28    N_COORDINATE_SYSTEM    // Home position 1
+#define SETTING_INDEX_G30    N_COORDINATE_SYSTEM+1  // Home position 2
+#define SETTING_INDEX_G92    N_COORDINATE_SYSTEM+2  // Coordinate offset
+
+// Global persistent settings (Stored from byte EEPROM_ADDR_GLOBAL onwards)
 typedef struct {
   float steps_per_mm[3];
   uint8_t microsteps;
@@ -55,21 +70,22 @@ typedef struct {
   uint16_t homing_debounce_delay;
   float homing_pulloff;
   uint8_t stepper_idle_lock_time; // If max value 255, steppers do not disable.
-  uint8_t decimal_places; 
+  uint8_t decimal_places;
+  uint8_t n_arc_correction;
 } settings_t;
 extern settings_t settings;
 
 // Initialize the configuration subsystem (load settings from EEPROM)
 void settings_init();
 
-// Print current settings
-void settings_dump();
-
-// Handle settings command
-uint8_t settings_execute_line(char *line);
-
 // A helper method to set new settings from command line
-uint8_t settings_store_setting(int parameter, float value);
+uint8_t settings_store_global_setting(int parameter, float value);
+
+// Writes selected coordinate data to EEPROM
+void settings_write_coord_data(uint8_t coord_select, float *coord_data);
+
+// Reads selected coordinate data from EEPROM
+uint8_t settings_read_coord_data(uint8_t coord_select, float *coord_data);
 
 // int8_t settings_execute_startup();
 

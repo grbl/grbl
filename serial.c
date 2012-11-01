@@ -166,7 +166,7 @@ ISR(USART_RX_vect)
     case CMD_FEED_HOLD:     sys.execute |= EXEC_FEED_HOLD; break; // Set as true
     case CMD_RESET:
       // Immediately force stepper and spindle subsystem idle at an interrupt level.
-      if (!(sys.execute & EXEC_RESET)) { mc_alarm(); } // Stop only first time.
+      mc_alarm();
       sys.execute |= EXEC_RESET; // Set as true
       break;
     default: // Write character to buffer    
