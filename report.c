@@ -34,6 +34,8 @@
 #include <avr/pgmspace.h>
 #include "report.h"
 #include "protocol.h"
+#include "gcode.h"
+#include "coolant_control.h"
 
 
 // Handles the primary confirmation protocol response for streaming interfaces and human-feedback.
@@ -82,12 +84,12 @@ void report_status_message(uint8_t status_code)
 // Prints feedback messages. This serves as a centralized method to provide additional
 // user feedback for things that are not of the status message response protocol. These 
 // are messages such as setup warnings and how to exit alarms.
-// NOTE: For interfaces, messages are always placed within parentheses. And if silent mode
-// is installed, the message codes are less than zero.
+// NOTE: For interfaces, messages are always placed within chevrons. And if silent mode
+// is installed, the message number codes are less than zero.
 // TODO: Install silence feedback messages option in settings
 void report_feedback_message(int8_t message_code)
 {
-  printPgmString(PSTR("("));
+  printPgmString(PSTR("<"));
   switch(message_code) {
     case MESSAGE_SYSTEM_ALARM:
     printPgmString(PSTR("ALARM: Check and reset Grbl")); break;
@@ -95,20 +97,37 @@ void report_feedback_message(int8_t message_code)
     printPgmString(PSTR("warning: Position may be lost")); break;
     case MESSAGE_HOMING_ENABLE:
     printPgmString(PSTR("'$H' to home. Ensure all limit switches are installed")); break;
+    case MESSAGE_SWITCH_ON:
+    printPgmString(PSTR("Switch enabled")); break;
+    case MESSAGE_SWITCH_OFF:
+    printPgmString(PSTR("Switch disabled")); break;    
   }
-  printPgmString(PSTR(")\r\n"));
+  printPgmString(PSTR(">\r\n"));
 }
 
 // Welcome message
 void report_init_message()
 {
-  // Print grbl initialization message
-  printPgmString(PSTR("\r\nGrbl " GRBL_VERSION));
-  printPgmString(PSTR("\r\n'$' for help and to view settings\r\n"));
+  printPgmString(PSTR("\r\nGrbl " GRBL_VERSION " ['$' for help]\r\n"));
 }
 
 
 void report_grbl_help() {
+//   char st_line[LINE_BUFFER_SIZE];
+//   printPgmString(PSTR("\r\n\r\n Startup\r\n$100 = ")); printString(settings_read_startup(st_line,0));
+//   printPgmString(PSTR("\r\n$101 = ")); printString(settings_read_startup(st_line,1));
+  
+//   char buf[4];
+//   settings_startup_string((char *)buf);
+//   printPgmString(PSTR("\r\n Startup: ")); printString(buf);
+  
+  printPgmString(PSTR("$ (help)\r\n$$ (print Grbl settings)\r\n$# (print gcode parameters)\r\n$G (print gcode parser state)"));
+  printPgmString(PSTR("\r\n$x=value (store Grbl setting)\r\n$Nx=line (store startup block)\r\n$H (run homing cycle, if enabled)"));
+  printPgmString(PSTR("\r\n$B (toggle block delete)\r\n$S (toggle single block mode)\r\n$O (toggle opt stop)"));
+  printPgmString(PSTR("\r\n~ (cycle start)\r\n! (feed hold)\r\n? (current position)\r\n^x (reset Grbl)\r\n"));
+}
+
+void report_grbl_settings() {
   printPgmString(PSTR("$0 = ")); printFloat(settings.steps_per_mm[X_AXIS]);
   printPgmString(PSTR(" (x axis, steps/mm)\r\n$1 = ")); printFloat(settings.steps_per_mm[Y_AXIS]);
   printPgmString(PSTR(" (y axis, steps/mm)\r\n$2 = ")); printFloat(settings.steps_per_mm[Z_AXIS]);
@@ -134,29 +153,108 @@ void report_grbl_help() {
   printPgmString(PSTR(" (homing pull-off travel, mm)\r\n$20 = ")); printInteger(settings.stepper_idle_lock_time);
   printPgmString(PSTR(" (stepper idle lock time, msec)\r\n$21 = ")); printInteger(settings.decimal_places);
   printPgmString(PSTR(" (decimal places, int)\r\n$22 = ")); printInteger(settings.n_arc_correction);
-//   char st_line[LINE_BUFFER_SIZE];
-//   printPgmString(PSTR("\r\n\r\n Startup\r\n$100 = ")); printString(settings_read_startup(st_line,0));
-//   printPgmString(PSTR("\r\n$101 = ")); printString(settings_read_startup(st_line,1));
-  
-//   char buf[4];
-//   settings_startup_string((char *)buf);
-//   printPgmString(PSTR("\r\n Startup: ")); printString(buf);
-  
-  printPgmString(PSTR("\r\n'$x=value' to store setting"));
-//  printPgmString(PSTR("\r\n'$Sx' to toggle switch\r\n"));
+  printPgmString(PSTR(" (n arc correction, int)\r\n"));
 }
 
+void report_gcode_parameters()
+{
+  float coord_data[N_AXIS];
+  uint8_t coord_select, i;
+  for (coord_select = 0; coord_select <= SETTING_INDEX_NCOORD; coord_select++) { 
+    if (!(settings_read_coord_data(coord_select,coord_data))) { 
+      report_status_message(STATUS_SETTING_READ_FAIL); 
+      return;
+    } 
+    switch (coord_select) {
+      case 0: printPgmString(PSTR("G54")); break;
+      case 1: printPgmString(PSTR("G55")); break;
+      case 2: printPgmString(PSTR("G56")); break;
+      case 3: printPgmString(PSTR("G57")); break;
+      case 4: printPgmString(PSTR("G58")); break;
+      case 5: printPgmString(PSTR("G59")); break;
+      case 6: printPgmString(PSTR("G28")); break;
+      case 7: printPgmString(PSTR("G30")); break;
+      // case 8: printPgmString(PSTR("G92")); break; // G92.2, G92.3 currently not supported.  
+    }           
+    printPgmString(PSTR(":[")); 
+    for (i=0; i<N_AXIS; i++) {
+      if (bit_istrue(settings.flags,BITFLAG_REPORT_INCHES)) { printFloat(coord_data[i]*INCH_PER_MM); }
+      else { printFloat(coord_data[i]); }
+      if (i < (N_AXIS-1)) { printPgmString(PSTR(",")); }
+      else { printPgmString(PSTR("]\r\n")); }
+    } 
+  }
+  printPgmString(PSTR("G92:[")); // Print G92,G92.1 which are not persistent in memory
+  for (i=0; i<N_AXIS; i++) {
+    if (bit_istrue(settings.flags,BITFLAG_REPORT_INCHES)) { printFloat(gc.coord_offset[i]*INCH_PER_MM); }
+    else { printFloat(gc.coord_offset[i]); }
+    if (i < (N_AXIS-1)) { printPgmString(PSTR(",")); }
+    else { printPgmString(PSTR("]\r\n")); }
+  } 
+}
 
+void report_gcode_modes()
+{
+  switch (gc.motion_mode) {
+    case MOTION_MODE_SEEK : printPgmString(PSTR("G0")); break;
+    case MOTION_MODE_LINEAR : printPgmString(PSTR("G1")); break;
+    case MOTION_MODE_CW_ARC : printPgmString(PSTR("G2")); break;
+    case MOTION_MODE_CCW_ARC : printPgmString(PSTR("G3")); break;
+    case MOTION_MODE_CANCEL : printPgmString(PSTR("G80")); break;
+  }
 
-// void report_gcode_status()
-// {
-//   // Print gcode parser state
-// }
-// 
-// void report_gcode_parameters()
-// {
-//   // Print gcode work coordinate offsets?
-// }
+  printPgmString(PSTR(" G"));
+  printInteger(gc.coord_select+54);
+  
+  if (gc.plane_axis_0 == X_AXIS) {
+    if (gc.plane_axis_1 == Y_AXIS) { printPgmString(PSTR(" G17")); }
+    else { printPgmString(PSTR(" G18")); }
+  } else { printPgmString(PSTR(" G19")); }
+  
+  if (gc.inches_mode) { printPgmString(PSTR(" G20")); }
+  else { printPgmString(PSTR(" G21")); }
+  
+  if (gc.absolute_mode) { printPgmString(PSTR(" G90")); }
+  else { printPgmString(PSTR(" G91")); }
+  
+  if (gc.inverse_feed_rate_mode) { printPgmString(PSTR(" G93")); }
+  else { printPgmString(PSTR(" G94")); }
+  
+  // TODO: Check if G92 needs to be here. If so, how to track it.
+  
+  switch (gc.program_flow) {
+    case PROGRAM_FLOW_RUNNING : printPgmString(PSTR(" M0")); break;
+    case PROGRAM_FLOW_PAUSED : printPgmString(PSTR(" M1")); break;
+    case PROGRAM_FLOW_COMPLETED : printPgmString(PSTR(" M2")); break;
+  }
+
+  switch (gc.spindle_direction) {
+    case 1 : printPgmString(PSTR(" M3")); break;
+    case -1 : printPgmString(PSTR(" M4")); break;
+    case 0 : printPgmString(PSTR(" M5")); break;
+  }
+  
+  switch (gc.coolant_mode) {
+    case COOLANT_DISABLE : printPgmString(PSTR(" M9")); break;
+    case COOLANT_FLOOD_ENABLE : printPgmString(PSTR(" M8")); break;
+    // case COOLANT_MIST_ENABLE : printPgmString(PSTR(" M7")); break;
+  }
+  
+  printPgmString(PSTR(" T"));
+  printInteger(gc.tool);
+  
+  printPgmString(PSTR(" F"));
+  if (gc.inches_mode) { printFloat(gc.feed_rate*INCH_PER_MM); }
+  else { printFloat(gc.feed_rate); }
+  
+  if (sys.switches) {
+    if (bit_istrue(sys.switches,BITFLAG_BLOCK_DELETE)) { printPgmString(PSTR(" $B")); }
+    if (bit_istrue(sys.switches,BITFLAG_SINGLE_BLOCK)) { printPgmString(PSTR(" $S")); }
+    if (bit_istrue(sys.switches,BITFLAG_OPT_STOP)) { printPgmString(PSTR(" $O")); }
+  }
+        
+  printPgmString(PSTR("\r\n"));
+}
 
 
 void report_realtime_status()
@@ -198,9 +296,9 @@ void report_realtime_status()
  printPgmString(PSTR(",WPos:[")); 
  for (i=0; i<= 2; i++) {
    if (bit_istrue(settings.flags,BITFLAG_REPORT_INCHES)) {
-     print_position[i] -= (sys.coord_system[i]+sys.coord_offset[i])*INCH_PER_MM;
+     print_position[i] -= (gc.coord_system[i]+gc.coord_offset[i])*INCH_PER_MM;
    } else {
-     print_position[i] -= sys.coord_system[i]+sys.coord_offset[i];
+     print_position[i] -= gc.coord_system[i]+gc.coord_offset[i];
    }
    printFloat(print_position[i]);
    if (i < 2) { printPgmString(PSTR(",")); }

@@ -3,6 +3,7 @@
   Part of Grbl
 
   Copyright (c) 2009-2011 Simen Svale Skogsrud
+  Copyright (c) 2012 Sungeun K. Jeon
 
   Grbl is free software: you can redistribute it and/or modify
   it under the terms of the GNU General Public License as published by
@@ -24,7 +25,7 @@
 #include <avr/io.h>
 
 void spindle_init();
-void spindle_run(int8_t direction, uint16_t rpm);
+void spindle_run(int8_t direction); //, uint16_t rpm);
 void spindle_stop();
 
 #endif

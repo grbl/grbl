@@ -26,7 +26,7 @@
 #include <inttypes.h>
 #include "nuts_bolts.h"
 
-#define GRBL_VERSION "0.8b"
+#define GRBL_VERSION "0.8c"
 
 // Version of the EEPROM data. Will be used to migrate existing data from older versions of Grbl
 // when firmware is upgraded. Always stored in byte 0 of eeprom
@@ -39,18 +39,21 @@
 #define BITFLAG_HARD_LIMIT_ENABLE  bit(3)
 #define BITFLAG_HOMING_ENABLE      bit(4)
 
-// Define EEPROM memory address location values for on-demand settings and parameters
+// Define EEPROM memory address location values for Grbl settings and parameters
+// NOTE: The Atmega328p has 1KB EEPROM. The upper half is reserved for parameters and
+// the startup script. The lower half contains the global settings and space for future 
+// developments.
 #define EEPROM_ADDR_GLOBAL 1
 #define EEPROM_ADDR_PARAMETERS 512
 #define EEPROM_ADDR_STARTUP_SCRIPT 768
 
 // Define EEPROM address indexing for coordinate parameters
 #define N_COORDINATE_SYSTEM 6  // Number of supported work coordinate systems (from index 1)
-#define SETTING_INDEX_NCOORD N_COORDINATE_SYSTEM+2 // Total number of system stored (from index 0)
+#define SETTING_INDEX_NCOORD N_COORDINATE_SYSTEM+1 // Total number of system stored (from index 0)
 // NOTE: Work coordinate indices are (0=G54, 1=G55, ... , 6=G59)
 #define SETTING_INDEX_G28    N_COORDINATE_SYSTEM    // Home position 1
 #define SETTING_INDEX_G30    N_COORDINATE_SYSTEM+1  // Home position 2
-#define SETTING_INDEX_G92    N_COORDINATE_SYSTEM+2  // Coordinate offset
+// #define SETTING_INDEX_G92    N_COORDINATE_SYSTEM+2  // Coordinate offset (G92.2,G92.3 not supported)
 
 // Global persistent settings (Stored from byte EEPROM_ADDR_GLOBAL onwards)
 typedef struct {
@@ -72,6 +75,7 @@ typedef struct {
   uint8_t stepper_idle_lock_time; // If max value 255, steppers do not disable.
   uint8_t decimal_places;
   uint8_t n_arc_correction;
+//  uint8_t status_report_mask; // Mask to indicate desired report data.
 } settings_t;
 extern settings_t settings;
 

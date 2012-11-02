@@ -135,77 +135,80 @@ uint8_t protocol_execute_line(char *line)
     uint8_t char_counter = 1; 
     float parameter, value;
     switch( line[char_counter] ) {
-      case 0 :
-        report_grbl_help();
-        return(STATUS_OK);
+      case 0 : report_grbl_help(); break;
+      case '$' : // Prints Grbl settings
+        if ( line[++char_counter] != 0 ) { return(STATUS_UNSUPPORTED_STATEMENT); }
+        else { report_grbl_settings(); }
         break;
-//       case '#' :
-//         if ( line[++char_counter] == 0 ) {
-//           // Print all parameters
-//           return(STATUS_OK);
-//         } else { 
-//           return(STATUS_UNSUPPORTED_STATEMENT); 
-//         }
-//       case 'G' : // Start up blocks       
-//         if(!read_float(line, &char_counter, &parameter)) { return(STATUS_BAD_NUMBER_FORMAT); }
-//         if(line[char_counter++] != '=') { return(STATUS_UNSUPPORTED_STATEMENT); }
-//         // Extract startup block, execute, and store.
-//         for (char_counter = 0; char_counter < LINE_BUFFER_SIZE-3; char_counter++) {
-//           line[char_counter] = line[char_counter+3];
-//         }
-//         uint8_t status = gc_execute_line(line);
-//         if (status) { return(status); }
-//         else { settings_store_startup_block(line); }
-//         break;
+      case '#' : // Print gcode parameters
+        if ( line[++char_counter] != 0 ) { return(STATUS_UNSUPPORTED_STATEMENT); }
+        else { report_gcode_parameters(); }
+        break;
+      case 'G' : // Prints gcode parser state
+        if ( line[++char_counter] != 0 ) { return(STATUS_UNSUPPORTED_STATEMENT); }
+        else { report_gcode_modes(); }
+        break;
       case 'H' : // Perform homing cycle
-        if (bit_istrue(settings.flags,BITFLAG_HOMING_ENABLE)) {
-          mc_go_home();
-          return(STATUS_OK);
-        } else {
-          return(STATUS_SETTING_DISABLED);
-        }
+        if (bit_istrue(settings.flags,BITFLAG_HOMING_ENABLE)) { mc_go_home(); }
+        else { return(STATUS_SETTING_DISABLED); }
         break;
-// //    case 'J' : break;  // Jogging methods
-//       // TODO: Here jogging can be placed for execution as a seperate subprogram. It does not need to be 
-//       // susceptible to other runtime commands except for e-stop. The jogging function is intended to
-//       // be a basic toggle on/off with controlled acceleration and deceleration to prevent skipped 
-//       // steps. The user would supply the desired feedrate, axis to move, and direction. Toggle on would
-//       // start motion and toggle off would initiate a deceleration to stop. One could 'feather' the
-//       // motion by repeatedly toggling to slow the motion to the desired location. Location data would 
-//       // need to be updated real-time and supplied to the user through status queries.
-//       //   More controlled exact motions can be taken care of by inputting G0 or G1 commands, which are 
-//       // handled by the planner. It would be possible for the jog subprogram to insert blocks into the
-//       // block buffer without having the planner plan them. It would need to manage de/ac-celerations 
-//       // on its own carefully. This approach could be effective and possibly size/memory efficient.
-//       case 'P' : // Print g-code parameters and parser state
-//         if(line[char_counter] != 0) { return(STATUS_UNSUPPORTED_STATEMENT); }
-//         
-//         break;
-//       case 'S' : // Switch methods
-//         // Opt stop and block delete are referred to as switches.
-//         // How to store home position and work offsets real-time??            
-//         break;
-//       // Parse $parameter=value settings
-      default :
-        if(!read_float(line, &char_counter, &parameter)) {
-          return(STATUS_BAD_NUMBER_FORMAT);
-        }
-        if(line[char_counter++] != '=') { 
-          return(STATUS_UNSUPPORTED_STATEMENT); 
-        }
-        if(!read_float(line, &char_counter, &value)) {
-          return(STATUS_BAD_NUMBER_FORMAT);
-        }
-        if(line[char_counter] != 0) { 
-          return(STATUS_UNSUPPORTED_STATEMENT); 
-        }
+//    case 'J' : break;  // Jogging methods
+      // TODO: Here jogging can be placed for execution as a seperate subprogram. It does not need to be 
+      // susceptible to other runtime commands except for e-stop. The jogging function is intended to
+      // be a basic toggle on/off with controlled acceleration and deceleration to prevent skipped 
+      // steps. The user would supply the desired feedrate, axis to move, and direction. Toggle on would
+      // start motion and toggle off would initiate a deceleration to stop. One could 'feather' the
+      // motion by repeatedly toggling to slow the motion to the desired location. Location data would 
+      // need to be updated real-time and supplied to the user through status queries.
+      //   More controlled exact motions can be taken care of by inputting G0 or G1 commands, which are 
+      // handled by the planner. It would be possible for the jog subprogram to insert blocks into the
+      // block buffer without having the planner plan them. It would need to manage de/ac-celerations 
+      // on its own carefully. This approach could be effective and possibly size/memory efficient.
+//    case 'N' : // Start up blocks       
+//      if(!read_float(line, &char_counter, &parameter)) { return(STATUS_BAD_NUMBER_FORMAT); }
+//      if(line[char_counter++] != '=') { return(STATUS_UNSUPPORTED_STATEMENT); }
+//      // Extract startup block, execute, and store.
+//      for (char_counter = 0; char_counter < LINE_BUFFER_SIZE-3; char_counter++) {
+//        line[char_counter] = line[char_counter+3];
+//      }
+//      uint8_t status = gc_execute_line(line);
+//      if (status) { return(status); }
+//      else { settings_store_startup_block(line); }
+//      break;
+      case 'B' : // Toggle block delete
+        if ( line[++char_counter] != 0 ) { return(STATUS_UNSUPPORTED_STATEMENT); }
+        sys.switches ^= BITFLAG_BLOCK_DELETE;
+        if (bit_istrue(sys.switches,BITFLAG_BLOCK_DELETE)) { report_feedback_message(MESSAGE_SWITCH_ON); }
+        else { report_feedback_message(MESSAGE_SWITCH_OFF); }
+        break;
+      case 'S' : // Toggle single block mode
+        if ( line[++char_counter] != 0 ) { return(STATUS_UNSUPPORTED_STATEMENT); }
+        sys.switches ^= BITFLAG_SINGLE_BLOCK;
+        if (bit_istrue(sys.switches,BITFLAG_SINGLE_BLOCK)) { report_feedback_message(MESSAGE_SWITCH_ON); }
+        else { report_feedback_message(MESSAGE_SWITCH_OFF); }
+        break;
+      case 'O' : // Toggle optional stop
+        if ( line[++char_counter] != 0 ) { return(STATUS_UNSUPPORTED_STATEMENT); }
+        sys.switches ^= BITFLAG_OPT_STOP;
+        if (bit_istrue(sys.switches,BITFLAG_OPT_STOP)) { report_feedback_message(MESSAGE_SWITCH_ON); }
+        else { report_feedback_message(MESSAGE_SWITCH_OFF); }
+        break;
+      default :  // Store global setting
+        if(!read_float(line, &char_counter, &parameter)) { return(STATUS_BAD_NUMBER_FORMAT); }
+        if(line[char_counter++] != '=') { return(STATUS_UNSUPPORTED_STATEMENT); }
+        if(!read_float(line, &char_counter, &value)) { return(STATUS_BAD_NUMBER_FORMAT); }
+        if(line[char_counter] != 0) { return(STATUS_UNSUPPORTED_STATEMENT); }
         return(settings_store_global_setting(parameter, value));
     }
+    return(STATUS_OK); // If '$' command makes it to here, then everything's ok.
+
   } else {
+
     return(gc_execute_line(line));    // Everything else is gcode
     // TODO: Install option to set system alarm upon any error code received back from the
     // the g-code parser. This is a common safety feature on CNCs to help prevent crashes
     // if the g-code doesn't perform as intended.
+
   }
 }
 
@@ -246,9 +249,9 @@ void protocol_process()
           // Throw away whitepace and control characters
         } else if (c == '/') {
           // Disable block delete and throw away characters. Will ignore until EOL.
-          #if BLOCK_DELETE_ENABLE
+          if (bit_istrue(sys.switches,BITFLAG_BLOCK_DELETE)) {
             iscomment = true;
-          #endif
+          }
         } else if (c == '(') {
           // Enable comments flag and ignore all characters until ')' or EOL.
           iscomment = true;

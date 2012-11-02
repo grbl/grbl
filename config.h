@@ -149,7 +149,7 @@
 // TODO: The following options are set as compile-time options for now, until the next EEPROM 
 // settings version has solidified. This is to prevent having to support dozens of different
 // incremental settings versions.
-#define BLOCK_DELETE_ENABLE 0 // Block delete enable/disable flag during g-code parsing
+// -> NOW CODED INTO SETTINGS #define BLOCK_DELETE_ENABLE 0 // Block delete enable/disable flag during g-code parsing
 
 // This parameter sets the delay time before disabling the steppers after the final block of movement.
 // A short delay ensures the steppers come to a complete stop and the residual inertial force in the 

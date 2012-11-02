@@ -164,7 +164,7 @@ uint8_t read_global_settings() {
       // should be re-written to the default value, if the developmental version number changed.
       
       // Grab settings regardless of error.
-      memcpy_from_eeprom_with_checksum((char*)&settings, 1, sizeof(settings_v4_t));
+      memcpy_from_eeprom_with_checksum((char*)&settings, 1, sizeof(settings_t));
       settings_reset(false);
     } else {      
       return(false);

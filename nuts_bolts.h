@@ -35,12 +35,12 @@
 #define Y_AXIS 1
 #define Z_AXIS 2
 
-#define MM_PER_INCH (25.4)
-#define INCH_PER_MM (0.03937)
+#define MM_PER_INCH (25.40)
+#define INCH_PER_MM (0.0393701)
 
 // Useful macros
 #define clear_vector(a) memset(a, 0, sizeof(a))
-#define clear_vector_float(a) memset(a, 0.0, sizeof(float)*3)
+#define clear_vector_float(a) memset(a, 0.0, sizeof(float)*N_AXIS)
 #define max(a,b) (((a) > (b)) ? (a) : (b))
 #define min(a,b) (((a) < (b)) ? (a) : (b))
 
@@ -86,20 +86,16 @@ typedef struct {
   uint8_t abort;                 // System abort flag. Forces exit back to main loop for reset.
   uint8_t feed_hold;             // Feed hold flag. Held true during feed hold. Released when ready to resume.
   uint8_t auto_start;            // Planner auto-start flag. Toggled off during feed hold. Defaulted by settings.
-//   uint8_t switches;              // Switches state bitflag variable. For settings not governed by g-code.
-  
-  int32_t position[3];           // Real-time machine (aka home) position vector in steps. 
-                                 // NOTE: This may need to be a volatile variable, if problems arise. 
+  uint8_t switches;              // Switches state bitflag variable. For features not governed by g-code.
 
-  uint8_t coord_select;          // Active work coordinate system number. Default: 0=G54.
-  float coord_system[N_AXIS];    // Current work coordinate system (G54+). Stores offset from absolute machine
-                                 // position in mm. Loaded from EEPROM when called.
-  float coord_offset[N_AXIS];    // Retains the G92 coordinate offset (work coordinates) relative to
-                                 // machine zero in mm.
-                          
+//   uint8_t state;                 // Tracks the current state of Grbl.
+// TODO: This may replace the functionality of the feed_hold and cycle_start variables. Need to 
+// make sure that overall processes don't change.
+
   volatile uint8_t cycle_start;  // Cycle start flag. Set by stepper subsystem or main program. 
   volatile uint8_t execute;      // Global system runtime executor bitflag variable. See EXEC bitmasks.
-  
+  int32_t position[3];           // Real-time machine (aka home) position vector in steps. 
+                                 // NOTE: This may need to be a volatile variable, if problems arise.   
 } system_t;
 extern system_t sys;
 
