@@ -33,7 +33,6 @@
 #include "limits.h"
 #include "report.h"
 
-#define MICROSECONDS_PER_ACCELERATION_TICK  (1000000/ACCELERATION_TICKS_PER_SECOND)
 
 void limits_init() 
 {
@@ -63,7 +62,7 @@ ISR(LIMIT_INT_vect)
     // Kill all processes upon hard limit event.
     if ((LIMIT_PIN & LIMIT_MASK) ^ LIMIT_MASK) {
       mc_alarm(); // Initiate system kill.
-      report_status_message(STATUS_HARD_LIMIT); // Print ok in interrupt since system killed.
+      sys.state = STATE_LIMIT; // Set system state to indicate event.
     } 
   }
 }

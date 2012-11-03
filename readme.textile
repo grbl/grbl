@@ -9,25 +9,26 @@ It accepts standards-compliant G-code and has been tested with the output of sev
 Grbl includes full acceleration management with look ahead. That means the controller will look up to 18 motions into the future and plan its velocities ahead to deliver smooth acceleration and jerk-free cornering.
 
 *Changelog for v0.8 from v0.7:*
-  - *BETA status: _Under development. Code state may significantly change with each push as new features are integrated._*
-  - Major structural overhaul to allow for multi-tasking events and new feature sets
-  - New run-time command control: Feed hold (pause), Cycle start (resume), Reset (abort), Status reporting
+  - *BETA status: _Under development but nearing completion. Code state may change with each push as new features are integrated or when bugs are squashed._*
+  - Major structural overhaul to allow for multi-tasking events and new feature sets.
+  - Run-time command control: Feed hold (pause), Cycle start (resume), Reset (abort), Status reporting
   - Controlled feed hold with deceleration to ensure no skipped steps and loss of location.
   - After feed hold, cycle accelerations are re-planned and may be resumed.
-  - Advanced homing cycle with direction and speed configuration options. (Requires limit switches.)
-  - Limit pins are held normal high with an internal pull-up resister. Wiring only requires a normally-open switch connected to ground. (For both ends of an axis, simply wire two in parallel into the same pin.)
+  - Advanced homing cycle with direction and speed configuration options. (Requires limit switches.) When enabled, homing is required before use to ensure safety.
+  - Limit pins are held normal high with internal pull-up resistors. Wiring only requires a normally-open switch connected to ground. (For both ends of an axis, simply wire two in parallel into the same pin.)
   - Hard limits option and plays nice with homing cycle, so switches can be used for both homing and hard limits.
+  - New switch commands: Dry-run, block delete, single block mode, optional stop. A check g-code switch has also been added to allow users to error check their programs. This feature can also be used as a "program restart" by enabling the check g-code switch, begin streaming, and disable the check g-code switch at the desired point with minimal additional g-code.
   - Re-factored g-code parser with robust error-checking.
-  - 6 work coordinate systems (G54-G59), offsets(G92), and machine coordinate system support. Work systems are stored in EEPROM and persistent.
+  - 6 work coordinate systems (G54-G59), offsets(G92), and machine coordinate system support. Work coordinate systems are stored in EEPROM and persistent.
   - G10 L2 and L20 work coordinate settings support. L2 sets one or more axes values. L20 sets the current machine position to the specified work origin.
-  - Program stop(M0,M1*,M2,M30) initial support. Optional stop to do.
+  - Program stop(M0,M1,M2,M30) initial support.
   - Coolant control(M7*,M8,M9) support. (M7 is a compile-time option).
   - System reset re-initializes grbl without resetting the Arduino and retains machine/home position and work coordinates.
-  - Restructured planner and stepper modules to become independent and ready for future features.
-  - Settings re-factoring to allow configuration without compiling of most features. (Still in progress).
+  - Settings overhauled and dozens of new settings and internal commands are now available, when most were compile-time only.
+  - New startup line setting. Allows users to store a custom g-code block into Grbl's startup routine. Executes immediately upon startup or reset. May be used to set g-code defaults like G20.
   - Misc bug fixes and removed deprecated acceleration enabled code.  
-  - Planned features: Axis acceleration and max speed individual settings, full-featured status reporting, runtime settings such as toggling block delete.
-  - Advanced compile-time options: Up to 6 work coordinate systems(G54-G59), XON/XOFF flow control (limited support), direction and step pulse time delay.
+  - Planned features: Axis acceleration and max speed individual settings, full-featured status reporting.
+  - Advanced compile-time options: XON/XOFF flow control (limited support), direction and step pulse time delay, and up to 5 startup lines.
   
 
 *Important note for Atmega 168 users:* Going forward, support for Atmega 168 will be dropped due to its limited memory and speed. However, legacy Grbl v0.51 "in the branch called 'v0_51' is still available for use.

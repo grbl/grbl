@@ -21,15 +21,15 @@
 */
 
 #include <avr/io.h>
+#include <util/delay.h>
+#include <math.h>
+#include <stdlib.h>
 #include "settings.h"
 #include "config.h"
 #include "gcode.h"
 #include "motion_control.h"
 #include "spindle_control.h"
 #include "coolant_control.h"
-#include <util/delay.h>
-#include <math.h>
-#include <stdlib.h>
 #include "nuts_bolts.h"
 #include "stepper.h"
 #include "planner.h"
@@ -61,18 +61,28 @@ void mc_line(float x, float y, float z, float feed_rate, uint8_t invert_feed_rat
   do {
     protocol_execute_runtime(); // Check for any run-time commands
     if (sys.abort) { return; } // Bail, if system abort.
-  } while ( plan_check_full_buffer() );  
-  plan_buffer_line(x, y, z, feed_rate, invert_feed_rate);
-  
-  // Auto-cycle start immediately after planner finishes. Enabled/disabled by grbl settings. During 
-  // a feed hold, auto-start is disabled momentarily until the cycle is resumed by the cycle-start 
-  // runtime command.
-  // NOTE: This is allows the user to decide to exclusively use the cycle start runtime command to
-  // begin motion or let grbl auto-start it for them. This is useful when: manually cycle-starting
-  // when the buffer is completely full and primed; auto-starting, if there was only one g-code 
-  // command sent during manual operation; or if a system is prone to buffer starvation, auto-start
-  // helps make sure it minimizes any dwelling/motion hiccups and keeps the cycle going. 
-  if (sys.auto_start) { st_cycle_start(); }
+  } while ( plan_check_full_buffer() );
+
+  // If in check gcode mode, prevent motion by blocking planner.
+  if (bit_isfalse(gc.switches,BITFLAG_CHECK_GCODE)) {
+    plan_buffer_line(x, y, z, feed_rate, invert_feed_rate);
+    
+    // Indicate to the system there is now a planned block in the buffer ready to cycle start.
+    // NOTE: If homing cycles are enabled, a position lost state will lock out all motions,
+    // until a homing cycle has been completed. This is a safety feature to help prevent 
+    // the machine from crashing.
+    if (!sys.state) { sys.state = STATE_QUEUED; }
+    
+    // Auto-cycle start immediately after planner finishes. Enabled/disabled by grbl settings. During 
+    // a feed hold, auto-start is disabled momentarily until the cycle is resumed by the cycle-start 
+    // runtime command.
+    // NOTE: This is allows the user to decide to exclusively use the cycle start runtime command to
+    // begin motion or let grbl auto-start it for them. This is useful when: manually cycle-starting
+    // when the buffer is completely full and primed; auto-starting, if there was only one g-code 
+    // command sent during manual operation; or if a system is prone to buffer starvation, auto-start
+    // helps make sure it minimizes any dwelling/motion hiccups and keeps the cycle going. 
+    if (sys.auto_start) { st_cycle_start(); }
+  }
 }
 
 
@@ -195,14 +205,19 @@ void mc_dwell(float seconds)
 }
 
 
-// Execute homing cycle to locate and set machine zero.
+// Perform homing cycle to locate and set machine zero. Only '$H' executes this command.
+// NOTE: There should be no motions in the buffer and Grbl must be in an idle state before
+// executing the homing cycle. This prevents incorrect buffered plans after homing.
 void mc_go_home()
 {
-  plan_synchronize();  // Empty all motions in buffer before homing.
+  sys.state = STATE_HOMING; // Set system state variable
   PCICR &= ~(1 << LIMIT_INT);   // Disable hard limits pin change interrupt
-  plan_clear_position();
-
+  
   limits_go_home(); // Perform homing routine.
+  if (sys.abort) {
+    sys.state = STATE_LOST; // Homing routine did not complete.
+    return; 
+  }
 
   // The machine should now be homed and machine zero has been located. Upon completion, 
   // reset planner and system internal position vectors, but not gcode parser position yet.
@@ -227,6 +242,7 @@ void mc_go_home()
 
   // If hard limits feature enabled, re-enable hard limits interrupt after homing cycle.
   if (bit_istrue(settings.flags,BITFLAG_HARD_LIMIT_ENABLE)) { PCICR |= (1 << LIMIT_INT); }
+  sys.state = STATE_IDLE; // Finished! 
 }
 
 

@@ -21,6 +21,8 @@
 #ifndef protocol_h
 #define protocol_h
 
+#include <avr/sleep.h>
+
 // Line buffer size from the serial input stream to be executed.
 // NOTE: Not a problem except for extreme cases, but the line buffer size can be too small
 // and g-code blocks can get truncated. Officially, the g-code standards support up to 256
@@ -41,5 +43,8 @@ uint8_t protocol_execute_line(char *line);
 
 // Checks and executes a runtime command at various stop points in main program
 void protocol_execute_runtime();
+
+// Execute the startup script lines stored in EEPROM upon initialization
+void protocol_execute_startup();
 
 #endif

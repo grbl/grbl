@@ -62,12 +62,39 @@
 #define COOLANT_FLOOD_PORT  PORTC
 #define COOLANT_FLOOD_BIT   0  // Uno Analog Pin 0
 
-//   #define ENABLE_M7  // Mist coolant disabled by default. Uncomment to enable.
+// #define ENABLE_M7  // Mist coolant disabled by default. Uncomment to enable.
 #ifdef ENABLE_M7
   #define COOLANT_MIST_DDR   DDRC
   #define COOLANT_MIST_PORT  PORTC
   #define COOLANT_MIST_BIT   1 // Uno Analog Pin 1
 #endif  
+
+// Default settings (used when resetting eeprom-settings)
+// TODO: Begin to fill these out for various as-built machines, i.e. config_sherline5400.h
+#define MICROSTEPS 4
+#define DEFAULT_X_STEPS_PER_MM (94.488188976378*MICROSTEPS)
+#define DEFAULT_Y_STEPS_PER_MM (94.488188976378*MICROSTEPS)
+#define DEFAULT_Z_STEPS_PER_MM (94.488188976378*MICROSTEPS)
+#define DEFAULT_STEP_PULSE_MICROSECONDS 10
+#define DEFAULT_MM_PER_ARC_SEGMENT 0.1
+#define DEFAULT_RAPID_FEEDRATE 500.0 // mm/min
+#define DEFAULT_FEEDRATE 250.0
+#define DEFAULT_ACCELERATION (DEFAULT_FEEDRATE*60*60/10.0) // mm/min^2
+#define DEFAULT_JUNCTION_DEVIATION 0.05 // mm
+#define DEFAULT_STEPPING_INVERT_MASK ((1<<X_STEP_BIT)|(1<<Y_STEP_BIT)|(1<<Z_STEP_BIT))
+#define DEFAULT_REPORT_INCHES 0 // false
+#define DEFAULT_AUTO_START 1 // true
+#define DEFAULT_INVERT_ST_ENABLE 0 // false
+#define DEFAULT_HARD_LIMIT_ENABLE 0  // false
+#define DEFAULT_HOMING_ENABLE 0  // false
+#define DEFAULT_HOMING_DIR_MASK 0 // move positive dir
+#define DEFAULT_HOMING_RAPID_FEEDRATE 250.0 // mm/min
+#define DEFAULT_HOMING_FEEDRATE 50 // mm/min
+#define DEFAULT_HOMING_DEBOUNCE_DELAY 100 // msec (0-65k)
+#define DEFAULT_HOMING_PULLOFF 1 // mm
+#define DEFAULT_STEPPER_IDLE_LOCK_TIME 25 // msec (0-255)
+#define DEFAULT_DECIMAL_PLACES 3
+#define DEFAULT_N_ARC_CORRECTION 25
 
 // Define runtime command special characters. These characters are 'picked-off' directly from the
 // serial read data stream and are not passed to the grbl line execution parser. Select characters
@@ -114,6 +141,12 @@
 // greater.
 #define N_HOMING_CYCLE 2 // Integer (1-128)
 
+// Number of blocks Grbl executes upon startup. These blocks are stored in EEPROM, where the size
+// and addresses are defined in settings.h. With the current settings, up to 5 startup blocks may
+// be stored and executed in order. These startup blocks would typically be used to set the g-code
+// parser state depending on user preferences.
+#define N_STARTUP_LINE 1 // Integer (1-5)
+
 // ---------------------------------------------------------------------------------------
 // FOR ADVANCED USERS ONLY: 
 
@@ -145,32 +178,6 @@
 // #define STEP_PULSE_DELAY 10 // Step pulse delay in microseconds. Default disabled.
 
 // ---------------------------------------------------------------------------------------
-
-// TODO: The following options are set as compile-time options for now, until the next EEPROM 
-// settings version has solidified. This is to prevent having to support dozens of different
-// incremental settings versions.
-// -> NOW CODED INTO SETTINGS #define BLOCK_DELETE_ENABLE 0 // Block delete enable/disable flag during g-code parsing
-
-// This parameter sets the delay time before disabling the steppers after the final block of movement.
-// A short delay ensures the steppers come to a complete stop and the residual inertial force in the 
-// CNC axes don't cause the axes to drift off position. This is particularly important when manually 
-// entering g-code into grbl, i.e. locating part zero or simple manual machining. If the axes drift,
-// grbl has no way to know this has happened, since stepper motors are open-loop control. Depending
-// on the machine, this parameter may need to be larger or smaller than the default time.
-// NOTE: If set to zero, no lock will occur. If set to max 255, the lock will never release, in other
-// words, the steppers never disable for users that require this.
-// -> NOW INSTALLED IN SETTINGS #define STEPPER_IDLE_LOCK_TIME 25 // (milliseconds) - Integer > 0
-
-// Number of arc generation iterations by small angle approximation before exact arc trajectory 
-// correction. This parameter maybe decreased if there are issues with the accuracy of the arc
-// generations. In general, the default value is more than enough for the intended CNC applications
-// of grbl, and should be on the order or greater than the size of the buffer to help with the 
-// computational efficiency of generating arcs.
-// -> NOW INSTALLED IN SETTINGS #define N_ARC_CORRECTION 25 // Integer (1-255)
-
-// Specifies the number of work coordinate systems grbl will support (G54 - G59).
-// This parameter must be one or greater, currently supporting up to a value of 6.
-// -> NOW CODED INTO SETTINGS.C #define N_COORDINATE_SYSTEM 6
 
 // TODO: Install compile-time option to send numeric status codes rather than strings.
 

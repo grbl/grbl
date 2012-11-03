@@ -34,6 +34,8 @@
 #define STATUS_SETTING_VALUE_NEG 9
 #define STATUS_SETTING_STEP_PULSE_MIN 10
 #define STATUS_SETTING_READ_FAIL 11
+#define STATUS_HOMING_ERROR 12
+#define STATUS_ABORT_CYCLE 13
 
 // Define Grbl feedback message codes. Less than zero to distinguish message from error.
 #define MESSAGE_SYSTEM_ALARM -1
@@ -41,6 +43,7 @@
 #define MESSAGE_HOMING_ENABLE -3
 #define MESSAGE_SWITCH_ON -4
 #define MESSAGE_SWITCH_OFF -5
+#define MESSAGE_SWITCHES_CLEARED -6
 
 // Prints system status messages.
 void report_status_message(uint8_t status_code);
@@ -54,6 +57,7 @@ void report_init_message();
 // Prints Grbl help and current global settings
 void report_grbl_help();
 
+// Prints Grbl global settings
 void report_grbl_settings();
 
 // Prints realtime status report
@@ -62,6 +66,10 @@ void report_realtime_status();
 // Prints Grbl persistent coordinate parameters
 void report_gcode_parameters();
 
+// Prints current g-code parser mode state and active switches
 void report_gcode_modes();
+
+// Prints startup line
+void report_startup_line(uint8_t n, char *line);
 
 #endif

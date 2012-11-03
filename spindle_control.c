@@ -19,14 +19,9 @@
   along with Grbl.  If not, see <http://www.gnu.org/licenses/>.
 */
 
-#include "spindle_control.h"
 #include "settings.h"
-#include "motion_control.h"
-#include "config.h"
+#include "spindle_control.h"
 #include "planner.h"
-#include "stepper.h"
-
-#include <stdint.h>
 
 static uint8_t current_direction;
 

@@ -23,7 +23,6 @@
    used to be a part of the Arduino project. */ 
 
 
-#include <math.h>
 #include <avr/pgmspace.h>
 #include "config.h"
 #include "serial.h"
@@ -109,6 +108,8 @@ void printInteger(long n)
 // Convert float to string by immediately converting to a long integer, which contains
 // more digits than a float. Number of decimal places, which are tracked by a counter,
 // may be set by the user. The integer is then efficiently converted to a string.
+// NOTE: AVR '%' and '/' integer operations are very efficient. Bitshifting speed-up 
+// techniques are actually just slightly slower. Found this out the hard way.
 void printFloat(float n)
 {
   if (n < 0) {

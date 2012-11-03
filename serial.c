@@ -23,15 +23,10 @@
    used to be a part of the Arduino project. */ 
 
 #include <avr/interrupt.h>
-#include <avr/sleep.h>
 #include "serial.h"
 #include "config.h"
 #include "motion_control.h"
-#include "nuts_bolts.h"
 #include "protocol.h"
-
-#define RX_BUFFER_SIZE 128
-#define TX_BUFFER_SIZE 64
 
 uint8_t rx_buffer[RX_BUFFER_SIZE];
 uint8_t rx_buffer_head = 0;
@@ -42,14 +37,6 @@ uint8_t tx_buffer_head = 0;
 volatile uint8_t tx_buffer_tail = 0;
 
 #ifdef ENABLE_XONXOFF
-  #define RX_BUFFER_FULL 96 // XOFF high watermark
-  #define RX_BUFFER_LOW 64 // XON low watermark
-  #define SEND_XOFF 1
-  #define SEND_XON 2
-  #define XOFF_SENT 3
-  #define XON_SENT 4
-  #define XOFF_CHAR 0x13
-  #define XON_CHAR 0x11
   volatile uint8_t flow_ctrl = XON_SENT; // Flow control state variable
   
   // Returns the number of bytes in the RX buffer. This replaces a typical byte counter to prevent

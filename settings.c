@@ -20,15 +20,12 @@
 */
 
 #include <avr/io.h>
-#include <math.h>
+#include "protocol.h"
+#include "report.h"
+#include "stepper.h"
 #include "nuts_bolts.h"
 #include "settings.h"
 #include "eeprom.h"
-#include "print.h"
-#include <avr/pgmspace.h>
-#include "protocol.h"
-#include "config.h"
-#include "report.h"
 
 settings_t settings;
 
@@ -45,49 +42,29 @@ typedef struct {
   float junction_deviation;
 } settings_v4_t;
 
-// Default settings (used when resetting eeprom-settings)
-#define MICROSTEPS 8
-#define DEFAULT_X_STEPS_PER_MM (94.488188976378*MICROSTEPS)
-#define DEFAULT_Y_STEPS_PER_MM (94.488188976378*MICROSTEPS)
-#define DEFAULT_Z_STEPS_PER_MM (94.488188976378*MICROSTEPS)
-#define DEFAULT_STEP_PULSE_MICROSECONDS 30
-#define DEFAULT_MM_PER_ARC_SEGMENT 0.1
-#define DEFAULT_RAPID_FEEDRATE 500.0 // mm/min
-#define DEFAULT_FEEDRATE 500.0
-#define DEFAULT_ACCELERATION (DEFAULT_FEEDRATE*60*60/10.0) // mm/min^2
-#define DEFAULT_JUNCTION_DEVIATION 0.05 // mm
-#define DEFAULT_STEPPING_INVERT_MASK ((1<<X_STEP_BIT)|(1<<Y_STEP_BIT)|(1<<Z_STEP_BIT))
 
-// Developmental default settings
-#define DEFAULT_REPORT_INCHES 0 // false
-#define DEFAULT_AUTO_START 1 // true
-#define DEFAULT_INVERT_ST_ENABLE 0 // false
-#define DEFAULT_HARD_LIMIT_ENABLE 0  // false
-#define DEFAULT_HOMING_ENABLE 0  // false
-#define DEFAULT_HOMING_DIR_MASK 0 // move positive dir
-#define DEFAULT_HOMING_RAPID_FEEDRATE 250.0 // mm/min
-#define DEFAULT_HOMING_FEEDRATE 50 // mm/min
-#define DEFAULT_HOMING_DEBOUNCE_DELAY 100 // msec (0-65k)
-#define DEFAULT_HOMING_PULLOFF 1 // mm
-#define DEFAULT_STEPPER_IDLE_LOCK_TIME 25 // msec (0-255)
-#define DEFAULT_DECIMAL_PLACES 3
-#define DEFAULT_N_ARC_CORRECTION 25
+// Method to store startup lines into EEPROM
+void settings_store_startup_line(uint8_t n, char *line)
+{
+  uint16_t addr = n*(LINE_BUFFER_SIZE+1)+EEPROM_ADDR_STARTUP_BLOCK;
+  memcpy_to_eeprom_with_checksum(addr,(char*)line, LINE_BUFFER_SIZE);
+}
 
-
+// Method to store coord data parameters into EEPROM
 void settings_write_coord_data(uint8_t coord_select, float *coord_data)
 {  
   uint16_t addr = coord_select*(sizeof(float)*N_AXIS+1) + EEPROM_ADDR_PARAMETERS;
   memcpy_to_eeprom_with_checksum(addr,(char*)coord_data, sizeof(float)*N_AXIS);
 }  
 
-
+// Method to store Grbl global settings struct and version number into EEPROM
 void write_global_settings() 
 {
   eeprom_put_char(0, SETTINGS_VERSION);
   memcpy_to_eeprom_with_checksum(EEPROM_ADDR_GLOBAL, (char*)&settings, sizeof(settings_t));
 }
 
-
+// Method to reset Grbl global settings back to defaults. 
 void settings_reset(bool reset_all) {
   // Reset all settings or only the migration settings to the new version.
   if (reset_all) {
@@ -118,13 +95,20 @@ void settings_reset(bool reset_all) {
   settings.decimal_places = DEFAULT_DECIMAL_PLACES;
   settings.n_arc_correction = DEFAULT_N_ARC_CORRECTION;
   write_global_settings();
-  
-  // Zero all coordinate parameter data.
-  float coord_data[N_AXIS];
-  clear_vector_float(coord_data);
-  uint8_t i = 0;
-  for (i=0; i<=SETTING_INDEX_NCOORD; i++) {
-    settings_write_coord_data(i,coord_data);
+}
+
+// Reads startup line from EEPROM. Updated pointed line string data.
+uint8_t settings_read_startup_line(uint8_t n, char *line)
+{
+  uint16_t addr = n*(LINE_BUFFER_SIZE+1)+EEPROM_ADDR_STARTUP_BLOCK;
+  if (!(memcpy_from_eeprom_with_checksum((char*)line, addr, LINE_BUFFER_SIZE))) {
+    // Reset line with default value
+    // TODO: Need to come up with a method to do this.
+    line[0] = 0;
+    settings_store_startup_line(n, line);
+    return(false);
+  } else {
+    return(true);
   }
 }
 
@@ -132,8 +116,9 @@ void settings_reset(bool reset_all) {
 uint8_t settings_read_coord_data(uint8_t coord_select, float *coord_data)
 {
   uint16_t addr = coord_select*(sizeof(float)*N_AXIS+1) + EEPROM_ADDR_PARAMETERS;
-  if ((!memcpy_from_eeprom_with_checksum((char*)coord_data, addr, sizeof(float)*N_AXIS))) {
-    clear_vector_float(coord_data);  // Default zero vector
+  if (!(memcpy_from_eeprom_with_checksum((char*)coord_data, addr, sizeof(float)*N_AXIS))) {
+    // Reset with default zero vector
+    clear_vector_float(coord_data); 
     settings_write_coord_data(coord_select,coord_data);
     return(false);
   } else {
@@ -141,7 +126,7 @@ uint8_t settings_read_coord_data(uint8_t coord_select, float *coord_data)
   }
 }  
 
-
+// Reads Grbl global settings struct from EEPROM.
 uint8_t read_global_settings() {
   // Check version-byte of eeprom
   uint8_t version = eeprom_get_char(0);
@@ -164,7 +149,7 @@ uint8_t read_global_settings() {
       // should be re-written to the default value, if the developmental version number changed.
       
       // Grab settings regardless of error.
-      memcpy_from_eeprom_with_checksum((char*)&settings, 1, sizeof(settings_t));
+      memcpy_from_eeprom_with_checksum((char*)&settings, EEPROM_ADDR_GLOBAL, sizeof(settings_t));
       settings_reset(false);
     } else {      
       return(false);
@@ -195,9 +180,14 @@ uint8_t settings_store_global_setting(int parameter, float value) {
       } else { settings.flags &= ~BITFLAG_REPORT_INCHES; }
       break;
     case 11:
-     if (value) { 
+      // Immediately apply auto_start to sys struct.
+      if (value) { 
         settings.flags |= BITFLAG_AUTO_START; 
-      } else { settings.flags &= ~BITFLAG_AUTO_START; }
+        sys.auto_start = true;
+      } else { 
+        settings.flags &= ~BITFLAG_AUTO_START; 
+        sys.auto_start = false;
+      }
       break;
     case 12:
        if (value) { 
@@ -211,7 +201,9 @@ uint8_t settings_store_global_setting(int parameter, float value) {
       break;
     case 14:
       if (value) { 
-        settings.flags |= BITFLAG_HOMING_ENABLE; 
+        settings.flags |= BITFLAG_HOMING_ENABLE;
+        sys.state = STATE_LOST;
+        report_feedback_message(MESSAGE_POSITION_LOST);
         report_feedback_message(MESSAGE_HOMING_ENABLE);
       } else { settings.flags &= ~BITFLAG_HOMING_ENABLE; }
       break;
@@ -223,9 +215,14 @@ uint8_t settings_store_global_setting(int parameter, float value) {
       if (value <= 0.0) { return(STATUS_SETTING_VALUE_NEG); } 
       settings.homing_pulloff = value; break;
     case 20:
-       settings.stepper_idle_lock_time = round(value);
-       // TODO: Immediately check and toggle steppers from always enable or disable?
-       break;
+      settings.stepper_idle_lock_time = round(value);
+      // Immediately toggle stepper enable/disable functions to ensure change from always
+      // enable or disable. Will not start or stop a cycle.
+      if (!sys.state) { // Only if idle.
+        st_wake_up();
+        st_go_idle();
+      }
+      break;
     case 21: settings.decimal_places = round(value); break;
     case 22: settings.n_arc_correction = round(value); break;
     default: 
@@ -240,17 +237,15 @@ void settings_init() {
   if(!read_global_settings()) {
     report_status_message(STATUS_SETTING_READ_FAIL);
     settings_reset(true);
-    report_grbl_help();
-  }  
+    report_grbl_settings();
+  }
+  // Read all parameter data into a dummy variable. If error, reset to zero, otherwise do nothing.
+  float coord_data[N_AXIS];
+  uint8_t i;
+  for (i=0; i<=SETTING_INDEX_NCOORD; i++) {
+    if (!settings_read_coord_data(i, coord_data)) {
+      report_status_message(STATUS_SETTING_READ_FAIL);
+    }
+  }
+  // NOTE: Startup lines are handled and called by protocol_init().
 }
-
-// int8_t settings_execute_startup() {
-// 
-//   char buf[4];
-//   settings_startup_string((char *)buf);
-//   uint8_t i = 0;
-//   while (i < 4) {
-//     serial_write(buf[i++]);
-//   }
-//   return(gc_execute_line(buf));
-// }

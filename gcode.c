@@ -177,7 +177,7 @@ uint8_t gc_execute_line(char *line)
         switch(int_value) {
           case 0: gc.program_flow = PROGRAM_FLOW_PAUSED; break; // Program pause
           case 1: // Program pause with optional stop on, otherwise do nothing.
-            if (bit_istrue(sys.switches,BITFLAG_OPT_STOP)) {
+            if (bit_istrue(gc.switches,BITFLAG_OPT_STOP)) {
               gc.program_flow = PROGRAM_FLOW_PAUSED; 
             }
             break; 
@@ -253,13 +253,20 @@ uint8_t gc_execute_line(char *line)
      NOTE: Independent non-motion/settings parameters are set out of this order for code efficiency 
      and simplicity purposes, but this should not affect proper g-code execution. */
   
+  // ([F]: Set feed rate. Already performed, but enforce rapids for dry runs.)
+  if (bit_istrue(gc.switches,BITFLAG_DRY_RUN)) { gc.feed_rate = settings.default_seek_rate; }
+  
   //  ([M6]: Tool change should be executed here.)
   
   // [M3,M4,M5]: Update spindle state
-  spindle_run(gc.spindle_direction); //, gc.spindle_speed);
+  if (!(gc.switches & (BITFLAG_DRY_RUN | BITFLAG_CHECK_GCODE))) {
+    spindle_run(gc.spindle_direction); //, gc.spindle_speed);
+  }
   
   // [*M7,M8,M9]: Update coolant state
-  coolant_run(gc.coolant_mode);
+  if (!(gc.switches & (BITFLAG_DRY_RUN | BITFLAG_CHECK_GCODE))) {
+    coolant_run(gc.coolant_mode);
+  }
   
   // [G54,G55,...,G59]: Coordinate system selection
   if ( bit_istrue(modal_group_words,bit(MODAL_GROUP_12)) ) { // Check if called in block
@@ -275,8 +282,11 @@ uint8_t gc_execute_line(char *line)
     case NON_MODAL_DWELL:
       if (p < 0) { // Time cannot be negative.
         FAIL(STATUS_INVALID_STATEMENT); 
-      } else { 
-        mc_dwell(p); 
+      } else {
+        // Ignore dwell in dry run and check gcode modes
+        if (!(gc.switches & (BITFLAG_DRY_RUN | BITFLAG_CHECK_GCODE))) {
+          mc_dwell(p); 
+        }
       }
       break;
     case NON_MODAL_SET_COORDINATE_DATA:
@@ -537,7 +547,7 @@ uint8_t gc_execute_line(char *line)
   
   // M0,M1,M2,M30: Perform non-running program flow actions. During a program pause, the buffer may 
   // refill and can only be resumed by the cycle start run-time command.
-  if (gc.program_flow || bit_istrue(sys.switches,BITFLAG_SINGLE_BLOCK)) {
+  if (gc.program_flow || bit_istrue(gc.switches,BITFLAG_SINGLE_BLOCK)) {
     plan_synchronize(); // Finish all remaining buffered motions. Program paused when complete.
     sys.auto_start = false; // Disable auto cycle start. Forces pause until cycle start issued.
     

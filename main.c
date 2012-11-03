@@ -48,56 +48,52 @@ int main(void)
   serial_init(BAUD_RATE); // Setup serial baud rate and interrupts
   st_init(); // Setup stepper pins and interrupt timers
   sei(); // Enable interrupts
-
+  
   memset(&sys, 0, sizeof(sys));  // Clear all system variables
   sys.abort = true;   // Set abort to complete initialization
-
-  // TODO: When Grbl system status is installed, need to set position lost state upon startup.
-               
+  sys.state = STATE_LOST;  // Set state to indicate unknown initial position
+  
   for(;;) {
   
     // Execute system reset upon a system abort, where the main program will return to this loop.
     // Once here, it is safe to re-initialize the system. At startup, the system will automatically
     // reset to finish the initialization process.
     if (sys.abort) {
-      
-      // Retain last known machine position and work coordinate offset(s). If the system abort
-      // occurred while in motion, machine position is not guaranteed, since a hard stop can cause
-      // the steppers to lose steps. Always perform a feedhold before an abort, if maintaining
-      // accurate machine position is required.
-      // TODO: Report last position and coordinate offset to users to help relocate origins. Future
-      // releases will auto-reset the machine position back to [0,0,0] if an abort is used while 
-      // grbl is moving the machine.
-      int32_t last_position[3];
-      memcpy(last_position, sys.position, sizeof(sys.position)); // last_position[] = sys.position[]
-      // TODO: Last coordinate system method.
+      // If a critical event has occurred, set the position lost system state. For example, a 
+      // hard limit event can cause the stepper to lose steps and position due to an immediate
+      // stop, not with a controlled deceleration. Or, if an abort was issued while a cycle
+      // was active, the immediate stop can also cause lost steps.
+      if (sys.state == STATE_ALARM) { sys.state = STATE_LOST; }
       
       // Reset system.
-      memset(&sys, 0, sizeof(sys)); // Clear all system variables
       serial_reset_read_buffer(); // Clear serial read buffer
       settings_init(); // Load grbl settings from EEPROM
-      protocol_init(); // Clear incoming line data
       plan_init(); // Clear block buffer and planner variables
       gc_init(); // Set g-code parser to default state
+      protocol_init(); // Clear incoming line data and execute startup lines
       spindle_init();
       coolant_init();
       limits_init();
       st_reset(); // Clear stepper subsystem variables.
-      
-      // Reload last known machine position and work systems. G92 coordinate offsets are reset.
-      memcpy(sys.position, last_position, sizeof(last_position)); // sys.position[] = last_position[]
-      gc_set_current_position(last_position[X_AXIS],last_position[Y_AXIS],last_position[Z_AXIS]);
-      plan_set_current_position(last_position[X_AXIS],last_position[Y_AXIS],last_position[Z_AXIS]);
-      
-      // Set system runtime defaults
-      // TODO: Eventual move to EEPROM from config.h when all of the new settings are worked out. 
-      // Mainly to avoid having to maintain several different versions.
-      if (bit_istrue(settings.flags,BITFLAG_AUTO_START)) {
-        sys.auto_start = true;
-      }
-      // TODO: Install G20/G21 unit default into settings and load appropriate settings.
 
-      report_init_message();
+      // Set cleared gcode and planner positions to current system position, which is only
+      // cleared upon startup, not a reset/abort. If Grbl does not know or ensure its position,
+      // a feedback message will be sent back to the user to let them know.
+      gc_set_current_position(sys.position[X_AXIS],sys.position[Y_AXIS],sys.position[Z_AXIS]);
+      plan_set_current_position(sys.position[X_AXIS],sys.position[Y_AXIS],sys.position[Z_AXIS]);
+      
+      // Reset system variables
+      sys.abort = false;
+      sys.execute = 0;
+      if (sys.state == STATE_LOST && bit_istrue(settings.flags,BITFLAG_HOMING_ENABLE)) { 
+        report_feedback_message(MESSAGE_POSITION_LOST); 
+      } else {
+        sys.state = STATE_IDLE;
+      }
+      if (bit_istrue(settings.flags,BITFLAG_AUTO_START)) { sys.auto_start = true; }
+      
+      // Execute user startup script
+      protocol_execute_startup();
     }
     
     protocol_execute_runtime();

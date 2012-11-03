@@ -22,19 +22,12 @@
 /* The timer calculations of this module informed by the 'RepRap cartesian firmware' by Zack Smith
    and Philipp Tiefenbacher. */
 
+#include <avr/interrupt.h>
 #include "stepper.h"
 #include "config.h"
 #include "settings.h"
-#include <math.h>
-#include <stdlib.h>
-#include <util/delay.h>
-#include "nuts_bolts.h"
-#include <avr/interrupt.h>
 #include "planner.h"
 
-// Some useful constants
-#define TICKS_PER_MICROSECOND (F_CPU/1000000)
-#define CYCLES_PER_ACCELERATION_TICK ((TICKS_PER_MICROSECOND*1000000)/ACCELERATION_TICKS_PER_SECOND)
 
 // Stepper state variable. Contains running data and trapezoid variables.
 typedef struct {
@@ -94,7 +87,7 @@ void st_wake_up()
   } else { 
     STEPPERS_DISABLE_PORT &= ~(1<<STEPPERS_DISABLE_BIT);
   }
-  if (sys.cycle_start) {
+  if (sys.state == STATE_CYCLE) {
     // Initialize stepper output bits
     out_bits = (0) ^ (settings.invert_mask); 
     // Initialize step pulse timing from settings. Here to ensure updating after re-writing.
@@ -176,7 +169,7 @@ ISR(TIMER1_COMPA_vect)
     // Anything in the buffer? If so, initialize next motion.
     current_block = plan_get_current_block();
     if (current_block != NULL) {
-      if (!sys.feed_hold) { 
+      if (sys.state == STATE_CYCLE) {
         // During feed hold, do not update rate and trap counter. Keep decelerating.
         st.trapezoid_adjusted_rate = current_block->initial_rate;
         set_step_events_per_minute(st.trapezoid_adjusted_rate); // Initialize cycles_per_step_event
@@ -190,7 +183,6 @@ ISR(TIMER1_COMPA_vect)
       st.step_events_completed = 0;     
     } else {
       st_go_idle();
-      sys.cycle_start = false;
       bit_true(sys.execute,EXEC_CYCLE_STOP); // Flag main program for cycle end
     }    
   } 
@@ -224,7 +216,7 @@ ISR(TIMER1_COMPA_vect)
 
     // While in block steps, check for de/ac-celeration events and execute them accordingly.
     if (st.step_events_completed < current_block->step_event_count) {
-      if (sys.feed_hold) {
+      if (sys.state == STATE_HOLD) {
         // Check for and execute feed hold by enforcing a steady deceleration from the moment of 
         // execution. The rate of deceleration is limited by rate_delta and will never decelerate
         // faster or slower than in normal operation. If the distance required for the feed hold 
@@ -240,7 +232,6 @@ ISR(TIMER1_COMPA_vect)
             // remain intact to ensure the stepper path is exactly the same. Feed hold is still
             // active and is released after the buffer has been reinitialized.
             st_go_idle();
-            sys.cycle_start = false;
             bit_true(sys.execute,EXEC_CYCLE_STOP); // Flag main program that feed hold is complete.
           } else {
             st.trapezoid_adjusted_rate -= current_block->rate_delta;
@@ -430,24 +421,18 @@ static void set_step_events_per_minute(uint32_t steps_per_minute)
 // variable will manage all of Grbl's processes and keep them separate.
 void st_cycle_start() 
 {
-  if (!sys.cycle_start) {
-    if (!sys.feed_hold) {
-      if (bit_isfalse(sys.execute,EXEC_ALARM)) {
-        sys.cycle_start = true; // Only place this variable is set true.
-        st_wake_up();
-      }
-    }
+  if (sys.state == STATE_QUEUED) {
+    sys.state = STATE_CYCLE;
+    st_wake_up();
   }
 }
 
 // Execute a feed hold with deceleration, only during cycle. Called by main program.
 void st_feed_hold() 
 {
-  if (!sys.feed_hold) {
-    if (sys.cycle_start) {
-      sys.auto_start = false; // Disable planner auto start upon feed hold.
-      sys.feed_hold = true;
-    }
+  if (sys.state == STATE_CYCLE) {
+    sys.state = STATE_HOLD;
+    sys.auto_start = false; // Disable planner auto start upon feed hold.
   }
 }
 
@@ -466,6 +451,8 @@ void st_cycle_reinitialize()
     set_step_events_per_minute(st.trapezoid_adjusted_rate);
     st.trapezoid_tick_cycle_counter = CYCLES_PER_ACCELERATION_TICK/2; // Start halfway for midpoint rule.
     st.step_events_completed = 0;
+    sys.state = STATE_QUEUED;
+  } else {
+    sys.state = STATE_IDLE;
   }
-  sys.feed_hold = false; // Release feed hold. Cycle is ready to re-start.
 }

@@ -23,7 +23,6 @@
 #define settings_h
 
 #include <math.h>
-#include <inttypes.h>
 #include "nuts_bolts.h"
 
 #define GRBL_VERSION "0.8c"
@@ -45,7 +44,7 @@
 // developments.
 #define EEPROM_ADDR_GLOBAL 1
 #define EEPROM_ADDR_PARAMETERS 512
-#define EEPROM_ADDR_STARTUP_SCRIPT 768
+#define EEPROM_ADDR_STARTUP_BLOCK 768
 
 // Define EEPROM address indexing for coordinate parameters
 #define N_COORDINATE_SYSTEM 6  // Number of supported work coordinate systems (from index 1)
@@ -85,12 +84,16 @@ void settings_init();
 // A helper method to set new settings from command line
 uint8_t settings_store_global_setting(int parameter, float value);
 
+// Stores the protocol line variable as a startup line in EEPROM
+void settings_store_startup_line(uint8_t n, char *line);
+
+// Reads an EEPROM startup line to the protocol line variable
+uint8_t settings_read_startup_line(uint8_t n, char *line);
+
 // Writes selected coordinate data to EEPROM
 void settings_write_coord_data(uint8_t coord_select, float *coord_data);
 
 // Reads selected coordinate data from EEPROM
 uint8_t settings_read_coord_data(uint8_t coord_select, float *coord_data);
-
-// int8_t settings_execute_startup();
 
 #endif

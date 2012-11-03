@@ -22,19 +22,14 @@
 
 /* The ring buffer implementation gleaned from the wiring_serial library by David A. Mellis. */
 
-#include <inttypes.h>
-#include <math.h>       
+#include <inttypes.h>    
 #include <stdlib.h>
-
 #include "planner.h"
 #include "nuts_bolts.h"
 #include "stepper.h"
 #include "settings.h"
 #include "config.h"
 #include "protocol.h"
-
-// The number of linear motions that can be in the plan at any give time
-#define BLOCK_BUFFER_SIZE 18
 
 static block_t block_buffer[BLOCK_BUFFER_SIZE];  // A ring buffer for motion instructions
 static volatile uint8_t block_buffer_head;       // Index of the next block to be pushed
@@ -335,7 +330,7 @@ uint8_t plan_check_full_buffer()
 // Block until all buffered steps are executed.
 void plan_synchronize()
 {
-  while (plan_get_current_block() || sys.cycle_start) { 
+  while (plan_get_current_block()) { 
     protocol_execute_runtime();   // Check and execute run-time commands
     if (sys.abort) { return; } // Check for system abort
   }    

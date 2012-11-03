@@ -22,7 +22,8 @@
 #ifndef planner_h
 #define planner_h
                  
-#include <inttypes.h>
+// The number of linear motions that can be in the plan at any give time
+#define BLOCK_BUFFER_SIZE 18
 
 // This struct is used when buffering the setup for each linear movement "nominal" values are as specified in 
 // the source g-code and may never actually be reached if acceleration management is active.
