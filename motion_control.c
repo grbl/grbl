@@ -220,10 +220,10 @@ void mc_go_home()
   }
 
   // The machine should now be homed and machine zero has been located. Upon completion, 
-  // reset planner and system internal position vectors, but not gcode parser position yet.
-  plan_clear_position();
-  clear_vector_float(sys.position);
-
+  // reset system position and sync internal position vectors.
+  clear_vector_float(sys.position); // Set machine zero
+  sys_sync_current_position();
+  
   // Pull-off all axes from limit switches before continuing motion. This provides some initial
   // clearance off the switches and should also help prevent them from falsely tripping when 
   // hard limits are enabled.
@@ -237,8 +237,8 @@ void mc_go_home()
   st_cycle_start(); // Move it. Nothing should be in the buffer except this motion. 
   plan_synchronize(); // Make sure the motion completes.
   
-  // Explicitly update the gcode parser position since it was circumvented by the pull-off maneuver.
-  gc_set_current_position(sys.position[X_AXIS],sys.position[Y_AXIS],sys.position[Z_AXIS]);
+  // The gcode parser position was circumvented by the pull-off maneuver, so sync position vectors.
+  sys_sync_current_position();
 
   // If hard limits feature enabled, re-enable hard limits interrupt after homing cycle.
   if (bit_istrue(settings.flags,BITFLAG_HARD_LIMIT_ENABLE)) { PCICR |= (1 << LIMIT_INT); }

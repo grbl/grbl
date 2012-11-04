@@ -106,7 +106,4 @@ uint8_t gc_execute_line(char *line);
 // Set g-code parser position. Input in steps.
 void gc_set_current_position(int32_t x, int32_t y, int32_t z); 
 
-// Clear g-code parser position
-void gc_clear_position();
-
 #endif

@@ -21,13 +21,13 @@ Grbl includes full acceleration management with look ahead. That means the contr
   - Re-factored g-code parser with robust error-checking.
   - 6 work coordinate systems (G54-G59), offsets(G92), and machine coordinate system support. Work coordinate systems are stored in EEPROM and persistent.
   - G10 L2 and L20 work coordinate settings support. L2 sets one or more axes values. L20 sets the current machine position to the specified work origin.
-  - Program stop(M0,M1,M2,M30) initial support.
+  - G28.1 and G30.1 set home position support. These set the internal EEPROM parameter values to the current machine position. (G28 and G30 no longer perform homing cycle, '$H' does. They move to these stored positions.)
+  - Program stop(M0,M1,M2,M30) support.
   - Coolant control(M7*,M8,M9) support. (M7 is a compile-time option).
   - System reset re-initializes grbl without resetting the Arduino and retains machine/home position and work coordinates.
   - Settings overhauled and dozens of new settings and internal commands are now available, when most were compile-time only.
   - New startup line setting. Allows users to store a custom g-code block into Grbl's startup routine. Executes immediately upon startup or reset. May be used to set g-code defaults like G20.
   - Misc bug fixes and removed deprecated acceleration enabled code.  
-  - Planned features: Axis acceleration and max speed individual settings, full-featured status reporting.
   - Advanced compile-time options: XON/XOFF flow control (limited support), direction and step pulse time delay, and up to 5 startup lines.
   
 

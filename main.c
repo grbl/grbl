@@ -76,12 +76,14 @@ int main(void)
       limits_init();
       st_reset(); // Clear stepper subsystem variables.
 
-      // Set cleared gcode and planner positions to current system position, which is only
-      // cleared upon startup, not a reset/abort. If Grbl does not know or ensure its position,
-      // a feedback message will be sent back to the user to let them know.
-      gc_set_current_position(sys.position[X_AXIS],sys.position[Y_AXIS],sys.position[Z_AXIS]);
-      plan_set_current_position(sys.position[X_AXIS],sys.position[Y_AXIS],sys.position[Z_AXIS]);
-      
+      // Sync cleared gcode and planner positions to current system position, which is only
+      // cleared upon startup, not a reset/abort. If Grbl does not know or can ensure its 
+      // position, a feedback message will be sent back to the user to let them know. Also,
+      // if position is lost and homing is enabled, the axes motions will be locked, and 
+      // user must either perform the homing cycle '$H' or purge the system locks '$P' to 
+      // resume.
+      sys_sync_current_position();
+
       // Reset system variables
       sys.abort = false;
       sys.execute = 0;
@@ -91,7 +93,7 @@ int main(void)
         sys.state = STATE_IDLE;
       }
       if (bit_istrue(settings.flags,BITFLAG_AUTO_START)) { sys.auto_start = true; }
-      
+
       // Execute user startup script
       protocol_execute_startup();
     }

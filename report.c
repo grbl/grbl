@@ -73,9 +73,11 @@ void report_status_message(uint8_t status_code)
       case STATUS_SETTING_READ_FAIL:
       printPgmString(PSTR("Failed to read EEPROM settings. Using defaults")); break;
       case STATUS_HOMING_ERROR:
-      printPgmString(PSTR("Grbl must be idle to home")); break;
+      printPgmString(PSTR("Must be idle to home")); break;
       case STATUS_ABORT_CYCLE:
-      printPgmString(PSTR("Abort during cycle")); break;
+      printPgmString(PSTR("Abort during cycle. Position may be lost")); break;
+      case STATUS_PURGE_CYCLE:
+      printPgmString(PSTR("Can't purge buffer during cycle")); break;
     }
     printPgmString(PSTR("\r\n"));
   }
@@ -95,15 +97,15 @@ void report_feedback_message(int8_t message_code)
     case MESSAGE_SYSTEM_ALARM:
     printPgmString(PSTR("ALARM: Check and reset Grbl")); break;
     case MESSAGE_POSITION_LOST:
-    printPgmString(PSTR("Position unknown. '$H' to home")); break;
+    printPgmString(PSTR("'$H' to home and enable axes")); break;
     case MESSAGE_HOMING_ENABLE:
     printPgmString(PSTR("WARNING: All limit switches must be installed before homing")); break;
     case MESSAGE_SWITCH_ON:
     printPgmString(PSTR("Switch enabled")); break;
     case MESSAGE_SWITCH_OFF:
     printPgmString(PSTR("Switch disabled")); break;    
-    case MESSAGE_SWITCHES_CLEARED:
-    printPgmString(PSTR("Switches cleared")); break;
+    case MESSAGE_PURGE_AXES_LOCK:
+    printPgmString(PSTR("WARNING: Motion lock disabled. Position unknown.")); break;
   }
   printPgmString(PSTR("]\r\n"));
 }
@@ -124,13 +126,13 @@ void report_grbl_help() {
                       "$N (print startup blocks)\r\n"
                       "$x=value (store Grbl setting)\r\n"
                       "$Nx=line (store startup block)\r\n"
-                      "$H (perform homing cycle)\r\n"
-                      "$S (clear all switches)\r\n"
                       "$S0 (toggle check gcode)\r\n"
                       "$S1 (toggle dry run)\r\n"
                       "$S2 (toggle block delete)\r\n"
                       "$S3 (toggle single block)\r\n"
                       "$S4 (toggle optional stop)\r\n"
+                      "$P (purge buffer and locks)\r\n"
+                      "$H (perform homing cycle)\r\n"
                       "~ (cycle start)\r\n"
                       "! (feed hold)\r\n"
                       "? (current position)\r\n"

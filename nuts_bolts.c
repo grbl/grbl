@@ -19,8 +19,10 @@
   along with Grbl.  If not, see <http://www.gnu.org/licenses/>.
 */
 
-#include "nuts_bolts.h"
 #include <util/delay.h>
+#include "nuts_bolts.h"
+#include "gcode.h"
+#include "planner.h"
 
 #define MAX_INT_DIGITS 8 // Maximum number of digits in int32 (and float)
 extern float __floatunsisf (unsigned long);
@@ -136,4 +138,11 @@ void delay_us(uint32_t us)
       us -= 1000;
     }
   }
+}
+
+
+void sys_sync_current_position()
+{
+  plan_set_current_position(sys.position[X_AXIS],sys.position[Y_AXIS],sys.position[Z_AXIS]);
+  gc_set_current_position(sys.position[X_AXIS],sys.position[Y_AXIS],sys.position[Z_AXIS]);
 }

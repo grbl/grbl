@@ -183,25 +183,33 @@ uint8_t protocol_execute_line(char *line)
       // block buffer without having the planner plan them. It would need to manage de/ac-celerations 
       // on its own carefully. This approach could be effective and possibly size/memory efficient.
       case 'S' : // Switch modes
+        if ( line[++char_counter] != 0 ) { return(STATUS_UNSUPPORTED_STATEMENT); }
         // Set helper_var as switch bitmask or clearing flag
         switch (line[++char_counter]) {
-          case 0 : helper_var = 0;  break;
-          case '0' : helper_var = BITFLAG_CHECK_GCODE; break;
+          case '0' : 
+            helper_var = BITFLAG_CHECK_GCODE; 
+            // Sync position vectors if check mode is being disabled. May be different after checking.
+            if (bit_istrue(gc.switches,helper_var)) { sys_sync_current_position(); }
+            break;
           case '1' : helper_var = BITFLAG_DRY_RUN; break;
           case '2' : helper_var = BITFLAG_BLOCK_DELETE; break;
           case '3' : helper_var = BITFLAG_SINGLE_BLOCK; break;
           case '4' : helper_var = BITFLAG_OPT_STOP; break;
           default : return(STATUS_INVALID_STATEMENT);
         }
-        if (helper_var) {
-          if ( line[++char_counter] != 0 ) { return(STATUS_UNSUPPORTED_STATEMENT); }
-          gc.switches ^= helper_var;
-          if (bit_istrue(gc.switches,helper_var)) { report_feedback_message(MESSAGE_SWITCH_ON); }
-          else { report_feedback_message(MESSAGE_SWITCH_OFF); }
-        } else {
-          gc.switches = helper_var; // Clear all switches
-          report_feedback_message(MESSAGE_SWITCHES_CLEARED);
+        gc.switches ^= helper_var;
+        if (bit_istrue(gc.switches,helper_var)) { report_feedback_message(MESSAGE_SWITCH_ON); }
+        else { report_feedback_message(MESSAGE_SWITCH_OFF); }
+        break;
+      case 'P' : // Purge system
+        if ( line[++char_counter] != 0 ) { return(STATUS_UNSUPPORTED_STATEMENT); }
+        if (sys.state == STATE_CYCLE) { return(STATUS_PURGE_CYCLE); } // Also prevents position error
+        plan_reset_buffer();
+        if (sys.state == STATE_LOST) { 
+          report_feedback_message(MESSAGE_PURGE_AXES_LOCK); 
+          sys_sync_current_position(); // Any motion commands during a lock can unsync position vectors.
         }
+        sys.state = STATE_IDLE;
         break;
       case 'N' : // Startup lines. 
         if ( line[++char_counter] == 0 ) { // Print startup lines
