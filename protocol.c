@@ -20,6 +20,7 @@
 */
 
 #include <avr/io.h>
+#include <avr/interrupt.h>
 #include "protocol.h"
 #include "gcode.h"
 #include "serial.h"
@@ -41,6 +42,11 @@ void protocol_init()
   char_counter = 0; // Reset line input
   iscomment = false;
   report_init_message(); // Welcome message   
+  
+  PINOUT_DDR &= ~(PINOUT_MASK); // Set as input pins
+  PINOUT_PORT |= PINOUT_MASK; // Enable internal pull-up resistors. Normal high operation.
+  PINOUT_PCMSK |= PINOUT_MASK;   // Enable specific pins of the Pin Change Interrupt
+  PCICR |= (1 << PINOUT_INT);   // Enable Pin Change Interrupt
 }
 
 // Executes user startup script, if stored.
@@ -57,6 +63,27 @@ void protocol_execute_startup()
       }
     } 
   }  
+}
+
+// Pin change interrupt for pin-out commands, i.e. cycle start, feed hold, and reset. Sets
+// only the runtime command execute variable to have the main program execute these when 
+// its ready. This works exactly like the character-based runtime commands when picked off
+// directly from the incoming serial data stream.
+ISR(PINOUT_INT_vect) 
+{
+  // Enter only if any pinout pin is actively low.
+  if ((PINOUT_PIN & PINOUT_MASK) ^ PINOUT_MASK) { 
+    if (bit_isfalse(PINOUT_PIN,bit(PIN_RESET))) {
+      mc_alarm();
+      sys.execute |= EXEC_RESET; // Set as true
+    }
+    if (bit_isfalse(PINOUT_PIN,bit(PIN_FEED_HOLD))) {
+      sys.execute |= EXEC_FEED_HOLD; 
+    }
+    if (bit_isfalse(PINOUT_PIN,bit(PIN_CYCLE_START))) {
+      sys.execute |= EXEC_CYCLE_START;
+    }
+  }
 }
 
 // Executes run-time commands, when required. This is called from various check points in the main

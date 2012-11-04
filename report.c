@@ -65,7 +65,7 @@ void report_status_message(uint8_t status_code)
       case STATUS_HARD_LIMIT:
       printPgmString(PSTR("Limit triggered")); break;
       case STATUS_SETTING_DISABLED:
-      printPgmString(PSTR("Grbl setting disabled")); break;
+      printPgmString(PSTR("Setting disabled")); break;
       case STATUS_SETTING_VALUE_NEG:
       printPgmString(PSTR("Set value must be > 0.0")); break;
       case STATUS_SETTING_STEP_PULSE_MIN:
@@ -75,7 +75,7 @@ void report_status_message(uint8_t status_code)
       case STATUS_HOMING_ERROR:
       printPgmString(PSTR("Must be idle to home")); break;
       case STATUS_ABORT_CYCLE:
-      printPgmString(PSTR("Abort during cycle. Position may be lost")); break;
+      printPgmString(PSTR("Abort during cycle. Position maybe lost")); break;
       case STATUS_PURGE_CYCLE:
       printPgmString(PSTR("Can't purge buffer during cycle")); break;
     }
