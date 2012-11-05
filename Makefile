@@ -49,6 +49,7 @@ all:	grbl.hex
 
 .c.o:
 	$(COMPILE) -c $< -o $@
+	@$(COMPILE) -MM  $< > $*.d
 
 .S.o:
 	$(COMPILE) -x assembler-with-cpp -c $< -o $@
@@ -74,7 +75,7 @@ load: all
 	bootloadHID grbl.hex
 
 clean:
-	rm -f grbl.hex main.elf $(OBJECTS)
+	rm -f grbl.hex main.elf $(OBJECTS) $(OBJECTS:.o=.d)
 
 # file targets:
 main.elf: $(OBJECTS)
@@ -93,3 +94,7 @@ disasm:	main.elf
 
 cpp:
 	$(COMPILE) -E main.c
+
+# include generated header dependencies
+-include $(OBJECTS:.o=.d)
+
