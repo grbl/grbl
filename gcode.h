@@ -83,6 +83,7 @@ typedef struct {
   int8_t spindle_direction;        // 1 = CW, -1 = CCW, 0 = Stop {M3, M4, M5}
   uint8_t coolant_mode;            // 0 = Disable, 1 = Flood Enable {M8, M9}
   float feed_rate;                 // Millimeters/min
+  float seek_rate;                 // Millimeters/min - Can change depending on switches and such.
   float position[3];               // Where the interpreter considers the tool to be at this point in the code
   uint8_t tool;
 //  uint16_t spindle_speed;          // RPM/100

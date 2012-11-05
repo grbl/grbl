@@ -123,7 +123,7 @@ void protocol_execute_runtime()
   
     // System abort. Steppers have already been force stopped.
     if (rt_exec & EXEC_RESET) {
-      sys.abort = true;     
+      sys.abort = true;  // Only place this is set true.
       return; // Nothing else to do but exit.
     }
     
@@ -215,10 +215,20 @@ uint8_t protocol_execute_line(char *line)
         switch (line[++char_counter]) {
           case '0' : 
             helper_var = BITFLAG_CHECK_GCODE; 
-            // Sync position vectors if check mode is being disabled. May be different after checking.
-            if (bit_istrue(gc.switches,helper_var)) { sys_sync_current_position(); }
+            // If check mode is being disabled, automatically soft reset Grbl to ensure the user starts
+            // fresh with the g-code modes in their default, known state.
+            if (bit_istrue(gc.switches,helper_var)) { sys.execute |= EXEC_RESET; }
             break;
-          case '1' : helper_var = BITFLAG_DRY_RUN; break;
+          case '1' : 
+            helper_var = BITFLAG_DRY_RUN;
+            // If dry run is being disabled, automatically soft reset Grbl as with check g-code mode
+            if (bit_istrue(gc.switches,helper_var)) { 
+              // If disabled while in cycle, immediately stop everything and notify user that stopping
+              // mid-cycle likely lost position.
+              if (bit_istrue(sys.state,STATE_CYCLE)) { mc_alarm(); }
+              sys.execute |= EXEC_RESET; // Soft-reset Grbl.
+            }
+            break;
           case '2' : helper_var = BITFLAG_BLOCK_DELETE; break;
           case '3' : helper_var = BITFLAG_SINGLE_BLOCK; break;
           case '4' : helper_var = BITFLAG_OPT_STOP; break;

@@ -52,6 +52,7 @@ void gc_init()
 {
   memset(&gc, 0, sizeof(gc));
   gc.feed_rate = settings.default_feed_rate; // Should be zero at initialization.
+  gc.seek_rate = settings.default_seek_rate;
   select_plane(X_AXIS, Y_AXIS, Z_AXIS);
   gc.absolute_mode = true;
   
@@ -247,20 +248,25 @@ uint8_t gc_execute_line(char *line)
      NOTE: Independent non-motion/settings parameters are set out of this order for code efficiency 
      and simplicity purposes, but this should not affect proper g-code execution. */
   
-  // ([F]: Set feed rate. Already performed, but enforce rapids for dry runs.)
-  if (bit_istrue(gc.switches,BITFLAG_DRY_RUN)) { gc.feed_rate = settings.default_seek_rate; }
+  // ([F]: Set feed and seek rates. Used to enforce user feed rate for dry runs.)
+  // TODO: Dry runs move at whatever feed rate the user specifies. Need to update this to allow
+  // this feature. Users can also change the rates realtime like a feedrate override. Until that 
+  // is installed, it will have to wait, but users could control it by using the default feed rate.
+  // TODO: Seek rates can change depending on the direction and maximum speeds of each axes. When
+  // max axis speed is installed, the calculation can be performed here, or maybe in the planner.
+  if (bit_istrue(gc.switches,BITFLAG_DRY_RUN)) {
+    // NOTE: Since dry run resets after disabled, the defaults rates should come back.
+    gc.feed_rate = settings.default_feed_rate; 
+    gc.seek_rate = settings.default_feed_rate;
+  }
   
   //  ([M6]: Tool change should be executed here.)
   
   // [M3,M4,M5]: Update spindle state
-  if (!(gc.switches & (BITFLAG_DRY_RUN | BITFLAG_CHECK_GCODE))) {
-    spindle_run(gc.spindle_direction); //, gc.spindle_speed);
-  }
+  if (!(gc.switches & BITFLAG_CHECK_GCODE)) { spindle_run(gc.spindle_direction); }
   
   // [*M7,M8,M9]: Update coolant state
-  if (!(gc.switches & (BITFLAG_DRY_RUN | BITFLAG_CHECK_GCODE))) {
-    coolant_run(gc.coolant_mode);
-  }
+  if (!(gc.switches & BITFLAG_CHECK_GCODE)) { coolant_run(gc.coolant_mode); }
   
   // [G54,G55,...,G59]: Coordinate system selection
   if ( bit_istrue(modal_group_words,bit(MODAL_GROUP_12)) ) { // Check if called in block
@@ -327,14 +333,14 @@ uint8_t gc_execute_line(char *line)
             target[i] = gc.position[i];
           }
         }
-        mc_line(target[X_AXIS], target[Y_AXIS], target[Z_AXIS], settings.default_seek_rate, false);
+        mc_line(target[X_AXIS], target[Y_AXIS], target[Z_AXIS], gc.seek_rate, false);
       }
       // Retreive G28/30 go-home position data (in machine coordinates) from EEPROM
       float coord_data[N_AXIS];
       uint8_t home_select = SETTING_INDEX_G28;
       if (non_modal_action == NON_MODAL_GO_HOME_1) { home_select = SETTING_INDEX_G30; }
       if (!settings_read_coord_data(home_select,coord_data)) { return(STATUS_SETTING_READ_FAIL); }
-      mc_line(coord_data[X_AXIS], coord_data[Y_AXIS], coord_data[Z_AXIS], settings.default_seek_rate, false); 
+      mc_line(coord_data[X_AXIS], coord_data[Y_AXIS], coord_data[Z_AXIS], gc.seek_rate, false); 
       axis_words = 0; // Axis words used. Lock out from motion modes by clearing flags.
       break;
     case NON_MODAL_SET_HOME_0: case NON_MODAL_SET_HOME_1:
@@ -404,7 +410,9 @@ uint8_t gc_execute_line(char *line)
         break;
       case MOTION_MODE_SEEK:
         if (!axis_words) { FAIL(STATUS_INVALID_STATEMENT);} 
-        else { mc_line(target[X_AXIS], target[Y_AXIS], target[Z_AXIS], settings.default_seek_rate, false); }
+        else { 
+          mc_line(target[X_AXIS], target[Y_AXIS], target[Z_AXIS], gc.seek_rate, false); 
+        }
         break;
       case MOTION_MODE_LINEAR:
         // TODO: Inverse time requires F-word with each statement. Need to do a check. Also need
@@ -547,7 +555,7 @@ uint8_t gc_execute_line(char *line)
     
     // If complete, reset to reload defaults (G92.2,G54,G17,G90,G94,M48,G40,M5,M9). Otherwise,
     // re-enable program flow after pause complete, where cycle start will resume the program.
-    if (gc.program_flow == PROGRAM_FLOW_COMPLETED) { sys.abort = true; }
+    if (gc.program_flow == PROGRAM_FLOW_COMPLETED) { sys.execute |= EXEC_RESET; }
     else { gc.program_flow = PROGRAM_FLOW_RUNNING; }
   }    
   
