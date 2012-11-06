@@ -410,9 +410,7 @@ uint8_t gc_execute_line(char *line)
         break;
       case MOTION_MODE_SEEK:
         if (!axis_words) { FAIL(STATUS_INVALID_STATEMENT);} 
-        else { 
-          mc_line(target[X_AXIS], target[Y_AXIS], target[Z_AXIS], gc.seek_rate, false); 
-        }
+        else { mc_line(target[X_AXIS], target[Y_AXIS], target[Z_AXIS], gc.seek_rate, false); }
         break;
       case MOTION_MODE_LINEAR:
         // TODO: Inverse time requires F-word with each statement. Need to do a check. Also need

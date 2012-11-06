@@ -75,9 +75,8 @@
 #define STATE_HOLD   3 // Executing feed hold
 #define STATE_HOMING 4 // Performing homing cycle
 #define STATE_JOG    5 // Jogging mode is unique like homing.
-#define STATE_ALARM  6 // In alarm state. Locks out all but reset
-#define STATE_LOST   7 // Used to message position may be lost upon startup or event
-#define STATE_LIMIT  8 // Used to message hard limit triggered.
+#define STATE_ALARM  6 // In alarm state. Locks out all g-code processes and messages position lost
+#define STATE_LIMIT  7 // Used to message hard limit triggered.
 
 // Define global system variables
 typedef struct {

@@ -215,7 +215,7 @@ void mc_go_home()
   
   limits_go_home(); // Perform homing routine.
   if (sys.abort) {
-    sys.state = STATE_LOST; // Homing routine did not complete.
+    sys.state = STATE_ALARM; // Homing routine did not complete.
     return; 
   }
 
@@ -253,7 +253,8 @@ void mc_alarm()
   // Only this function can set the system alarm. This is done to prevent multiple kill calls 
   // by different processes.
   if (bit_isfalse(sys.execute, EXEC_ALARM)) {
-    // Set system alarm flag.
+    // Set system alarm flag to have the main program check for anything wrong with shutting
+    // down the system.
     sys.execute |= EXEC_ALARM;
     // Immediately force stepper, spindle, and coolant to stop.
     st_go_idle();  

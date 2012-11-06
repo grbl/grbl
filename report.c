@@ -63,7 +63,7 @@ void report_status_message(uint8_t status_code)
       case STATUS_INVALID_STATEMENT:
       printPgmString(PSTR("Invalid statement")); break;
       case STATUS_HARD_LIMIT:
-      printPgmString(PSTR("Limit triggered")); break;
+      printPgmString(PSTR("Limit triggered. MPos lost?")); break;
       case STATUS_SETTING_DISABLED:
       printPgmString(PSTR("Setting disabled")); break;
       case STATUS_SETTING_VALUE_NEG:
@@ -72,12 +72,12 @@ void report_status_message(uint8_t status_code)
       printPgmString(PSTR("Step pulse must be >= 3 microseconds")); break;
       case STATUS_SETTING_READ_FAIL:
       printPgmString(PSTR("Failed to read EEPROM settings. Using defaults")); break;
-      case STATUS_HOMING_ERROR:
-      printPgmString(PSTR("Must be idle to home")); break;
+      case STATUS_IDLE_ERROR:
+      printPgmString(PSTR("Must be idle to execute")); break;
       case STATUS_ABORT_CYCLE:
-      printPgmString(PSTR("Abort during cycle. Position maybe lost")); break;
-      case STATUS_PURGE_CYCLE:
-      printPgmString(PSTR("Can't purge buffer during cycle")); break;
+      printPgmString(PSTR("Abort during cycle. MPos lost?")); break;
+      case STATUS_HOMING_LOCK:
+      printPgmString(PSTR("Locked until homed")); break;
     }
     printPgmString(PSTR("\r\n"));
   }
@@ -94,18 +94,16 @@ void report_feedback_message(int8_t message_code)
 {
   printPgmString(PSTR("["));
   switch(message_code) {
-    case MESSAGE_SYSTEM_ALARM:
-    printPgmString(PSTR("ALARM: Check and reset Grbl")); break;
-    case MESSAGE_POSITION_LOST:
-    printPgmString(PSTR("'$H' to home and enable axes")); break;
-    case MESSAGE_HOMING_ENABLE:
-    printPgmString(PSTR("WARNING: All limit switches must be installed before homing")); break;
-    case MESSAGE_SWITCH_ON:
-    printPgmString(PSTR("Switch enabled")); break;
-    case MESSAGE_SWITCH_OFF:
-    printPgmString(PSTR("Switch disabled")); break;    
-    case MESSAGE_PURGE_AXES_LOCK:
-    printPgmString(PSTR("WARNING: Motion lock disabled. Position unknown.")); break;
+    case MESSAGE_CRITICAL_EVENT:
+    printPgmString(PSTR("ALARM: Check and reset")); break;
+    case MESSAGE_HOMING_ALARM:
+    printPgmString(PSTR("'$H' to home and unlock")); break;
+    case MESSAGE_ENABLED:
+    printPgmString(PSTR("Enabled")); break;
+    case MESSAGE_DISABLED:
+    printPgmString(PSTR("Disabled")); break;    
+    case MESSAGE_HOMING_UNLOCK:
+    printPgmString(PSTR("Unlocked. MPos lost?")); break;
   }
   printPgmString(PSTR("]\r\n"));
 }
@@ -131,7 +129,7 @@ void report_grbl_help() {
                       "$S2 (toggle block delete)\r\n"
                       "$S3 (toggle single block)\r\n"
                       "$S4 (toggle optional stop)\r\n"
-                      "$P (purge buffer and locks)\r\n"
+                      "$U (disable homing lock)\r\n"
                       "$H (perform homing cycle)\r\n"
                       "~ (cycle start)\r\n"
                       "! (feed hold)\r\n"

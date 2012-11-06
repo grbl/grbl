@@ -34,17 +34,16 @@
 #define STATUS_SETTING_VALUE_NEG 9
 #define STATUS_SETTING_STEP_PULSE_MIN 10
 #define STATUS_SETTING_READ_FAIL 11
-#define STATUS_HOMING_ERROR 12
+#define STATUS_IDLE_ERROR 12
 #define STATUS_ABORT_CYCLE 13
-#define STATUS_PURGE_CYCLE 14
+#define STATUS_HOMING_LOCK 14
 
 // Define Grbl feedback message codes. Less than zero to distinguish message from error.
-#define MESSAGE_SYSTEM_ALARM -1
-#define MESSAGE_POSITION_LOST -2
-#define MESSAGE_HOMING_ENABLE -3
-#define MESSAGE_SWITCH_ON -4
-#define MESSAGE_SWITCH_OFF -5
-#define MESSAGE_PURGE_AXES_LOCK -6
+#define MESSAGE_CRITICAL_EVENT -1
+#define MESSAGE_HOMING_ALARM -2
+#define MESSAGE_ENABLED -3
+#define MESSAGE_DISABLED -4
+#define MESSAGE_HOMING_UNLOCK -5
 
 // Prints system status messages.
 void report_status_message(uint8_t status_code);

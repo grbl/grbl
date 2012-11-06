@@ -202,9 +202,8 @@ uint8_t settings_store_global_setting(int parameter, float value) {
     case 14:
       if (value) { 
         settings.flags |= BITFLAG_HOMING_ENABLE;
-        sys.state = STATE_LOST;
-        report_feedback_message(MESSAGE_POSITION_LOST);
-        report_feedback_message(MESSAGE_HOMING_ENABLE);
+        sys.state = STATE_ALARM;
+        report_feedback_message(MESSAGE_HOMING_ALARM);
       } else { settings.flags &= ~BITFLAG_HOMING_ENABLE; }
       break;
     case 15: settings.homing_dir_mask = trunc(value); break;

@@ -51,7 +51,7 @@ int main(void)
   
   memset(&sys, 0, sizeof(sys));  // Clear all system variables
   sys.abort = true;   // Set abort to complete initialization
-  sys.state = STATE_LOST;  // Set state to indicate unknown initial position
+  sys.state = STATE_ALARM;  // Set alarm state to indicate unknown initial position
   
   for(;;) {
   
@@ -59,11 +59,6 @@ int main(void)
     // Once here, it is safe to re-initialize the system. At startup, the system will automatically
     // reset to finish the initialization process.
     if (sys.abort) {
-      // If a critical event has occurred, set the position lost system state. For example, a 
-      // hard limit event can cause the stepper to lose steps and position due to an immediate
-      // stop, not with a controlled deceleration. Or, if an abort was issued while a cycle
-      // was active, the immediate stop can also cause lost steps.
-      if (sys.state == STATE_ALARM) { sys.state = STATE_LOST; }
       
       // Reset system.
       serial_reset_read_buffer(); // Clear serial read buffer
@@ -84,11 +79,15 @@ int main(void)
       // resume.
       sys_sync_current_position();
 
-      // Reset system variables
+      // Reset system variables.
       sys.abort = false;
       sys.execute = 0;
-      if (sys.state == STATE_LOST && bit_istrue(settings.flags,BITFLAG_HOMING_ENABLE)) { 
-        report_feedback_message(MESSAGE_POSITION_LOST); 
+      if (sys.state == STATE_ALARM && bit_istrue(settings.flags,BITFLAG_HOMING_ENABLE)) { 
+            // If a critical event has occurred, set the position lost system state. For example, a 
+ // hard limit event can cause the stepper to lose steps and position due to an immediate
+      // stop, not with a controlled deceleration. Or, if an abort was issued while a cycle
+      // was active, the immediate stop can also cause lost steps.
+        report_feedback_message(MESSAGE_HOMING_ALARM); 
       } else {
         sys.state = STATE_IDLE;
       }

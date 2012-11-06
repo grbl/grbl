@@ -102,21 +102,24 @@ void protocol_execute_runtime()
   if (sys.execute) { // Enter only if any bit flag is true
     uint8_t rt_exec = sys.execute; // Avoid calling volatile multiple times
     
-    // System alarm. Something has gone wrong. Disable everything by entering an infinite
-    // loop until system reset/abort.
+    // System alarm. Everything has shutdown by either something that has gone wrong or issuing
+    // the Grbl soft-reset/abort. Check the system states to report any critical error found.
+    // If critical, disable Grbl by entering an infinite loop until system reset/abort.
+    // NOTE: The system alarm state is also used to set
     if (rt_exec & EXEC_ALARM) {
-      // Report the cause of the alarm here in the main program.
-      if (sys.state == STATE_LIMIT) { report_status_message(STATUS_HARD_LIMIT); }
-      if (sys.state == STATE_CYCLE) { // Pick up abort during active cycle.
-        report_status_message(STATUS_ABORT_CYCLE); 
-        sys.state = STATE_LOST; 
-      }
-      // Ignore loop if reset is already issued. In other words, a normal system abort/reset
-      // will not enter this loop, only a critical event not controlled by the user will.
-      if (bit_isfalse(rt_exec,EXEC_RESET)) {
+      // Limit switch critical event. Lock out Grbl until reset.
+      if (sys.state == STATE_LIMIT) { 
+        report_status_message(STATUS_HARD_LIMIT); 
         sys.state = STATE_ALARM;
-        report_feedback_message(MESSAGE_SYSTEM_ALARM);
+        report_feedback_message(MESSAGE_CRITICAL_EVENT);
         while (bit_isfalse(sys.execute,EXEC_RESET)) { sleep_mode(); }
+      }
+      
+      // Check if a runtime abort command was issued during a cycle. If so, message the user
+      // that position may have been lost and set alarm state to force re-homing, if enabled.
+      if (sys.state == STATE_CYCLE) {
+        report_status_message(STATUS_ABORT_CYCLE);
+        sys.state = STATE_ALARM; 
       }
       bit_false(sys.execute,EXEC_ALARM);
     } 
@@ -193,8 +196,8 @@ uint8_t protocol_execute_line(char *line)
       case 'H' : // Perform homing cycle
         if (bit_istrue(settings.flags,BITFLAG_HOMING_ENABLE)) { 
           // Only perform homing if Grbl is idle or lost.
-          if ( sys.state==STATE_IDLE || sys.state==STATE_LOST ) { mc_go_home(); } 
-          else { return(STATUS_HOMING_ERROR); }
+          if ( sys.state==STATE_IDLE || sys.state==STATE_ALARM ) { mc_go_home(); } 
+          else { return(STATUS_IDLE_ERROR); }
         } else { return(STATUS_SETTING_DISABLED); }
         break;
 //    case 'J' : break;  // Jogging methods
@@ -210,49 +213,47 @@ uint8_t protocol_execute_line(char *line)
       // block buffer without having the planner plan them. It would need to manage de/ac-celerations 
       // on its own carefully. This approach could be effective and possibly size/memory efficient.
       case 'S' : // Switch modes
-        if ( line[++char_counter] != 0 ) { return(STATUS_UNSUPPORTED_STATEMENT); }
         // Set helper_var as switch bitmask or clearing flag
         switch (line[++char_counter]) {
-          case '0' : 
-            helper_var = BITFLAG_CHECK_GCODE; 
-            // If check mode is being disabled, automatically soft reset Grbl to ensure the user starts
-            // fresh with the g-code modes in their default, known state.
-            if (bit_istrue(gc.switches,helper_var)) { sys.execute |= EXEC_RESET; }
-            break;
-          case '1' : 
-            helper_var = BITFLAG_DRY_RUN;
-            // If dry run is being disabled, automatically soft reset Grbl as with check g-code mode
-            if (bit_istrue(gc.switches,helper_var)) { 
-              // If disabled while in cycle, immediately stop everything and notify user that stopping
-              // mid-cycle likely lost position.
-              if (bit_istrue(sys.state,STATE_CYCLE)) { mc_alarm(); }
-              sys.execute |= EXEC_RESET; // Soft-reset Grbl.
-            }
-            break;
+          case '0' : helper_var = BITFLAG_CHECK_GCODE; break;
+          case '1' : helper_var = BITFLAG_DRY_RUN; break;
           case '2' : helper_var = BITFLAG_BLOCK_DELETE; break;
           case '3' : helper_var = BITFLAG_SINGLE_BLOCK; break;
           case '4' : helper_var = BITFLAG_OPT_STOP; break;
           default : return(STATUS_INVALID_STATEMENT);
         }
-        gc.switches ^= helper_var;
-        if (bit_istrue(gc.switches,helper_var)) { report_feedback_message(MESSAGE_SWITCH_ON); }
-        else { report_feedback_message(MESSAGE_SWITCH_OFF); }
-        break;
-      case 'P' : // Purge system
         if ( line[++char_counter] != 0 ) { return(STATUS_UNSUPPORTED_STATEMENT); }
-        if (sys.state == STATE_CYCLE) { return(STATUS_PURGE_CYCLE); } // Also prevents position error
-        plan_reset_buffer();
-        if (sys.state == STATE_LOST) { 
-          report_feedback_message(MESSAGE_PURGE_AXES_LOCK); 
-          sys_sync_current_position(); // Any motion commands during a lock can unsync position vectors.
+        if ( helper_var & (BITFLAG_CHECK_GCODE | BITFLAG_DRY_RUN) ) {
+          if ( bit_istrue(gc.switches,helper_var) ) { 
+            // Perform reset and check for cycle when toggling off. If disabled while in cycle, 
+            // immediately stop everything and notify user that stopping mid-cycle and likely 
+            // lost position. In check g-code mode, there is never a cycle.
+            if (sys.state == STATE_CYCLE) { mc_alarm(); }
+            sys.execute |= EXEC_RESET; // Soft-reset Grbl.
+          } else {
+            // Check if Grbl is idle and ready or if the other mode is enabled.
+            if (sys.state) { return(STATUS_IDLE_ERROR); }
+            if ((gc.switches & (BITFLAG_CHECK_GCODE | BITFLAG_DRY_RUN)) & ~(helper_var)) { return(STATUS_INVALID_STATEMENT); }
+          }          
         }
-        sys.state = STATE_IDLE;
+        gc.switches ^= helper_var;
+        if (bit_istrue(gc.switches,helper_var)) { report_feedback_message(MESSAGE_ENABLED); }
+        else { report_feedback_message(MESSAGE_DISABLED); }
+        break;
+      case 'U' : // Disable homing lock
+        if ( line[++char_counter] != 0 ) { return(STATUS_UNSUPPORTED_STATEMENT); }
+        if (sys.state == STATE_ALARM) { 
+          report_feedback_message(MESSAGE_HOMING_UNLOCK);
+          sys.state = STATE_IDLE;
+        } else {
+          return(STATUS_SETTING_DISABLED);
+        }
         break;
       case 'N' : // Startup lines. 
         if ( line[++char_counter] == 0 ) { // Print startup lines
           for (helper_var=0; helper_var < N_STARTUP_LINE; helper_var++) {
             if (!(settings_read_startup_line(helper_var, line))) {
-               report_status_message(STATUS_SETTING_READ_FAIL);
+              report_status_message(STATUS_SETTING_READ_FAIL);
             } else {
               report_startup_line(helper_var,line);
             }
@@ -287,12 +288,17 @@ uint8_t protocol_execute_line(char *line)
     return(STATUS_OK); // If '$' command makes it to here, then everything's ok.
 
   } else {
-
-    return(gc_execute_line(line));    // Everything else is gcode
-    // TODO: Install option to set system alarm upon any error code received back from the
-    // the g-code parser. This is a common safety feature on CNCs to help prevent crashes
-    // if the g-code doesn't perform as intended.
-
+    
+    // If homing is enabled and position is lost, lock out all g-code commands.
+    if (sys.state != STATE_ALARM) {
+      return(gc_execute_line(line));    // Everything else is gcode
+      // TODO: Install option to set system alarm upon any error code received back from the
+      // the g-code parser. This is a common safety feature on CNCs to help prevent crashes
+      // if the g-code doesn't perform as intended.
+    } else {
+      return(STATUS_HOMING_LOCK);
+    }
+    
   }
 }
 
