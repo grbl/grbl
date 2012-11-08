@@ -57,23 +57,23 @@ void report_status_message(uint8_t status_code)
       case STATUS_UNSUPPORTED_STATEMENT:
       printPgmString(PSTR("Unsupported statement")); break;
       case STATUS_FLOATING_POINT_ERROR:
-      printPgmString(PSTR("Floating point error")); break;
+      printPgmString(PSTR("Float error")); break;
       case STATUS_MODAL_GROUP_VIOLATION:
       printPgmString(PSTR("Modal group violation")); break;
       case STATUS_INVALID_STATEMENT:
       printPgmString(PSTR("Invalid statement")); break;
       case STATUS_HARD_LIMIT:
-      printPgmString(PSTR("Limit triggered. MPos lost?")); break;
+      printPgmString(PSTR("Hard limit. MPos lost?")); break;
       case STATUS_SETTING_DISABLED:
       printPgmString(PSTR("Setting disabled")); break;
       case STATUS_SETTING_VALUE_NEG:
-      printPgmString(PSTR("Set value must be > 0.0")); break;
+      printPgmString(PSTR("Value < 0.0")); break;
       case STATUS_SETTING_STEP_PULSE_MIN:
-      printPgmString(PSTR("Step pulse must be >= 3 microseconds")); break;
+      printPgmString(PSTR("Value < 3 usec")); break;
       case STATUS_SETTING_READ_FAIL:
-      printPgmString(PSTR("Failed to read EEPROM settings. Using defaults")); break;
+      printPgmString(PSTR("EEPROM read fail. Using defaults")); break;
       case STATUS_IDLE_ERROR:
-      printPgmString(PSTR("Must be idle to execute")); break;
+      printPgmString(PSTR("Busy or locked")); break;
       case STATUS_ABORT_CYCLE:
       printPgmString(PSTR("Abort during cycle. MPos lost?")); break;
       case STATUS_HOMING_LOCK:
@@ -117,55 +117,53 @@ void report_init_message()
 
 // Grbl help message
 void report_grbl_help() {
-  printPgmString(PSTR("$ (help)\r\n"
-                      "$$ (print Grbl settings)\r\n"
-                      "$# (print gcode parameters)\r\n"
-                      "$G (print gcode parser state)\r\n"
-                      "$N (print startup blocks)\r\n"
-                      "$x=value (store Grbl setting)\r\n"
-                      "$Nx=line (store startup block)\r\n"
+  printPgmString(PSTR("$$ (view Grbl settings)\r\n"
+                      "$# (view # parameters)\r\n"
+                      "$G (view parser state)\r\n"
+                      "$N (view startup blocks)\r\n"
+                      "$x=value (save Grbl setting)\r\n"
+                      "$Nx=line (save startup block)\r\n"
                       "$S0 (toggle check gcode)\r\n"
-                      "$S1 (toggle dry run)\r\n"
-                      "$S2 (toggle block delete)\r\n"
-                      "$S3 (toggle single block)\r\n"
-                      "$S4 (toggle optional stop)\r\n"
-                      "$U (disable homing lock)\r\n"
-                      "$H (perform homing cycle)\r\n"
+                      "$S1 (toggle blk del)\r\n"
+                      "$S2 (toggle single blk)\r\n"
+                      "$S3 (toggle opt stop)\r\n"
+                      "$X (kill homing lock)\r\n"
+                      "$H (run homing cycle)\r\n"
                       "~ (cycle start)\r\n"
                       "! (feed hold)\r\n"
-                      "? (current position)\r\n"
-                      "^x (reset Grbl)\r\n"));
+                      "? (position)\r\n"
+                      "ctrl-x (reset Grbl)\r\n"));
 }
 
 // Grbl global settings print out.
 // NOTE: The numbering scheme here must correlate to storing in settings.c
 void report_grbl_settings() {
   printPgmString(PSTR("$0=")); printFloat(settings.steps_per_mm[X_AXIS]);
-  printPgmString(PSTR(" (x axis, steps/mm)\r\n$1=")); printFloat(settings.steps_per_mm[Y_AXIS]);
-  printPgmString(PSTR(" (y axis, steps/mm)\r\n$2=")); printFloat(settings.steps_per_mm[Z_AXIS]);
-  printPgmString(PSTR(" (z axis, steps/mm)\r\n$3=")); printInteger(settings.pulse_microseconds);
+  printPgmString(PSTR(" (x, step/mm)\r\n$1=")); printFloat(settings.steps_per_mm[Y_AXIS]);
+  printPgmString(PSTR(" (y, step/mm)\r\n$2=")); printFloat(settings.steps_per_mm[Z_AXIS]);
+  printPgmString(PSTR(" (z, step/mm)\r\n$3=")); printInteger(settings.pulse_microseconds);
   printPgmString(PSTR(" (step pulse, usec)\r\n$4=")); printFloat(settings.default_feed_rate);
-  printPgmString(PSTR(" (default feed rate, mm/min)\r\n$5=")); printFloat(settings.default_seek_rate);
-  printPgmString(PSTR(" (default seek rate, mm/min)\r\n$6=")); printFloat(settings.mm_per_arc_segment);
-  printPgmString(PSTR(" (arc resolution, mm/segment)\r\n$7=")); printInteger(settings.invert_mask); 
-  printPgmString(PSTR(" (step port invert mask, int:binary=")); print_uint8_base2(settings.invert_mask);  
-  printPgmString(PSTR(")\r\n$8=")); printFloat(settings.acceleration/(60*60)); // Convert from mm/min^2 for human readability
+  printPgmString(PSTR(" (default feed, mm/min)\r\n$5=")); printFloat(settings.default_seek_rate);
+  printPgmString(PSTR(" (default seek, mm/min)\r\n$6=")); printInteger(settings.invert_mask); 
+  printPgmString(PSTR(" (step port invert mask, int:")); print_uint8_base2(settings.invert_mask);  
+  printPgmString(PSTR(")\r\n$7=")); printInteger(settings.stepper_idle_lock_time);
+  printPgmString(PSTR(" (step idle delay, msec)\r\n$8=")); printFloat(settings.acceleration/(60*60)); // Convert from mm/min^2 for human readability
   printPgmString(PSTR(" (acceleration, mm/sec^2)\r\n$9=")); printFloat(settings.junction_deviation);
-  printPgmString(PSTR(" (cornering junction deviation, mm)\r\n$10=")); printInteger(bit_istrue(settings.flags,BITFLAG_REPORT_INCHES));
-  printPgmString(PSTR(" (report inches, bool)\r\n$11=")); printInteger(bit_istrue(settings.flags,BITFLAG_AUTO_START));
-  printPgmString(PSTR(" (auto start enable, bool)\r\n$12=")); printInteger(bit_istrue(settings.flags,BITFLAG_INVERT_ST_ENABLE));
-  printPgmString(PSTR(" (invert stepper enable, bool)\r\n$13=")); printInteger(bit_istrue(settings.flags,BITFLAG_HARD_LIMIT_ENABLE));
-  printPgmString(PSTR(" (hard limit enable, bool)\r\n$14=")); printInteger(bit_istrue(settings.flags,BITFLAG_HOMING_ENABLE));
-  printPgmString(PSTR(" (homing enable, bool)\r\n$15=")); printInteger(settings.homing_dir_mask);
-  printPgmString(PSTR(" (homing dir invert mask, int:binary=")); print_uint8_base2(settings.homing_dir_mask);  
-  printPgmString(PSTR(")\r\n$16=")); printFloat(settings.homing_feed_rate);
-  printPgmString(PSTR(" (homing feed rate, mm/min)\r\n$17=")); printFloat(settings.homing_seek_rate);
-  printPgmString(PSTR(" (homing seek rate, mm/min)\r\n$18=")); printInteger(settings.homing_debounce_delay);
-  printPgmString(PSTR(" (homing debounce delay, msec)\r\n$19=")); printFloat(settings.homing_pulloff);
-  printPgmString(PSTR(" (homing pull-off travel, mm)\r\n$20=")); printInteger(settings.stepper_idle_lock_time);
-  printPgmString(PSTR(" (stepper idle lock time, msec)\r\n$21=")); printInteger(settings.decimal_places);
-  printPgmString(PSTR(" (decimal places, int)\r\n$22=")); printInteger(settings.n_arc_correction);
-  printPgmString(PSTR(" (n arc correction, int)\r\n"));
+  printPgmString(PSTR(" (junction deviation, mm)\r\n$10=")); printFloat(settings.mm_per_arc_segment);
+  printPgmString(PSTR(" (arc, mm/segment)\r\n$11=")); printInteger(settings.n_arc_correction);
+  printPgmString(PSTR(" (n-arc correction, int)\r\n$12=")); printInteger(settings.decimal_places);
+  printPgmString(PSTR(" (n-decimals, int)\r\n$13=")); printInteger(bit_istrue(settings.flags,BITFLAG_REPORT_INCHES));
+  printPgmString(PSTR(" (report inches, bool)\r\n$14=")); printInteger(bit_istrue(settings.flags,BITFLAG_AUTO_START));
+  printPgmString(PSTR(" (auto start, bool)\r\n$15=")); printInteger(bit_istrue(settings.flags,BITFLAG_INVERT_ST_ENABLE));
+  printPgmString(PSTR(" (invert step enable, bool)\r\n$16=")); printInteger(bit_istrue(settings.flags,BITFLAG_HARD_LIMIT_ENABLE));
+  printPgmString(PSTR(" (hard limits, bool)\r\n$17=")); printInteger(bit_istrue(settings.flags,BITFLAG_HOMING_ENABLE));
+  printPgmString(PSTR(" (homing cycle, bool)\r\n$18=")); printInteger(settings.homing_dir_mask);
+  printPgmString(PSTR(" (homing dir invert mask, int:")); print_uint8_base2(settings.homing_dir_mask);  
+  printPgmString(PSTR(")\r\n$19=")); printFloat(settings.homing_feed_rate);
+  printPgmString(PSTR(" (homing feed, mm/min)\r\n$20=")); printFloat(settings.homing_seek_rate);
+  printPgmString(PSTR(" (homing seek, mm/min)\r\n$21=")); printInteger(settings.homing_debounce_delay);
+  printPgmString(PSTR(" (homing debounce, msec)\r\n$22=")); printFloat(settings.homing_pulloff);
+  printPgmString(PSTR(" (homing pull-off, mm)\r\n")); 
 }
 
 
@@ -266,10 +264,9 @@ void report_gcode_modes()
   // Print active switches
   if (gc.switches) {
     if (bit_istrue(gc.switches,BITFLAG_CHECK_GCODE)) { printPgmString(PSTR(" $S0")); }
-    if (bit_istrue(gc.switches,BITFLAG_DRY_RUN)) { printPgmString(PSTR(" $S1")); }
-    if (bit_istrue(gc.switches,BITFLAG_BLOCK_DELETE)) { printPgmString(PSTR(" $S2")); }
-    if (bit_istrue(gc.switches,BITFLAG_SINGLE_BLOCK)) { printPgmString(PSTR(" $S3")); }
-    if (bit_istrue(gc.switches,BITFLAG_OPT_STOP)) { printPgmString(PSTR(" $S4")); }
+    if (bit_istrue(gc.switches,BITFLAG_BLOCK_DELETE)) { printPgmString(PSTR(" $S1")); }
+    if (bit_istrue(gc.switches,BITFLAG_SINGLE_BLOCK)) { printPgmString(PSTR(" $S2")); }
+    if (bit_istrue(gc.switches,BITFLAG_OPT_STOP)) { printPgmString(PSTR(" $S3")); }
   }
         
   printPgmString(PSTR("\r\n"));

@@ -46,6 +46,7 @@ int main(void)
 {
   // Initialize system
   serial_init(BAUD_RATE); // Setup serial baud rate and interrupts
+  settings_init(); // Load grbl settings from EEPROM
   st_init(); // Setup stepper pins and interrupt timers
   sei(); // Enable interrupts
   
@@ -62,7 +63,6 @@ int main(void)
       
       // Reset system.
       serial_reset_read_buffer(); // Clear serial read buffer
-      settings_init(); // Load grbl settings from EEPROM
       plan_init(); // Clear block buffer and planner variables
       gc_init(); // Set g-code parser to default state
       protocol_init(); // Clear incoming line data and execute startup lines
@@ -83,10 +83,9 @@ int main(void)
       sys.abort = false;
       sys.execute = 0;
       if (sys.state == STATE_ALARM && bit_istrue(settings.flags,BITFLAG_HOMING_ENABLE)) { 
-            // If a critical event has occurred, set the position lost system state. For example, a 
- // hard limit event can cause the stepper to lose steps and position due to an immediate
-      // stop, not with a controlled deceleration. Or, if an abort was issued while a cycle
-      // was active, the immediate stop can also cause lost steps.
+        // Position has either been lost from a critical event or a power cycle reboot. If
+        // homing is enabled, force user to home to get machine position. Otherwise, let the
+        // user manage position on their own.
         report_feedback_message(MESSAGE_HOMING_ALARM); 
       } else {
         sys.state = STATE_IDLE;

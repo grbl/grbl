@@ -76,11 +76,9 @@ ISR(PINOUT_INT_vect)
     if (bit_isfalse(PINOUT_PIN,bit(PIN_RESET))) {
       mc_alarm();
       sys.execute |= EXEC_RESET; // Set as true
-    }
-    if (bit_isfalse(PINOUT_PIN,bit(PIN_FEED_HOLD))) {
+    } else if (bit_isfalse(PINOUT_PIN,bit(PIN_FEED_HOLD))) {
       sys.execute |= EXEC_FEED_HOLD; 
-    }
-    if (bit_isfalse(PINOUT_PIN,bit(PIN_CYCLE_START))) {
+    } else if (bit_isfalse(PINOUT_PIN,bit(PIN_CYCLE_START))) {
       sys.execute |= EXEC_CYCLE_START;
     }
   }
@@ -216,31 +214,24 @@ uint8_t protocol_execute_line(char *line)
         // Set helper_var as switch bitmask or clearing flag
         switch (line[++char_counter]) {
           case '0' : helper_var = BITFLAG_CHECK_GCODE; break;
-          case '1' : helper_var = BITFLAG_DRY_RUN; break;
-          case '2' : helper_var = BITFLAG_BLOCK_DELETE; break;
-          case '3' : helper_var = BITFLAG_SINGLE_BLOCK; break;
-          case '4' : helper_var = BITFLAG_OPT_STOP; break;
+          case '1' : helper_var = BITFLAG_BLOCK_DELETE; break;
+          case '2' : helper_var = BITFLAG_SINGLE_BLOCK; break;
+          case '3' : helper_var = BITFLAG_OPT_STOP; break;
           default : return(STATUS_INVALID_STATEMENT);
         }
         if ( line[++char_counter] != 0 ) { return(STATUS_UNSUPPORTED_STATEMENT); }
-        if ( helper_var & (BITFLAG_CHECK_GCODE | BITFLAG_DRY_RUN) ) {
-          if ( bit_istrue(gc.switches,helper_var) ) { 
-            // Perform reset and check for cycle when toggling off. If disabled while in cycle, 
-            // immediately stop everything and notify user that stopping mid-cycle and likely 
-            // lost position. In check g-code mode, there is never a cycle.
-            if (sys.state == STATE_CYCLE) { mc_alarm(); }
-            sys.execute |= EXEC_RESET; // Soft-reset Grbl.
-          } else {
-            // Check if Grbl is idle and ready or if the other mode is enabled.
-            if (sys.state) { return(STATUS_IDLE_ERROR); }
-            if ((gc.switches & (BITFLAG_CHECK_GCODE | BITFLAG_DRY_RUN)) & ~(helper_var)) { return(STATUS_INVALID_STATEMENT); }
-          }          
+        if ( helper_var & BITFLAG_CHECK_GCODE ) {
+          // Perform reset when toggling off. Check g-code mode should only work if Grbl
+          // is idle and ready, regardless of homing locks. This is mainly to keep things
+          // simple and consistent.
+          if ( bit_istrue(gc.switches,helper_var) ) { sys.execute |= EXEC_RESET; }
+          else if (sys.state) { return(STATUS_IDLE_ERROR); }
         }
         gc.switches ^= helper_var;
         if (bit_istrue(gc.switches,helper_var)) { report_feedback_message(MESSAGE_ENABLED); }
         else { report_feedback_message(MESSAGE_DISABLED); }
         break;
-      case 'U' : // Disable homing lock
+      case 'X' : // Disable homing lock
         if ( line[++char_counter] != 0 ) { return(STATUS_UNSUPPORTED_STATEMENT); }
         if (sys.state == STATE_ALARM) { 
           report_feedback_message(MESSAGE_HOMING_UNLOCK);

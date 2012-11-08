@@ -248,17 +248,9 @@ uint8_t gc_execute_line(char *line)
      NOTE: Independent non-motion/settings parameters are set out of this order for code efficiency 
      and simplicity purposes, but this should not affect proper g-code execution. */
   
-  // ([F]: Set feed and seek rates. Used to enforce user feed rate for dry runs.)
-  // TODO: Dry runs move at whatever feed rate the user specifies. Need to update this to allow
-  // this feature. Users can also change the rates realtime like a feedrate override. Until that 
-  // is installed, it will have to wait, but users could control it by using the default feed rate.
+  // ([F]: Set feed and seek rates.)
   // TODO: Seek rates can change depending on the direction and maximum speeds of each axes. When
   // max axis speed is installed, the calculation can be performed here, or maybe in the planner.
-  if (bit_istrue(gc.switches,BITFLAG_DRY_RUN)) {
-    // NOTE: Since dry run resets after disabled, the defaults rates should come back.
-    gc.feed_rate = settings.default_feed_rate; 
-    gc.seek_rate = settings.default_feed_rate;
-  }
   
   //  ([M6]: Tool change should be executed here.)
   
@@ -283,10 +275,8 @@ uint8_t gc_execute_line(char *line)
       if (p < 0) { // Time cannot be negative.
         FAIL(STATUS_INVALID_STATEMENT); 
       } else {
-        // Ignore dwell in dry run and check gcode modes
-        if (!(gc.switches & (BITFLAG_DRY_RUN | BITFLAG_CHECK_GCODE))) {
-          mc_dwell(p); 
-        }
+        // Ignore dwell in check gcode modes
+        if (!(gc.switches & BITFLAG_CHECK_GCODE)) { mc_dwell(p); }
       }
       break;
     case NON_MODAL_SET_COORDINATE_DATA:

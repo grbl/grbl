@@ -142,15 +142,7 @@ uint8_t read_global_settings() {
       if (!(memcpy_from_eeprom_with_checksum((char*)&settings, 1, sizeof(settings_v4_t)))) {
         return(false);
       }     
-      settings_reset(false);        
-    } else if (version >= 50) {
-      // Developmental settings. Version numbers greater than or equal to 50 are temporary.
-      // Currently, this will update the user settings to v4 and the remainder of the settings
-      // should be re-written to the default value, if the developmental version number changed.
-      
-      // Grab settings regardless of error.
-      memcpy_from_eeprom_with_checksum((char*)&settings, EEPROM_ADDR_GLOBAL, sizeof(settings_t));
-      settings_reset(false);
+      settings_reset(false); // Old settings ok. Write new settings only.
     } else {      
       return(false);
     }
@@ -170,60 +162,41 @@ uint8_t settings_store_global_setting(int parameter, float value) {
       settings.pulse_microseconds = round(value); break;
     case 4: settings.default_feed_rate = value; break;
     case 5: settings.default_seek_rate = value; break;
-    case 6: settings.mm_per_arc_segment = value; break;
-    case 7: settings.invert_mask = trunc(value); break;
+    case 6: settings.invert_mask = trunc(value); break;
+    case 7: settings.stepper_idle_lock_time = round(value); break;
     case 8: settings.acceleration = value*60*60; break; // Convert to mm/min^2 for grbl internal use.
     case 9: settings.junction_deviation = fabs(value); break;
-    case 10:
-      if (value) { 
-        settings.flags |= BITFLAG_REPORT_INCHES; 
-      } else { settings.flags &= ~BITFLAG_REPORT_INCHES; }
-      break;
-    case 11:
-      // Immediately apply auto_start to sys struct.
-      if (value) { 
-        settings.flags |= BITFLAG_AUTO_START; 
-        sys.auto_start = true;
-      } else { 
-        settings.flags &= ~BITFLAG_AUTO_START; 
-        sys.auto_start = false;
-      }
-      break;
-    case 12:
-       if (value) { 
-        settings.flags |= BITFLAG_INVERT_ST_ENABLE; 
-      } else { settings.flags &= ~BITFLAG_INVERT_ST_ENABLE; }
-      break;
+    case 10: settings.mm_per_arc_segment = value; break;
+    case 11: settings.n_arc_correction = round(value); break;
+    case 12: settings.decimal_places = round(value); break;
     case 13:
-      if (value) { 
-        settings.flags |= BITFLAG_HARD_LIMIT_ENABLE; 
-      } else { settings.flags &= ~BITFLAG_HARD_LIMIT_ENABLE; }
+      if (value) { settings.flags |= BITFLAG_REPORT_INCHES; }
+      else { settings.flags &= ~BITFLAG_REPORT_INCHES; }
       break;
-    case 14:
+    case 14: // Reboot to ensure change
+      if (value) { settings.flags |= BITFLAG_AUTO_START; }
+      else { settings.flags &= ~BITFLAG_AUTO_START; }
+      break;
+    case 15: // Reboot to ensure change
+       if (value) { settings.flags |= BITFLAG_INVERT_ST_ENABLE; }
+       else { settings.flags &= ~BITFLAG_INVERT_ST_ENABLE; }
+      break;
+    case 16: // Reboot to ensure change
+      if (value) { settings.flags |= BITFLAG_HARD_LIMIT_ENABLE; }
+      else { settings.flags &= ~BITFLAG_HARD_LIMIT_ENABLE; }
+      break;
+    case 17:
       if (value) { 
         settings.flags |= BITFLAG_HOMING_ENABLE;
         sys.state = STATE_ALARM;
         report_feedback_message(MESSAGE_HOMING_ALARM);
       } else { settings.flags &= ~BITFLAG_HOMING_ENABLE; }
       break;
-    case 15: settings.homing_dir_mask = trunc(value); break;
-    case 16: settings.homing_feed_rate = value; break;
-    case 17: settings.homing_seek_rate = value; break;
-    case 18: settings.homing_debounce_delay = round(value); break;
-    case 19: 
-      if (value <= 0.0) { return(STATUS_SETTING_VALUE_NEG); } 
-      settings.homing_pulloff = value; break;
-    case 20:
-      settings.stepper_idle_lock_time = round(value);
-      // Immediately toggle stepper enable/disable functions to ensure change from always
-      // enable or disable. Will not start or stop a cycle.
-      if (!sys.state) { // Only if idle.
-        st_wake_up();
-        st_go_idle();
-      }
-      break;
-    case 21: settings.decimal_places = round(value); break;
-    case 22: settings.n_arc_correction = round(value); break;
+    case 18: settings.homing_dir_mask = trunc(value); break;
+    case 19: settings.homing_feed_rate = value; break;
+    case 20: settings.homing_seek_rate = value; break;
+    case 21: settings.homing_debounce_delay = round(value); break;
+    case 22: settings.homing_pulloff = value; break;
     default: 
       return(STATUS_INVALID_STATEMENT);
   }
