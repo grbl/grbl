@@ -103,7 +103,6 @@ uint8_t settings_read_startup_line(uint8_t n, char *line)
   uint16_t addr = n*(LINE_BUFFER_SIZE+1)+EEPROM_ADDR_STARTUP_BLOCK;
   if (!(memcpy_from_eeprom_with_checksum((char*)line, addr, LINE_BUFFER_SIZE))) {
     // Reset line with default value
-    // TODO: Need to come up with a method to do this.
     line[0] = 0;
     settings_store_startup_line(n, line);
     return(false);
@@ -219,5 +218,5 @@ void settings_init() {
       report_status_message(STATUS_SETTING_READ_FAIL);
     }
   }
-  // NOTE: Startup lines are handled and called by protocol_init().
+  // NOTE: Startup lines are handled and called by main.c at the end of initialization.
 }
