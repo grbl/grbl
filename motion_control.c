@@ -217,6 +217,8 @@ void mc_go_home()
   if (sys.abort) {
     sys.state = STATE_ALARM; // Homing routine did not complete.
     return; 
+  } else {
+    sys.state = STATE_IDLE; // Otherwise, homed and zero out machine position.
   }
 
   // The machine should now be homed and machine zero has been located. Upon completion, 
@@ -242,7 +244,7 @@ void mc_go_home()
 
   // If hard limits feature enabled, re-enable hard limits interrupt after homing cycle.
   if (bit_istrue(settings.flags,BITFLAG_HARD_LIMIT_ENABLE)) { PCICR |= (1 << LIMIT_INT); }
-  sys.state = STATE_IDLE; // Finished! 
+  // Finished! 
 }
 
 
