@@ -21,8 +21,6 @@
 #ifndef limits_h
 #define limits_h 
 
-#define MICROSECONDS_PER_ACCELERATION_TICK  (1000000/ACCELERATION_TICKS_PER_SECOND)
-
 // initialize the limits module
 void limits_init();
 

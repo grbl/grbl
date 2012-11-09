@@ -29,7 +29,9 @@
 // characters. In future versions, this will be increased, when we know how much extra
 // memory space we can invest into here or we re-write the g-code parser not to have his 
 // buffer.
-#define LINE_BUFFER_SIZE 50
+#ifndef LINE_BUFFER_SIZE
+  #define LINE_BUFFER_SIZE 50
+#endif
 
 // Initialize the serial protocol
 void protocol_init();

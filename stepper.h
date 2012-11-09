@@ -24,10 +24,6 @@
 
 #include <avr/io.h>
 
-// Some useful constants
-#define TICKS_PER_MICROSECOND (F_CPU/1000000)
-#define CYCLES_PER_ACCELERATION_TICK ((TICKS_PER_MICROSECOND*1000000)/ACCELERATION_TICKS_PER_SECOND)
-
 // Initialize and setup the stepper motor subsystem
 void st_init();
 

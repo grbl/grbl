@@ -27,6 +27,7 @@
 #define BAUD_RATE 9600
 
 // Define pin-assignments
+// NOTE: All step bit and direction pins must be on the same port.
 #define STEPPING_DDR       DDRD
 #define STEPPING_PORT      PORTD
 #define X_STEP_BIT         2  // Uno Digital Pin 2
@@ -44,6 +45,7 @@
 #define STEPPERS_DISABLE_BIT    0  // Uno Digital Pin 8
 #define STEPPERS_DISABLE_MASK (1<<STEPPERS_DISABLE_BIT)
 
+// NOTE: All limit bit pins must be on the same port
 #define LIMIT_DDR       DDRB
 #define LIMIT_PIN       PINB
 #define LIMIT_PORT      PORTB
@@ -76,6 +78,7 @@
   #define COOLANT_MIST_BIT   4 // Uno Analog Pin 4
 #endif  
 
+// NOTE: All pinouts pins must be on the same port
 #define PINOUT_DDR       DDRC
 #define PINOUT_PIN       PINC
 #define PINOUT_PORT      PORTC
@@ -135,7 +138,7 @@
 // round-off can be great enough to cause problems and/or it's too fast for the Arduino. The correct
 // value for this parameter is machine dependent, so it's advised to set this only as high as needed.
 // Approximate successful values can range from 30L to 100L or more.
-#define ACCELERATION_TICKS_PER_SECOND 60L
+#define ACCELERATION_TICKS_PER_SECOND 50L
 
 // Minimum planner junction speed. Sets the default minimum speed the planner plans for at the end
 // of the buffer and all stops. This should not be much greater than zero and should only be changed
@@ -169,6 +172,32 @@
 // ---------------------------------------------------------------------------------------
 // FOR ADVANCED USERS ONLY: 
 
+// The number of linear motions in the planner buffer to be planned at any give time. The vast
+// majority of RAM that Grbl uses is based on this buffer size. Only increase if there is extra 
+// available RAM, like when re-compiling for a Teensy or Sanguino. Or decrease if the Arduino
+// begins to crash due to the lack of available RAM or if the CPU is having trouble keeping
+// up with planning new incoming motions as they are executed. 
+// #define BLOCK_BUFFER_SIZE 18  // Uncomment to override default in planner.h.
+
+// Line buffer size from the serial input stream to be executed. Also, governs the size of 
+// each of the startup blocks, as they are each stored as a string of this size. Make sure
+// to account for the available EEPROM at the defined memory address in settings.h and for
+// the number of desired startup blocks.
+// NOTE: 50 characters is not a problem except for extreme cases, but the line buffer size 
+// can be too small and g-code blocks can get truncated. Officially, the g-code standards 
+// support up to 256 characters. In future versions, this default will be increased, when 
+// we know how much extra memory space we can re-invest into this.
+// #define LINE_BUFFER_SIZE 50  // Uncomment to override default in protocol.h
+  
+// Serial send and receive buffer size. The receive buffer is often used as another streaming
+// buffer to store incoming blocks to be processed by Grbl when its ready. Most streaming
+// interfaces will character count and track each block send to each block response. So, 
+// increase the receive buffer if a deeper receive buffer is needed for streaming and avaiable
+// memory allows. The send buffer primarily handles messages in Grbl. Only increase if large
+// messages are sent and Grbl begins to stall, waiting to send the rest of the message.
+// #define RX_BUFFER_SIZE 128 // Uncomment to override defaults in serial.h
+// #define TX_BUFFER_SIZE 64
+  
 // Toggles XON/XOFF software flow control for serial communications. Not officially supported
 // due to problems involving the Atmega8U2 USB-to-serial chips on current Arduinos. The firmware
 // on these chips do not support XON/XOFF flow control characters and the intermediate buffer 

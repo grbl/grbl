@@ -33,6 +33,7 @@
 #include "limits.h"
 #include "report.h"
 
+#define MICROSECONDS_PER_ACCELERATION_TICK  (1000000/ACCELERATION_TICKS_PER_SECOND)
 
 void limits_init() 
 {

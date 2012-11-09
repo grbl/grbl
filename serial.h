@@ -27,8 +27,13 @@
 
 #include "nuts_bolts.h"
 
-#define RX_BUFFER_SIZE 128
-#define TX_BUFFER_SIZE 64
+#ifndef RX_BUFFER_SIZE
+  #define RX_BUFFER_SIZE 128
+#endif
+#ifndef TX_BUFFER_SIZE
+  #define TX_BUFFER_SIZE 64
+#endif
+
 #define SERIAL_NO_DATA 0xff
 
 #ifdef ENABLE_XONXOFF
