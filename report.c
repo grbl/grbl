@@ -56,8 +56,8 @@ void report_status_message(uint8_t status_code)
       printPgmString(PSTR("Expected command letter")); break;
       case STATUS_UNSUPPORTED_STATEMENT:
       printPgmString(PSTR("Unsupported statement")); break;
-      case STATUS_FLOATING_POINT_ERROR:
-      printPgmString(PSTR("Float error")); break;
+      case STATUS_ARC_RADIUS_ERROR:
+      printPgmString(PSTR("Invalid radius")); break;
       case STATUS_MODAL_GROUP_VIOLATION:
       printPgmString(PSTR("Modal group violation")); break;
       case STATUS_INVALID_STATEMENT:

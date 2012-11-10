@@ -105,8 +105,11 @@ void mc_arc(float *position, float *target, float *offset, uint8_t axis_0, uint8
   
   // CCW angle between position and target from circle center. Only one atan2() trig computation required.
   float angular_travel = atan2(r_axis0*rt_axis1-r_axis1*rt_axis0, r_axis0*rt_axis0+r_axis1*rt_axis1);
-  if (angular_travel < 0) { angular_travel += 2*M_PI; }
-  if (isclockwise) { angular_travel -= 2*M_PI; }
+  if (isclockwise) { // Correct atan2 output per direction
+    if (angular_travel >= 0) { angular_travel -= 2*M_PI; }
+  } else {
+    if (angular_travel <= 0) { angular_travel += 2*M_PI; }
+  }
   
   float millimeters_of_travel = hypot(angular_travel*radius, fabs(linear_travel));
   if (millimeters_of_travel == 0.0) { return; }
