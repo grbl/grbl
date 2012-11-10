@@ -217,14 +217,13 @@ void mc_go_home()
   if (sys.abort) {
     sys.state = STATE_ALARM; // Homing routine did not complete.
     return; 
-  } else {
-    sys.state = STATE_IDLE; // Otherwise, homed and zero out machine position.
   }
 
   // The machine should now be homed and machine zero has been located. Upon completion, 
   // reset system position and sync internal position vectors.
   clear_vector_float(sys.position); // Set machine zero
   sys_sync_current_position();
+  sys.state = STATE_IDLE; // Set system state to IDLE to complete motion and indicate homed.
   
   // Pull-off all axes from limit switches before continuing motion. This provides some initial
   // clearance off the switches and should also help prevent them from falsely tripping when 
