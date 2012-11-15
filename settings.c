@@ -26,6 +26,7 @@
 #include "nuts_bolts.h"
 #include "settings.h"
 #include "eeprom.h"
+#include "limits.h"
 
 settings_t settings;
 
@@ -172,24 +173,22 @@ uint8_t settings_store_global_setting(int parameter, float value) {
       if (value) { settings.flags |= BITFLAG_REPORT_INCHES; }
       else { settings.flags &= ~BITFLAG_REPORT_INCHES; }
       break;
-    case 14: // Reboot to ensure change
+    case 14: // Reset to ensure change. Immediate re-init may cause problems.
       if (value) { settings.flags |= BITFLAG_AUTO_START; }
       else { settings.flags &= ~BITFLAG_AUTO_START; }
       break;
-    case 15: // Reboot to ensure change
-       if (value) { settings.flags |= BITFLAG_INVERT_ST_ENABLE; }
-       else { settings.flags &= ~BITFLAG_INVERT_ST_ENABLE; }
+    case 15: // Reset to ensure change. Immediate re-init may cause problems.
+      if (value) { settings.flags |= BITFLAG_INVERT_ST_ENABLE; }
+      else { settings.flags &= ~BITFLAG_INVERT_ST_ENABLE; }
       break;
-    case 16: // Reboot to ensure change
+    case 16:
       if (value) { settings.flags |= BITFLAG_HARD_LIMIT_ENABLE; }
       else { settings.flags &= ~BITFLAG_HARD_LIMIT_ENABLE; }
+      limits_init(); // Re-init to immediately change. NOTE: Nice to have but could be problematic later.
       break;
     case 17:
-      if (value) { 
-        settings.flags |= BITFLAG_HOMING_ENABLE;
-        sys.state = STATE_ALARM;
-        report_feedback_message(MESSAGE_HOMING_ALARM);
-      } else { settings.flags &= ~BITFLAG_HOMING_ENABLE; }
+      if (value) { settings.flags |= BITFLAG_HOMING_ENABLE; }
+      else { settings.flags &= ~BITFLAG_HOMING_ENABLE; }
       break;
     case 18: settings.homing_dir_mask = trunc(value); break;
     case 19: settings.homing_feed_rate = value; break;

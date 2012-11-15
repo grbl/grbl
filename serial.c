@@ -49,19 +49,19 @@ volatile uint8_t tx_buffer_tail = 0;
   }
 #endif
 
-static void set_baud_rate(long baud) {
-  uint16_t UBRR0_value = ((F_CPU / 16 + baud / 2) / baud - 1);
+void serial_init()
+{
+  // Set baud rate
+  #if BAUD_RATE < 57600
+    uint16_t UBRR0_value = ((F_CPU / (8L * BAUD_RATE)) - 1)/2 ;
+    UCSR0A &= ~(1 << U2X0); // baud doubler off  - Only needed on Uno XXX
+  #else
+    uint16_t UBRR0_value = ((F_CPU / (4L * BAUD_RATE)) - 1)/2;
+    UCSR0A |= (1 << U2X0);  // baud doubler on for high baud rates, i.e. 115200
+  #endif
   UBRR0H = UBRR0_value >> 8;
   UBRR0L = UBRR0_value;
-}
-
-void serial_init(long baud)
-{
-  set_baud_rate(baud);
-  
-  /* baud doubler off  - Only needed on Uno XXX */
-  UCSR0A &= ~(1 << U2X0);
-          
+            
   // enable rx and tx
   UCSR0B |= 1<<RXEN0;
   UCSR0B |= 1<<TXEN0;
@@ -159,11 +159,7 @@ ISR(USART_RX_vect)
     case CMD_STATUS_REPORT: sys.execute |= EXEC_STATUS_REPORT; break; // Set as true
     case CMD_CYCLE_START:   sys.execute |= EXEC_CYCLE_START; break; // Set as true
     case CMD_FEED_HOLD:     sys.execute |= EXEC_FEED_HOLD; break; // Set as true
-    case CMD_RESET:
-      // Immediately force stepper and spindle subsystem idle at an interrupt level.
-      mc_alarm();
-      sys.execute |= EXEC_RESET; // Set as true
-      break;
+    case CMD_RESET:         mc_reset(); break; // Call motion control reset routine.
     default: // Write character to buffer    
       next_head = rx_buffer_head + 1;
       if (next_head == RX_BUFFER_SIZE) { next_head = 0; }

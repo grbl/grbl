@@ -41,30 +41,41 @@ void limits_init()
   LIMIT_PORT |= (LIMIT_MASK); // Enable internal pull-up resistors. Normal high operation.
 
   if (bit_istrue(settings.flags,BITFLAG_HARD_LIMIT_ENABLE)) {
-    LIMIT_PCMSK |= LIMIT_MASK;   // Enable specific pins of the Pin Change Interrupt
-    PCICR |= (1 << LIMIT_INT);   // Enable Pin Change Interrupt
+    LIMIT_PCMSK |= LIMIT_MASK; // Enable specific pins of the Pin Change Interrupt
+    PCICR |= (1 << LIMIT_INT); // Enable Pin Change Interrupt
+  } else {
+    LIMIT_PCMSK &= ~LIMIT_MASK; // Disable
+    PCICR &= ~(1 << LIMIT_INT); 
   }
 }
 
-// This is the Limit Pin Change Interrupt, which handles the hard limit feature.
+// This is the Limit Pin Change Interrupt, which handles the hard limit feature. A bouncing 
+// limit switch can cause a lot of problems, like false readings and multiple interrupt calls.
+// If a switch is triggered at all, something bad has happened and treat it as such, regardless
+// if a limit switch is being disengaged. It's impossible to reliably tell the state of a 
+// bouncing pin without a debouncing method.
 // NOTE: Do not attach an e-stop to the limit pins, because this interrupt is disabled during
 // homing cycles and will not respond correctly. Upon user request or need, there may be a
 // special pinout for an e-stop, but it is generally recommended to just directly connect
 // your e-stop switch to the Arduino reset pin, since it is the most correct way to do this.
-// TODO: This interrupt may be used to manage the homing cycle directly with the main stepper
-// interrupt without adding too much to it. All it would need is some way to stop one axis 
-// when its limit is triggered and continue the others. This may reduce some of the code, but
-// would make Grbl a little harder to read and understand down road. Holding off on this until
-// we move on to new hardware or flash space becomes an issue. If it ain't broke, don't fix it.
 ISR(LIMIT_INT_vect) 
 {
-  // Only enter if the system alarm is not active.
-  if (bit_isfalse(sys.execute,EXEC_ALARM)) { 
-    // Kill all processes upon hard limit event.
-    if ((LIMIT_PIN & LIMIT_MASK) ^ LIMIT_MASK) {
-      mc_alarm(); // Initiate system kill.
-      sys.state = STATE_LIMIT; // Set system state to indicate event.
-    } 
+  // TODO: This interrupt may be used to manage the homing cycle directly with the main stepper
+  // interrupt without adding too much to it. All it would need is some way to stop one axis 
+  // when its limit is triggered and continue the others. This may reduce some of the code, but
+  // would make Grbl a little harder to read and understand down road. Holding off on this until
+  // we move on to new hardware or flash space becomes an issue. If it ain't broke, don't fix it.
+
+  // Ignore limit switches if already in an alarm state or in-process of executing an alarm.
+  // When in the alarm state, Grbl should have been reset or will force a reset, so any pending 
+  // moves in the planner and serial buffers are all cleared and newly sent blocks will be 
+  // locked out until a homing cycle or a kill lock command. Allows the user to disable the hard
+  // limit setting if their limits are constantly triggering after a reset and move their axes.
+  if (sys.state != STATE_ALARM) { 
+    if (bit_isfalse(sys.execute,EXEC_ALARM)) {
+      mc_reset(); // Initiate system kill.
+      sys.execute |= EXEC_CRIT_EVENT; // Indicate hard limit critical event
+    }
   }
 }
 
@@ -103,6 +114,11 @@ static void homing_cycle(bool x_axis, bool y_axis, bool z_axis, int8_t pos_dir,
 
   // Compute the adjusted step rate change with each acceleration tick. (in step/min/acceleration_tick)
   uint32_t delta_rate = ceil( ds*settings.acceleration/(60*ACCELERATION_TICKS_PER_SECOND));
+  
+  #ifdef HOMING_RATE_ADJUST
+    // Adjust homing rate so a multiple axes moves all at the homing rate independently.
+    homing_rate *= sqrt(x_axis+y_axis+z_axis);
+  #endif
   
   // Nominal and initial time increment per step. Nominal should always be greater then 3
   // usec, since they are based on the same parameters as the main stepper routine. Initial
@@ -191,12 +207,13 @@ static void homing_cycle(bool x_axis, bool y_axis, bool z_axis, int8_t pos_dir,
 
 void limits_go_home() 
 {  
-  // Enable only the steppers, not the cycle. Cycle should be complete.
+  // Enable only the steppers, not the cycle. Cycle should be inactive/complete.
   st_wake_up();
   
   // Jog all axes toward home to engage their limit switches at faster homing seek rate.
-  homing_cycle(false, false, true, true, false, settings.homing_seek_rate);  // First jog the z axis
-  homing_cycle(true, true, false, true, false, settings.homing_seek_rate);  // Then jog the x and y axis
+  // First jog z-axis to clear workspace, then jog the x and y axis.
+  homing_cycle(false, false, true, true, false, settings.homing_seek_rate);  // z-axis
+  homing_cycle(true, true, false, true, false, settings.homing_seek_rate);  // xy-axes
   delay_ms(settings.homing_debounce_delay); // Delay to debounce signal
     
   // Now in proximity of all limits. Carefully leave and approach switches in multiple cycles

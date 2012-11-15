@@ -67,10 +67,8 @@ void mc_line(float x, float y, float z, float feed_rate, uint8_t invert_feed_rat
   if (bit_isfalse(gc.switches,BITFLAG_CHECK_GCODE)) {
     plan_buffer_line(x, y, z, feed_rate, invert_feed_rate);
     
-    // Indicate to the system there is now a planned block in the buffer ready to cycle start.
-    // NOTE: If homing cycles are enabled, a position lost state will lock out all motions,
-    // until a homing cycle has been completed. This is a safety feature to help prevent 
-    // the machine from crashing.
+    // If idle, indicate to the system there is now a planned block in the buffer ready to cycle 
+    // start. Otherwise ignore and continue on.
     if (!sys.state) { sys.state = STATE_QUEUED; }
     
     // Auto-cycle start immediately after planner finishes. Enabled/disabled by grbl settings. During 
@@ -214,13 +212,10 @@ void mc_dwell(float seconds)
 void mc_go_home()
 {
   sys.state = STATE_HOMING; // Set system state variable
-  PCICR &= ~(1 << LIMIT_INT);   // Disable hard limits pin change interrupt
+  LIMIT_PCMSK &= ~LIMIT_MASK; // Disable hard limits pin change register for cycle duration
   
   limits_go_home(); // Perform homing routine.
-  if (sys.abort) {
-    sys.state = STATE_ALARM; // Homing routine did not complete.
-    return; 
-  }
+  if (sys.abort) { return; } // Did not complete. Alarm state set by mc_alarm.
 
   // The machine should now be homed and machine zero has been located. Upon completion, 
   // reset system position and sync internal position vectors.
@@ -237,32 +232,42 @@ void mc_go_home()
   if (bit_istrue(settings.homing_dir_mask,bit(Y_DIRECTION_BIT))) { y_dir = 1; }
   if (bit_istrue(settings.homing_dir_mask,bit(Z_DIRECTION_BIT))) { z_dir = 1; }
   mc_line(x_dir*settings.homing_pulloff, y_dir*settings.homing_pulloff, 
-          z_dir*settings.homing_pulloff, settings.homing_feed_rate, false);
+          z_dir*settings.homing_pulloff, settings.homing_seek_rate, false);
   st_cycle_start(); // Move it. Nothing should be in the buffer except this motion. 
   plan_synchronize(); // Make sure the motion completes.
   
   // The gcode parser position was circumvented by the pull-off maneuver, so sync position vectors.
   sys_sync_current_position();
 
-  // If hard limits feature enabled, re-enable hard limits interrupt after homing cycle.
-  if (bit_istrue(settings.flags,BITFLAG_HARD_LIMIT_ENABLE)) { PCICR |= (1 << LIMIT_INT); }
+  // If hard limits feature enabled, re-enable hard limits pin change register after homing cycle.
+  if (bit_istrue(settings.flags,BITFLAG_HARD_LIMIT_ENABLE)) { LIMIT_PCMSK |= LIMIT_MASK; }
   // Finished! 
 }
 
 
-// Method to immediately kill all motion and set system alarm. Used by system abort, hard limits,
-// and upon g-code parser error (when installed).
-void mc_alarm()
+// Method to ready the system to reset by setting the runtime reset command and killing any
+// active processes in the system. This also checks if a system reset is issued while Grbl
+// is in a motion state. If so, kills the steppers and sets the system alarm to flag position
+// lost, since there was an abrupt uncontrolled deceleration. Called at an interrupt level by
+// runtime abort command and hard limits. So, keep to a minimum.
+void mc_reset()
 {
-  // Only this function can set the system alarm. This is done to prevent multiple kill calls 
-  // by different processes.
-  if (bit_isfalse(sys.execute, EXEC_ALARM)) {
-    // Set system alarm flag to have the main program check for anything wrong with shutting
-    // down the system.
-    sys.execute |= EXEC_ALARM;
-    // Immediately force stepper, spindle, and coolant to stop.
-    st_go_idle();  
+  // Only this function can set the system reset. Helps prevent multiple kill calls.
+  if (bit_isfalse(sys.execute, EXEC_RESET)) {
+    sys.execute |= EXEC_RESET;
+
+    // Kill spindle and coolant.   
     spindle_stop();
     coolant_stop();
+
+    // Kill steppers only if in any motion state, i.e. cycle, feed hold, homing, or jogging
+    // NOTE: If steppers are kept enabled via the step idle delay setting, this also keeps
+    // the steppers enabled by avoiding the go_idle call altogether, unless the motion state is
+    // violated, by which, all bets are off.
+    switch (sys.state) {
+      case STATE_CYCLE: case STATE_HOLD: case STATE_HOMING: // case STATE_JOG:
+        sys.execute |= EXEC_ALARM; // Execute alarm state.
+        st_go_idle(); // Execute alarm force kills steppers. Position likely lost.
+    }
   }
 }

@@ -45,14 +45,14 @@ system_t sys;
 int main(void)
 {
   // Initialize system
-  serial_init(BAUD_RATE); // Setup serial baud rate and interrupts
+  serial_init(); // Setup serial baud rate and interrupts
   settings_init(); // Load grbl settings from EEPROM
   st_init(); // Setup stepper pins and interrupt timers
   sei(); // Enable interrupts
   
   memset(&sys, 0, sizeof(sys));  // Clear all system variables
   sys.abort = true;   // Set abort to complete initialization
-  sys.state = STATE_ALARM;  // Set alarm state to indicate unknown initial position
+  sys.state = STATE_INIT;  // Set alarm state to indicate unknown initial position
   
   for(;;) {
   
@@ -60,7 +60,6 @@ int main(void)
     // Once here, it is safe to re-initialize the system. At startup, the system will automatically
     // reset to finish the initialization process.
     if (sys.abort) {
-      
       // Reset system.
       serial_reset_read_buffer(); // Clear serial read buffer
       plan_init(); // Clear block buffer and planner variables
@@ -72,28 +71,33 @@ int main(void)
       st_reset(); // Clear stepper subsystem variables.
 
       // Sync cleared gcode and planner positions to current system position, which is only
-      // cleared upon startup, not a reset/abort. If Grbl does not know or can ensure its 
-      // position, a feedback message will be sent back to the user to let them know. Also,
-      // if position is lost and homing is enabled, the axes motions will be locked, and 
-      // user must either perform the homing cycle '$H' or purge the system locks '$P' to 
-      // resume.
+      // cleared upon startup, not a reset/abort. 
       sys_sync_current_position();
 
       // Reset system variables.
       sys.abort = false;
       sys.execute = 0;
-      if (sys.state == STATE_ALARM && bit_istrue(settings.flags,BITFLAG_HOMING_ENABLE)) { 
-        // Position has either been lost from a critical event or a power cycle reboot. If
-        // homing is enabled, force user to home to get machine position. Otherwise, let the
-        // user manage position on their own.
-        report_feedback_message(MESSAGE_HOMING_ALARM); 
-      } else {
-        sys.state = STATE_IDLE;
-      }
       if (bit_istrue(settings.flags,BITFLAG_AUTO_START)) { sys.auto_start = true; }
-
-      // Execute user startup script
-      protocol_execute_startup();
+      
+      // Check for power-up and set system alarm if homing is enabled to force homing cycle
+      // by setting Grbl's alarm state. Alarm locks out all g-code commands, including the
+      // startup scripts, but allows access to settings and internal commands. Only a homing
+      // cycle '$H' or kill alarm locks '$X' will disable the alarm.
+      // NOTE: The startup script will run after successful completion of the homing cycle, but
+      // not after disabling the alarm locks. Prevents motion startup blocks from crashing into
+      // things uncontrollably. Very bad.
+      #ifdef HOMING_INIT_LOCK
+        if (sys.state == STATE_INIT && bit_istrue(settings.flags,BITFLAG_HOMING_ENABLE)) { sys.state = STATE_ALARM; }
+      #endif
+      
+      // Check for and report alarm state after a reset, error, or an initial power up.
+      if (sys.state == STATE_ALARM) {
+        report_feedback_message(MESSAGE_ALARM_LOCK); 
+      } else {
+        // All systems go. Set system to ready and execute startup script.
+        sys.state = STATE_IDLE;
+        protocol_execute_startup(); 
+      }
     }
     
     protocol_execute_runtime();

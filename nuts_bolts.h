@@ -63,31 +63,29 @@
 #define EXEC_FEED_HOLD      bit(3) // bitmask 00001000
 #define EXEC_RESET          bit(4) // bitmask 00010000
 #define EXEC_ALARM          bit(5) // bitmask 00100000
-// #define                  bit(6) // bitmask 01000000
+#define EXEC_CRIT_EVENT     bit(6) // bitmask 01000000
 // #define                  bit(7) // bitmask 10000000
 
 // Define system state bit map. The state variable primarily tracks the individual functions
 // of Grbl to manage each without overlapping. It is also used as a messaging flag for
 // critical events.
 #define STATE_IDLE   0 // Must be zero.
-#define STATE_QUEUED 1 // Indicates buffered blocks, awaiting cycle start.
-#define STATE_CYCLE  2 // Cycle is running
-#define STATE_HOLD   3 // Executing feed hold
-#define STATE_HOMING 4 // Performing homing cycle
-#define STATE_JOG    5 // Jogging mode is unique like homing.
-#define STATE_ALARM  6 // In alarm state. Locks out all g-code processes and messages position lost
-#define STATE_LIMIT  7 // Used to message hard limit triggered.
+#define STATE_INIT   1 // Initial power up state.
+#define STATE_QUEUED 2 // Indicates buffered blocks, awaiting cycle start.
+#define STATE_CYCLE  3 // Cycle is running
+#define STATE_HOLD   4 // Executing feed hold
+#define STATE_HOMING 5 // Performing homing cycle
+#define STATE_ALARM  6 // In alarm state. Locks out all g-code processes. Allows settings access.
+// #define STATE_JOG    7 // Jogging mode is unique like homing.
 
 // Define global system variables
 typedef struct {
   uint8_t abort;                 // System abort flag. Forces exit back to main loop for reset.
   uint8_t state;                 // Tracks the current state of Grbl.
   volatile uint8_t execute;      // Global system runtime executor bitflag variable. See EXEC bitmasks.
-  int32_t position[3];           // Real-time machine (aka home) position vector in steps. 
+  int32_t position[N_AXIS];      // Real-time machine (aka home) position vector in steps. 
                                  // NOTE: This may need to be a volatile variable, if problems arise.   
   uint8_t auto_start;            // Planner auto-start flag. Toggled off during feed hold. Defaulted by settings.
-//   uint8_t feed_hold;             // Feed hold flag. Held true during feed hold. Released when ready to resume.
-//   volatile uint8_t cycle_start;  // Cycle start flag. Set by stepper subsystem or main program. 
 } system_t;
 extern system_t sys;
 

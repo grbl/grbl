@@ -43,7 +43,7 @@ void mc_dwell(float seconds);
 // Perform homing cycle to locate machine zero. Requires limit switches.
 void mc_go_home();
 
-// Kills all motion and sets system alarm
-void mc_alarm();
+// Performs system reset. If in motion state, kills all motion and sets system alarm.
+void mc_reset();
 
 #endif

@@ -69,9 +69,9 @@
 #define COOLANT_FLOOD_PORT  PORTC
 #define COOLANT_FLOOD_BIT   3  // Uno Analog Pin 3
 
-// #define ENABLE_M7  // Mist coolant disabled by default. Uncomment to enable.
 // NOTE: Uno analog pins 4 and 5 are reserved for an i2c interface, and may be installed at
 // a later date if flash and memory space allows.
+// #define ENABLE_M7  // Mist coolant disabled by default. Uncomment to enable.
 #ifdef ENABLE_M7
   #define COOLANT_MIST_DDR   DDRC
   #define COOLANT_MIST_PORT  PORTC
@@ -158,6 +158,18 @@
 // time step. Also, keep in mind that the Arduino delay timer is not very accurate for long delays.
 #define DWELL_TIME_STEP 50 // Integer (1-255) (milliseconds)
 
+// If homing is enabled, homing init lock sets Grbl into an alarm state upon power up. This forces
+// the user to perform the homing cycle (or override the locks) before doing anything else. This is
+// mainly a safety feature to remind the user to home, since position is unknown to Grbl.
+#define HOMING_INIT_LOCK // Comment to disable
+
+// The homing cycle seek and feed rates will adjust so all axes independently move at the homing
+// seek and feed rates regardless of how many axes are in motion simultaneously. If disabled, rates
+// are point-to-point rates, as done in normal operation. For example in an XY diagonal motion, the
+// diagonal motion moves at the intended rate, but the individual axes move at 70% speed. This option
+// just moves them all at 100% speed.
+#define HOMING_RATE_ADJUST // Comment to disable
+
 // Number of homing cycles performed after when the machine initially jogs to limit switches.
 // This help in preventing overshoot and should improve repeatability. This value should be one or 
 // greater.
@@ -167,7 +179,7 @@
 // and addresses are defined in settings.h. With the current settings, up to 5 startup blocks may
 // be stored and executed in order. These startup blocks would typically be used to set the g-code
 // parser state depending on user preferences.
-#define N_STARTUP_LINE 3 // Integer (1-5)
+#define N_STARTUP_LINE 2 // Integer (1-5)
 
 // ---------------------------------------------------------------------------------------
 // FOR ADVANCED USERS ONLY: 

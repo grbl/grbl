@@ -62,8 +62,6 @@ void report_status_message(uint8_t status_code)
       printPgmString(PSTR("Modal group violation")); break;
       case STATUS_INVALID_STATEMENT:
       printPgmString(PSTR("Invalid statement")); break;
-      case STATUS_HARD_LIMIT:
-      printPgmString(PSTR("Hard limit. MPos lost?")); break;
       case STATUS_SETTING_DISABLED:
       printPgmString(PSTR("Setting disabled")); break;
       case STATUS_SETTING_VALUE_NEG:
@@ -73,37 +71,47 @@ void report_status_message(uint8_t status_code)
       case STATUS_SETTING_READ_FAIL:
       printPgmString(PSTR("EEPROM read fail. Using defaults")); break;
       case STATUS_IDLE_ERROR:
-      printPgmString(PSTR("Busy or locked")); break;
-      case STATUS_ABORT_CYCLE:
-      printPgmString(PSTR("Abort during cycle. MPos lost?")); break;
-      case STATUS_HOMING_LOCK:
-      printPgmString(PSTR("Locked until homed")); break;
+      printPgmString(PSTR("Busy or queued")); break;
+      case STATUS_ALARM_LOCK:
+      printPgmString(PSTR("Alarm lock")); break;
     }
     printPgmString(PSTR("\r\n"));
   }
 }
 
+// Prints alarm messages.
+void report_alarm_message(int8_t alarm_code)
+{
+  printPgmString(PSTR("ALARM: "));
+  switch (alarm_code) {
+    case ALARM_HARD_LIMIT: 
+    printPgmString(PSTR("Hard limit")); break;
+    case ALARM_ABORT_CYCLE: 
+    printPgmString(PSTR("Abort during cycle")); break;
+  }
+  printPgmString(PSTR(". MPos?\r\n"));
+}
 
 // Prints feedback messages. This serves as a centralized method to provide additional
-// user feedback for things that are not of the status message response protocol. These 
-// are messages such as setup warnings and how to exit alarms.
+// user feedback for things that are not of the status/alarm message protocol. These are
+// messages such as setup warnings, switch toggling, and how to exit alarms.
 // NOTE: For interfaces, messages are always placed within brackets. And if silent mode
 // is installed, the message number codes are less than zero.
 // TODO: Install silence feedback messages option in settings
-void report_feedback_message(int8_t message_code)
+void report_feedback_message(uint8_t message_code)
 {
   printPgmString(PSTR("["));
   switch(message_code) {
     case MESSAGE_CRITICAL_EVENT:
-    printPgmString(PSTR("ALARM: Check and reset")); break;
-    case MESSAGE_HOMING_ALARM:
-    printPgmString(PSTR("'$H' to home and unlock")); break;
+    printPgmString(PSTR("Reset to continue")); break;
+    case MESSAGE_ALARM_LOCK:
+    printPgmString(PSTR("'$H'|'$X' to unlock")); break;
+    case MESSAGE_ALARM_UNLOCK:
+    printPgmString(PSTR("Caution: Unlocked")); break;
     case MESSAGE_ENABLED:
     printPgmString(PSTR("Enabled")); break;
     case MESSAGE_DISABLED:
     printPgmString(PSTR("Disabled")); break;    
-    case MESSAGE_HOMING_UNLOCK:
-    printPgmString(PSTR("Unlocked. MPos lost?")); break;
   }
   printPgmString(PSTR("]\r\n"));
 }
@@ -127,7 +135,7 @@ void report_grbl_help() {
                       "$S1 (toggle blk del)\r\n"
                       "$S2 (toggle single blk)\r\n"
                       "$S3 (toggle opt stop)\r\n"
-                      "$X (kill homing lock)\r\n"
+                      "$X (kill alarm lock)\r\n"
                       "$H (run homing cycle)\r\n"
                       "~ (cycle start)\r\n"
                       "! (feed hold)\r\n"
@@ -287,37 +295,39 @@ void report_startup_line(uint8_t n, char *line)
  // especially during g-code programs with fast, short line segments and high frequency reports (5-20Hz).
 void report_realtime_status()
 {
- // **Under construction** Bare-bones status report. Provides real-time machine position relative to 
- // the system power on location (0,0,0) and work coordinate position (G54 and G92 applied). Eventually
- // to be added are distance to go on block, processed block id, and feed rate. Also a settings bitmask
- // for a user to select the desired real-time data.
- uint8_t i;
- int32_t current_position[3]; // Copy current state of the system position variable
- memcpy(current_position,sys.position,sizeof(sys.position));
- float print_position[3];
-
- // Report machine position
- printPgmString(PSTR("MPos:[")); 
- for (i=0; i<= 2; i++) {
-   print_position[i] = current_position[i]/settings.steps_per_mm[i];
-   if (bit_istrue(settings.flags,BITFLAG_REPORT_INCHES)) { print_position[i] *= INCH_PER_MM; }
-   printFloat(print_position[i]);
-   if (i < 2) { printPgmString(PSTR(",")); }
-   else { printPgmString(PSTR("]")); }
- }
+  // **Under construction** Bare-bones status report. Provides real-time machine position relative to 
+  // the system power on location (0,0,0) and work coordinate position (G54 and G92 applied). Eventually
+  // to be added are distance to go on block, processed block id, and feed rate. Also a settings bitmask
+  // for a user to select the desired real-time data.
+  uint8_t i;
+  int32_t current_position[3]; // Copy current state of the system position variable
+  memcpy(current_position,sys.position,sizeof(sys.position));
+  float print_position[3];
  
- // Report work position
- printPgmString(PSTR(",WPos:[")); 
- for (i=0; i<= 2; i++) {
-   if (bit_istrue(settings.flags,BITFLAG_REPORT_INCHES)) {
-     print_position[i] -= (gc.coord_system[i]+gc.coord_offset[i])*INCH_PER_MM;
-   } else {
-     print_position[i] -= gc.coord_system[i]+gc.coord_offset[i];
-   }
-   printFloat(print_position[i]);
-   if (i < 2) { printPgmString(PSTR(",")); }
-   else { printPgmString(PSTR("]")); }
- }
-   
- printPgmString(PSTR("\r\n"));
+  // TODO: Add Grbl state feedback, i.e. IDLE, RUN, HOLD, HOME, etc.
+ 
+  // Report machine position
+  printPgmString(PSTR("MPos:[")); 
+  for (i=0; i<= 2; i++) {
+    print_position[i] = current_position[i]/settings.steps_per_mm[i];
+    if (bit_istrue(settings.flags,BITFLAG_REPORT_INCHES)) { print_position[i] *= INCH_PER_MM; }
+    printFloat(print_position[i]);
+    if (i < 2) { printPgmString(PSTR(",")); }
+    else { printPgmString(PSTR("]")); }
+  }
+  
+  // Report work position
+  printPgmString(PSTR(",WPos:[")); 
+  for (i=0; i<= 2; i++) {
+    if (bit_istrue(settings.flags,BITFLAG_REPORT_INCHES)) {
+      print_position[i] -= (gc.coord_system[i]+gc.coord_offset[i])*INCH_PER_MM;
+    } else {
+      print_position[i] -= gc.coord_system[i]+gc.coord_offset[i];
+    }
+    printFloat(print_position[i]);
+    if (i < 2) { printPgmString(PSTR(",")); }
+    else { printPgmString(PSTR("]")); }
+  }
+    
+  printPgmString(PSTR("\r\n"));
 }

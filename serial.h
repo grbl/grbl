@@ -47,7 +47,7 @@
   #define XON_CHAR 0x11
 #endif
 
-void serial_init(long baud);
+void serial_init();
 
 void serial_write(uint8_t data);
 

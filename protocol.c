@@ -74,8 +74,7 @@ ISR(PINOUT_INT_vect)
   // Enter only if any pinout pin is actively low.
   if ((PINOUT_PIN & PINOUT_MASK) ^ PINOUT_MASK) { 
     if (bit_isfalse(PINOUT_PIN,bit(PIN_RESET))) {
-      mc_alarm();
-      sys.execute |= EXEC_RESET; // Set as true
+      mc_reset();
     } else if (bit_isfalse(PINOUT_PIN,bit(PIN_FEED_HOLD))) {
       sys.execute |= EXEC_FEED_HOLD; 
     } else if (bit_isfalse(PINOUT_PIN,bit(PIN_CYCLE_START))) {
@@ -93,36 +92,41 @@ ISR(PINOUT_INT_vect)
 // define more computationally-expensive volatile variables. This also provides a controlled way to 
 // execute certain tasks without having two or more instances of the same task, such as the planner
 // recalculating the buffer upon a feedhold or override.
-// NOTE: The sys.execute variable flags are set by the serial read subprogram, except where noted,
-// but may be set by any process, such as a switch pin change interrupt when pinouts are installed.
+// NOTE: The sys.execute variable flags are set by any process, step or serial interrupts, pinouts,
+// limit switches, or the main program.
 void protocol_execute_runtime()
 {
   if (sys.execute) { // Enter only if any bit flag is true
     uint8_t rt_exec = sys.execute; // Avoid calling volatile multiple times
     
-    // System alarm. Everything has shutdown by either something that has gone wrong or issuing
-    // the Grbl soft-reset/abort. Check the system states to report any critical error found.
-    // If critical, disable Grbl by entering an infinite loop until system reset/abort.
-    // NOTE: The system alarm state is also used to set
-    if (rt_exec & EXEC_ALARM) {
-      // Limit switch critical event. Lock out Grbl until reset.
-      if (sys.state == STATE_LIMIT) { 
-        report_status_message(STATUS_HARD_LIMIT); 
-        sys.state = STATE_ALARM;
+    // System alarm. Everything has shutdown by something that has gone severely wrong. Report
+    // the source of the error to the user. If critical, Grbl disables by entering an infinite
+    // loop until system reset/abort.
+    if (rt_exec & (EXEC_ALARM | EXEC_CRIT_EVENT)) {      
+      sys.state = STATE_ALARM; // Set system alarm state
+
+      // Critical event. Only hard limit qualifies. Update this as new critical events surface.
+      if (rt_exec & EXEC_CRIT_EVENT) {
+        report_alarm_message(ALARM_HARD_LIMIT); 
         report_feedback_message(MESSAGE_CRITICAL_EVENT);
-        while (bit_isfalse(sys.execute,EXEC_RESET)) { sleep_mode(); }
+        bit_false(sys.execute,EXEC_RESET); // Disable any existing reset
+        do { 
+          // Nothing. Block EVERYTHING until user issues reset or power cycles. Hard limits
+          // typically occur while unattended or not paying attention. Gives the user time
+          // to do what is needed before resetting, like killing the incoming stream.
+        } while (bit_isfalse(sys.execute,EXEC_RESET));
+
+      // Standard alarm event. Only abort during motion qualifies.
+      } else {
+        // Runtime abort command issued during a cycle, feed hold, or homing cycle. Message the
+        // user that position may have been lost and set alarm state to enable the alarm lockout
+        // to indicate the possible severity of the problem.
+        report_alarm_message(ALARM_ABORT_CYCLE);
       }
-      
-      // Check if a runtime abort command was issued during a cycle. If so, message the user
-      // that position may have been lost and set alarm state to force re-homing, if enabled.
-      if (sys.state == STATE_CYCLE) {
-        report_status_message(STATUS_ABORT_CYCLE);
-        sys.state = STATE_ALARM; 
-      }
-      bit_false(sys.execute,EXEC_ALARM);
+      bit_false(sys.execute,(EXEC_ALARM | EXEC_CRIT_EVENT));
     } 
   
-    // System abort. Steppers have already been force stopped.
+    // Execute system abort. 
     if (rt_exec & EXEC_RESET) {
       sys.abort = true;  // Only place this is set true.
       return; // Nothing else to do but exit.
@@ -194,8 +198,10 @@ uint8_t protocol_execute_line(char *line)
       case 'H' : // Perform homing cycle
         if (bit_istrue(settings.flags,BITFLAG_HOMING_ENABLE)) { 
           // Only perform homing if Grbl is idle or lost.
-          if ( sys.state==STATE_IDLE || sys.state==STATE_ALARM ) { mc_go_home(); } 
-          else { return(STATUS_IDLE_ERROR); }
+          if ( sys.state==STATE_IDLE || sys.state==STATE_ALARM ) { 
+            mc_go_home(); 
+            if (!sys.abort) { protocol_execute_startup(); } // Execute startup scripts after successful homing.
+          } else { return(STATUS_IDLE_ERROR); }
         } else { return(STATUS_SETTING_DISABLED); }
         break;
 //    case 'J' : break;  // Jogging methods
@@ -224,20 +230,19 @@ uint8_t protocol_execute_line(char *line)
           // Perform reset when toggling off. Check g-code mode should only work if Grbl
           // is idle and ready, regardless of homing locks. This is mainly to keep things
           // simple and consistent.
-          if ( bit_istrue(gc.switches,helper_var) ) { sys.execute |= EXEC_RESET; }
+          if ( bit_istrue(gc.switches,helper_var) ) { mc_reset(); }
           else if (sys.state) { return(STATUS_IDLE_ERROR); }
         }
         gc.switches ^= helper_var;
         if (bit_istrue(gc.switches,helper_var)) { report_feedback_message(MESSAGE_ENABLED); }
         else { report_feedback_message(MESSAGE_DISABLED); }
         break;
-      case 'X' : // Disable homing lock
+      case 'X' : // Disable alarm lock
         if ( line[++char_counter] != 0 ) { return(STATUS_UNSUPPORTED_STATEMENT); }
         if (sys.state == STATE_ALARM) { 
-          report_feedback_message(MESSAGE_HOMING_UNLOCK);
+          report_feedback_message(MESSAGE_ALARM_UNLOCK);
           sys.state = STATE_IDLE;
-        } else {
-          return(STATUS_SETTING_DISABLED);
+          // Don't run startup script. Prevents stored moves in startup from causing accidents.
         }
         break;
       case 'N' : // Startup lines. 
@@ -279,17 +284,7 @@ uint8_t protocol_execute_line(char *line)
     return(STATUS_OK); // If '$' command makes it to here, then everything's ok.
 
   } else {
-    
-    // If homing is enabled and position is lost, lock out all g-code commands.
-    if (sys.state != STATE_ALARM) {
-      return(gc_execute_line(line));    // Everything else is gcode
-      // TODO: Install option to set system alarm upon any error code received back from the
-      // the g-code parser. This is a common safety feature on CNCs to help prevent crashes
-      // if the g-code doesn't perform as intended.
-    } else {
-      return(STATUS_HOMING_LOCK);
-    }
-    
+    return(gc_execute_line(line));    // Everything else is gcode
   }
 }
 

@@ -84,6 +84,11 @@ static float to_millimeters(float value)
 // internal functions in terms of (mm, mm/min) and absolute machine coordinates, respectively.
 uint8_t gc_execute_line(char *line) 
 {
+
+  // If in alarm state, don't process. Immediately return with error.
+  // NOTE: Might not be right place for this, but also prevents $N storing during alarm.
+  if (sys.state == STATE_ALARM) { return(STATUS_ALARM_LOCK); }
+ 
   uint8_t char_counter = 0;  
   char letter;
   float value;
@@ -545,7 +550,7 @@ uint8_t gc_execute_line(char *line)
     
     // If complete, reset to reload defaults (G92.2,G54,G17,G90,G94,M48,G40,M5,M9). Otherwise,
     // re-enable program flow after pause complete, where cycle start will resume the program.
-    if (gc.program_flow == PROGRAM_FLOW_COMPLETED) { sys.execute |= EXEC_RESET; }
+    if (gc.program_flow == PROGRAM_FLOW_COMPLETED) { mc_reset(); }
     else { gc.program_flow = PROGRAM_FLOW_RUNNING; }
   }    
   
