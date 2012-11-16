@@ -131,15 +131,12 @@ void report_grbl_help() {
                       "$N (view startup blocks)\r\n"
                       "$x=value (save Grbl setting)\r\n"
                       "$Nx=line (save startup block)\r\n"
-                      "$S0 (toggle check gcode)\r\n"
-                      "$S1 (toggle blk del)\r\n"
-                      "$S2 (toggle single blk)\r\n"
-                      "$S3 (toggle opt stop)\r\n"
+                      "$C (check gcode mode)\r\n"
                       "$X (kill alarm lock)\r\n"
                       "$H (run homing cycle)\r\n"
                       "~ (cycle start)\r\n"
                       "! (feed hold)\r\n"
-                      "? (position)\r\n"
+                      "? (current status)\r\n"
                       "ctrl-x (reset Grbl)\r\n"));
 }
 
@@ -214,7 +211,7 @@ void report_gcode_parameters()
 }
 
 
-// Print current gcode parser mode state and active switches
+// Print current gcode parser mode state
 void report_gcode_modes()
 {
   switch (gc.motion_mode) {
@@ -268,15 +265,7 @@ void report_gcode_modes()
   printPgmString(PSTR(" F"));
   if (gc.inches_mode) { printFloat(gc.feed_rate*INCH_PER_MM); }
   else { printFloat(gc.feed_rate); }
-  
-  // Print active switches
-  if (gc.switches) {
-    if (bit_istrue(gc.switches,BITFLAG_CHECK_GCODE)) { printPgmString(PSTR(" $S0")); }
-    if (bit_istrue(gc.switches,BITFLAG_BLOCK_DELETE)) { printPgmString(PSTR(" $S1")); }
-    if (bit_istrue(gc.switches,BITFLAG_SINGLE_BLOCK)) { printPgmString(PSTR(" $S2")); }
-    if (bit_istrue(gc.switches,BITFLAG_OPT_STOP)) { printPgmString(PSTR(" $S3")); }
-  }
-        
+
   printPgmString(PSTR("\r\n"));
 }
 
@@ -304,20 +293,29 @@ void report_realtime_status()
   memcpy(current_position,sys.position,sizeof(sys.position));
   float print_position[3];
  
-  // TODO: Add Grbl state feedback, i.e. IDLE, RUN, HOLD, HOME, etc.
+  // Report current machine state
+  switch (sys.state) {
+    case STATE_IDLE: printPgmString(PSTR("[Idle")); break;
+//    case STATE_INIT: printPgmString(PSTR("[Init")); break; // Never observed
+    case STATE_QUEUED: printPgmString(PSTR("[Queue")); break;
+    case STATE_CYCLE: printPgmString(PSTR("[Run")); break;
+    case STATE_HOLD: printPgmString(PSTR("[Hold")); break;
+    case STATE_HOMING: printPgmString(PSTR("[Home")); break;
+    case STATE_ALARM: printPgmString(PSTR("[Alarm")); break;
+    case STATE_CHECK_MODE: printPgmString(PSTR("[Check")); break;
+  }
  
   // Report machine position
-  printPgmString(PSTR("MPos:[")); 
+  printPgmString(PSTR(",MPos:")); 
   for (i=0; i<= 2; i++) {
     print_position[i] = current_position[i]/settings.steps_per_mm[i];
     if (bit_istrue(settings.flags,BITFLAG_REPORT_INCHES)) { print_position[i] *= INCH_PER_MM; }
     printFloat(print_position[i]);
-    if (i < 2) { printPgmString(PSTR(",")); }
-    else { printPgmString(PSTR("]")); }
+    printPgmString(PSTR(","));
   }
   
   // Report work position
-  printPgmString(PSTR(",WPos:[")); 
+  printPgmString(PSTR("WPos:")); 
   for (i=0; i<= 2; i++) {
     if (bit_istrue(settings.flags,BITFLAG_REPORT_INCHES)) {
       print_position[i] -= (gc.coord_system[i]+gc.coord_offset[i])*INCH_PER_MM;
@@ -326,8 +324,7 @@ void report_realtime_status()
     }
     printFloat(print_position[i]);
     if (i < 2) { printPgmString(PSTR(",")); }
-    else { printPgmString(PSTR("]")); }
   }
     
-  printPgmString(PSTR("\r\n"));
+  printPgmString(PSTR("]\r\n"));
 }

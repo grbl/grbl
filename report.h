@@ -71,7 +71,7 @@ void report_realtime_status();
 // Prints Grbl persistent coordinate parameters
 void report_gcode_parameters();
 
-// Prints current g-code parser mode state and active switches
+// Prints current g-code parser mode state
 void report_gcode_modes();
 
 // Prints startup line

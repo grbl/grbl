@@ -62,19 +62,8 @@
 #define NON_MODAL_SET_COORDINATE_OFFSET 7 // G92
 #define NON_MODAL_RESET_COORDINATE_OFFSET 8 //G92.1
 
-// Define bit flag masks for gc.switches. (8 flag limit)
-#define BITFLAG_CHECK_GCODE   bit(0)
-#define BITFLAG_BLOCK_DELETE  bit(1)
-#define BITFLAG_SINGLE_BLOCK  bit(2)
-#define BITFLAG_OPT_STOP      bit(3)
-// #define                    bit(4)
-// #define                    bit(5)
-// #define                    bit(6)
-// #define                    bit(7)
-
 typedef struct {
   uint8_t status_code;             // Parser status for current block
-  uint8_t switches;                // Handles non-gcode switches modes. Set externally by protocol. Default off
   uint8_t motion_mode;             // {G0, G1, G2, G3, G80}
   uint8_t inverse_feed_rate_mode;  // {G93, G94}
   uint8_t inches_mode;             // 0 = millimeter mode, 1 = inches mode {G20, G21}

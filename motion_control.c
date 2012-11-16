@@ -64,7 +64,7 @@ void mc_line(float x, float y, float z, float feed_rate, uint8_t invert_feed_rat
   } while ( plan_check_full_buffer() );
 
   // If in check gcode mode, prevent motion by blocking planner.
-  if (bit_isfalse(gc.switches,BITFLAG_CHECK_GCODE)) {
+  if (sys.state != STATE_CHECK_MODE) {
     plan_buffer_line(x, y, z, feed_rate, invert_feed_rate);
     
     // If idle, indicate to the system there is now a planned block in the buffer ready to cycle 

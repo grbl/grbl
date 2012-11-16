@@ -60,8 +60,6 @@ void gc_init()
   if (!(settings_read_coord_data(gc.coord_select,gc.coord_system))) { 
     report_status_message(STATUS_SETTING_READ_FAIL); 
   } 
-  
-//  protocol_status_message(settings_execute_startup());
 }
 
 // Sets g-code parser position in mm. Input in steps. Called by the system abort and hard
@@ -176,11 +174,7 @@ uint8_t gc_execute_line(char *line)
         // Set 'M' commands
         switch(int_value) {
           case 0: gc.program_flow = PROGRAM_FLOW_PAUSED; break; // Program pause
-          case 1: // Program pause with optional stop on, otherwise do nothing.
-            if (bit_istrue(gc.switches,BITFLAG_OPT_STOP)) {
-              gc.program_flow = PROGRAM_FLOW_PAUSED; 
-            }
-            break; 
+          case 1: break; // Optional stop not supported. Ignore.
           case 2: case 30: gc.program_flow = PROGRAM_FLOW_COMPLETED; break; // Program end and reset 
           case 3: gc.spindle_direction = 1; break;
           case 4: gc.spindle_direction = -1; break;
@@ -260,10 +254,10 @@ uint8_t gc_execute_line(char *line)
   //  ([M6]: Tool change should be executed here.)
   
   // [M3,M4,M5]: Update spindle state
-  if (!(gc.switches & BITFLAG_CHECK_GCODE)) { spindle_run(gc.spindle_direction); }
+  if (sys.state != STATE_CHECK_MODE) { spindle_run(gc.spindle_direction); }
   
   // [*M7,M8,M9]: Update coolant state
-  if (!(gc.switches & BITFLAG_CHECK_GCODE)) { coolant_run(gc.coolant_mode); }
+  if (sys.state != STATE_CHECK_MODE) { coolant_run(gc.coolant_mode); }
   
   // [G54,G55,...,G59]: Coordinate system selection
   if ( bit_istrue(modal_group_words,bit(MODAL_GROUP_12)) ) { // Check if called in block
@@ -281,7 +275,7 @@ uint8_t gc_execute_line(char *line)
         FAIL(STATUS_INVALID_STATEMENT); 
       } else {
         // Ignore dwell in check gcode modes
-        if (!(gc.switches & BITFLAG_CHECK_GCODE)) { mc_dwell(p); }
+        if (sys.state != STATE_CHECK_MODE) { mc_dwell(p); }
       }
       break;
     case NON_MODAL_SET_COORDINATE_DATA:
@@ -544,7 +538,7 @@ uint8_t gc_execute_line(char *line)
   
   // M0,M1,M2,M30: Perform non-running program flow actions. During a program pause, the buffer may 
   // refill and can only be resumed by the cycle start run-time command.
-  if (gc.program_flow || bit_istrue(gc.switches,BITFLAG_SINGLE_BLOCK)) {
+  if (gc.program_flow) {
     plan_synchronize(); // Finish all remaining buffered motions. Program paused when complete.
     sys.auto_start = false; // Disable auto cycle start. Forces pause until cycle start issued.
     
@@ -588,12 +582,14 @@ static int next_statement(char *letter, float *float_ptr, char *line, uint8_t *c
   - Evaluation of expressions
   - Variables
   - Probing
-  - Override control
+  - Override control (TBD)
   - Tool changes
+  - Switches
    
    (*) Indicates optional parameter, enabled through config.h and re-compile
    group 0 = {G92.2, G92.3} (Non modal: Cancel and re-enable G92 offsets)
    group 1 = {G38.2, G81 - G89} (Motion modes: straight probe, canned cycles)
+   group 4 = {M1} (Optional stop, ignored)
    group 6 = {M6} (Tool change)
    group 8 = {*M7} enable mist coolant
    group 9 = {M48, M49} enable/disable feed and speed override switches

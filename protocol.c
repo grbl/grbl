@@ -195,6 +195,28 @@ uint8_t protocol_execute_line(char *line)
         if ( line[++char_counter] != 0 ) { return(STATUS_UNSUPPORTED_STATEMENT); }
         else { report_gcode_modes(); }
         break;
+      case 'C' : // Set check g-code mode
+        if ( line[++char_counter] != 0 ) { return(STATUS_UNSUPPORTED_STATEMENT); }
+        // Perform reset when toggling off. Check g-code mode should only work if Grbl
+        // is idle and ready, regardless of alarm locks. This is mainly to keep things
+        // simple and consistent.
+        if ( sys.state == STATE_CHECK_MODE ) { 
+          mc_reset(); 
+          report_feedback_message(MESSAGE_DISABLED);
+        } else {
+          if (sys.state) { return(STATUS_IDLE_ERROR); }
+          sys.state = STATE_CHECK_MODE;
+          report_feedback_message(MESSAGE_ENABLED);
+        }
+        break; 
+      case 'X' : // Disable alarm lock
+        if ( line[++char_counter] != 0 ) { return(STATUS_UNSUPPORTED_STATEMENT); }
+        if (sys.state == STATE_ALARM) { 
+          report_feedback_message(MESSAGE_ALARM_UNLOCK);
+          sys.state = STATE_IDLE;
+          // Don't run startup script. Prevents stored moves in startup from causing accidents.
+        }
+        break;               
       case 'H' : // Perform homing cycle
         if (bit_istrue(settings.flags,BITFLAG_HOMING_ENABLE)) { 
           // Only perform homing if Grbl is idle or lost.
@@ -216,35 +238,6 @@ uint8_t protocol_execute_line(char *line)
       // handled by the planner. It would be possible for the jog subprogram to insert blocks into the
       // block buffer without having the planner plan them. It would need to manage de/ac-celerations 
       // on its own carefully. This approach could be effective and possibly size/memory efficient.
-      case 'S' : // Switch modes
-        // Set helper_var as switch bitmask or clearing flag
-        switch (line[++char_counter]) {
-          case '0' : helper_var = BITFLAG_CHECK_GCODE; break;
-          case '1' : helper_var = BITFLAG_BLOCK_DELETE; break;
-          case '2' : helper_var = BITFLAG_SINGLE_BLOCK; break;
-          case '3' : helper_var = BITFLAG_OPT_STOP; break;
-          default : return(STATUS_INVALID_STATEMENT);
-        }
-        if ( line[++char_counter] != 0 ) { return(STATUS_UNSUPPORTED_STATEMENT); }
-        if ( helper_var & BITFLAG_CHECK_GCODE ) {
-          // Perform reset when toggling off. Check g-code mode should only work if Grbl
-          // is idle and ready, regardless of homing locks. This is mainly to keep things
-          // simple and consistent.
-          if ( bit_istrue(gc.switches,helper_var) ) { mc_reset(); }
-          else if (sys.state) { return(STATUS_IDLE_ERROR); }
-        }
-        gc.switches ^= helper_var;
-        if (bit_istrue(gc.switches,helper_var)) { report_feedback_message(MESSAGE_ENABLED); }
-        else { report_feedback_message(MESSAGE_DISABLED); }
-        break;
-      case 'X' : // Disable alarm lock
-        if ( line[++char_counter] != 0 ) { return(STATUS_UNSUPPORTED_STATEMENT); }
-        if (sys.state == STATE_ALARM) { 
-          report_feedback_message(MESSAGE_ALARM_UNLOCK);
-          sys.state = STATE_IDLE;
-          // Don't run startup script. Prevents stored moves in startup from causing accidents.
-        }
-        break;
       case 'N' : // Startup lines. 
         if ( line[++char_counter] == 0 ) { // Print startup lines
           for (helper_var=0; helper_var < N_STARTUP_LINE; helper_var++) {
@@ -323,11 +316,8 @@ void protocol_process()
       } else {
         if (c <= ' ') { 
           // Throw away whitepace and control characters
-        } else if (c == '/') {
-          // Disable block delete and throw away characters. Will ignore until EOL.
-          if (bit_istrue(gc.switches,BITFLAG_BLOCK_DELETE)) {
-            iscomment = true;
-          }
+        } else if (c == '/') { 
+          // Block delete not supported. Ignore character.
         } else if (c == '(') {
           // Enable comments flag and ignore all characters until ')' or EOL.
           iscomment = true;

@@ -69,14 +69,15 @@
 // Define system state bit map. The state variable primarily tracks the individual functions
 // of Grbl to manage each without overlapping. It is also used as a messaging flag for
 // critical events.
-#define STATE_IDLE   0 // Must be zero.
-#define STATE_INIT   1 // Initial power up state.
-#define STATE_QUEUED 2 // Indicates buffered blocks, awaiting cycle start.
-#define STATE_CYCLE  3 // Cycle is running
-#define STATE_HOLD   4 // Executing feed hold
-#define STATE_HOMING 5 // Performing homing cycle
-#define STATE_ALARM  6 // In alarm state. Locks out all g-code processes. Allows settings access.
-// #define STATE_JOG    7 // Jogging mode is unique like homing.
+#define STATE_IDLE       0 // Must be zero.
+#define STATE_INIT       1 // Initial power up state.
+#define STATE_QUEUED     2 // Indicates buffered blocks, awaiting cycle start.
+#define STATE_CYCLE      3 // Cycle is running
+#define STATE_HOLD       4 // Executing feed hold
+#define STATE_HOMING     5 // Performing homing cycle
+#define STATE_ALARM      6 // In alarm state. Locks out all g-code processes. Allows settings access.
+#define STATE_CHECK_MODE 7 // G-code check mode. Locks out planner and motion only.
+// #define STATE_JOG     8 // Jogging mode is unique like homing.
 
 // Define global system variables
 typedef struct {

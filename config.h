@@ -123,7 +123,7 @@
 // that do not and must not exist in the streamed g-code program. ASCII control characters may be 
 // used, if they are available per user setup. Also, extended ASCII codes (>127), which are never in 
 // g-code programs, maybe selected for interface programs.
-// TODO: Solidify these default characters. Temporary for now.
+// NOTE: If changed, manually update help message in report.c.
 #define CMD_STATUS_REPORT '?'
 #define CMD_FEED_HOLD '!'
 #define CMD_CYCLE_START '~'
