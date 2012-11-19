@@ -49,6 +49,13 @@
 // backlash segment(s).
 void mc_line(float x, float y, float z, float feed_rate, uint8_t invert_feed_rate)
 {
+  // TODO: Perform soft limit check here. Just check if the target x,y,z values are outside the 
+  // work envelope. Should be straightforward and efficient. By placing it here, rather than in 
+  // the g-code parser, it directly picks up motions from everywhere in Grbl.
+
+  // If in check gcode mode, prevent motion by blocking planner.
+  if (sys.state == STATE_CHECK_MODE) { return; }
+    
   // TODO: Backlash compensation may be installed here. Only need direction info to track when
   // to insert a backlash line motion(s) before the intended line motion. Requires its own
   // plan_check_full_buffer() and check for system abort loop. Also for position reporting 
@@ -62,25 +69,21 @@ void mc_line(float x, float y, float z, float feed_rate, uint8_t invert_feed_rat
     protocol_execute_runtime(); // Check for any run-time commands
     if (sys.abort) { return; } // Bail, if system abort.
   } while ( plan_check_full_buffer() );
-
-  // If in check gcode mode, prevent motion by blocking planner.
-  if (sys.state != STATE_CHECK_MODE) {
-    plan_buffer_line(x, y, z, feed_rate, invert_feed_rate);
-    
-    // If idle, indicate to the system there is now a planned block in the buffer ready to cycle 
-    // start. Otherwise ignore and continue on.
-    if (!sys.state) { sys.state = STATE_QUEUED; }
-    
-    // Auto-cycle start immediately after planner finishes. Enabled/disabled by grbl settings. During 
-    // a feed hold, auto-start is disabled momentarily until the cycle is resumed by the cycle-start 
-    // runtime command.
-    // NOTE: This is allows the user to decide to exclusively use the cycle start runtime command to
-    // begin motion or let grbl auto-start it for them. This is useful when: manually cycle-starting
-    // when the buffer is completely full and primed; auto-starting, if there was only one g-code 
-    // command sent during manual operation; or if a system is prone to buffer starvation, auto-start
-    // helps make sure it minimizes any dwelling/motion hiccups and keeps the cycle going. 
-    if (sys.auto_start) { st_cycle_start(); }
-  }
+  plan_buffer_line(x, y, z, feed_rate, invert_feed_rate);
+  
+  // If idle, indicate to the system there is now a planned block in the buffer ready to cycle 
+  // start. Otherwise ignore and continue on.
+  if (!sys.state) { sys.state = STATE_QUEUED; }
+  
+  // Auto-cycle start immediately after planner finishes. Enabled/disabled by grbl settings. During 
+  // a feed hold, auto-start is disabled momentarily until the cycle is resumed by the cycle-start 
+  // runtime command.
+  // NOTE: This is allows the user to decide to exclusively use the cycle start runtime command to
+  // begin motion or let grbl auto-start it for them. This is useful when: manually cycle-starting
+  // when the buffer is completely full and primed; auto-starting, if there was only one g-code 
+  // command sent during manual operation; or if a system is prone to buffer starvation, auto-start
+  // helps make sure it minimizes any dwelling/motion hiccups and keeps the cycle going. 
+  if (sys.auto_start) { st_cycle_start(); }
 }
 
 
@@ -223,20 +226,29 @@ void mc_go_home()
   sys_sync_current_position();
   sys.state = STATE_IDLE; // Set system state to IDLE to complete motion and indicate homed.
   
-  // Pull-off all axes from limit switches before continuing motion. This provides some initial
-  // clearance off the switches and should also help prevent them from falsely tripping when 
-  // hard limits are enabled.
+  // Pull-off axes (that have been homed) from limit switches before continuing motion. 
+  // This provides some initial clearance off the switches and should also help prevent them 
+  // from falsely tripping when hard limits are enabled.
   int8_t x_dir, y_dir, z_dir;
-  x_dir = y_dir = z_dir = -1;
-  if (bit_istrue(settings.homing_dir_mask,bit(X_DIRECTION_BIT))) { x_dir = 1; }
-  if (bit_istrue(settings.homing_dir_mask,bit(Y_DIRECTION_BIT))) { y_dir = 1; }
-  if (bit_istrue(settings.homing_dir_mask,bit(Z_DIRECTION_BIT))) { z_dir = 1; }
+  x_dir = y_dir = z_dir = 0;
+  if (HOMING_LOCATE_CYCLE & (1<<X_AXIS)) { 
+    if (settings.homing_dir_mask & (1<<X_DIRECTION_BIT)) { x_dir = 1; }
+    else { x_dir = -1; }
+  }
+  if (HOMING_LOCATE_CYCLE & (1<<Y_AXIS)) { 
+    if (settings.homing_dir_mask & (1<<Y_DIRECTION_BIT)) { y_dir = 1; }
+    else { y_dir = -1; }
+  }
+  if (HOMING_LOCATE_CYCLE & (1<<Z_AXIS)) { 
+    if (settings.homing_dir_mask & (1<<Z_DIRECTION_BIT)) { z_dir = 1; }
+    else { z_dir = -1; }
+  }
   mc_line(x_dir*settings.homing_pulloff, y_dir*settings.homing_pulloff, 
           z_dir*settings.homing_pulloff, settings.homing_seek_rate, false);
   st_cycle_start(); // Move it. Nothing should be in the buffer except this motion. 
   plan_synchronize(); // Make sure the motion completes.
   
-  // The gcode parser position was circumvented by the pull-off maneuver, so sync position vectors.
+  // The gcode parser position circumvented by the pull-off maneuver, so sync position vectors.
   sys_sync_current_position();
 
   // If hard limits feature enabled, re-enable hard limits pin change register after homing cycle.

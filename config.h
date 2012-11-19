@@ -24,6 +24,10 @@
 
 // IMPORTANT: Any changes here requires a full re-compiling of the source code to propagate them.
 
+// Default settings. Used when resetting EEPROM. Change to desired name in defaults.h
+#define DEFAULTS_GENERIC
+
+// Serial baud rate
 #define BAUD_RATE 9600
 
 // Define pin-assignments
@@ -90,34 +94,6 @@
 #define PINOUT_PCMSK     PCMSK1 // Pin change interrupt register
 #define PINOUT_MASK ((1<<PIN_RESET)|(1<<PIN_FEED_HOLD)|(1<<PIN_CYCLE_START))
 
-
-// Default settings (used when resetting eeprom-settings)
-// TODO: Begin to fill these out for various as-built machines, i.e. config_sherline5400.h
-#define MICROSTEPS 4
-#define DEFAULT_X_STEPS_PER_MM (94.488188976378*MICROSTEPS)
-#define DEFAULT_Y_STEPS_PER_MM (94.488188976378*MICROSTEPS)
-#define DEFAULT_Z_STEPS_PER_MM (94.488188976378*MICROSTEPS)
-#define DEFAULT_STEP_PULSE_MICROSECONDS 10
-#define DEFAULT_MM_PER_ARC_SEGMENT 0.1
-#define DEFAULT_RAPID_FEEDRATE 500.0 // mm/min
-#define DEFAULT_FEEDRATE 250.0
-#define DEFAULT_ACCELERATION (DEFAULT_FEEDRATE*60*60/10.0) // mm/min^2
-#define DEFAULT_JUNCTION_DEVIATION 0.05 // mm
-#define DEFAULT_STEPPING_INVERT_MASK ((1<<Y_DIRECTION_BIT)|(1<<Z_DIRECTION_BIT))
-#define DEFAULT_REPORT_INCHES 0 // false
-#define DEFAULT_AUTO_START 1 // true
-#define DEFAULT_INVERT_ST_ENABLE 0 // false
-#define DEFAULT_HARD_LIMIT_ENABLE 0  // false
-#define DEFAULT_HOMING_ENABLE 0  // false
-#define DEFAULT_HOMING_DIR_MASK 0 // move positive dir
-#define DEFAULT_HOMING_RAPID_FEEDRATE 250.0 // mm/min
-#define DEFAULT_HOMING_FEEDRATE 25 // mm/min
-#define DEFAULT_HOMING_DEBOUNCE_DELAY 100 // msec (0-65k)
-#define DEFAULT_HOMING_PULLOFF 1 // mm
-#define DEFAULT_STEPPER_IDLE_LOCK_TIME 25 // msec (0-255)
-#define DEFAULT_DECIMAL_PLACES 3
-#define DEFAULT_N_ARC_CORRECTION 25
-
 // Define runtime command special characters. These characters are 'picked-off' directly from the
 // serial read data stream and are not passed to the grbl line execution parser. Select characters
 // that do not and must not exist in the streamed g-code program. ASCII control characters may be 
@@ -170,10 +146,24 @@
 // just moves them all at 100% speed.
 #define HOMING_RATE_ADJUST // Comment to disable
 
+// Define the homing cycle search patterns with bitmasks. The homing cycle first performs a search
+// to engage the limit switches. HOMING_SEARCH_CYCLE_x are executed in order starting with suffix 0 
+// and searches the enabled axes in the bitmask. This allows for users with non-standard cartesian 
+// machines, such as a lathe (x then z), to configure the homing cycle behavior to their needs. 
+// Search cycle 0 is required, but cycles 1 and 2 are both optional and may be commented to disable.
+// After the search cycle, homing then performs a series of locating about the limit switches to hone
+// in on machine zero, followed by a pull-off maneuver. HOMING_LOCATE_CYCLE governs these final moves,
+// and this mask must contain all axes in the search.
+// NOTE: Later versions may have this installed in settings.
+#define HOMING_SEARCH_CYCLE_0 (1<<Z_AXIS)                // First move Z to clear workspace.
+#define HOMING_SEARCH_CYCLE_1 ((1<<X_AXIS)|(1<<Y_AXIS))  // Then move X,Y at the same time.
+// #define HOMING_SEARCH_CYCLE_2                         // Uncomment and add axes mask to enable
+#define HOMING_LOCATE_CYCLE   ((1<<X_AXIS)|(1<<Y_AXIS)|(1<<Z_AXIS)) // Must contain ALL search axes
+
 // Number of homing cycles performed after when the machine initially jogs to limit switches.
 // This help in preventing overshoot and should improve repeatability. This value should be one or 
 // greater.
-#define N_HOMING_CYCLE 2 // Integer (1-128)
+#define N_HOMING_LOCATE_CYCLE 2 // Integer (1-128)
 
 // Number of blocks Grbl executes upon startup. These blocks are stored in EEPROM, where the size
 // and addresses are defined in settings.h. With the current settings, up to 5 startup blocks may

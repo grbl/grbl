@@ -250,14 +250,16 @@ uint8_t gc_execute_line(char *line)
   // ([F]: Set feed and seek rates.)
   // TODO: Seek rates can change depending on the direction and maximum speeds of each axes. When
   // max axis speed is installed, the calculation can be performed here, or maybe in the planner.
+    
+  if (sys.state != STATE_CHECK_MODE) { 
+    //  ([M6]: Tool change should be executed here.)
+
+    // [M3,M4,M5]: Update spindle state
+    spindle_run(gc.spindle_direction);
   
-  //  ([M6]: Tool change should be executed here.)
-  
-  // [M3,M4,M5]: Update spindle state
-  if (sys.state != STATE_CHECK_MODE) { spindle_run(gc.spindle_direction); }
-  
-  // [*M7,M8,M9]: Update coolant state
-  if (sys.state != STATE_CHECK_MODE) { coolant_run(gc.coolant_mode); }
+    // [*M7,M8,M9]: Update coolant state
+    coolant_run(gc.coolant_mode);
+  }
   
   // [G54,G55,...,G59]: Coordinate system selection
   if ( bit_istrue(modal_group_words,bit(MODAL_GROUP_12)) ) { // Check if called in block
