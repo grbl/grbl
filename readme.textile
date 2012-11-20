@@ -6,17 +6,31 @@ The controller is written in highly optimized C utilizing every clever feature o
 
 It accepts standards-compliant G-code and has been tested with the output of several CAM tools with no problems. Arcs, circles and helical motion are fully supported, as well as, other basic functional g-code commands. Functions and variables are not currently supported, but may be included in future releases in a form of a pre-processor.
 
-Grbl includes full acceleration management with look ahead. That means the controller will look up to 16 to 20 motions into the future and plan its velocities ahead to deliver smooth acceleration and jerk-free cornering.
+Grbl includes full acceleration management with look ahead. That means the controller will look up to 18 motions into the future and plan its velocities ahead to deliver smooth acceleration and jerk-free cornering.
 
-*Changelog for v0.7 from v0.6:*
-  - Significantly improved and optimized planner re-factoring.
-  - New robust cornering algorithm, enabling smoother and faster motions.
-  - Arc acceleration planning enabled by efficient vector transformation implementation.
-  - Stepper subsystem re-factoring to help remove some motion issues from pre-v0.7 builds.
-  - Increased dwell times.
-  - G92 coordinate system offset support.
-  - (Beta) Limit switch and homing cycle support.
-  - Many other bug fixes and efficiency improvements.
+*Changelog for v0.8 from v0.7:*
+  - Major structural overhaul to allow for multi-tasking events and new feature sets.
+  - Run-time command control: Feed hold (pause), Cycle start (resume), Reset (abort), Status reporting (current position and state).
+  - Controlled feed hold with deceleration to ensure no skipped steps and loss of location.
+  - After feed hold, cycle accelerations are re-planned and may be resumed.
+  - Advanced homing cycle with direction and speed configuration options. (Requires limit switches.) When enabled, homing is required before use to ensure safety.
+  - Limit pins are held normal high with internal pull-up resistors. Wiring only requires a normally-open switch connected to ground. (For both ends of an axis, simply wire two in parallel into the same pin.)
+  - Hard limits option and plays nice with homing cycle, so switches can be used for both homing and hard limits.
+  - A check g-code mode has also been added to allow users to error check their programs.
+  - Re-factored g-code parser with robust error-checking.
+  - 6 work coordinate systems (G54-G59), offsets(G92), and machine coordinate system support. Work coordinate systems are stored in EEPROM and persistent.
+  - G10 L2 and L20 work coordinate settings support. L2 sets one or more axes values. L20 sets the current machine position to the specified work origin.
+  - G28.1 and G30.1 set home position support. These set the internal EEPROM parameter values to the current machine position. (G28 and G30 no longer perform homing cycle, '$H' does. They move to these stored positions.)
+  - Program stop(M0,M2,M30) support.
+  - Coolant control(M7*,M8,M9) support. (M7 is a compile-time option).
+  - G-code parser state and '#' parameters feedback.
+  - System reset re-initializes grbl without resetting the Arduino and retains machine/home position and work coordinates.
+  - Settings overhauled and dozens of new settings and internal commands are now available, when most were compile-time only.
+  - New startup line setting. Allows users to store a custom g-code block into Grbl's startup routine. Executes immediately upon startup or reset. May be used to set g-code defaults like G20/G21.
+  - Pin-outs of the cycle-start, feed-hold, and soft-reset runtime commands on pins A0-A2.
+  - Misc bug fixes and removed deprecated acceleration enabled code.  
+  - Advanced compile-time options: XON/XOFF flow control (limited support), direction and step pulse time delay, up to 5 startup lines, and homing sequence configurability.
+  
 
 *Important note for Atmega 168 users:* Going forward, support for Atmega 168 will be dropped due to its limited memory and speed. However, legacy Grbl v0.51 "in the branch called 'v0_51' is still available for use.
 

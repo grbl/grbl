@@ -1,8 +1,8 @@
 /*
-  limits.h - code pertaining to limit-switches and performing the homing cycle
+  coolant_control.h - spindle control methods
   Part of Grbl
 
-  Copyright (c) 2009-2011 Simen Svale Skogsrud
+  Copyright (c) 2012 Sungeun K. Jeon
 
   Grbl is free software: you can redistribute it and/or modify
   it under the terms of the GNU General Public License as published by
@@ -18,13 +18,17 @@
   along with Grbl.  If not, see <http://www.gnu.org/licenses/>.
 */
 
-#ifndef limits_h
-#define limits_h 
+#ifndef coolant_control_h
+#define coolant_control_h 
 
-// initialize the limits module
-void limits_init();
+#include <avr/io.h>
 
-// perform the homing cycle
-void limits_go_home();
+#define COOLANT_MIST_ENABLE 2
+#define COOLANT_FLOOD_ENABLE 1
+#define COOLANT_DISABLE 0 // Must be zero.
+
+void coolant_init();
+void coolant_stop();
+void coolant_run(uint8_t mode);
 
 #endif

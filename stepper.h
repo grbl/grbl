@@ -3,6 +3,7 @@
   Part of Grbl
 
   Copyright (c) 2009-2011 Simen Svale Skogsrud
+  Copyright (c) 2011 Sungeun K. Jeon
 
   Grbl is free software: you can redistribute it and/or modify
   it under the terms of the GNU General Public License as published by
@@ -22,23 +23,26 @@
 #define stepper_h 
 
 #include <avr/io.h>
-#include <avr/sleep.h>
 
-#define LIMIT_MASK ((1<<X_LIMIT_BIT)|(1<<Y_LIMIT_BIT)|(1<<Z_LIMIT_BIT)) // All limit bits
-#define STEP_MASK ((1<<X_STEP_BIT)|(1<<Y_STEP_BIT)|(1<<Z_STEP_BIT)) // All step bits
-#define DIRECTION_MASK ((1<<X_DIRECTION_BIT)|(1<<Y_DIRECTION_BIT)|(1<<Z_DIRECTION_BIT)) // All direction bits
-#define STEPPING_MASK (STEP_MASK | DIRECTION_MASK) // All stepping-related bits (step/direction)
-
-// Initialize and start the stepper motor subsystem
+// Initialize and setup the stepper motor subsystem
 void st_init();
 
-// Block until all buffered steps are executed
-void st_synchronize();
+// Enable steppers, but cycle does not start unless called by motion control or runtime command.
+void st_wake_up();
 
-// Execute the homing cycle
-void st_go_home();
+// Immediately disables steppers
+void st_go_idle();
+
+// Reset the stepper subsystem variables       
+void st_reset();
              
 // Notify the stepper subsystem to start executing the g-code program in buffer.
 void st_cycle_start();
+
+// Reinitializes the buffer after a feed hold for a resume.
+void st_cycle_reinitialize(); 
+
+// Initiates a feed hold of the running program
+void st_feed_hold();
 
 #endif

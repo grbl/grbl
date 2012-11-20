@@ -3,7 +3,7 @@
   Part of Grbl
 
   Copyright (c) 2009-2011 Simen Svale Skogsrud
-  Copyright (c) 2011 Sungeun K. Jeon  
+  Copyright (c) 2011-2012 Sungeun K. Jeon  
 
   Grbl is free software: you can redistribute it and/or modify
   it under the terms of the GNU General Public License as published by
@@ -20,169 +20,202 @@
 */
 
 #include <avr/io.h>
-#include <math.h>
+#include "protocol.h"
+#include "report.h"
+#include "stepper.h"
 #include "nuts_bolts.h"
 #include "settings.h"
 #include "eeprom.h"
-#include "print.h"
-#include <avr/pgmspace.h>
-#include "protocol.h"
-#include "config.h"
+#include "limits.h"
 
 settings_t settings;
 
-// Version 1 outdated settings record
+// Version 4 outdated settings record
 typedef struct {
-  double steps_per_mm[3];
+  float steps_per_mm[3];
   uint8_t microsteps;
   uint8_t pulse_microseconds;
-  double default_feed_rate;
-  double default_seek_rate;
+  float default_feed_rate;
+  float default_seek_rate;
   uint8_t invert_mask;
-  double mm_per_arc_segment;
-} settings_v1_t;
+  float mm_per_arc_segment;
+  float acceleration;
+  float junction_deviation;
+} settings_v4_t;
 
-// Default settings (used when resetting eeprom-settings)
-#define MICROSTEPS 8
-#define DEFAULT_X_STEPS_PER_MM (94.488188976378*MICROSTEPS)
-#define DEFAULT_Y_STEPS_PER_MM (94.488188976378*MICROSTEPS)
-#define DEFAULT_Z_STEPS_PER_MM (94.488188976378*MICROSTEPS)
-#define DEFAULT_STEP_PULSE_MICROSECONDS 30
-#define DEFAULT_MM_PER_ARC_SEGMENT 0.1
-#define DEFAULT_RAPID_FEEDRATE 500.0 // mm/min
-#define DEFAULT_FEEDRATE 500.0
-#define DEFAULT_ACCELERATION (DEFAULT_FEEDRATE*60*60/10.0) // mm/min^2
-#define DEFAULT_JUNCTION_DEVIATION 0.05 // mm
-#define DEFAULT_STEPPING_INVERT_MASK ((1<<X_STEP_BIT)|(1<<Y_STEP_BIT)|(1<<Z_STEP_BIT))
 
-void settings_reset() {
-  settings.steps_per_mm[X_AXIS] = DEFAULT_X_STEPS_PER_MM;
-  settings.steps_per_mm[Y_AXIS] = DEFAULT_Y_STEPS_PER_MM;
-  settings.steps_per_mm[Z_AXIS] = DEFAULT_Z_STEPS_PER_MM;
-  settings.pulse_microseconds = DEFAULT_STEP_PULSE_MICROSECONDS;
-  settings.default_feed_rate = DEFAULT_FEEDRATE;
-  settings.default_seek_rate = DEFAULT_RAPID_FEEDRATE;
-  settings.acceleration = DEFAULT_ACCELERATION;
-  settings.mm_per_arc_segment = DEFAULT_MM_PER_ARC_SEGMENT;
-  settings.invert_mask = DEFAULT_STEPPING_INVERT_MASK;
-  settings.junction_deviation = DEFAULT_JUNCTION_DEVIATION;
+// Method to store startup lines into EEPROM
+void settings_store_startup_line(uint8_t n, char *line)
+{
+  uint16_t addr = n*(LINE_BUFFER_SIZE+1)+EEPROM_ADDR_STARTUP_BLOCK;
+  memcpy_to_eeprom_with_checksum(addr,(char*)line, LINE_BUFFER_SIZE);
 }
 
-void settings_dump() {
-  printPgmString(PSTR("$0 = ")); printFloat(settings.steps_per_mm[X_AXIS]);
-  printPgmString(PSTR(" (steps/mm x)\r\n$1 = ")); printFloat(settings.steps_per_mm[Y_AXIS]);
-  printPgmString(PSTR(" (steps/mm y)\r\n$2 = ")); printFloat(settings.steps_per_mm[Z_AXIS]);
-  printPgmString(PSTR(" (steps/mm z)\r\n$3 = ")); printInteger(settings.pulse_microseconds);
-  printPgmString(PSTR(" (microseconds step pulse)\r\n$4 = ")); printFloat(settings.default_feed_rate);
-  printPgmString(PSTR(" (mm/min default feed rate)\r\n$5 = ")); printFloat(settings.default_seek_rate);
-  printPgmString(PSTR(" (mm/min default seek rate)\r\n$6 = ")); printFloat(settings.mm_per_arc_segment);
-  printPgmString(PSTR(" (mm/arc segment)\r\n$7 = ")); printInteger(settings.invert_mask); 
-  printPgmString(PSTR(" (step port invert mask. binary = ")); printIntegerInBase(settings.invert_mask, 2);  
-  printPgmString(PSTR(")\r\n$8 = ")); printFloat(settings.acceleration/(60*60)); // Convert from mm/min^2 for human readability
-  printPgmString(PSTR(" (acceleration in mm/sec^2)\r\n$9 = ")); printFloat(settings.junction_deviation);
-  printPgmString(PSTR(" (cornering junction deviation in mm)"));
-  printPgmString(PSTR("\r\n'$x=value' to set parameter or just '$' to dump current settings\r\n"));
-}
+// Method to store coord data parameters into EEPROM
+void settings_write_coord_data(uint8_t coord_select, float *coord_data)
+{  
+  uint16_t addr = coord_select*(sizeof(float)*N_AXIS+1) + EEPROM_ADDR_PARAMETERS;
+  memcpy_to_eeprom_with_checksum(addr,(char*)coord_data, sizeof(float)*N_AXIS);
+}  
 
-// Parameter lines are on the form '$4=374.3' or '$' to dump current settings
-uint8_t settings_execute_line(char *line) {
-  uint8_t char_counter = 1;
-  double parameter, value;
-  if(line[0] != '$') { 
-    return(STATUS_UNSUPPORTED_STATEMENT); 
-  }
-  if(line[char_counter] == 0) { 
-    settings_dump(); return(STATUS_OK); 
-  }
-  if(!read_double(line, &char_counter, &parameter)) {
-    return(STATUS_BAD_NUMBER_FORMAT);
-  };
-  if(line[char_counter++] != '=') { 
-    return(STATUS_UNSUPPORTED_STATEMENT); 
-  }
-  if(!read_double(line, &char_counter, &value)) {
-    return(STATUS_BAD_NUMBER_FORMAT);
-  }
-  if(line[char_counter] != 0) { 
-    return(STATUS_UNSUPPORTED_STATEMENT); 
-  }
-  settings_store_setting(parameter, value);
-  return(STATUS_OK);
-}
-
-void write_settings() {
+// Method to store Grbl global settings struct and version number into EEPROM
+void write_global_settings() 
+{
   eeprom_put_char(0, SETTINGS_VERSION);
-  memcpy_to_eeprom_with_checksum(1, (char*)&settings, sizeof(settings_t));
+  memcpy_to_eeprom_with_checksum(EEPROM_ADDR_GLOBAL, (char*)&settings, sizeof(settings_t));
 }
 
-int read_settings() {
+// Method to reset Grbl global settings back to defaults. 
+void settings_reset(bool reset_all) {
+  // Reset all settings or only the migration settings to the new version.
+  if (reset_all) {
+    settings.steps_per_mm[X_AXIS] = DEFAULT_X_STEPS_PER_MM;
+    settings.steps_per_mm[Y_AXIS] = DEFAULT_Y_STEPS_PER_MM;
+    settings.steps_per_mm[Z_AXIS] = DEFAULT_Z_STEPS_PER_MM;
+    settings.pulse_microseconds = DEFAULT_STEP_PULSE_MICROSECONDS;
+    settings.default_feed_rate = DEFAULT_FEEDRATE;
+    settings.default_seek_rate = DEFAULT_RAPID_FEEDRATE;
+    settings.acceleration = DEFAULT_ACCELERATION;
+    settings.mm_per_arc_segment = DEFAULT_MM_PER_ARC_SEGMENT;
+    settings.invert_mask = DEFAULT_STEPPING_INVERT_MASK;
+    settings.junction_deviation = DEFAULT_JUNCTION_DEVIATION;
+  }
+  // New settings since last version
+  settings.flags = 0;
+  if (DEFAULT_REPORT_INCHES) { settings.flags |= BITFLAG_REPORT_INCHES; }
+  if (DEFAULT_AUTO_START) { settings.flags |= BITFLAG_AUTO_START; }
+  if (DEFAULT_INVERT_ST_ENABLE) { settings.flags |= BITFLAG_INVERT_ST_ENABLE; }
+  if (DEFAULT_HARD_LIMIT_ENABLE) { settings.flags |= BITFLAG_HARD_LIMIT_ENABLE; }
+  if (DEFAULT_HOMING_ENABLE) { settings.flags |= BITFLAG_HOMING_ENABLE; }
+  settings.homing_dir_mask = DEFAULT_HOMING_DIR_MASK;
+  settings.homing_feed_rate = DEFAULT_HOMING_FEEDRATE;
+  settings.homing_seek_rate = DEFAULT_HOMING_RAPID_FEEDRATE;
+  settings.homing_debounce_delay = DEFAULT_HOMING_DEBOUNCE_DELAY;
+  settings.homing_pulloff = DEFAULT_HOMING_PULLOFF;
+  settings.stepper_idle_lock_time = DEFAULT_STEPPER_IDLE_LOCK_TIME;
+  settings.decimal_places = DEFAULT_DECIMAL_PLACES;
+  settings.n_arc_correction = DEFAULT_N_ARC_CORRECTION;
+  write_global_settings();
+}
+
+// Reads startup line from EEPROM. Updated pointed line string data.
+uint8_t settings_read_startup_line(uint8_t n, char *line)
+{
+  uint16_t addr = n*(LINE_BUFFER_SIZE+1)+EEPROM_ADDR_STARTUP_BLOCK;
+  if (!(memcpy_from_eeprom_with_checksum((char*)line, addr, LINE_BUFFER_SIZE))) {
+    // Reset line with default value
+    line[0] = 0;
+    settings_store_startup_line(n, line);
+    return(false);
+  } else {
+    return(true);
+  }
+}
+
+// Read selected coordinate data from EEPROM. Updates pointed coord_data value.
+uint8_t settings_read_coord_data(uint8_t coord_select, float *coord_data)
+{
+  uint16_t addr = coord_select*(sizeof(float)*N_AXIS+1) + EEPROM_ADDR_PARAMETERS;
+  if (!(memcpy_from_eeprom_with_checksum((char*)coord_data, addr, sizeof(float)*N_AXIS))) {
+    // Reset with default zero vector
+    clear_vector_float(coord_data); 
+    settings_write_coord_data(coord_select,coord_data);
+    return(false);
+  } else {
+    return(true);
+  }
+}  
+
+// Reads Grbl global settings struct from EEPROM.
+uint8_t read_global_settings() {
   // Check version-byte of eeprom
   uint8_t version = eeprom_get_char(0);
   
   if (version == SETTINGS_VERSION) {
     // Read settings-record and check checksum
-    if (!(memcpy_from_eeprom_with_checksum((char*)&settings, 1, sizeof(settings_t)))) {
+    if (!(memcpy_from_eeprom_with_checksum((char*)&settings, EEPROM_ADDR_GLOBAL, sizeof(settings_t)))) {
       return(false);
     }
-  } else if (version == 1) {
-    // Migrate from settings version 1
-    if (!(memcpy_from_eeprom_with_checksum((char*)&settings, 1, sizeof(settings_v1_t)))) {
+  } else {
+    if (version <= 4) {
+      // Migrate from settings version 4 to current version.
+      if (!(memcpy_from_eeprom_with_checksum((char*)&settings, 1, sizeof(settings_v4_t)))) {
+        return(false);
+      }     
+      settings_reset(false); // Old settings ok. Write new settings only.
+    } else {      
       return(false);
     }
-    settings.acceleration = DEFAULT_ACCELERATION;
-    settings.junction_deviation = DEFAULT_JUNCTION_DEVIATION;
-    write_settings();
-  } else if ((version == 2) || (version == 3)) {
-    // Migrate from settings version 2 and 3
-    if (!(memcpy_from_eeprom_with_checksum((char*)&settings, 1, sizeof(settings_t)))) {
-      return(false);
-    }
-    if (version == 2) { settings.junction_deviation = DEFAULT_JUNCTION_DEVIATION; }    
-    settings.acceleration *= 3600; // Convert to mm/min^2 from mm/sec^2
-    write_settings();
-  } else {      
-    return(false);
   }
   return(true);
 }
 
+
 // A helper method to set settings from command line
-void settings_store_setting(int parameter, double value) {
+uint8_t settings_store_global_setting(int parameter, float value) {
   switch(parameter) {
     case 0: case 1: case 2:
-    if (value <= 0.0) {
-      printPgmString(PSTR("Steps/mm must be > 0.0\r\n"));
-      return;
-    }
-    settings.steps_per_mm[parameter] = value; break;
+      if (value <= 0.0) { return(STATUS_SETTING_VALUE_NEG); } 
+      settings.steps_per_mm[parameter] = value; break;
     case 3: 
-    if (value < 3) {
-      printPgmString(PSTR("Step pulse must be >= 3 microseconds\r\n"));
-      return;
-    }
-    settings.pulse_microseconds = round(value); break;
+      if (value < 3) { return(STATUS_SETTING_STEP_PULSE_MIN); }
+      settings.pulse_microseconds = round(value); break;
     case 4: settings.default_feed_rate = value; break;
     case 5: settings.default_seek_rate = value; break;
-    case 6: settings.mm_per_arc_segment = value; break;
-    case 7: settings.invert_mask = trunc(value); break;
+    case 6: settings.invert_mask = trunc(value); break;
+    case 7: settings.stepper_idle_lock_time = round(value); break;
     case 8: settings.acceleration = value*60*60; break; // Convert to mm/min^2 for grbl internal use.
     case 9: settings.junction_deviation = fabs(value); break;
+    case 10: settings.mm_per_arc_segment = value; break;
+    case 11: settings.n_arc_correction = round(value); break;
+    case 12: settings.decimal_places = round(value); break;
+    case 13:
+      if (value) { settings.flags |= BITFLAG_REPORT_INCHES; }
+      else { settings.flags &= ~BITFLAG_REPORT_INCHES; }
+      break;
+    case 14: // Reset to ensure change. Immediate re-init may cause problems.
+      if (value) { settings.flags |= BITFLAG_AUTO_START; }
+      else { settings.flags &= ~BITFLAG_AUTO_START; }
+      break;
+    case 15: // Reset to ensure change. Immediate re-init may cause problems.
+      if (value) { settings.flags |= BITFLAG_INVERT_ST_ENABLE; }
+      else { settings.flags &= ~BITFLAG_INVERT_ST_ENABLE; }
+      break;
+    case 16:
+      if (value) { settings.flags |= BITFLAG_HARD_LIMIT_ENABLE; }
+      else { settings.flags &= ~BITFLAG_HARD_LIMIT_ENABLE; }
+      limits_init(); // Re-init to immediately change. NOTE: Nice to have but could be problematic later.
+      break;
+    case 17:
+      if (value) { settings.flags |= BITFLAG_HOMING_ENABLE; }
+      else { settings.flags &= ~BITFLAG_HOMING_ENABLE; }
+      break;
+    case 18: settings.homing_dir_mask = trunc(value); break;
+    case 19: settings.homing_feed_rate = value; break;
+    case 20: settings.homing_seek_rate = value; break;
+    case 21: settings.homing_debounce_delay = round(value); break;
+    case 22: settings.homing_pulloff = value; break;
     default: 
-      printPgmString(PSTR("Unknown parameter\r\n"));
-      return;
+      return(STATUS_INVALID_STATEMENT);
   }
-  write_settings();
-  printPgmString(PSTR("Stored new setting\r\n"));
+  write_global_settings();
+  return(STATUS_OK);
 }
 
 // Initialize the config subsystem
 void settings_init() {
-  if(read_settings()) {
-    printPgmString(PSTR("'$' to dump current settings\r\n"));
-  } else {
-    printPgmString(PSTR("Warning: Failed to read EEPROM settings. Using defaults.\r\n"));
-    settings_reset();
-    write_settings();
-    settings_dump();
+  if(!read_global_settings()) {
+    report_status_message(STATUS_SETTING_READ_FAIL);
+    settings_reset(true);
+    report_grbl_settings();
   }
+  // Read all parameter data into a dummy variable. If error, reset to zero, otherwise do nothing.
+  float coord_data[N_AXIS];
+  uint8_t i;
+  for (i=0; i<=SETTING_INDEX_NCOORD; i++) {
+    if (!settings_read_coord_data(i, coord_data)) {
+      report_status_message(STATUS_SETTING_READ_FAIL);
+    }
+  }
+  // NOTE: Startup lines are handled and called by main.c at the end of initialization.
 }
