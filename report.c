@@ -182,18 +182,18 @@ void report_gcode_parameters()
       report_status_message(STATUS_SETTING_READ_FAIL); 
       return;
     } 
+    printPgmString(PSTR("[G"));
     switch (coord_select) {
-      case 0: printPgmString(PSTR("G54")); break;
-      case 1: printPgmString(PSTR("G55")); break;
-      case 2: printPgmString(PSTR("G56")); break;
-      case 3: printPgmString(PSTR("G57")); break;
-      case 4: printPgmString(PSTR("G58")); break;
-      case 5: printPgmString(PSTR("G59")); break;
-      case 6: printPgmString(PSTR("G28")); break;
-      case 7: printPgmString(PSTR("G30")); break;
-      // case 8: printPgmString(PSTR("G92")); break; // G92.2, G92.3 not supported. Hence not stored.  
+      case 0: printPgmString(PSTR("54:")); break;
+      case 1: printPgmString(PSTR("55:")); break;
+      case 2: printPgmString(PSTR("56:")); break;
+      case 3: printPgmString(PSTR("57:")); break;
+      case 4: printPgmString(PSTR("58:")); break;
+      case 5: printPgmString(PSTR("59:")); break;
+      case 6: printPgmString(PSTR("28:")); break;
+      case 7: printPgmString(PSTR("30:")); break;
+      // case 8: printPgmString(PSTR("92:")); break; // G92.2, G92.3 not supported. Hence not stored.  
     }           
-    printPgmString(PSTR(":[")); 
     for (i=0; i<N_AXIS; i++) {
       if (bit_istrue(settings.flags,BITFLAG_REPORT_INCHES)) { printFloat(coord_data[i]*INCH_PER_MM); }
       else { printFloat(coord_data[i]); }
@@ -201,7 +201,7 @@ void report_gcode_parameters()
       else { printPgmString(PSTR("]\r\n")); }
     } 
   }
-  printPgmString(PSTR("G92:[")); // Print G92,G92.1 which are not persistent in memory
+  printPgmString(PSTR("[G92:")); // Print G92,G92.1 which are not persistent in memory
   for (i=0; i<N_AXIS; i++) {
     if (bit_istrue(settings.flags,BITFLAG_REPORT_INCHES)) { printFloat(gc.coord_offset[i]*INCH_PER_MM); }
     else { printFloat(gc.coord_offset[i]); }
@@ -215,11 +215,11 @@ void report_gcode_parameters()
 void report_gcode_modes()
 {
   switch (gc.motion_mode) {
-    case MOTION_MODE_SEEK : printPgmString(PSTR("G0")); break;
-    case MOTION_MODE_LINEAR : printPgmString(PSTR("G1")); break;
-    case MOTION_MODE_CW_ARC : printPgmString(PSTR("G2")); break;
-    case MOTION_MODE_CCW_ARC : printPgmString(PSTR("G3")); break;
-    case MOTION_MODE_CANCEL : printPgmString(PSTR("G80")); break;
+    case MOTION_MODE_SEEK : printPgmString(PSTR("[G0")); break;
+    case MOTION_MODE_LINEAR : printPgmString(PSTR("[G1")); break;
+    case MOTION_MODE_CW_ARC : printPgmString(PSTR("[G2")); break;
+    case MOTION_MODE_CCW_ARC : printPgmString(PSTR("[G3")); break;
+    case MOTION_MODE_CANCEL : printPgmString(PSTR("[G80")); break;
   }
 
   printPgmString(PSTR(" G"));
@@ -266,13 +266,13 @@ void report_gcode_modes()
   if (gc.inches_mode) { printFloat(gc.feed_rate*INCH_PER_MM); }
   else { printFloat(gc.feed_rate); }
 
-  printPgmString(PSTR("\r\n"));
+  printPgmString(PSTR("]\r\n"));
 }
 
 // Prints specified startup line
 void report_startup_line(uint8_t n, char *line)
 {
-  printPgmString(PSTR("N")); printInteger(n);
+  printPgmString(PSTR("$N")); printInteger(n);
   printPgmString(PSTR("=")); printString(line);
   printPgmString(PSTR("\r\n"));
 }
@@ -295,14 +295,14 @@ void report_realtime_status()
  
   // Report current machine state
   switch (sys.state) {
-    case STATE_IDLE: printPgmString(PSTR("[Idle")); break;
+    case STATE_IDLE: printPgmString(PSTR("<Idle")); break;
 //    case STATE_INIT: printPgmString(PSTR("[Init")); break; // Never observed
-    case STATE_QUEUED: printPgmString(PSTR("[Queue")); break;
-    case STATE_CYCLE: printPgmString(PSTR("[Run")); break;
-    case STATE_HOLD: printPgmString(PSTR("[Hold")); break;
-    case STATE_HOMING: printPgmString(PSTR("[Home")); break;
-    case STATE_ALARM: printPgmString(PSTR("[Alarm")); break;
-    case STATE_CHECK_MODE: printPgmString(PSTR("[Check")); break;
+    case STATE_QUEUED: printPgmString(PSTR("<Queue")); break;
+    case STATE_CYCLE: printPgmString(PSTR("<Run")); break;
+    case STATE_HOLD: printPgmString(PSTR("<Hold")); break;
+    case STATE_HOMING: printPgmString(PSTR("<Home")); break;
+    case STATE_ALARM: printPgmString(PSTR("<Alarm")); break;
+    case STATE_CHECK_MODE: printPgmString(PSTR("<Check")); break;
   }
  
   // Report machine position
@@ -326,5 +326,5 @@ void report_realtime_status()
     if (i < 2) { printPgmString(PSTR(",")); }
   }
     
-  printPgmString(PSTR("]\r\n"));
+  printPgmString(PSTR(">\r\n"));
 }

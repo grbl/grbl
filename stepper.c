@@ -420,8 +420,6 @@ static void set_step_events_per_minute(uint32_t steps_per_minute)
 
 // Planner external interface to start stepper interrupt and execute the blocks in queue. Called
 // by the main program functions: planner auto-start and run-time command execution.
-// TODO: Update sys.cycle_start and feed_hold variables to a sys.state variable. This state
-// variable will manage all of Grbl's processes and keep them separate.
 void st_cycle_start() 
 {
   if (sys.state == STATE_QUEUED) {

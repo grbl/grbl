@@ -29,14 +29,14 @@
 
 #ifdef DEFAULTS_GENERIC
   // Grbl generic default settings. Should work across different machines.
-  #define DEFAULT_X_STEPS_PER_MM 250
-  #define DEFAULT_Y_STEPS_PER_MM 250
-  #define DEFAULT_Z_STEPS_PER_MM 250
+  #define DEFAULT_X_STEPS_PER_MM 250.0
+  #define DEFAULT_Y_STEPS_PER_MM 250.0
+  #define DEFAULT_Z_STEPS_PER_MM 250.0
   #define DEFAULT_STEP_PULSE_MICROSECONDS 10
   #define DEFAULT_MM_PER_ARC_SEGMENT 0.1
   #define DEFAULT_RAPID_FEEDRATE 500.0 // mm/min
   #define DEFAULT_FEEDRATE 250.0
-  #define DEFAULT_ACCELERATION 10*60*60 // 10 mm/min^2
+  #define DEFAULT_ACCELERATION (10.0*60*60) // 10 mm/min^2
   #define DEFAULT_JUNCTION_DEVIATION 0.05 // mm
   #define DEFAULT_STEPPING_INVERT_MASK ((1<<Y_DIRECTION_BIT)|(1<<Z_DIRECTION_BIT))
   #define DEFAULT_REPORT_INCHES 0 // false
@@ -46,9 +46,9 @@
   #define DEFAULT_HOMING_ENABLE 0  // false
   #define DEFAULT_HOMING_DIR_MASK 0 // move positive dir
   #define DEFAULT_HOMING_RAPID_FEEDRATE 250.0 // mm/min
-  #define DEFAULT_HOMING_FEEDRATE 25 // mm/min
+  #define DEFAULT_HOMING_FEEDRATE 25.0 // mm/min
   #define DEFAULT_HOMING_DEBOUNCE_DELAY 100 // msec (0-65k)
-  #define DEFAULT_HOMING_PULLOFF 1 // mm
+  #define DEFAULT_HOMING_PULLOFF 1.0 // mm
   #define DEFAULT_STEPPER_IDLE_LOCK_TIME 25 // msec (0-255)
   #define DEFAULT_DECIMAL_PLACES 3
   #define DEFAULT_N_ARC_CORRECTION 25
@@ -76,10 +76,10 @@
   #define DEFAULT_HARD_LIMIT_ENABLE 0  // false
   #define DEFAULT_HOMING_ENABLE 0  // false
   #define DEFAULT_HOMING_DIR_MASK 0 // move positive dir
-  #define DEFAULT_HOMING_RAPID_FEEDRATE 254.0 // mm/min
-  #define DEFAULT_HOMING_FEEDRATE 25 // mm/min
+  #define DEFAULT_HOMING_RAPID_FEEDRATE 250.0 // mm/min
+  #define DEFAULT_HOMING_FEEDRATE 25.0 // mm/min
   #define DEFAULT_HOMING_DEBOUNCE_DELAY 100 // msec (0-65k)
-  #define DEFAULT_HOMING_PULLOFF 1 // mm
+  #define DEFAULT_HOMING_PULLOFF 1.0 // mm
   #define DEFAULT_STEPPER_IDLE_LOCK_TIME 25 // msec (0-255)
   #define DEFAULT_DECIMAL_PLACES 3
   #define DEFAULT_N_ARC_CORRECTION 25
@@ -101,7 +101,7 @@
   #define DEFAULT_MM_PER_ARC_SEGMENT 0.1
   #define DEFAULT_RAPID_FEEDRATE 1000.0 // mm/min
   #define DEFAULT_FEEDRATE 250.0
-  #define DEFAULT_ACCELERATION 15.0*60*60 // 15 mm/min^2
+  #define DEFAULT_ACCELERATION (15.0*60*60) // 15 mm/min^2
   #define DEFAULT_JUNCTION_DEVIATION 0.05 // mm
   #define DEFAULT_STEPPING_INVERT_MASK ((1<<Y_DIRECTION_BIT)|(1<<Z_DIRECTION_BIT))
   #define DEFAULT_REPORT_INCHES 0 // false
@@ -111,9 +111,9 @@
   #define DEFAULT_HOMING_ENABLE 0  // false
   #define DEFAULT_HOMING_DIR_MASK 0 // move positive dir
   #define DEFAULT_HOMING_RAPID_FEEDRATE 250.0 // mm/min
-  #define DEFAULT_HOMING_FEEDRATE 25 // mm/min
+  #define DEFAULT_HOMING_FEEDRATE 25.0 // mm/min
   #define DEFAULT_HOMING_DEBOUNCE_DELAY 100 // msec (0-65k)
-  #define DEFAULT_HOMING_PULLOFF 1 // mm
+  #define DEFAULT_HOMING_PULLOFF 1.0 // mm
   #define DEFAULT_STEPPER_IDLE_LOCK_TIME 255 // msec (0-255)
   #define DEFAULT_DECIMAL_PLACES 3
   #define DEFAULT_N_ARC_CORRECTION 25
