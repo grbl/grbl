@@ -105,10 +105,4 @@ void delay_us(uint32_t us);
 // Syncs Grbl's gcode and planner position variables with the system position.
 void sys_sync_current_position();
 
-// Delays variable-defined milliseconds. Compiler compatibility fix for _delay_ms().
-void delay_ms(uint16_t ms);
-
-// Delays variable-defined microseconds. Compiler compatibility fix for _delay_us().
-void delay_us(uint16_t us);
-
 #endif
