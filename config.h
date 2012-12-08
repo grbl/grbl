@@ -25,7 +25,7 @@
 // IMPORTANT: Any changes here requires a full re-compiling of the source code to propagate them.
 
 // Default settings. Used when resetting EEPROM. Change to desired name in defaults.h
-#define DEFAULTS_GENERIC
+#define DEFAULTS_SHERLINE_5400
 
 // Serial baud rate
 #define BAUD_RATE 9600
@@ -106,25 +106,46 @@
 #define CMD_RESET 0x18 // ctrl-x
 
 // The temporal resolution of the acceleration management subsystem. Higher number give smoother
-// acceleration but may impact performance.
-// NOTE: Increasing this parameter will help any resolution related issues, especially with machines 
-// requiring very high accelerations and/or very fast feedrates. In general, this will reduce the 
-// error between how the planner plans the motions and how the stepper program actually performs them.
-// However, at some point, the resolution can be high enough, where the errors related to numerical 
-// round-off can be great enough to cause problems and/or it's too fast for the Arduino. The correct
-// value for this parameter is machine dependent, so it's advised to set this only as high as needed.
-// Approximate successful values can range from 30L to 100L or more.
-#define ACCELERATION_TICKS_PER_SECOND 50L
+// acceleration but may impact performance. If you run at very high feedrates (>15kHz or so) and 
+// very high accelerations, this will reduce the error between how the planner plans the velocity
+// profiles and how the stepper program actually performs them. The correct value for this parameter
+// is machine dependent, so it's advised to set this only as high as needed. Approximate successful
+// values can widely range from 50 to 200 or more. Cannot be greater than ISR_TICKS_PER_SECOND/2.
+#define ACCELERATION_TICKS_PER_SECOND 100L 
+
+// The "Stepper Driver Interrupt" employs the Pramod Ranade inverse time algorithm to manage the
+// Bresenham line stepping algorithm. The value ISR_TICKS_PER_SECOND is the frequency(Hz) at which
+// the Ranade algorithm ticks at. Maximum step frequencies are limited by the Ranade frequency by
+// approximately 0.75-0.9 * ISR_TICK_PER_SECOND. Meaning for 20kHz, the max step frequency is roughly
+// 15-18kHz. An Arduino can safely complete a single interrupt of the current stepper driver algorithm 
+// theoretically up to a frequency of 35-40kHz, but CPU overhead increases exponentially as this
+// frequency goes up. So there will be little left for other processes like arcs.  
+//   In future versions, more work will be done to increase the step rates but still stay around
+// 20kHz by performing two steps per step event, rather than just one.
+#define ISR_TICKS_PER_SECOND 20000L  // Integer (Hz)
+
+// The Ranade algorithm can use either floating point or long integers for its counters, but for 
+// integers the counter values must be scaled since these values can be very small (10^-6). This
+// multiplier value scales the floating point counter values for use in a long integer. Long integers
+// are finite so select the multiplier value high enough to avoid any numerical round-off issues and
+// still have enough range to account for all motion types. However, in most all imaginable CNC
+// applications, the following multiplier value will work more than well enough. If you do have
+// happened to weird stepper motion issues, try modifying this value by adding or subtracting a 
+// zero and report it to the Grbl administrators. 
+#define RANADE_MULTIPLIER 100000000.0
 
 // Minimum planner junction speed. Sets the default minimum speed the planner plans for at the end
 // of the buffer and all stops. This should not be much greater than zero and should only be changed
 // if unwanted behavior is observed on a user's machine when running at very slow speeds.
 #define MINIMUM_PLANNER_SPEED 0.0 // (mm/min)
 
-// Minimum stepper rate. Sets the absolute minimum stepper rate in the stepper program and never runs
-// slower than this value, except when sleeping. This parameter overrides the minimum planner speed.
-// This is primarily used to guarantee that the end of a movement is always reached and not stop to
-// never reach its target. This parameter should always be greater than zero.
+// Minimum stepper rate for the "Stepper Driver Interrupt". Sets the absolute minimum stepper rate 
+// in the stepper program and never runs slower than this value. If the RANADE_MULTIPLIER value
+// changes, it will affect how this value works. So, if a zero is add/subtracted from the
+// RANADE_MULTIPLIER value, do the same to this value if you want to same response. 
+#define MINIMUM_STEP_RATE 1000L // Integer (mult*mm/isr_tic)
+
+// Minimum stepper rate. Only used by homing at this point. May be removed in later releases.
 #define MINIMUM_STEPS_PER_MINUTE 800 // (steps/min) - Integer value only
 
 // Time delay increments performed during a dwell. The default value is set at 50ms, which provides
@@ -209,23 +230,6 @@
 // terminal programs since their firmware correctly manage these XON/XOFF characters. In any
 // case, please report any successes to grbl administrators!
 // #define ENABLE_XONXOFF // Default disabled. Uncomment to enable.
-
-// Creates a delay between the direction pin setting and corresponding step pulse by creating
-// another interrupt (Timer2 compare) to manage it. The main Grbl interrupt (Timer1 compare) 
-// sets the direction pins, and does not immediately set the stepper pins, as it would in 
-// normal operation. The Timer2 compare fires next to set the stepper pins after the step 
-// pulse delay time, and Timer2 overflow will complete the step pulse, except now delayed 
-// by the step pulse time plus the step pulse delay. (Thanks langwadt for the idea!)
-//   This is an experimental feature that should only be used if your setup requires a longer
-// delay between direction and step pin settings (some opto coupler based drivers), as it may
-// adversely effect Grbl's high-end performance (>10kHz). Please notify Grbl administrators 
-// of your successes or difficulties, as we will monitor this and possibly integrate this as a 
-// standard feature for future releases. However, we suggest to first try our direction delay
-// hack/solution posted in the Wiki involving inverting the stepper pin mask.
-// NOTE: Uncomment to enable. The recommended delay must be > 3us and the total step pulse
-// time, which includes the Grbl settings pulse microseconds, must not exceed 127us. Reported
-// successful values for certain setups have ranged from 10 to 20us.
-// #define STEP_PULSE_DELAY 10 // Step pulse delay in microseconds. Default disabled.
 
 // ---------------------------------------------------------------------------------------
 

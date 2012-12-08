@@ -41,17 +41,15 @@ typedef struct {
   float entry_speed;                 // Entry speed at previous-current block junction in mm/min
   float max_entry_speed;             // Maximum allowable junction entry speed in mm/min
   float millimeters;                 // The total travel of this block in mm
-  uint8_t recalculate_flag;           // Planner flag to recalculate trapezoids on entry junction
-  uint8_t nominal_length_flag;        // Planner flag for nominal speed always reached
+  uint8_t recalculate_flag;          // Planner flag to recalculate trapezoids on entry junction
+  uint8_t nominal_length_flag;       // Planner flag for nominal speed always reached
 
   // Settings for the trapezoid generator
   uint32_t initial_rate;              // The step rate at start of block  
-  uint32_t final_rate;                // The step rate at end of block
   int32_t rate_delta;                 // The steps/minute to add or subtract when changing speed (must be positive)
-  uint32_t accelerate_until;          // The index of the step event on which to stop acceleration
   uint32_t decelerate_after;          // The index of the step event on which to start decelerating
   uint32_t nominal_rate;              // The nominal step rate for this block in step_events/minute
-
+  uint32_t d_next;                    // Scaled distance to next step
 } block_t;
       
 // Initialize the motion plan subsystem      

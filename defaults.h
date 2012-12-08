@@ -57,12 +57,12 @@
 #ifdef DEFAULTS_SHERLINE_5400
   // Description: Sherline 5400 mill with three NEMA 23 185 oz-in stepper motors, driven by
   // three Pololu A4988 stepper drivers with a 30V, 6A power supply at 1.5A per winding.
-  #define MICROSTEPS 4
+  #define MICROSTEPS 2
   #define STEPS_PER_REV 200.0
-  #define MM_PER_REV (0.050*MM_PER_INCH)) // 0.050 inch/rev leadscrew
-  #define DEFAULT_X_STEPS_PER_MM (STEP_PER_REV*MICROSTEPS/MM_PER_REV)
-  #define DEFAULT_Y_STEPS_PER_MM (STEP_PER_REV*MICROSTEPS/MM_PER_REV)
-  #define DEFAULT_Z_STEPS_PER_MM (STEP_PER_REV*MICROSTEPS/MM_PER_REV)
+  #define MM_PER_REV (0.050*MM_PER_INCH) // 0.050 inch/rev leadscrew
+  #define DEFAULT_X_STEPS_PER_MM (STEPS_PER_REV*MICROSTEPS/MM_PER_REV)
+  #define DEFAULT_Y_STEPS_PER_MM (STEPS_PER_REV*MICROSTEPS/MM_PER_REV)
+  #define DEFAULT_Z_STEPS_PER_MM (STEPS_PER_REV*MICROSTEPS/MM_PER_REV)
   #define DEFAULT_STEP_PULSE_MICROSECONDS 10
   #define DEFAULT_MM_PER_ARC_SEGMENT 0.1
   #define DEFAULT_RAPID_FEEDRATE 635.0 // mm/min (25ipm)

@@ -39,6 +39,8 @@
 #define MM_PER_INCH (25.40)
 #define INCH_PER_MM (0.0393701)
 
+#define TICKS_PER_MICROSECOND (F_CPU/1000000)
+
 // Useful macros
 #define clear_vector(a) memset(a, 0, sizeof(a))
 #define clear_vector_float(a) memset(a, 0.0, sizeof(float)*N_AXIS)
