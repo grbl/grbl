@@ -222,15 +222,14 @@ static void planner_recalculate()
             next->recalculate_flag = true;
           }
         }
-        
-        // Recalculate if current block entry or exit junction speed has changed.
-        if (current->recalculate_flag || next->recalculate_flag) {
-          // NOTE: Entry and exit factors always > 0 by all previous logic operations.     
-          calculate_trapezoid_for_block(current, current->entry_speed, next->entry_speed);      
-          current->recalculate_flag = false; // Reset current only to ensure next trapezoid is computed
-        }
       }      
-      
+
+      // Recalculate if current block entry or exit junction speed has changed.
+      if (current->recalculate_flag || next->recalculate_flag) {
+        // NOTE: Entry and exit factors always > 0 by all previous logic operations.     
+        calculate_trapezoid_for_block(current, current->entry_speed, next->entry_speed);      
+        current->recalculate_flag = false; // Reset current only to ensure next trapezoid is computed
+      }
     }
     block_index = next_block_index( block_index );
   }
