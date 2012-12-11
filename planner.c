@@ -174,29 +174,35 @@ static void planner_recalculate()
   // Perform reverse planner pass. Skip the head(end) block since it is already initialized, and skip the
   // tail(first) block to prevent over-writing of the initial entry speed.
   uint8_t block_index = block_buffer_head;
-  block_t *current = &block_buffer[block_index]; // Head block.
-  block_t *next;
-  if (block_index != block_buffer_tail) { block_index = prev_block_index( block_index ); }
-  while (block_index != block_buffer_tail) {
-    next = current;
-    current = &block_buffer[block_index];    
-    // If entry speed is already at the maximum entry speed, no need to recheck. Block is cruising.
-    // If not, block in state of acceleration or deceleration. Reset entry speed to maximum and 
-    // check for maximum allowable speed reductions to ensure maximum possible planned speed.
-    if (current->entry_speed != current->max_entry_speed) {
-      // If nominal length true, max junction speed is guaranteed to be reached. Only compute
-      // for max allowable speed if block is decelerating and nominal length is false.
-      if ((!current->nominal_length_flag) && (current->max_entry_speed > next->entry_speed)) {
-        current->entry_speed = min( current->max_entry_speed,
-          calculate_final_velocity(settings.acceleration,next->entry_speed,current->millimeters)); // Back-compute
-      } else {
-        current->entry_speed = current->max_entry_speed;
-      } 
-      current->recalculate_flag = true;        
-    }
+  block_t *next = NULL;	  	
+  block_t *current = NULL;
+  block_t *previous = NULL;	  	
+  while(block_index != block_buffer_tail) {    
     block_index = prev_block_index( block_index );
-  } 
-  
+    next = current;
+    current = previous;
+    previous = &block_buffer[block_index];
+          
+    if (current) {
+      if (next) {
+        // If entry speed is already at the maximum entry speed, no need to recheck. Block is cruising.
+        // If not, block in state of acceleration or deceleration. Reset entry speed to maximum and 
+        // check for maximum allowable speed reductions to ensure maximum possible planned speed.  	
+        if (current->entry_speed != current->max_entry_speed) {
+          // If nominal length true, max junction speed is guaranteed to be reached. Only compute
+          // for max allowable speed if block is decelerating and nominal length is false.
+          if ((!current->nominal_length_flag) && (current->max_entry_speed > next->entry_speed)) {
+            current->entry_speed = min( current->max_entry_speed,
+              calculate_final_velocity(settings.acceleration,next->entry_speed,current->millimeters));
+          } else {
+            current->entry_speed = current->max_entry_speed;
+          } 
+          current->recalculate_flag = true;    
+        }
+      }
+    }
+  }
+
   // Perform forward planner pass. Begins junction speed adjustments after tail(first) block.
   // Also recalculate trapezoids, block by block, as the forward pass completes the plan.
   block_index = block_buffer_tail;
@@ -206,7 +212,6 @@ static void planner_recalculate()
     next= &block_buffer[block_index];
 
     if (current) {
-    
       // If the current block is an acceleration block, but it is not long enough to complete the
       // full speed change within the block, we need to adjust the entry speed accordingly. Entry
       // speeds have already been reset, maximized, and reverse planned by reverse planner.
