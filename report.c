@@ -296,7 +296,7 @@ void report_realtime_status()
   // Report current machine state
   switch (sys.state) {
     case STATE_IDLE: printPgmString(PSTR("<Idle")); break;
-//    case STATE_INIT: printPgmString(PSTR("[Init")); break; // Never observed
+//    case STATE_INIT: printPgmString(PSTR("<Init")); break; // Never observed
     case STATE_QUEUED: printPgmString(PSTR("<Queue")); break;
     case STATE_CYCLE: printPgmString(PSTR("<Run")); break;
     case STATE_HOLD: printPgmString(PSTR("<Hold")); break;

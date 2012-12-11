@@ -106,8 +106,7 @@ void st_wake_up()
 // Stepper shutdown
 void st_go_idle() 
 {
-  // Disable stepper driver interrupt. Allow Timer2 to continue counting since COMPB may not be 
-  // finished. COMPB will disable itself when finished.
+  // Disable stepper driver interrupt. Allow Timer0 to finish. It will disable itself.
   TIMSK2 &= ~(1<<OCIE2A); // Disable Timer2 interrupt
   TCCR2B = 0; // Disable Timer2
 
@@ -131,7 +130,7 @@ void st_go_idle()
 // step event. However, the Ranade algorithm, as described, is susceptible to numerical round-off,
 // meaning that some axes steps may not execute for a given multi-axis motion.
 //   Grbl's algorithm slightly differs by using a single Ranade time-distance counter to manage
-// a Bresenham line algorithm for multi-axis step events and still ensure number of steps for
+// a Bresenham line algorithm for multi-axis step events which ensures the number of steps for
 // each axis are executed exactly. In other words, it uses a Bresenham within a Bresenham algorithm,
 // where one tracks time(Ranade) and the other steps.
 //   This interrupt pops blocks from the block_buffer and executes them by pulsing the stepper pins
@@ -146,7 +145,7 @@ ISR(TIMER2_COMPA_vect)
 // SPINDLE_ENABLE_PORT ^= 1<<SPINDLE_ENABLE_BIT; // Debug: Used to time ISR
   if (busy) { return; } // The busy-flag is used to avoid reentering this interrupt
   
-  // Set direction pins. Direction pins will always be set one timer tick before any step pulse.
+  // Set direction pins. New block dir will always be set one timer tick before any step pulse.
   STEPPING_PORT = (STEPPING_PORT & ~DIRECTION_MASK) | (out_bits & DIRECTION_MASK);
 
   // Pulse stepper pins, if flagged.
@@ -158,7 +157,7 @@ ISR(TIMER2_COMPA_vect)
   }
   
   busy = true;
-  sei();
+  sei(); // Re-enable interrupts. This ISR will still finish before returning to main program.
   
   // If there is no current block, attempt to pop one from the buffer
   if (current_block == NULL) {

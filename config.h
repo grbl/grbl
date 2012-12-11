@@ -25,7 +25,7 @@
 // IMPORTANT: Any changes here requires a full re-compiling of the source code to propagate them.
 
 // Default settings. Used when resetting EEPROM. Change to desired name in defaults.h
-#define DEFAULTS_SHERLINE_5400
+#define DEFAULTS_GENERIC
 
 // Serial baud rate
 #define BAUD_RATE 9600
@@ -122,7 +122,7 @@
 // frequency goes up. So there will be little left for other processes like arcs.  
 //   In future versions, more work will be done to increase the step rates but still stay around
 // 20kHz by performing two steps per step event, rather than just one.
-#define ISR_TICKS_PER_SECOND 20000L  // Integer (Hz)
+#define ISR_TICKS_PER_SECOND 30000L  // Integer (Hz)
 
 // The Ranade algorithm can use either floating point or long integers for its counters, but for 
 // integers the counter values must be scaled since these values can be very small (10^-6). This
@@ -143,6 +143,7 @@
 // in the stepper program and never runs slower than this value. If the RANADE_MULTIPLIER value
 // changes, it will affect how this value works. So, if a zero is add/subtracted from the
 // RANADE_MULTIPLIER value, do the same to this value if you want to same response. 
+// NOTE: Compute by (desired_step_rate/60) * RANADE_MULTIPLIER/ISR_TICKS_PER_SECOND. (mm/min)
 #define MINIMUM_STEP_RATE 1000L // Integer (mult*mm/isr_tic)
 
 // Minimum stepper rate. Only used by homing at this point. May be removed in later releases.
