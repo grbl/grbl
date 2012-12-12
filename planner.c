@@ -38,11 +38,11 @@ static uint8_t next_buffer_head;                 // Index of the next buffer hea
 
 // Define planner variables
 typedef struct {
-  int32_t position[N_AXIS];        // The planner position of the tool in absolute steps. Kept separate
-                                   // from g-code position for movements requiring multiple line motions,
-                                   // i.e. arcs, canned cycles, and backlash compensation.
-  float previous_unit_vec[N_AXIS]; // Unit vector of previous path line segment
-  float previous_nominal_speed;    // Nominal speed of previous path line segment
+  int32_t position[N_AXIS];          // The planner position of the tool in absolute steps. Kept separate
+                                     // from g-code position for movements requiring multiple line motions,
+                                     // i.e. arcs, canned cycles, and backlash compensation.
+  float previous_unit_vec[N_AXIS];   // Unit vector of previous path line segment
+  float previous_nominal_speed_sqr;  // Nominal speed of previous path line segment
 } planner_t;
 static planner_t pl;
 
@@ -62,14 +62,6 @@ static uint8_t prev_block_index(uint8_t block_index)
   if (block_index == 0) { block_index = BLOCK_BUFFER_SIZE; }
   block_index--;
   return(block_index);
-}
-
-
-// Calculates the final velocity from an initial velocity over a distance with constant acceleration.
-// NOTE: Guaranteed to not exceed BLOCK_BUFFER_SIZE calls per planner cycle.
-static float calculate_final_velocity(float acceleration, float initial_velocity, float distance) 
-{
-  return( sqrt(initial_velocity*initial_velocity+2*acceleration*distance) );
 }
 
 
@@ -96,10 +88,10 @@ static float calculate_final_velocity(float acceleration, float initial_velocity
   the new initial rate and n_steps until deceleration are computed, since the stepper algorithm
   already handles acceleration and cruising and just needs to know when to start decelerating.
 */
-static void calculate_trapezoid_for_block(block_t *block, float entry_speed, float exit_speed) 
+static void calculate_trapezoid_for_block(block_t *block, float entry_speed_sqr, float exit_speed_sqr) 
 {  
   // Compute new initial rate for stepper algorithm
-  block->initial_rate = ceil(entry_speed*(RANADE_MULTIPLIER/(60*ISR_TICKS_PER_SECOND))); // (mult*mm/isr_tic)
+  block->initial_rate = ceil(sqrt(entry_speed_sqr)*(RANADE_MULTIPLIER/(60*ISR_TICKS_PER_SECOND))); // (mult*mm/isr_tic)
     
   // Compute efficiency variable for following calculations. Removes a float divide and multiply.
   // TODO: If memory allows, this can be kept in the block buffer since it doesn't change, even after feed holds.
@@ -107,7 +99,7 @@ static void calculate_trapezoid_for_block(block_t *block, float entry_speed, flo
   
   // First determine intersection distance (in steps) from the exit point for a triangular profile.
   // Computes: steps_intersect = steps/mm * ( distance/2 + (v_entry^2-v_exit^2)/(4*acceleration) )
-  int32_t intersect_distance = ceil( 0.5*(block->step_event_count + steps_per_mm_div_2_acc*(entry_speed*entry_speed-exit_speed*exit_speed)) );  
+  int32_t intersect_distance = ceil( 0.5*(block->step_event_count + steps_per_mm_div_2_acc*(entry_speed_sqr-exit_speed_sqr)) );  
   
   // Check if this is a pure acceleration block by a intersection distance less than zero. Also
   // prevents signed and unsigned integer conversion errors.
@@ -117,8 +109,7 @@ static void calculate_trapezoid_for_block(block_t *block, float entry_speed, flo
     // Determine deceleration distance (in steps) from nominal speed to exit speed for a trapezoidal profile.
     // Value is never negative. Nominal speed is always greater than or equal to the exit speed.
     // Computes: steps_decelerate = steps/mm * ( (v_nominal^2 - v_exit^2)/(2*acceleration) )
-    block->decelerate_after = ceil(steps_per_mm_div_2_acc * 
-                                   (block->nominal_speed*block->nominal_speed-exit_speed*exit_speed));
+    block->decelerate_after = ceil(steps_per_mm_div_2_acc * (block->nominal_speed_sqr - exit_speed_sqr));
 
     // The lesser of the two triangle and trapezoid distances always defines the velocity profile.
     if (block->decelerate_after > intersect_distance) { block->decelerate_after = intersect_distance; }
@@ -171,59 +162,61 @@ static void planner_recalculate()
   // for feed-rate overrides, something like this is essential. Place a request here to the stepper driver to
   // find out where in the planner buffer is the a safe place to begin re-planning from.
 
+//   if (block_buffer_head != block_buffer_tail) { 
+
+  float entry_speed_sqr;
+
   // Perform reverse planner pass. Skip the head(end) block since it is already initialized, and skip the
-  // tail(first) block to prevent over-writing of the initial entry speed.
-  uint8_t block_index = block_buffer_head;
-  block_t *next = NULL;	  	
-  block_t *current = NULL;
-  block_t *previous = NULL;	  	
-  while(block_index != block_buffer_tail) {    
-    block_index = prev_block_index( block_index );
+  // tail(first) block to prevent over-writing of the initial entry speed. 
+  uint8_t block_index = prev_block_index( block_buffer_head ); // Assume buffer is not empty.
+  block_t *current = &block_buffer[block_index]; // Head block-1 = Newly appended block
+  block_t *next;
+  if (block_index != block_buffer_tail) { block_index = prev_block_index( block_index ); }
+  while (block_index != block_buffer_tail) {
     next = current;
-    current = previous;
-    previous = &block_buffer[block_index];
-          
-    if (current) {
-      if (next) {
-        // If entry speed is already at the maximum entry speed, no need to recheck. Block is cruising.
-        // If not, block in state of acceleration or deceleration. Reset entry speed to maximum and 
-        // check for maximum allowable speed reductions to ensure maximum possible planned speed.  	
-        if (current->entry_speed != current->max_entry_speed) {
-          // If nominal length true, max junction speed is guaranteed to be reached. Only compute
-          // for max allowable speed if block is decelerating and nominal length is false.
-          if ((!current->nominal_length_flag) && (current->max_entry_speed > next->entry_speed)) {
-            current->entry_speed = min( current->max_entry_speed,
-              calculate_final_velocity(settings.acceleration,next->entry_speed,current->millimeters));
-          } else {
-            current->entry_speed = current->max_entry_speed;
-          } 
-          current->recalculate_flag = true;    
+    current = &block_buffer[block_index];    
+    // If entry speed is already at the maximum entry speed, no need to recheck. Block is cruising.
+    // If not, block in state of acceleration or deceleration. Reset entry speed to maximum and 
+    // check for maximum allowable speed reductions to ensure maximum possible planned speed.
+    if (current->entry_speed_sqr != current->max_entry_speed_sqr) {
+      // If nominal length true, max junction speed is guaranteed to be reached. Only compute
+      // for max allowable speed if block is decelerating and nominal length is false.
+
+      current->entry_speed_sqr = current->max_entry_speed_sqr;
+      current->recalculate_flag = true; // Almost always changes. So force recalculate.       
+
+      if ((!current->nominal_length_flag) && (current->max_entry_speed_sqr > next->entry_speed_sqr)) {
+        // Computes: v_entry^2 = v_exit^2 + 2*acceleration*distance      
+        entry_speed_sqr = next->entry_speed_sqr + 2*settings.acceleration*current->millimeters;
+        if (entry_speed_sqr < current->max_entry_speed_sqr) {
+          current->entry_speed_sqr = entry_speed_sqr;
         }
-      }
+      } 
     }
-  }
+    block_index = prev_block_index( block_index );
+  } 
 
   // Perform forward planner pass. Begins junction speed adjustments after tail(first) block.
   // Also recalculate trapezoids, block by block, as the forward pass completes the plan.
-  block_index = block_buffer_tail;
-  next = NULL;
+  block_index = next_block_index(block_buffer_tail);
+  next = &block_buffer[block_buffer_tail]; // Places tail(first) block into current
   while (block_index != block_buffer_head) {
     current = next;
-    next= &block_buffer[block_index];
+    next = &block_buffer[block_index];
 
-    if (current) {
       // If the current block is an acceleration block, but it is not long enough to complete the
-      // full speed change within the block, we need to adjust the entry speed accordingly. Entry
+      // full speed change within the block, we need to adjust the exit speed accordingly. Entry
       // speeds have already been reset, maximized, and reverse planned by reverse planner.
-      // If nominal length is true, max junction speed is guaranteed to be reached. No need to recheck.  
+      // If nominal length is true, max junction speed is guaranteed to be reached. So skip block.  
       if (!current->nominal_length_flag) {
-        if (current->entry_speed < next->entry_speed) {
-          float entry_speed = min( next->entry_speed,
-            calculate_final_velocity(settings.acceleration,current->entry_speed,current->millimeters) );
-    
-          // Check for junction speed change
-          if (next->entry_speed != entry_speed) {
-            next->entry_speed = entry_speed;
+        if (current->entry_speed_sqr < next->entry_speed_sqr) {
+          // Compute block exit speed based on the current block speed and distance
+          // Computes: v_exit^2 = v_entry^2 + 2*acceleration*distance
+          entry_speed_sqr = current->entry_speed_sqr + 2*settings.acceleration*current->millimeters;
+          
+          // If it's less than the stored value, update the exit speed and set recalculate flag.
+          if (entry_speed_sqr < next->entry_speed_sqr) {
+            next->entry_speed_sqr = entry_speed_sqr;
             next->recalculate_flag = true;
           }
         }
@@ -232,15 +225,18 @@ static void planner_recalculate()
       // Recalculate if current block entry or exit junction speed has changed.
       if (current->recalculate_flag || next->recalculate_flag) {
         // NOTE: Entry and exit factors always > 0 by all previous logic operations.     
-        calculate_trapezoid_for_block(current, current->entry_speed, next->entry_speed);      
+        calculate_trapezoid_for_block(current, current->entry_speed_sqr, next->entry_speed_sqr);      
         current->recalculate_flag = false; // Reset current only to ensure next trapezoid is computed
       }
-    }
+
     block_index = next_block_index( block_index );
   }
+  
   // Last/newest block in buffer. Exit speed is set with MINIMUM_PLANNER_SPEED. Always recalculated.
-  calculate_trapezoid_for_block(next, next->entry_speed, MINIMUM_PLANNER_SPEED);
+  calculate_trapezoid_for_block(next, next->entry_speed_sqr, MINIMUM_PLANNER_SPEED*MINIMUM_PLANNER_SPEED);
   next->recalculate_flag = false;
+  
+//   }
 }
 
 void plan_reset_buffer() 
@@ -342,18 +338,18 @@ void plan_buffer_line(float x, float y, float z, float feed_rate, uint8_t invert
     unit_vec[Z_AXIS] = -unit_vec[Z_AXIS];
   }
   
-  // Calculate speed in mm/minute for each axis. No divide by zero due to previous checks.
+  // Calculate speed in mm/minute and stepper rate for each axis. No divide by zero due to previous checks.
   // NOTE: Minimum stepper speed is limited by MINIMUM_STEPS_PER_MINUTE in stepper.c
   if (invert_feed_rate) { feed_rate = block->millimeters/feed_rate; }
-  block->nominal_speed = feed_rate; // (mm/min) Always > 0
+  block->nominal_speed_sqr = feed_rate*feed_rate; // (mm/min)^2. Always > 0
+  block->nominal_rate = ceil(feed_rate*(RANADE_MULTIPLIER/(60.0*ISR_TICKS_PER_SECOND))); // (mult*mm/isr_tic)
   
   // TODO: When acceleration independence is installed, it can be kept in terms of 2*acceleration for 
   // each block. This could save some 2*acceleration multiplications elsewhere. Need to check though.
   
-  // Compute the acceleration, nominal rate, and distance traveled per step event for the stepper algorithm.
+  // Compute the acceleration and distance traveled per step event for the stepper algorithm.
   block->rate_delta = ceil(settings.acceleration*
     ((RANADE_MULTIPLIER/(60*60))/(ISR_TICKS_PER_SECOND*ACCELERATION_TICKS_PER_SECOND))); // (mult*mm/isr_tic/accel_tic)
-  block->nominal_rate = ceil(block->nominal_speed*(RANADE_MULTIPLIER/(60.0*ISR_TICKS_PER_SECOND))); // (mult*mm/isr_tic)
   block->d_next = ceil((block->millimeters*RANADE_MULTIPLIER)/block->step_event_count); // (mult*mm/step)
   
   // Compute maximum allowable entry speed at junction by centripetal acceleration approximation.
@@ -365,16 +361,16 @@ void plan_buffer_line(float x, float y, float z, float feed_rate, uint8_t invert
   // path width or max_jerk in the previous grbl version. This approach does not actually deviate 
   // from path, but used as a robust way to compute cornering speeds, as it takes into account the
   // nonlinearities of both the junction angle and junction velocity.
-  // NOTE: This is basically an exact path mode (G61), but it doesn't come to a complete stop unless
-  // the junction deviation value is high. In the future, if continuous mode (G64) is desired, the
-  // math here is exactly the same. Instead of motioning all the way to junction point, the machine
-  // will just need to follow the arc circle defined above and check if the arc radii are no longer
-  // than half of either line segment to ensure no overlapping. Right now, the Arduino likely doesn't
-  // have the horsepower to do these calculations at high feed rates.
-  float vmax_junction = MINIMUM_PLANNER_SPEED; // Set default max junction speed
+  // NOTE: If the junction deviation value is finite, Grbl executes the motions in an exact path 
+  // mode (G61). If the junction deviation value is zero, Grbl will execute the motion in an exact
+  // stop mode (G61.1) manner. In the future, if continuous mode (G64) is desired, the math here
+  // is exactly the same. Instead of motioning all the way to junction point, the machine will
+  // just follow the arc circle defined here. The Arduino doesn't have the CPU cycles to perform
+  // a continuous mode path, but ARM-based microcontrollers most certainly do.
+  float vmax_junction_sqr = MINIMUM_PLANNER_SPEED*MINIMUM_PLANNER_SPEED; // Set default max junction speed
 
   // Skip first block or when previous_nominal_speed is used as a flag for homing and offset cycles.
-  if ((block_buffer_head != block_buffer_tail) && (pl.previous_nominal_speed > 0.0)) {
+  if ((block_buffer_head != block_buffer_tail) && (pl.previous_nominal_speed_sqr > 0.0)) {
     // Compute cosine of angle between previous and current path. (prev_unit_vec is negative)
     // NOTE: Max junction velocity is computed without sin() or acos() by trig half angle identity.
     float cos_theta = - pl.previous_unit_vec[X_AXIS] * unit_vec[X_AXIS] 
@@ -383,21 +379,21 @@ void plan_buffer_line(float x, float y, float z, float feed_rate, uint8_t invert
                         
     // Skip and use default max junction speed for 0 degree acute junction.
     if (cos_theta < 0.95) {
-      vmax_junction = min(pl.previous_nominal_speed,block->nominal_speed);
+      vmax_junction_sqr = min(pl.previous_nominal_speed_sqr,block->nominal_speed_sqr);
       // Skip and avoid divide by zero for straight junctions at 180 degrees. Limit to min() of nominal speeds.
       if (cos_theta > -0.95) {
         // Compute maximum junction velocity based on maximum acceleration and junction deviation
         float sin_theta_d2 = sqrt(0.5*(1.0-cos_theta)); // Trig half angle identity. Always positive.
-        vmax_junction = min(vmax_junction,
-          sqrt(settings.acceleration * settings.junction_deviation * sin_theta_d2/(1.0-sin_theta_d2)) );
+        vmax_junction_sqr = min(vmax_junction_sqr,
+           settings.acceleration * settings.junction_deviation * sin_theta_d2/(1.0-sin_theta_d2) );
       }
     }
   }
-  block->max_entry_speed = vmax_junction;
+  block->max_entry_speed_sqr = vmax_junction_sqr;
   
   // Initialize block entry speed. Compute block entry velocity backwards from user-defined MINIMUM_PLANNER_SPEED.
-  float v_allowable = calculate_final_velocity(settings.acceleration,MINIMUM_PLANNER_SPEED,block->millimeters);
-  block->entry_speed = min(vmax_junction, v_allowable);
+  float v_allowable_sqr = MINIMUM_PLANNER_SPEED*MINIMUM_PLANNER_SPEED + 2*settings.acceleration*block->millimeters;
+  block->entry_speed_sqr = min(vmax_junction_sqr, v_allowable_sqr);
 
   // Initialize planner efficiency flags
   // Set flag if block will always reach maximum junction speed regardless of entry/exit speeds.
@@ -407,13 +403,13 @@ void plan_buffer_line(float x, float y, float z, float feed_rate, uint8_t invert
   // block nominal speed limits both the current and next maximum junction speeds. Hence, in both
   // the reverse and forward planners, the corresponding block junction speed will always be at the
   // the maximum junction speed and may always be ignored for any speed reduction checks.
-  if (block->nominal_speed <= v_allowable) { block->nominal_length_flag = true; }
+  if (block->nominal_speed_sqr <= v_allowable_sqr) { block->nominal_length_flag = true; }
   else { block->nominal_length_flag = false; }
   block->recalculate_flag = true; // Always calculate trapezoid for new block
 
-  // Update previous path unit_vector and nominal speed
+  // Update previous path unit_vector and nominal speed (squared)
   memcpy(pl.previous_unit_vec, unit_vec, sizeof(unit_vec)); // pl.previous_unit_vec[] = unit_vec[]
-  pl.previous_nominal_speed = block->nominal_speed;
+  pl.previous_nominal_speed_sqr = block->nominal_speed_sqr;
   
   // Update buffer head and next buffer head indices
   block_buffer_head = next_buffer_head;  
@@ -446,8 +442,8 @@ void plan_cycle_reinitialize(int32_t step_events_remaining)
   block->step_event_count = step_events_remaining;
   
   // Re-plan from a complete stop. Reset planner entry speeds and flags.
-  block->entry_speed = 0.0;
-  block->max_entry_speed = 0.0;
+  block->entry_speed_sqr = 0.0;
+  block->max_entry_speed_sqr = 0.0;
   block->nominal_length_flag = false;
   block->recalculate_flag = true;
   planner_recalculate();  

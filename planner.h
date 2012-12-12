@@ -37,9 +37,9 @@ typedef struct {
   int32_t  step_event_count;          // The number of step events required to complete this block
 
   // Fields used by the motion planner to manage acceleration
-  float nominal_speed;               // The nominal speed for this block in mm/min  
-  float entry_speed;                 // Entry speed at previous-current block junction in mm/min
-  float max_entry_speed;             // Maximum allowable junction entry speed in mm/min
+  float nominal_speed_sqr;           // The nominal speed for this block in mm/min  
+  float entry_speed_sqr;             // Entry speed at previous-current block junction in mm/min
+  float max_entry_speed_sqr;         // Maximum allowable junction entry speed in mm/min
   float millimeters;                 // The total travel of this block in mm
   uint8_t recalculate_flag;          // Planner flag to recalculate trapezoids on entry junction
   uint8_t nominal_length_flag;       // Planner flag for nominal speed always reached

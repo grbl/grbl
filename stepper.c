@@ -30,7 +30,6 @@
 
 // Some useful constants
 #define TICKS_PER_MICROSECOND (F_CPU/1000000)
-// #define CYCLES_PER_ACCELERATION_TICK ((TICKS_PER_MICROSECOND*1000000)/ACCELERATION_TICKS_PER_SECOND)
 #define INTERRUPTS_PER_ACCELERATION_TICK (ISR_TICKS_PER_SECOND/ACCELERATION_TICKS_PER_SECOND)
 #define CRUISE_RAMP 0
 #define ACCEL_RAMP 1
@@ -189,7 +188,7 @@ ISR(TIMER2_COMPA_vect)
         
         // Initialize ramp type.
         if (st.step_events_remaining == current_block->decelerate_after) { st.ramp_type = DECEL_RAMP; }
-        else if (current_block->entry_speed == current_block->nominal_speed) { st.ramp_type = CRUISE_RAMP; }
+        else if (st.delta_d == current_block->nominal_rate) { st.ramp_type = CRUISE_RAMP; }
         else { st.ramp_type = ACCEL_RAMP; }
       }
       
