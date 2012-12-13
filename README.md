@@ -1,5 +1,6 @@
-h1. Grbl - An embedded g-code interpreter and motion-controller for the Arduino/AVR328 microcontroller
-    
+#Grbl - An embedded g-code interpreter and motion-controller for the Arduino/AVR328 microcontroller
+------------
+
 Grbl is a no-compromise, high performance, low cost alternative to parallel-port-based motion control for CNC milling. It will run on a vanilla Arduino (Duemillanove/Uno) as long as it sports an Atmega 328. 
 
 The controller is written in highly optimized C utilizing every clever feature of the AVR-chips to achieve precise timing and asynchronous operation. It is able to m	aintain more than 30kHz of stable, jitter free control pulses.
@@ -8,23 +9,23 @@ It accepts standards-compliant G-code and has been tested with the output of sev
 
 Grbl includes full acceleration management with look ahead. That means the controller will look up to 18 motions into the future and plan its velocities ahead to deliver smooth acceleration and jerk-free cornering.
 
-*Downloads (Right-click and Save-as):*
-_Master_
-[Grbl v0.8c Atmega328p 16mhz 9600baud](http://bit.ly/SSdCJE)
+##Downloads (Right-Click and Save-Link-As):
+_**Master Branch:**_
+* [Grbl v0.8c Atmega328p 16mhz 9600baud](http://bit.ly/SSdCJE)
 
-_Edge_
-[Grbl v0.9a Build 2012-12-10](http://bit.ly/UDBwpZ)
+_**Edge/Development Branch:**_
+* [Grbl v0.9a Build 2012-12-10](http://bit.ly/UDBwpZ)
 
-_Archives_
-[Grbl v0.8a Atmega328p 16mhz 9600baud](http://bit.ly/TVCTVv)
-[Grbl v0.7d Atmega328p 16mhz 9600baud](http://bit.ly/ZhL15G)
-[Grbl v0.6b Atmega328p 16mhz 9600baud](http://bit.ly/VD04A5)
-[Grbl v0.6b Atmega168 16mhz 9600baud](http://bit.ly/SScWnE)
-[Grbl v0.51 Atmega328p 16mhz 9600baud](http://bit.ly/W75BS1)
-[Grbl v0.51 Atmega168 16mhz 9600baud](http://bit.ly/VXyrYu)
+_**Archives:**_
+* [Grbl v0.8a Atmega328p 16mhz 9600baud](http://bit.ly/TVCTVv)
+* [Grbl v0.7d Atmega328p 16mhz 9600baud](http://bit.ly/ZhL15G)
+* [Grbl v0.6b Atmega328p 16mhz 9600baud](http://bit.ly/VD04A5)
+* [Grbl v0.6b Atmega168 16mhz 9600baud](http://bit.ly/SScWnE)
+* [Grbl v0.51 Atmega328p 16mhz 9600baud](http://bit.ly/W75BS1)
+* [Grbl v0.51 Atmega168 16mhz 9600baud](http://bit.ly/VXyrYu)
 
 
-*Changelog for v0.8 from v0.7:*
+##Changelog for v0.8 from v0.7:
   - Major structural overhaul to allow for multi-tasking events and new feature sets.
   - Run-time command control: Feed hold (pause), Cycle start (resume), Reset (abort), Status reporting (current position and state).
   - Controlled feed hold with deceleration to ensure no skipped steps and loss of location.
