@@ -41,8 +41,8 @@ typedef struct {
   float entry_speed_sqr;             // Entry speed at previous-current block junction in mm/min
   float max_entry_speed_sqr;         // Maximum allowable junction entry speed in mm/min
   float millimeters;                 // The total travel of this block in mm
+  float acceleration;
   uint8_t recalculate_flag;          // Planner flag to recalculate trapezoids on entry junction
-  uint8_t nominal_length_flag;       // Planner flag for nominal speed always reached
 
   // Settings for the trapezoid generator
   uint32_t initial_rate;              // The step rate at start of block  

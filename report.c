@@ -152,22 +152,24 @@ void report_grbl_settings() {
   printPgmString(PSTR(" (default seek, mm/min)\r\n$6=")); printInteger(settings.invert_mask); 
   printPgmString(PSTR(" (step port invert mask, int:")); print_uint8_base2(settings.invert_mask);  
   printPgmString(PSTR(")\r\n$7=")); printInteger(settings.stepper_idle_lock_time);
-  printPgmString(PSTR(" (step idle delay, msec)\r\n$8=")); printFloat(settings.acceleration/(60*60)); // Convert from mm/min^2 for human readability
-  printPgmString(PSTR(" (acceleration, mm/sec^2)\r\n$9=")); printFloat(settings.junction_deviation);
-  printPgmString(PSTR(" (junction deviation, mm)\r\n$10=")); printFloat(settings.mm_per_arc_segment);
-  printPgmString(PSTR(" (arc, mm/segment)\r\n$11=")); printInteger(settings.n_arc_correction);
-  printPgmString(PSTR(" (n-arc correction, int)\r\n$12=")); printInteger(settings.decimal_places);
-  printPgmString(PSTR(" (n-decimals, int)\r\n$13=")); printInteger(bit_istrue(settings.flags,BITFLAG_REPORT_INCHES));
-  printPgmString(PSTR(" (report inches, bool)\r\n$14=")); printInteger(bit_istrue(settings.flags,BITFLAG_AUTO_START));
-  printPgmString(PSTR(" (auto start, bool)\r\n$15=")); printInteger(bit_istrue(settings.flags,BITFLAG_INVERT_ST_ENABLE));
-  printPgmString(PSTR(" (invert step enable, bool)\r\n$16=")); printInteger(bit_istrue(settings.flags,BITFLAG_HARD_LIMIT_ENABLE));
-  printPgmString(PSTR(" (hard limits, bool)\r\n$17=")); printInteger(bit_istrue(settings.flags,BITFLAG_HOMING_ENABLE));
-  printPgmString(PSTR(" (homing cycle, bool)\r\n$18=")); printInteger(settings.homing_dir_mask);
+  printPgmString(PSTR(" (step idle delay, msec)\r\n$8=")); printFloat(settings.acceleration[X_AXIS]/(60*60)); // Convert from mm/min^2 for human readability
+  printPgmString(PSTR(" (x acceleration, mm/sec^2)\r\n$9=")); printFloat(settings.acceleration[Y_AXIS]/(60*60)); // Convert from mm/min^2 for human readability
+  printPgmString(PSTR(" (y acceleration, mm/sec^2)\r\n$10=")); printFloat(settings.acceleration[Z_AXIS]/(60*60)); // Convert from mm/min^2 for human readability
+  printPgmString(PSTR(" (z acceleration, mm/sec^2)\r\n$11=")); printFloat(settings.junction_deviation);
+  printPgmString(PSTR(" (junction deviation, mm)\r\n$12=")); printFloat(settings.mm_per_arc_segment);
+  printPgmString(PSTR(" (arc, mm/segment)\r\n$13=")); printInteger(settings.n_arc_correction);
+  printPgmString(PSTR(" (n-arc correction, int)\r\n$14=")); printInteger(settings.decimal_places);
+  printPgmString(PSTR(" (n-decimals, int)\r\n$15=")); printInteger(bit_istrue(settings.flags,BITFLAG_REPORT_INCHES));
+  printPgmString(PSTR(" (report inches, bool)\r\n$16=")); printInteger(bit_istrue(settings.flags,BITFLAG_AUTO_START));
+  printPgmString(PSTR(" (auto start, bool)\r\n$17=")); printInteger(bit_istrue(settings.flags,BITFLAG_INVERT_ST_ENABLE));
+  printPgmString(PSTR(" (invert step enable, bool)\r\n$18=")); printInteger(bit_istrue(settings.flags,BITFLAG_HARD_LIMIT_ENABLE));
+  printPgmString(PSTR(" (hard limits, bool)\r\n$19=")); printInteger(bit_istrue(settings.flags,BITFLAG_HOMING_ENABLE));
+  printPgmString(PSTR(" (homing cycle, bool)\r\n$20=")); printInteger(settings.homing_dir_mask);
   printPgmString(PSTR(" (homing dir invert mask, int:")); print_uint8_base2(settings.homing_dir_mask);  
-  printPgmString(PSTR(")\r\n$19=")); printFloat(settings.homing_feed_rate);
-  printPgmString(PSTR(" (homing feed, mm/min)\r\n$20=")); printFloat(settings.homing_seek_rate);
-  printPgmString(PSTR(" (homing seek, mm/min)\r\n$21=")); printInteger(settings.homing_debounce_delay);
-  printPgmString(PSTR(" (homing debounce, msec)\r\n$22=")); printFloat(settings.homing_pulloff);
+  printPgmString(PSTR(")\r\n$21=")); printFloat(settings.homing_feed_rate);
+  printPgmString(PSTR(" (homing feed, mm/min)\r\n$22=")); printFloat(settings.homing_seek_rate);
+  printPgmString(PSTR(" (homing seek, mm/min)\r\n$23=")); printInteger(settings.homing_debounce_delay);
+  printPgmString(PSTR(" (homing debounce, msec)\r\n$24=")); printFloat(settings.homing_pulloff);
   printPgmString(PSTR(" (homing pull-off, mm)\r\n")); 
 }
 

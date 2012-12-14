@@ -29,7 +29,7 @@
 
 // Version of the EEPROM data. Will be used to migrate existing data from older versions of Grbl
 // when firmware is upgraded. Always stored in byte 0 of eeprom
-#define SETTINGS_VERSION 5
+#define SETTINGS_VERSION 50
 
 // Define bit flag masks for the boolean settings in settings.flag.
 #define BITFLAG_REPORT_INCHES      bit(0)
@@ -56,14 +56,14 @@
 
 // Global persistent settings (Stored from byte EEPROM_ADDR_GLOBAL onwards)
 typedef struct {
-  float steps_per_mm[3];
+  float steps_per_mm[N_AXIS];
   uint8_t microsteps;
   uint8_t pulse_microseconds;
   float default_feed_rate;
   float default_seek_rate;
   uint8_t invert_mask;
   float mm_per_arc_segment;
-  float acceleration;
+  float acceleration[N_AXIS];
   float junction_deviation;
   uint8_t flags;  // Contains default boolean settings
   uint8_t homing_dir_mask;

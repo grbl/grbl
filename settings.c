@@ -75,7 +75,9 @@ void settings_reset(bool reset_all) {
     settings.pulse_microseconds = DEFAULT_STEP_PULSE_MICROSECONDS;
     settings.default_feed_rate = DEFAULT_FEEDRATE;
     settings.default_seek_rate = DEFAULT_RAPID_FEEDRATE;
-    settings.acceleration = DEFAULT_ACCELERATION;
+    settings.acceleration[X_AXIS] = DEFAULT_ACCELERATION;
+    settings.acceleration[Y_AXIS] = DEFAULT_ACCELERATION;
+    settings.acceleration[Z_AXIS] = DEFAULT_ACCELERATION;
     settings.mm_per_arc_segment = DEFAULT_MM_PER_ARC_SEGMENT;
     settings.invert_mask = DEFAULT_STEPPING_INVERT_MASK;
     settings.junction_deviation = DEFAULT_JUNCTION_DEVIATION;
@@ -164,37 +166,39 @@ uint8_t settings_store_global_setting(int parameter, float value) {
     case 5: settings.default_seek_rate = value; break;
     case 6: settings.invert_mask = trunc(value); break;
     case 7: settings.stepper_idle_lock_time = round(value); break;
-    case 8: settings.acceleration = value*60*60; break; // Convert to mm/min^2 for grbl internal use.
-    case 9: settings.junction_deviation = fabs(value); break;
-    case 10: settings.mm_per_arc_segment = value; break;
-    case 11: settings.n_arc_correction = round(value); break;
-    case 12: settings.decimal_places = round(value); break;
-    case 13:
+    case 8: settings.acceleration[X_AXIS] = value*60*60; break; // Convert to mm/min^2 for grbl internal use.
+    case 9: settings.acceleration[Y_AXIS] = value*60*60; break; // Convert to mm/min^2 for grbl internal use.
+    case 10: settings.acceleration[Z_AXIS] = value*60*60; break; // Convert to mm/min^2 for grbl internal use.
+    case 11: settings.junction_deviation = fabs(value); break;
+    case 12: settings.mm_per_arc_segment = value; break;
+    case 13: settings.n_arc_correction = round(value); break;
+    case 14: settings.decimal_places = round(value); break;
+    case 15:
       if (value) { settings.flags |= BITFLAG_REPORT_INCHES; }
       else { settings.flags &= ~BITFLAG_REPORT_INCHES; }
       break;
-    case 14: // Reset to ensure change. Immediate re-init may cause problems.
+    case 16: // Reset to ensure change. Immediate re-init may cause problems.
       if (value) { settings.flags |= BITFLAG_AUTO_START; }
       else { settings.flags &= ~BITFLAG_AUTO_START; }
       break;
-    case 15: // Reset to ensure change. Immediate re-init may cause problems.
+    case 17: // Reset to ensure change. Immediate re-init may cause problems.
       if (value) { settings.flags |= BITFLAG_INVERT_ST_ENABLE; }
       else { settings.flags &= ~BITFLAG_INVERT_ST_ENABLE; }
       break;
-    case 16:
+    case 18:
       if (value) { settings.flags |= BITFLAG_HARD_LIMIT_ENABLE; }
       else { settings.flags &= ~BITFLAG_HARD_LIMIT_ENABLE; }
       limits_init(); // Re-init to immediately change. NOTE: Nice to have but could be problematic later.
       break;
-    case 17:
+    case 19:
       if (value) { settings.flags |= BITFLAG_HOMING_ENABLE; }
       else { settings.flags &= ~BITFLAG_HOMING_ENABLE; }
       break;
-    case 18: settings.homing_dir_mask = trunc(value); break;
-    case 19: settings.homing_feed_rate = value; break;
-    case 20: settings.homing_seek_rate = value; break;
-    case 21: settings.homing_debounce_delay = round(value); break;
-    case 22: settings.homing_pulloff = value; break;
+    case 20: settings.homing_dir_mask = trunc(value); break;
+    case 21: settings.homing_feed_rate = value; break;
+    case 22: settings.homing_seek_rate = value; break;
+    case 23: settings.homing_debounce_delay = round(value); break;
+    case 24: settings.homing_pulloff = value; break;
     default: 
       return(STATUS_INVALID_STATEMENT);
   }

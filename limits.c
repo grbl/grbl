@@ -121,7 +121,7 @@ static void homing_cycle(uint8_t cycle_mask, int8_t pos_dir, bool invert_pin, fl
   float ds = step_event_count/sqrt(dist);
 
   // Compute the adjusted step rate change with each acceleration tick. (in step/min/acceleration_tick)
-  uint32_t delta_rate = ceil( ds*settings.acceleration/(60*ACCELERATION_TICKS_PER_SECOND));
+  uint32_t delta_rate = ceil( ds*settings.acceleration[X_AXIS]/(60*ACCELERATION_TICKS_PER_SECOND));
   
   #ifdef HOMING_RATE_ADJUST
     // Adjust homing rate so a multiple axes moves all at the homing rate independently.
