@@ -263,9 +263,14 @@ ISR(TIMER1_COMPA_vect)
         } else if (st.step_events_completed >= current_block->decelerate_after) {
           // Reset trapezoid tick cycle counter to make sure that the deceleration is performed the
           // same every time. Reset to CYCLES_PER_ACCELERATION_TICK/2 to follow the midpoint rule for
-          // an accurate approximation of the deceleration curve.
+          // an accurate approximation of the deceleration curve. For triangle profiles, down count
+          // from current cycle counter to ensure exact deceleration curve.
           if (st.step_events_completed == current_block-> decelerate_after) {
-            st.trapezoid_tick_cycle_counter = CYCLES_PER_ACCELERATION_TICK/2;
+            if (st.trapezoid_adjusted_rate == current_block->nominal_rate) {
+              st.trapezoid_tick_cycle_counter = CYCLES_PER_ACCELERATION_TICK/2; // Trapezoid profile
+            } else {  
+              st.trapezoid_tick_cycle_counter = CYCLES_PER_ACCELERATION_TICK-st.trapezoid_tick_cycle_counter; // Triangle profile
+            }
           } else {
             // Iterate cycle counter and check if speeds need to be reduced.
             if ( iterate_trapezoid_cycle_counter() ) {  

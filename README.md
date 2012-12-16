@@ -14,7 +14,8 @@ _**Master Branch:**_
 * [Grbl v0.8c Atmega328p 16mhz 9600baud](http://bit.ly/SSdCJE)
 
 _**Edge/Development Branch:**_
-* [Grbl v0.9a Build 2012-12-10](http://bit.ly/UDBwpZ)
+* [Grbl v0.9a Build 2012-12-16](http://bit.ly/UUTOD4) : Axes acceleration and maximum velocity independence installed. Lowered 20kHz step rate max. Bugs still exist. For testing only. Settings WILL be over-written.
+* [Grbl v0.9a Build 2012-12-10](http://bit.ly/UDBwpZ) : New experimental stepper algorithm. Smoother. 30kHz max. Bugs exist (Homing). For testing only. Settings WILL be over-written.
 
 _**Archives:**_
 * [Grbl v0.8a Atmega328p 16mhz 9600baud](http://bit.ly/TVCTVv)
