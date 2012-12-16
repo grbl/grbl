@@ -47,7 +47,7 @@ typedef struct {
   // Used by Pramod Ranade inverse time algorithm
   int32_t delta_d;     // Ranade distance traveled per interrupt tick
   int32_t d_counter;   // Ranade distance traveled since last step event
-  uint16_t ramp_count; // Acceleration interrupt tick counter. 
+  uint32_t ramp_count; // Acceleration interrupt tick counter. 
   uint8_t ramp_type; // Ramp type variable.
   uint8_t execute_step; // Flags step execution for each interrupt.
   
@@ -144,10 +144,8 @@ ISR(TIMER2_COMPA_vect)
 // SPINDLE_ENABLE_PORT ^= 1<<SPINDLE_ENABLE_BIT; // Debug: Used to time ISR
   if (busy) { return; } // The busy-flag is used to avoid reentering this interrupt
   
-  // Set direction pins. New block dir will always be set one timer tick before any step pulse.
-  STEPPING_PORT = (STEPPING_PORT & ~DIRECTION_MASK) | (out_bits & DIRECTION_MASK);
-
-  // Pulse stepper pins, if flagged.
+  // Pulse stepper port pins, if flagged. New block dir will always be set one timer tick 
+  // before any step pulse due to algorithm design.
   if (st.execute_step) {
     st.execute_step = false;
     STEPPING_PORT = ( STEPPING_PORT & ~(DIRECTION_MASK | STEP_MASK) ) | out_bits;
@@ -170,8 +168,9 @@ ISR(TIMER2_COMPA_vect)
       // of a block, hence helping minimize total time spent in this interrupt.
 
       // Initialize direction bits for block      
-      out_bits = current_block->direction_bits ^ (settings.invert_mask & DIRECTION_MASK);
-            
+      out_bits = current_block->direction_bits ^ settings.invert_mask;
+      st.execute_step = true; // Set flag to set direction bits.
+      
       // Initialize Bresenham variables
       st.counter_x = (current_block->step_event_count >> 1);
       st.counter_y = st.counter_x;
@@ -216,7 +215,7 @@ ISR(TIMER2_COMPA_vect)
         if (st.delta_d > current_block->rate_delta) {
           st.delta_d -= current_block->rate_delta;
         } else {
-          st.delta_d = MINIMUM_STEP_RATE; // Prevent integer overflow
+          st.delta_d >>= 1; // Integer divide by 2 until complete. Also prevents overflow.
         }
       }
     }
@@ -278,10 +277,14 @@ ISR(TIMER2_COMPA_vect)
       if (st.ramp_type != DECEL_RAMP) {
         // Acceleration and cruise handled by ramping. Just check for deceleration.
         if (st.step_events_remaining <=  current_block->decelerate_after) {
-          if (st.step_events_remaining == current_block->decelerate_after) { 
-            st.ramp_count = INTERRUPTS_PER_ACCELERATION_TICK/2; 
-          }
           st.ramp_type = DECEL_RAMP;
+          if (st.step_events_remaining == current_block->decelerate_after) {
+            if (st.delta_d == current_block->nominal_rate) {
+              st.ramp_count = INTERRUPTS_PER_ACCELERATION_TICK/2;  // Set ramp counter for trapezoid
+            } else {
+              st.ramp_count = INTERRUPTS_PER_ACCELERATION_TICK-st.ramp_count; // Set ramp counter for triangle
+            }
+          }
         }
       }
     } else {
@@ -302,7 +305,7 @@ ISR(TIMER2_COMPA_vect)
 ISR(TIMER0_OVF_vect)
 {
   STEPPING_PORT = (STEPPING_PORT & ~STEP_MASK) | (settings.invert_mask & STEP_MASK); 
-  TCNT0 = 0; // Disable timer until needed.
+  TCCR0B = 0; // Disable timer until needed.
 }
 
 

@@ -41,8 +41,8 @@
 // (1 minute)/feed_rate time.
 // NOTE: This is the primary gateway to the grbl planner. All line motions, including arc line 
 // segments, must pass through this routine before being passed to the planner. The seperation of
-// mc_line and plan_buffer_line is done primarily to make backlash compensation integration simple
-// and direct.
+// mc_line and plan_buffer_line is done primarily to make backlash compensation or canned cycle
+// integration simple and direct.
 // TODO: Check for a better way to avoid having to push the arguments twice for non-backlash cases.
 // However, this keeps the memory requirements lower since it doesn't have to call and hold two 
 // plan_buffer_lines in memory. Grbl only has to retain the original line input variables during a
@@ -83,7 +83,7 @@ void mc_line(float x, float y, float z, float feed_rate, uint8_t invert_feed_rat
   // when the buffer is completely full and primed; auto-starting, if there was only one g-code 
   // command sent during manual operation; or if a system is prone to buffer starvation, auto-start
   // helps make sure it minimizes any dwelling/motion hiccups and keeps the cycle going. 
-  if (sys.auto_start) { st_cycle_start(); }
+  // if (sys.auto_start) { st_cycle_start(); }
 }
 
 

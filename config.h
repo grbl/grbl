@@ -122,7 +122,7 @@
 // frequency goes up. So there will be little left for other processes like arcs.  
 //   In future versions, more work will be done to increase the step rates but still stay around
 // 20kHz by performing two steps per step event, rather than just one.
-#define ISR_TICKS_PER_SECOND 30000L  // Integer (Hz)
+#define ISR_TICKS_PER_SECOND 20000L  // Integer (Hz)
 
 // The Ranade algorithm can use either floating point or long integers for its counters, but for 
 // integers the counter values must be scaled since these values can be very small (10^-6). This

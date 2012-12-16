@@ -36,7 +36,6 @@ typedef struct {
   uint8_t microsteps;
   uint8_t pulse_microseconds;
   float default_feed_rate;
-  float default_seek_rate;
   uint8_t invert_mask;
   float mm_per_arc_segment;
   float acceleration;
@@ -74,7 +73,9 @@ void settings_reset(bool reset_all) {
     settings.steps_per_mm[Z_AXIS] = DEFAULT_Z_STEPS_PER_MM;
     settings.pulse_microseconds = DEFAULT_STEP_PULSE_MICROSECONDS;
     settings.default_feed_rate = DEFAULT_FEEDRATE;
-    settings.default_seek_rate = DEFAULT_RAPID_FEEDRATE;
+    settings.max_velocity[X_AXIS] = DEFAULT_RAPID_FEEDRATE;
+    settings.max_velocity[Y_AXIS] = DEFAULT_RAPID_FEEDRATE;
+    settings.max_velocity[Z_AXIS] = DEFAULT_RAPID_FEEDRATE;
     settings.acceleration[X_AXIS] = DEFAULT_ACCELERATION;
     settings.acceleration[Y_AXIS] = DEFAULT_ACCELERATION;
     settings.acceleration[Z_AXIS] = DEFAULT_ACCELERATION;
@@ -159,46 +160,48 @@ uint8_t settings_store_global_setting(int parameter, float value) {
     case 0: case 1: case 2:
       if (value <= 0.0) { return(STATUS_SETTING_VALUE_NEG); } 
       settings.steps_per_mm[parameter] = value; break;
-    case 3: 
+    case 3: settings.max_velocity[X_AXIS] = value; break;
+    case 4: settings.max_velocity[Y_AXIS] = value; break;
+    case 5: settings.max_velocity[Z_AXIS] = value; break;
+    case 6: settings.acceleration[X_AXIS] = value*60*60; break; // Convert to mm/min^2 for grbl internal use.
+    case 7: settings.acceleration[Y_AXIS] = value*60*60; break; // Convert to mm/min^2 for grbl internal use.
+    case 8: settings.acceleration[Z_AXIS] = value*60*60; break; // Convert to mm/min^2 for grbl internal use.
+    case 9: 
       if (value < 3) { return(STATUS_SETTING_STEP_PULSE_MIN); }
       settings.pulse_microseconds = round(value); break;
-    case 4: settings.default_feed_rate = value; break;
-    case 5: settings.default_seek_rate = value; break;
-    case 6: settings.invert_mask = trunc(value); break;
-    case 7: settings.stepper_idle_lock_time = round(value); break;
-    case 8: settings.acceleration[X_AXIS] = value*60*60; break; // Convert to mm/min^2 for grbl internal use.
-    case 9: settings.acceleration[Y_AXIS] = value*60*60; break; // Convert to mm/min^2 for grbl internal use.
-    case 10: settings.acceleration[Z_AXIS] = value*60*60; break; // Convert to mm/min^2 for grbl internal use.
-    case 11: settings.junction_deviation = fabs(value); break;
-    case 12: settings.mm_per_arc_segment = value; break;
-    case 13: settings.n_arc_correction = round(value); break;
-    case 14: settings.decimal_places = round(value); break;
-    case 15:
+    case 10: settings.default_feed_rate = value; break;
+    case 11: settings.invert_mask = trunc(value); break;
+    case 12: settings.stepper_idle_lock_time = round(value); break;
+    case 13: settings.junction_deviation = fabs(value); break;
+    case 14: settings.mm_per_arc_segment = value; break;
+    case 15: settings.n_arc_correction = round(value); break;
+    case 16: settings.decimal_places = round(value); break;
+    case 17:
       if (value) { settings.flags |= BITFLAG_REPORT_INCHES; }
       else { settings.flags &= ~BITFLAG_REPORT_INCHES; }
       break;
-    case 16: // Reset to ensure change. Immediate re-init may cause problems.
+    case 18: // Reset to ensure change. Immediate re-init may cause problems.
       if (value) { settings.flags |= BITFLAG_AUTO_START; }
       else { settings.flags &= ~BITFLAG_AUTO_START; }
       break;
-    case 17: // Reset to ensure change. Immediate re-init may cause problems.
+    case 19: // Reset to ensure change. Immediate re-init may cause problems.
       if (value) { settings.flags |= BITFLAG_INVERT_ST_ENABLE; }
       else { settings.flags &= ~BITFLAG_INVERT_ST_ENABLE; }
       break;
-    case 18:
+    case 20:
       if (value) { settings.flags |= BITFLAG_HARD_LIMIT_ENABLE; }
       else { settings.flags &= ~BITFLAG_HARD_LIMIT_ENABLE; }
       limits_init(); // Re-init to immediately change. NOTE: Nice to have but could be problematic later.
       break;
-    case 19:
+    case 21:
       if (value) { settings.flags |= BITFLAG_HOMING_ENABLE; }
       else { settings.flags &= ~BITFLAG_HOMING_ENABLE; }
       break;
-    case 20: settings.homing_dir_mask = trunc(value); break;
-    case 21: settings.homing_feed_rate = value; break;
-    case 22: settings.homing_seek_rate = value; break;
-    case 23: settings.homing_debounce_delay = round(value); break;
-    case 24: settings.homing_pulloff = value; break;
+    case 22: settings.homing_dir_mask = trunc(value); break;
+    case 23: settings.homing_feed_rate = value; break;
+    case 24: settings.homing_seek_rate = value; break;
+    case 25: settings.homing_debounce_delay = round(value); break;
+    case 26: settings.homing_pulloff = value; break;
     default: 
       return(STATUS_INVALID_STATEMENT);
   }

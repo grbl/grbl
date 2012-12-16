@@ -31,6 +31,9 @@
 #include "config.h"
 #include "protocol.h"
 
+#define SOME_LARGE_VALUE 1000000.0 // Used by rapids and acceleration maximization calculations. Just needs
+                                   // to be larger than any feasible mm/min or mm/sec^2 value.
+
 static block_t block_buffer[BLOCK_BUFFER_SIZE];  // A ring buffer for motion instructions
 static volatile uint8_t block_buffer_head;       // Index of the next block to be pushed
 static volatile uint8_t block_buffer_tail;       // Index of the block to process now
@@ -43,9 +46,16 @@ typedef struct {
                                      // i.e. arcs, canned cycles, and backlash compensation.
   float previous_unit_vec[N_AXIS];   // Unit vector of previous path line segment
   float previous_nominal_speed_sqr;  // Nominal speed of previous path line segment
-  float inverse_steps_per_mm[N_AXIS];
+  float last_x, last_y, last_z;      // Target position of previous path line segment
 } planner_t;
 static planner_t pl;
+
+
+void plan_init() 
+{
+  plan_reset_buffer();
+  memset(&pl, 0, sizeof(pl)); // Clear planner struct
+}
 
 // Returns the index of the next block in the ring buffer
 // NOTE: Removed modulo (%) operator, which uses an expensive divide and multiplication.
@@ -93,10 +103,9 @@ static void calculate_trapezoid_for_block(block_t *block, float entry_speed_sqr,
 {  
   // Compute new initial rate for stepper algorithm
   block->initial_rate = ceil(sqrt(entry_speed_sqr)*(RANADE_MULTIPLIER/(60*ISR_TICKS_PER_SECOND))); // (mult*mm/isr_tic)
-  
+          
   // TODO: Compute new nominal rate if a feedrate override occurs.
   // block->nominal_rate = ceil(feed_rate*(RANADE_MULTIPLIER/(60.0*ISR_TICKS_PER_SECOND))); // (mult*mm/isr_tic)
-
     
   // Compute efficiency variable for following calculations. Removes a float divide and multiply.
   // TODO: If memory allows, this can be kept in the block buffer since it doesn't change, even after feed holds.
@@ -155,11 +164,29 @@ static void calculate_trapezoid_for_block(block_t *block, float entry_speed_sqr,
   All planner computations(1)(2) are performed in floating point to minimize numerical round-off errors. Only
   when planned values are converted to stepper rate parameters(3), these are integers. If another motion block
   is added while executing, the planner will re-plan and update the stored optimal velocity profile as it goes.
+  
+  Conceptually, the planner works like blowing up a balloon, where the balloon is the velocity profile. It's
+  constrained by the speeds at the beginning and end of the buffer, along with the maximum junction speeds and
+  nominal speeds of each block. Once a plan is computed, or balloon filled, this is the optimal velocity profile
+  through all of the motions in the buffer. Whenever a new block is added, this changes some of the limiting
+  conditions, or how the balloon is filled, so it has to be re-calculated to get the new optimal velocity profile.
+  
+  Also, since the planner only computes on what's in the planner buffer, some motions with lots of short line
+  segments, like arcs, may seem to move slow. This is because there simply isn't enough combined distance traveled 
+  in the entire buffer to accelerate up to the nominal speed and then decelerate to a stop at the end of the
+  buffer. There are a few simple solutions to this: (1) Maximize the machine acceleration. The planner will be 
+  able to compute higher speed profiles within the same combined distance. (2) Increase line segment(s) distance.
+  The more combined distance the planner has to use, the faster it can go. (3) Increase the MINIMUM_PLANNER_SPEED.
+  Not recommended. This will change what speed the planner plans to at the end of the buffer. Can lead to lost 
+  steps when coming to a stop. (4) [BEST] Increase the planner buffer size. The more combined distance, the 
+  bigger the balloon, or faster it can go. But this is not possible for 328p Arduinos because its limited memory 
+  is already maxed out. Future ARM versions should not have this issue, with look-ahead planner blocks numbering 
+  up to a hundred or more.
 
-  NOTE: As executing blocks complete and incoming streaming blocks are appended to the planner buffer, this
-  function is constantly re-calculating and must be as efficient as possible. For example, in situations like 
-  arc generation or complex curves, the short, rapid line segments can execute faster than new blocks can be 
-  added, and the planner buffer will then starve and empty, leading to weird hiccup-like jerky motions.
+  NOTE: Since this function is constantly re-calculating for every new incoming block, it must be as efficient
+  as possible. For example, in situations like arc generation or complex curves, the short, rapid line segments
+  can execute faster than new blocks can be added, and the planner buffer will then starve and empty, leading
+  to weird hiccup-like jerky motions.
 */
 static void planner_recalculate() 
 {     
@@ -170,7 +197,6 @@ static void planner_recalculate()
 //   if (block_buffer_head != block_buffer_tail) { 
 
   float entry_speed_sqr;
-  float max_entry_speed_sqr;
 
   // Perform reverse planner pass. Skip the head(end) block since it is already initialized, and skip the
   // tail(first) block to prevent over-writing of the initial entry speed. 
@@ -182,24 +208,23 @@ static void planner_recalculate()
     next = current;
     current = &block_buffer[block_index];
     
-    // Determine maximum entry speed at junction. Computed here since feedrate overrides can alter
-    // the planner nominal speeds at any time.
-    max_entry_speed_sqr = current->max_entry_speed_sqr;
-    if (max_entry_speed_sqr > current->nominal_speed_sqr) { max_entry_speed_sqr = current->nominal_speed_sqr; }
-    if (max_entry_speed_sqr > next->nominal_speed_sqr) { max_entry_speed_sqr = next->nominal_speed_sqr; }
+    // TODO: Determine maximum entry speed at junction for feedrate overrides, since they can alter
+    // the planner nominal speeds at any time. This calc could be done in the override handler, but 
+    // this could require an additional variable to be stored to differentiate the programmed nominal
+    // speeds, max junction speed, and override speeds/scalar.
     
     // If entry speed is already at the maximum entry speed, no need to recheck. Block is cruising.
     // If not, block in state of acceleration or deceleration. Reset entry speed to maximum and 
     // check for maximum allowable speed reductions to ensure maximum possible planned speed.
-    if (current->entry_speed_sqr != max_entry_speed_sqr) {
+    if (current->entry_speed_sqr != current->max_entry_speed_sqr) {
 
-      current->entry_speed_sqr = max_entry_speed_sqr;
+      current->entry_speed_sqr = current->max_entry_speed_sqr;
       current->recalculate_flag = true; // Almost always changes. So force recalculate.       
 
-      if (max_entry_speed_sqr > next->entry_speed_sqr) {
+      if (next->entry_speed_sqr < current->max_entry_speed_sqr) {
         // Computes: v_entry^2 = v_exit^2 + 2*acceleration*distance      
         entry_speed_sqr = next->entry_speed_sqr + 2*current->acceleration*current->millimeters;
-        if (entry_speed_sqr < max_entry_speed_sqr) {
+        if (entry_speed_sqr < current->max_entry_speed_sqr) {
           current->entry_speed_sqr = entry_speed_sqr;
         }
       } 
@@ -253,15 +278,6 @@ void plan_reset_buffer()
   next_buffer_head = next_block_index(block_buffer_head);
 }
 
-void plan_init() 
-{
-  plan_reset_buffer();
-  memset(&pl, 0, sizeof(pl)); // Clear planner struct
-  pl.inverse_steps_per_mm[X_AXIS] = 1/settings.steps_per_mm[X_AXIS];
-  pl.inverse_steps_per_mm[Y_AXIS] = 1/settings.steps_per_mm[Y_AXIS];
-  pl.inverse_steps_per_mm[Z_AXIS] = 1/settings.steps_per_mm[Z_AXIS];  
-}
-
 inline void plan_discard_current_block() 
 {
   if (block_buffer_head != block_buffer_tail) {
@@ -278,7 +294,11 @@ inline block_t *plan_get_current_block()
 // Returns the availability status of the block ring buffer. True, if full.
 uint8_t plan_check_full_buffer()
 {
-  if (block_buffer_tail == next_buffer_head) { return(true); }
+  if (block_buffer_tail == next_buffer_head) { 
+    // TODO: Move this back into motion control. Shouldn't be here, but it's efficient.
+    if (sys.auto_start) { st_cycle_start(); } // Auto-cycle start when buffer is full.
+    return(true); 
+  }
   return(false);
 }
 
@@ -298,10 +318,11 @@ void plan_synchronize()
 // All position data passed to the planner must be in terms of machine position to keep the planner 
 // independent of any coordinate system changes and offsets, which are handled by the g-code parser.
 // NOTE: Assumes buffer is available. Buffer checks are handled at a higher level by motion_control.
+// Also the feed rate input value is used in three ways: as a normal feed rate if invert_feed_rate
+// is false, as inverse time if invert_feed_rate is true, or as seek/rapids rate if the feed_rate
+// value is negative (and invert_feed_rate always false).
 void plan_buffer_line(float x, float y, float z, float feed_rate, uint8_t invert_feed_rate) 
 {
-//   SPINDLE_ENABLE_PORT ^= 1<<SPINDLE_ENABLE_BIT;
-
   // Prepare to set up new block
   block_t *block = &block_buffer[block_buffer_head];
 
@@ -321,63 +342,55 @@ void plan_buffer_line(float x, float y, float z, float feed_rate, uint8_t invert
   if (block->step_event_count == 0) { return; };
   
   // Compute path vector in terms of absolute step target and current positions
-  // TODO: Store last xyz in memory to remove steps_per_mm divides. Or come up with another way to save cycles.
-  // Or store pl.inverse_steps_per_mm to speed this up. Would be computed at initialization.
   float delta_mm[3];
-//   delta_mm[X_AXIS] = block->steps_x/settings.steps_per_mm[X_AXIS]; // 110 usec
-//   delta_mm[Y_AXIS] = block->steps_y/settings.steps_per_mm[Y_AXIS];
-//   delta_mm[Z_AXIS] = block->steps_z/settings.steps_per_mm[Z_AXIS];
-  delta_mm[X_AXIS] = block->steps_x*pl.inverse_steps_per_mm[X_AXIS]; // 50usec
-  delta_mm[Y_AXIS] = block->steps_y*pl.inverse_steps_per_mm[Y_AXIS];
-  delta_mm[Z_AXIS] = block->steps_z*pl.inverse_steps_per_mm[Z_AXIS];
+  delta_mm[X_AXIS] = x-pl.last_x;
+  delta_mm[Y_AXIS] = y-pl.last_y; 
+  delta_mm[Z_AXIS] = z-pl.last_z;
   block->millimeters = sqrt(delta_mm[X_AXIS]*delta_mm[X_AXIS] + delta_mm[Y_AXIS]*delta_mm[Y_AXIS] + 
                             delta_mm[Z_AXIS]*delta_mm[Z_AXIS]);
 
-  // Compute absolute value of the path unit vector for acceleration calculations.
-  float unit_vec[3];
-  float inverse_millimeters = 1.0/block->millimeters;  // Inverse millimeters to remove multiple divides	
-  unit_vec[X_AXIS] = delta_mm[X_AXIS]*inverse_millimeters;
-  unit_vec[Y_AXIS] = delta_mm[Y_AXIS]*inverse_millimeters;
-  unit_vec[Z_AXIS] = delta_mm[Z_AXIS]*inverse_millimeters;  
+  // Adjust feed_rate value to mm/min depending on type of rate input (normal, inverse time, or rapids)
+  // TODO: Need to distinguish a rapids vs feed move for overrides. Some flag of some sort.
+  if (feed_rate < 0) { feed_rate = SOME_LARGE_VALUE; } // Scaled down to absolute max/rapids rate later
+  else if (invert_feed_rate) { feed_rate = block->millimeters/feed_rate; }
 
-  // Calculate block acceleration based on the maximum possible axes acceleration parameters.
+  // Calculate the unit vector of the line move and the block maximum feed rate and acceleration limited
+  // by the maximum possible values. Block rapids rates are computed or feed rates are scaled down so
+  // they don't exceed the maximum axes velocities. The block acceleration is maximized based on direction
+  // and axes properties as well.
   // NOTE: This calculation assumes all axes are orthogonal (Cartesian) and works with ABC-axes,
   // if they are also orthogonal/independent. Operates on the absolute value of the unit vector.
-  // TODO: Install pl.inverse_acceleration to possibly speed up this calculation.
-  float accel_inv_scalar = 0.0;
-  if (unit_vec[X_AXIS]) { accel_inv_scalar = max(accel_inv_scalar,unit_vec[X_AXIS]/settings.acceleration[X_AXIS]); }
-  if (unit_vec[Y_AXIS]) { accel_inv_scalar = max(accel_inv_scalar,unit_vec[Y_AXIS]/settings.acceleration[Y_AXIS]); }
-  if (unit_vec[Z_AXIS]) { accel_inv_scalar = max(accel_inv_scalar,unit_vec[Z_AXIS]/settings.acceleration[Z_AXIS]); }
-  block->acceleration = 1.0/accel_inv_scalar;
+  uint8_t i;
+  float unit_vec[N_AXIS], inverse_unit_vec_value;
+  float inverse_millimeters = 1.0/block->millimeters;  // Inverse millimeters to remove multiple float divides	
+  block->acceleration = SOME_LARGE_VALUE; // Scaled down to maximum acceleration
+  for (i=0; i<N_AXIS; i++) { 
+    if (delta_mm[i] == 0) { 
+      unit_vec[i] = 0;  // Store zero value. And avoid divide by zero.
+    } else {
+      // Compute absolute value unit vector
+      unit_vec[i] = delta_mm[i]*inverse_millimeters;
+      inverse_unit_vec_value = abs(1.0/unit_vec[i]);
+      // Check and limit feed rate against max axis velocities and scale accelerations to maximums
+      feed_rate = min(feed_rate,settings.max_velocity[i]*inverse_unit_vec_value);
+      block->acceleration = min(block->acceleration,settings.acceleration[i]*inverse_unit_vec_value);
+    }
+  }
 
-  // Compute direction bits and apply unit vector directions for junction speed calculations
-  block->direction_bits = 0;
-  if (target[X_AXIS] < pl.position[X_AXIS]) { 
-    block->direction_bits |= (1<<X_DIRECTION_BIT); 
-    unit_vec[X_AXIS] = -unit_vec[X_AXIS];
-  }
-  if (target[Y_AXIS] < pl.position[Y_AXIS]) {
-    block->direction_bits |= (1<<Y_DIRECTION_BIT);
-    unit_vec[Y_AXIS] = -unit_vec[Y_AXIS];
-  }
-  if (target[Z_AXIS] < pl.position[Z_AXIS]) { 
-    block->direction_bits |= (1<<Z_DIRECTION_BIT);
-    unit_vec[Z_AXIS] = -unit_vec[Z_AXIS];
-  }
-  
-  // Calculate speed in mm/minute and stepper rate for each axis. No divide by zero due to previous checks.
-  // NOTE: Minimum stepper speed is limited by MINIMUM_STEPS_PER_MINUTE in stepper.c
-  if (invert_feed_rate) { feed_rate = block->millimeters/feed_rate; }
+  // Compute nominal speed and rates
   block->nominal_speed_sqr = feed_rate*feed_rate; // (mm/min)^2. Always > 0
   block->nominal_rate = ceil(feed_rate*(RANADE_MULTIPLIER/(60.0*ISR_TICKS_PER_SECOND))); // (mult*mm/isr_tic)
-  
-  // TODO: When acceleration independence is installed, it can be kept in terms of 2*acceleration for 
-  // each block. This could save some 2*acceleration multiplications elsewhere. Need to check though.
-  
+
   // Compute the acceleration and distance traveled per step event for the stepper algorithm.
   block->rate_delta = ceil(block->acceleration*
-    (RANADE_MULTIPLIER/(60.0*60.0*ISR_TICKS_PER_SECOND*ACCELERATION_TICKS_PER_SECOND))); // (mult*mm/isr_tic/accel_tic)
+    ((RANADE_MULTIPLIER/(60.0*60.0))/(ISR_TICKS_PER_SECOND*ACCELERATION_TICKS_PER_SECOND))); // (mult*mm/isr_tic/accel_tic)
   block->d_next = ceil((block->millimeters*RANADE_MULTIPLIER)/block->step_event_count); // (mult*mm/step)
+  
+  // Compute direction bits. Bit enabled always means direction is negative.
+  block->direction_bits = 0;
+  if (unit_vec[X_AXIS] < 0) { block->direction_bits |= (1<<X_DIRECTION_BIT); }
+  if (unit_vec[Y_AXIS] < 0) { block->direction_bits |= (1<<Y_DIRECTION_BIT); }
+  if (unit_vec[Z_AXIS] < 0) { block->direction_bits |= (1<<Z_DIRECTION_BIT); }
 
   // Compute maximum allowable entry speed at junction by centripetal acceleration approximation.
   // Let a circle be tangent to both previous and current path line segments, where the junction 
@@ -406,22 +419,21 @@ void plan_buffer_line(float x, float y, float z, float feed_rate, uint8_t invert
                         
     // Skip and use default max junction speed for 0 degree acute junction.
     if (cos_theta < 0.95) {
+      block->max_entry_speed_sqr = min(block->nominal_speed_sqr,pl.previous_nominal_speed_sqr);
       // Skip and avoid divide by zero for straight junctions at 180 degrees. Limit to min() of nominal speeds.
       if (cos_theta > -0.95) {
         // Compute maximum junction velocity based on maximum acceleration and junction deviation
         float sin_theta_d2 = sqrt(0.5*(1.0-cos_theta)); // Trig half angle identity. Always positive.
-        block->max_entry_speed_sqr = block->acceleration * settings.junction_deviation * sin_theta_d2/(1.0-sin_theta_d2);
-      } else {
-        block->max_entry_speed_sqr = 1000000.0; //MAXIMUM_JUNCTION_SPEED;
+        block->max_entry_speed_sqr = min(block->max_entry_speed_sqr,
+           block->acceleration * settings.junction_deviation * sin_theta_d2/(1.0-sin_theta_d2));
       }
     }
   }  
 
   // Initialize block entry speed. Compute block entry velocity backwards from user-defined MINIMUM_PLANNER_SPEED.
-  block->entry_speed_sqr = MINIMUM_PLANNER_SPEED*MINIMUM_PLANNER_SPEED + 2*block->acceleration*block->millimeters;
-  if (block->entry_speed_sqr > pl.previous_nominal_speed_sqr) { block->entry_speed_sqr = pl.previous_nominal_speed_sqr; }
-  if (block->entry_speed_sqr > block->nominal_speed_sqr) { block->entry_speed_sqr = block->nominal_speed_sqr; }
-  if (block->entry_speed_sqr > block->max_entry_speed_sqr) { block->entry_speed_sqr = block->max_entry_speed_sqr; }
+  // TODO: This could be moved to the planner recalculate function.
+  block->entry_speed_sqr = min( block->max_entry_speed_sqr,
+      MINIMUM_PLANNER_SPEED*MINIMUM_PLANNER_SPEED + 2*block->acceleration*block->millimeters);
 
   // Set new block to be recalculated for conversion to stepper data.
   block->recalculate_flag = true;
@@ -429,24 +441,29 @@ void plan_buffer_line(float x, float y, float z, float feed_rate, uint8_t invert
   // Update previous path unit_vector and nominal speed (squared)
   memcpy(pl.previous_unit_vec, unit_vec, sizeof(unit_vec)); // pl.previous_unit_vec[] = unit_vec[]
   pl.previous_nominal_speed_sqr = block->nominal_speed_sqr;
-  
+    
+  // Update planner position
+  memcpy(pl.position, target, sizeof(target)); // pl.position[] = target[]
+  pl.last_x = x;
+  pl.last_y = y;
+  pl.last_z = z;
+
   // Update buffer head and next buffer head indices
   block_buffer_head = next_buffer_head;  
   next_buffer_head = next_block_index(block_buffer_head);
-  
-  // Update planner position
-  memcpy(pl.position, target, sizeof(target)); // pl.position[] = target[]
 
   planner_recalculate(); 
-//    SPINDLE_ENABLE_PORT ^= 1<<SPINDLE_ENABLE_BIT;
 }
 
-// Reset the planner position vector (in steps). Called by the system abort routine.
+// Reset the planner position vectors. Called by the system abort routine.
 void plan_set_current_position(int32_t x, int32_t y, int32_t z)
 {
   pl.position[X_AXIS] = x;
   pl.position[Y_AXIS] = y;
   pl.position[Z_AXIS] = z;
+  pl.last_x = x/settings.steps_per_mm[X_AXIS];
+  pl.last_y = y/settings.steps_per_mm[Y_AXIS];
+  pl.last_z = z/settings.steps_per_mm[Z_AXIS];
 }
 
 // Re-initialize buffer plan with a partially completed block, assumed to exist at the buffer tail.

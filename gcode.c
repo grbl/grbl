@@ -51,8 +51,7 @@ static void select_plane(uint8_t axis_0, uint8_t axis_1, uint8_t axis_2)
 void gc_init() 
 {
   memset(&gc, 0, sizeof(gc));
-  gc.feed_rate = settings.default_feed_rate; // Should be zero at initialization.
-//  gc.seek_rate = settings.default_seek_rate;
+  gc.feed_rate = settings.default_feed_rate;
   select_plane(X_AXIS, Y_AXIS, Z_AXIS);
   gc.absolute_mode = true;
   
@@ -247,9 +246,7 @@ uint8_t gc_execute_line(char *line)
      NOTE: Independent non-motion/settings parameters are set out of this order for code efficiency 
      and simplicity purposes, but this should not affect proper g-code execution. */
   
-  // ([F]: Set feed and seek rates.)
-  // TODO: Seek rates can change depending on the direction and maximum speeds of each axes. When
-  // max axis speed is installed, the calculation can be performed here, or maybe in the planner.
+  // ([F]: Set feed rate.)
     
   if (sys.state != STATE_CHECK_MODE) { 
     //  ([M6]: Tool change should be executed here.)
@@ -324,14 +321,14 @@ uint8_t gc_execute_line(char *line)
             target[i] = gc.position[i];
           }
         }
-        mc_line(target[X_AXIS], target[Y_AXIS], target[Z_AXIS], settings.default_seek_rate, false);
+        mc_line(target[X_AXIS], target[Y_AXIS], target[Z_AXIS], -1.0, false);
       }
       // Retreive G28/30 go-home position data (in machine coordinates) from EEPROM
       float coord_data[N_AXIS];
       uint8_t home_select = SETTING_INDEX_G28;
       if (non_modal_action == NON_MODAL_GO_HOME_1) { home_select = SETTING_INDEX_G30; }
       if (!settings_read_coord_data(home_select,coord_data)) { return(STATUS_SETTING_READ_FAIL); }
-      mc_line(coord_data[X_AXIS], coord_data[Y_AXIS], coord_data[Z_AXIS], settings.default_seek_rate, false); 
+      mc_line(coord_data[X_AXIS], coord_data[Y_AXIS], coord_data[Z_AXIS], -1.0, false); 
       memcpy(gc.position, coord_data, sizeof(coord_data)); // gc.position[] = coord_data[];
       axis_words = 0; // Axis words used. Lock out from motion modes by clearing flags.
       break;
@@ -347,7 +344,7 @@ uint8_t gc_execute_line(char *line)
         // Update axes defined only in block. Offsets current system to defined value. Does not update when
         // active coordinate system is selected, but is still active unless G92.1 disables it. 
         uint8_t i;
-        for (i=0; i<=2; i++) { // Axes indices are consistent, so loop may be used.
+        for (i=0; i<N_AXIS; i++) { // Axes indices are consistent, so loop may be used.
           if (bit_istrue(axis_words,bit(i)) ) {
             gc.coord_offset[i] = gc.position[i]-gc.coord_system[i]-target[i];
           }
@@ -382,7 +379,7 @@ uint8_t gc_execute_line(char *line)
     // absolute mode coordinate offsets or incremental mode offsets.
     // NOTE: Tool offsets may be appended to these conversions when/if this feature is added.
     uint8_t i;
-    for (i=0; i<=2; i++) { // Axes indices are consistent, so loop may be used to save flash space.
+    for (i=0; i<N_AXIS; i++) { // Axes indices are consistent, so loop may be used to save flash space.
       if ( bit_istrue(axis_words,bit(i)) ) {
         if (!absolute_override) { // Do not update target in absolute override mode
           if (gc.absolute_mode) {
@@ -402,7 +399,7 @@ uint8_t gc_execute_line(char *line)
         break;
       case MOTION_MODE_SEEK:
         if (!axis_words) { FAIL(STATUS_INVALID_STATEMENT);} 
-        else { mc_line(target[X_AXIS], target[Y_AXIS], target[Z_AXIS], settings.default_seek_rate, false); }
+        else { mc_line(target[X_AXIS], target[Y_AXIS], target[Z_AXIS], -1.0, false); }
         break;
       case MOTION_MODE_LINEAR:
         // TODO: Inverse time requires F-word with each statement. Need to do a check. Also need
