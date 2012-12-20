@@ -79,7 +79,7 @@ void settings_reset(bool reset_all) {
     settings.acceleration[X_AXIS] = DEFAULT_ACCELERATION;
     settings.acceleration[Y_AXIS] = DEFAULT_ACCELERATION;
     settings.acceleration[Z_AXIS] = DEFAULT_ACCELERATION;
-    settings.mm_per_arc_segment = DEFAULT_MM_PER_ARC_SEGMENT;
+    settings.arc_tolerance = DEFAULT_ARC_TOLERANCE;
     settings.invert_mask = DEFAULT_STEPPING_INVERT_MASK;
     settings.junction_deviation = DEFAULT_JUNCTION_DEVIATION;
   }
@@ -97,7 +97,6 @@ void settings_reset(bool reset_all) {
   settings.homing_pulloff = DEFAULT_HOMING_PULLOFF;
   settings.stepper_idle_lock_time = DEFAULT_STEPPER_IDLE_LOCK_TIME;
   settings.decimal_places = DEFAULT_DECIMAL_PLACES;
-  settings.n_arc_correction = DEFAULT_N_ARC_CORRECTION;
   write_global_settings();
 }
 
@@ -173,35 +172,34 @@ uint8_t settings_store_global_setting(int parameter, float value) {
     case 11: settings.invert_mask = trunc(value); break;
     case 12: settings.stepper_idle_lock_time = round(value); break;
     case 13: settings.junction_deviation = fabs(value); break;
-    case 14: settings.mm_per_arc_segment = value; break;
-    case 15: settings.n_arc_correction = round(value); break;
-    case 16: settings.decimal_places = round(value); break;
-    case 17:
+    case 14: settings.arc_tolerance = value; break;
+    case 15: settings.decimal_places = round(value); break;
+    case 16:
       if (value) { settings.flags |= BITFLAG_REPORT_INCHES; }
       else { settings.flags &= ~BITFLAG_REPORT_INCHES; }
       break;
-    case 18: // Reset to ensure change. Immediate re-init may cause problems.
+    case 17: // Reset to ensure change. Immediate re-init may cause problems.
       if (value) { settings.flags |= BITFLAG_AUTO_START; }
       else { settings.flags &= ~BITFLAG_AUTO_START; }
       break;
-    case 19: // Reset to ensure change. Immediate re-init may cause problems.
+    case 18: // Reset to ensure change. Immediate re-init may cause problems.
       if (value) { settings.flags |= BITFLAG_INVERT_ST_ENABLE; }
       else { settings.flags &= ~BITFLAG_INVERT_ST_ENABLE; }
       break;
-    case 20:
+    case 19:
       if (value) { settings.flags |= BITFLAG_HARD_LIMIT_ENABLE; }
       else { settings.flags &= ~BITFLAG_HARD_LIMIT_ENABLE; }
       limits_init(); // Re-init to immediately change. NOTE: Nice to have but could be problematic later.
       break;
-    case 21:
+    case 20:
       if (value) { settings.flags |= BITFLAG_HOMING_ENABLE; }
       else { settings.flags &= ~BITFLAG_HOMING_ENABLE; }
       break;
-    case 22: settings.homing_dir_mask = trunc(value); break;
-    case 23: settings.homing_feed_rate = value; break;
-    case 24: settings.homing_seek_rate = value; break;
-    case 25: settings.homing_debounce_delay = round(value); break;
-    case 26: settings.homing_pulloff = value; break;
+    case 21: settings.homing_dir_mask = trunc(value); break;
+    case 22: settings.homing_feed_rate = value; break;
+    case 23: settings.homing_seek_rate = value; break;
+    case 24: settings.homing_debounce_delay = round(value); break;
+    case 25: settings.homing_pulloff = value; break;
     default: 
       return(STATUS_INVALID_STATEMENT);
   }

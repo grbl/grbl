@@ -30,7 +30,6 @@
 
 // Some useful constants
 #define TICKS_PER_MICROSECOND (F_CPU/1000000)
-#define INTERRUPTS_PER_ACCELERATION_TICK (ISR_TICKS_PER_SECOND/ACCELERATION_TICKS_PER_SECOND)
 #define CRUISE_RAMP 0
 #define ACCEL_RAMP 1
 #define DECEL_RAMP 2
@@ -47,7 +46,7 @@ typedef struct {
   // Used by Pramod Ranade inverse time algorithm
   int32_t delta_d;     // Ranade distance traveled per interrupt tick
   int32_t d_counter;   // Ranade distance traveled since last step event
-  uint32_t ramp_count; // Acceleration interrupt tick counter. 
+  uint8_t ramp_count; // Acceleration interrupt tick counter. 
   uint8_t ramp_type; // Ramp type variable.
   uint8_t execute_step; // Flags step execution for each interrupt.
   

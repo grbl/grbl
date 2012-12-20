@@ -29,7 +29,7 @@
 
 // Version of the EEPROM data. Will be used to migrate existing data from older versions of Grbl
 // when firmware is upgraded. Always stored in byte 0 of eeprom
-#define SETTINGS_VERSION 51
+#define SETTINGS_VERSION 52
 
 // Define bit flag masks for the boolean settings in settings.flag.
 #define BITFLAG_REPORT_INCHES      bit(0)
@@ -62,7 +62,7 @@ typedef struct {
   float default_feed_rate;
   float default_seek_rate;
   uint8_t invert_mask;
-  float mm_per_arc_segment;
+  float arc_tolerance;
   float acceleration[N_AXIS];
   float junction_deviation;
   uint8_t flags;  // Contains default boolean settings
@@ -73,9 +73,8 @@ typedef struct {
   float homing_pulloff;
   uint8_t stepper_idle_lock_time; // If max value 255, steppers do not disable.
   uint8_t decimal_places;
-  uint8_t n_arc_correction;
   float max_velocity[N_AXIS];
-//   float mm_soft_limit[N_AXIS];
+//  float mm_soft_limit[N_AXIS];
 //  uint8_t status_report_mask; // Mask to indicate desired report data.
 } settings_t;
 extern settings_t settings;

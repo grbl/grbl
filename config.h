@@ -105,14 +105,6 @@
 #define CMD_CYCLE_START '~'
 #define CMD_RESET 0x18 // ctrl-x
 
-// The temporal resolution of the acceleration management subsystem. Higher number give smoother
-// acceleration but may impact performance. If you run at very high feedrates (>15kHz or so) and 
-// very high accelerations, this will reduce the error between how the planner plans the velocity
-// profiles and how the stepper program actually performs them. The correct value for this parameter
-// is machine dependent, so it's advised to set this only as high as needed. Approximate successful
-// values can widely range from 50 to 200 or more. Cannot be greater than ISR_TICKS_PER_SECOND/2.
-#define ACCELERATION_TICKS_PER_SECOND 100L 
-
 // The "Stepper Driver Interrupt" employs the Pramod Ranade inverse time algorithm to manage the
 // Bresenham line stepping algorithm. The value ISR_TICKS_PER_SECOND is the frequency(Hz) at which
 // the Ranade algorithm ticks at. Maximum step frequencies are limited by the Ranade frequency by
@@ -123,6 +115,17 @@
 //   In future versions, more work will be done to increase the step rates but still stay around
 // 20kHz by performing two steps per step event, rather than just one.
 #define ISR_TICKS_PER_SECOND 20000L  // Integer (Hz)
+
+// The temporal resolution of the acceleration management subsystem. Higher number give smoother
+// acceleration but may impact performance. If you run at very high feedrates (>15kHz or so) and 
+// very high accelerations, this will reduce the error between how the planner plans the velocity
+// profiles and how the stepper program actually performs them. The correct value for this parameter
+// is machine dependent, so it's advised to set this only as high as needed. Approximate successful
+// values can widely range from 50 to 200 or more. Cannot be greater than ISR_TICKS_PER_SECOND/2.
+#define ACCELERATION_TICKS_PER_SECOND 100L 
+
+// NOTE: Make sure this value is less than 256, when adjusting both dependent parameters.
+#define INTERRUPTS_PER_ACCELERATION_TICK (ISR_TICKS_PER_SECOND/ACCELERATION_TICKS_PER_SECOND)
 
 // The Ranade algorithm can use either floating point or long integers for its counters, but for 
 // integers the counter values must be scaled since these values can be very small (10^-6). This
@@ -192,6 +195,13 @@
 // be stored and executed in order. These startup blocks would typically be used to set the g-code
 // parser state depending on user preferences.
 #define N_STARTUP_LINE 2 // Integer (1-5)
+
+// Number of arc generation iterations by small angle approximation before exact arc trajectory 
+// correction. This parameter maybe decreased if there are issues with the accuracy of the arc
+// generations. In general, the default value is more than enough for the intended CNC applications
+// of grbl, and should be on the order or greater than the size of the buffer to help with the 
+// computational efficiency of generating arcs.
+#define N_ARC_CORRECTION 20 // Integer (1-255)
 
 // ---------------------------------------------------------------------------------------
 // FOR ADVANCED USERS ONLY: 

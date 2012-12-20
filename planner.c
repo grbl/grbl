@@ -38,6 +38,7 @@ static block_t block_buffer[BLOCK_BUFFER_SIZE];  // A ring buffer for motion ins
 static volatile uint8_t block_buffer_head;       // Index of the next block to be pushed
 static volatile uint8_t block_buffer_tail;       // Index of the block to process now
 static uint8_t next_buffer_head;                 // Index of the next buffer head
+// static *block_t block_buffer_planned;
 
 // Define planner variables
 typedef struct {
@@ -190,12 +191,82 @@ static void calculate_trapezoid_for_block(block_t *block, float entry_speed_sqr,
 */
 static void planner_recalculate() 
 {     
+
+//   float entry_speed_sqr;
+//   uint8_t block_index = block_buffer_head;
+//   block_t *previous = NULL;
+//   block_t *current = NULL;
+//   block_t *next;
+//   while (block_index != block_buffer_tail) {
+//     block_index = prev_block_index( block_index );
+//     next = current;
+//     current = previous;
+//     previous = &block_buffer[block_index];
+//     
+//     if (next && current) {
+//       if (next != block_buffer_planned) {
+//         if (previous == block_buffer_tail) { block_buffer_planned = next; }
+//         else {
+//         
+//           if (current->entry_speed_sqr != current->max_entry_speed_sqr) {
+//             current->recalculate_flag = true; // Almost always changes. So force recalculate.       
+//             entry_speed_sqr = next->entry_speed_sqr + 2*current->acceleration*current->millimeters;
+//             if (entry_speed_sqr < current->max_entry_speed_sqr) {
+//               current->entry_speed_sqr = entry_speed_sqr;
+//             } else {
+//               current->entry_speed_sqr = current->max_entry_speed_sqr;
+//             }
+//           } else {  
+//             block_buffer_planned = current;
+//           }
+//         }
+//       } else { 
+//         break;
+//       }
+//     }
+//   } 
+// 
+//   block_index = block_buffer_planned;
+//   next = &block_buffer[block_index];
+//   current = prev_block_index(block_index);
+//   while (block_index != block_buffer_head) {
+// 
+//       // If the current block is an acceleration block, but it is not long enough to complete the
+//       // full speed change within the block, we need to adjust the exit speed accordingly. Entry
+//       // speeds have already been reset, maximized, and reverse planned by reverse planner.
+//       if (current->entry_speed_sqr < next->entry_speed_sqr) {
+//         // Compute block exit speed based on the current block speed and distance
+//         // Computes: v_exit^2 = v_entry^2 + 2*acceleration*distance
+//         entry_speed_sqr = current->entry_speed_sqr + 2*current->acceleration*current->millimeters;
+//         
+//         // If it's less than the stored value, update the exit speed and set recalculate flag.
+//         if (entry_speed_sqr < next->entry_speed_sqr) {
+//           next->entry_speed_sqr = entry_speed_sqr;
+//           next->recalculate_flag = true;
+//         }
+//       }
+// 
+//       // Recalculate if current block entry or exit junction speed has changed.
+//       if (current->recalculate_flag || next->recalculate_flag) {
+//         // NOTE: Entry and exit factors always > 0 by all previous logic operations.     
+//         calculate_trapezoid_for_block(current, current->entry_speed_sqr, next->entry_speed_sqr);      
+//         current->recalculate_flag = false; // Reset current only to ensure next trapezoid is computed
+//       }
+//       
+//     current = next;
+//     next = &block_buffer[block_index];
+//     block_index = next_block_index( block_index );
+//   }
+//   
+//   // Last/newest block in buffer. Exit speed is set with MINIMUM_PLANNER_SPEED. Always recalculated.
+//   calculate_trapezoid_for_block(next, next->entry_speed_sqr, MINIMUM_PLANNER_SPEED*MINIMUM_PLANNER_SPEED);
+//   next->recalculate_flag = false;
+  
   // TODO: No over-write protection exists for the executing block. For most cases this has proven to be ok, but 
   // for feed-rate overrides, something like this is essential. Place a request here to the stepper driver to
   // find out where in the planner buffer is the a safe place to begin re-planning from.
 
-//   if (block_buffer_head != block_buffer_tail) { 
-
+//   if (block_buffer_head != block_buffer_tail) {   
   float entry_speed_sqr;
 
   // Perform reverse planner pass. Skip the head(end) block since it is already initialized, and skip the
@@ -268,7 +339,6 @@ static void planner_recalculate()
   // Last/newest block in buffer. Exit speed is set with MINIMUM_PLANNER_SPEED. Always recalculated.
   calculate_trapezoid_for_block(next, next->entry_speed_sqr, MINIMUM_PLANNER_SPEED*MINIMUM_PLANNER_SPEED);
   next->recalculate_flag = false;
-  
 //   }
 }
 
@@ -276,6 +346,7 @@ void plan_reset_buffer()
 {
   block_buffer_tail = block_buffer_head;
   next_buffer_head = next_block_index(block_buffer_head);
+//   block_buffer_planned = block_buffer_head;
 }
 
 inline void plan_discard_current_block() 
