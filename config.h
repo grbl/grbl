@@ -114,7 +114,7 @@
 // frequency goes up. So there will be little left for other processes like arcs.  
 //   In future versions, more work will be done to increase the step rates but still stay around
 // 20kHz by performing two steps per step event, rather than just one.
-#define ISR_TICKS_PER_SECOND 20000L  // Integer (Hz)
+#define ISR_TICKS_PER_SECOND 30000L  // Integer (Hz)
 
 // The temporal resolution of the acceleration management subsystem. Higher number give smoother
 // acceleration but may impact performance. If you run at very high feedrates (>15kHz or so) and 
@@ -122,7 +122,7 @@
 // profiles and how the stepper program actually performs them. The correct value for this parameter
 // is machine dependent, so it's advised to set this only as high as needed. Approximate successful
 // values can widely range from 50 to 200 or more. Cannot be greater than ISR_TICKS_PER_SECOND/2.
-#define ACCELERATION_TICKS_PER_SECOND 100L 
+#define ACCELERATION_TICKS_PER_SECOND 120L 
 
 // NOTE: Make sure this value is less than 256, when adjusting both dependent parameters.
 #define INTERRUPTS_PER_ACCELERATION_TICK (ISR_TICKS_PER_SECOND/ACCELERATION_TICKS_PER_SECOND)

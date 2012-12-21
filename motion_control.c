@@ -70,7 +70,7 @@ void mc_line(float x, float y, float z, float feed_rate, uint8_t invert_feed_rat
     if (sys.abort) { return; } // Bail, if system abort.
   } while ( plan_check_full_buffer() );
   plan_buffer_line(x, y, z, feed_rate, invert_feed_rate);
-  
+
   // If idle, indicate to the system there is now a planned block in the buffer ready to cycle 
   // start. Otherwise ignore and continue on.
   if (!sys.state) { sys.state = STATE_QUEUED; }
@@ -146,8 +146,8 @@ void mc_arc(float *position, float *target, float *offset, uint8_t axis_0, uint8
        (second order sin() has too much error) holds for nearly all CNC applications, except for possibly very
        small radii (~0.5mm). In other words, theta_per_segment would need to be greater than 0.25 rad(14 deg) 
        and N_ARC_CORRECTION would need to be large to cause an appreciable drift error (>5% of radius, for very
-       small radii this is very, very small). N_ARC_CORRECTION~=20 should be more than small enough to correct 
-       for numerical drift error.
+       small radii, 5% of 0.5mm is very, very small). N_ARC_CORRECTION~=20 should be more than small enough to 
+       correct for numerical drift error. Also decreasing the tolerance will improve the approximation too.
        
        This approximation also allows mc_arc to immediately insert a line segment into the planner 
        without the initial overhead of computing cos() or sin(). By the time the arc needs to be applied
@@ -156,7 +156,7 @@ void mc_arc(float *position, float *target, float *offset, uint8_t axis_0, uint8
     */
     // Computes: cos_T = 1 - theta_per_segment^2/2, sin_T = theta_per_segment - theta_per_segment^3/6) in ~52usec
     float cos_T = 2 - theta_per_segment*theta_per_segment;
-    float sin_T = theta_per_segment*0.1666667*(cos_T + 4);
+    float sin_T = theta_per_segment*0.16666667*(cos_T + 4);
     cos_T *= 0.5;
 
     float arc_target[N_AXIS];
@@ -164,7 +164,7 @@ void mc_arc(float *position, float *target, float *offset, uint8_t axis_0, uint8
     float cos_Ti;
     float r_axisi;
     uint16_t i;
-    int8_t count = 0;
+    uint8_t count = 0;
   
     // Initialize the linear axis
     arc_target[axis_linear] = position[axis_linear];

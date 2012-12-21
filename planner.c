@@ -31,8 +31,8 @@
 #include "config.h"
 #include "protocol.h"
 
-#define SOME_LARGE_VALUE 1000000.0 // Used by rapids and acceleration maximization calculations. Just needs
-                                   // to be larger than any feasible mm/min or mm/sec^2 value.
+#define SOME_LARGE_VALUE 1.0E+38 // Used by rapids and acceleration maximization calculations. Just needs
+                                 // to be larger than any feasible mm/min or mm/sec^2 value.
 
 static block_t block_buffer[BLOCK_BUFFER_SIZE];  // A ring buffer for motion instructions
 static volatile uint8_t block_buffer_head;       // Index of the next block to be pushed
@@ -434,12 +434,12 @@ void plan_buffer_line(float x, float y, float z, float feed_rate, uint8_t invert
   uint8_t i;
   float unit_vec[N_AXIS], inverse_unit_vec_value;
   float inverse_millimeters = 1.0/block->millimeters;  // Inverse millimeters to remove multiple float divides	
-  block->acceleration = SOME_LARGE_VALUE; // Scaled down to maximum acceleration
+  block->acceleration = SOME_LARGE_VALUE; // Scaled down to maximum acceleration in loop
   for (i=0; i<N_AXIS; i++) { 
     if (delta_mm[i] == 0) { 
       unit_vec[i] = 0;  // Store zero value. And avoid divide by zero.
     } else {
-      // Compute absolute value unit vector
+      // Compute unit vector and its absolute inverse value
       unit_vec[i] = delta_mm[i]*inverse_millimeters;
       inverse_unit_vec_value = abs(1.0/unit_vec[i]);
       // Check and limit feed rate against max axis velocities and scale accelerations to maximums
@@ -526,7 +526,7 @@ void plan_buffer_line(float x, float y, float z, float feed_rate, uint8_t invert
   planner_recalculate(); 
 }
 
-// Reset the planner position vectors. Called by the system abort routine.
+// Reset the planner position vectors. Called by the system abort/initialization routine.
 void plan_set_current_position(int32_t x, int32_t y, int32_t z)
 {
   pl.position[X_AXIS] = x;
