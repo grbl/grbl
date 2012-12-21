@@ -11,9 +11,10 @@ Grbl includes full acceleration management with look ahead. That means the contr
 
 ##Downloads (Right-Click and Save-Link-As):
 _**Master Branch:**_
-* [Grbl v0.8c Atmega328p 16mhz 9600baud](http://bit.ly/SSdCJE)
+* [Grbl v0.8c Atmega328p 16mhz 9600baud](http://bit.ly/SSdCJE) Last updated: 2012-12-16
 
 _**Edge/Development Branch:**_
+* [Grbl v0.9a Build 2012-12-21](http://bit.ly/VWe4VW) : For testing only. Automatic arc segment scaling by tolerance setting, leading to much faster feedrates. Axes acceleration and maximum velocity independence installed. 30kHz step rate max. Bugs still exist.  Settings WILL be over-written.
 * [Grbl v0.9a Build 2012-12-16](http://bit.ly/UUTOD4) : Axes acceleration and maximum velocity independence installed. Lowered 20kHz step rate max. Bugs still exist. For testing only. Settings WILL be over-written.
 * [Grbl v0.9a Build 2012-12-10](http://bit.ly/UDBwpZ) : New experimental stepper algorithm. Smoother. 30kHz max. Bugs exist (Homing). For testing only. Settings WILL be over-written.
 
