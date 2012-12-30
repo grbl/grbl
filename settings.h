@@ -1,10 +1,10 @@
 /*
-  settings.h - eeprom configuration handling 
+  settings.h - eeprom configuration handling
   Part of Grbl
 
   Copyright (c) 2009-2011 Simen Svale Skogsrud
   Copyright (c) 2011-2012 Sungeun K. Jeon
-  
+
   Grbl is free software: you can redistribute it and/or modify
   it under the terms of the GNU General Public License as published by
   the Free Software Foundation, either version 3 of the License, or
@@ -40,7 +40,7 @@
 
 // Define EEPROM memory address location values for Grbl settings and parameters
 // NOTE: The Atmega328p has 1KB EEPROM. The upper half is reserved for parameters and
-// the startup script. The lower half contains the global settings and space for future 
+// the startup script. The lower half contains the global settings and space for future
 // developments.
 #define EEPROM_ADDR_GLOBAL 1
 #define EEPROM_ADDR_PARAMETERS 512
@@ -56,7 +56,7 @@
 
 // Global persistent settings (Stored from byte EEPROM_ADDR_GLOBAL onwards)
 typedef struct {
-  float steps_per_mm[3];
+  float steps_per_mm[N_AXIS];
   uint8_t microsteps;
   uint8_t pulse_microseconds;
   float default_feed_rate;

@@ -4,7 +4,7 @@
 
   Copyright (c) 2009-2011 Simen Svale Skogsrud
   Copyright (c) 2011-2012 Sungeun K. Jeon
-  
+
   Grbl is free software: you can redistribute it and/or modify
   it under the terms of the GNU General Public License as published by
   the Free Software Foundation, either version 3 of the License, or
@@ -24,10 +24,10 @@
 #include <avr/io.h>
 #include "nuts_bolts.h"
 
-// Define modal group internal numbers for checking multiple command violations and tracking the 
+// Define modal group internal numbers for checking multiple command violations and tracking the
 // type of command that is called in the block. A modal group is a group of g-code commands that are
 // mutually exclusive, or cannot exist on the same line, because they each toggle a state or execute
-// a unique motion. These are defined in the NIST RS274-NGC v3 g-code standard, available online, 
+// a unique motion. These are defined in the NIST RS274-NGC v3 g-code standard, available online,
 // and are similar/identical to other g-code interpreters by manufacturers (Haas,Fanuc,Mazak,etc).
 #define MODAL_GROUP_NONE 0
 #define MODAL_GROUP_0 1 // [G4,G10,G28,G30,G53,G92,G92.1] Non-modal
@@ -42,7 +42,7 @@
 
 // Define command actions for within execution-type modal groups (motion, stopping, non-modal). Used
 // internally by the parser to know which command to execute.
-#define MOTION_MODE_SEEK 0 // G0 
+#define MOTION_MODE_SEEK 0 // G0
 #define MOTION_MODE_LINEAR 1 // G1
 #define MOTION_MODE_CW_ARC 2  // G2
 #define MOTION_MODE_CCW_ARC 3  // G3
@@ -84,17 +84,17 @@ typedef struct {
   uint8_t coolant_mode;            // 0 = Disable, 1 = Flood Enable {M8, M9}
   float feed_rate;                 // Millimeters/min
 //  float seek_rate;                 // Millimeters/min. Will be used in v0.9 when axis independence is installed
-  float position[3];               // Where the interpreter considers the tool to be at this point in the code
+  float position[N_AXIS];               // Where the interpreter considers the tool to be at this point in the code
   uint8_t tool;
 //  uint16_t spindle_speed;          // RPM/100
-  uint8_t plane_axis_0, 
-          plane_axis_1, 
-          plane_axis_2;            // The axes of the selected plane  
+  uint8_t plane_axis_0,
+          plane_axis_1,
+          plane_axis_2;            // The axes of the selected plane
   uint8_t coord_select;            // Active work coordinate system number. Default: 0=G54.
   float coord_system[N_AXIS];      // Current work coordinate system (G54+). Stores offset from absolute machine
                                    // position in mm. Loaded from EEPROM when called.
   float coord_offset[N_AXIS];      // Retains the G92 coordinate offset (work coordinates) relative to
-                                   // machine zero in mm. Non-persistent. Cleared upon reset and boot.        
+                                   // machine zero in mm. Non-persistent. Cleared upon reset and boot.
 } parser_state_t;
 extern parser_state_t gc;
 
@@ -105,6 +105,6 @@ void gc_init();
 uint8_t gc_execute_line(char *line);
 
 // Set g-code parser position. Input in steps.
-void gc_set_current_position(int32_t x, int32_t y, int32_t z); 
+void gc_set_current_position(int32_t x, int32_t y, int32_t z);
 
 #endif

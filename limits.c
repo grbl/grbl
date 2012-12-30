@@ -18,7 +18,7 @@
   You should have received a copy of the GNU General Public License
   along with Grbl.  If not, see <http://www.gnu.org/licenses/>.
 */
-  
+
 #include <util/delay.h>
 #include <avr/io.h>
 #include <avr/interrupt.h>
@@ -35,7 +35,7 @@
 
 #define MICROSECONDS_PER_ACCELERATION_TICK  (1000000/ACCELERATION_TICKS_PER_SECOND)
 
-void limits_init() 
+void limits_init()
 {
   LIMIT_DDR &= ~(LIMIT_MASK); // Set as input pins
   LIMIT_PORT |= (LIMIT_MASK); // Enable internal pull-up resistors. Normal high operation.
@@ -52,48 +52,48 @@ void limits_init()
 // special pinout for an e-stop, but it is generally recommended to just directly connect
 // your e-stop switch to the Arduino reset pin, since it is the most correct way to do this.
 // TODO: This interrupt may be used to manage the homing cycle directly with the main stepper
-// interrupt without adding too much to it. All it would need is some way to stop one axis 
+// interrupt without adding too much to it. All it would need is some way to stop one axis
 // when its limit is triggered and continue the others. This may reduce some of the code, but
 // would make Grbl a little harder to read and understand down road. Holding off on this until
 // we move on to new hardware or flash space becomes an issue. If it ain't broke, don't fix it.
-ISR(LIMIT_INT_vect) 
+ISR(LIMIT_INT_vect)
 {
   // Only enter if the system alarm is not active.
-  if (bit_isfalse(sys.execute,EXEC_ALARM)) { 
+  if (bit_isfalse(sys.execute,EXEC_ALARM)) {
     // Kill all processes upon hard limit event.
     if ((LIMIT_PIN & LIMIT_MASK) ^ LIMIT_MASK) {
       mc_alarm(); // Initiate system kill.
       sys.state = STATE_LIMIT; // Set system state to indicate event.
-    } 
+    }
   }
 }
 
 
 // Moves all specified axes in same specified direction (positive=true, negative=false)
-// and at the homing rate. Homing is a special motion case, where there is only an 
-// acceleration followed by abrupt asynchronous stops by each axes reaching their limit 
-// switch independently. Instead of shoehorning homing cycles into the main stepper 
-// algorithm and overcomplicate things, a stripped-down, lite version of the stepper 
+// and at the homing rate. Homing is a special motion case, where there is only an
+// acceleration followed by abrupt asynchronous stops by each axes reaching their limit
+// switch independently. Instead of shoehorning homing cycles into the main stepper
+// algorithm and overcomplicate things, a stripped-down, lite version of the stepper
 // algorithm is written here. This also lets users hack and tune this code freely for
 // their own particular needs without affecting the rest of Grbl.
 // NOTE: Only the abort runtime command can interrupt this process.
-static void homing_cycle(bool x_axis, bool y_axis, bool z_axis, int8_t pos_dir, 
-                         bool invert_pin, float homing_rate) 
+static void homing_cycle(bool x_axis, bool y_axis, bool z_axis, int8_t pos_dir,
+                         bool invert_pin, float homing_rate)
 {
   // Determine governing axes with finest step resolution per distance for the Bresenham
-  // algorithm. This solves the issue when homing multiple axes that have different 
+  // algorithm. This solves the issue when homing multiple axes that have different
   // resolutions without exceeding system acceleration setting. It doesn't have to be
-  // perfect since homing locates machine zero, but should create for a more consistent 
+  // perfect since homing locates machine zero, but should create for a more consistent
   // and speedy homing routine.
-  // NOTE: For each axes enabled, the following calculations assume they physically move 
+  // NOTE: For each axes enabled, the following calculations assume they physically move
   // an equal distance over each time step until they hit a limit switch, aka dogleg.
-  uint32_t steps[3];
+  uint32_t steps[N_AXIS];
   clear_vector(steps);
   if (x_axis) { steps[X_AXIS] = lround(settings.steps_per_mm[X_AXIS]); }
   if (y_axis) { steps[Y_AXIS] = lround(settings.steps_per_mm[Y_AXIS]); }
   if (z_axis) { steps[Z_AXIS] = lround(settings.steps_per_mm[Z_AXIS]); }
-  uint32_t step_event_count = max(steps[X_AXIS], max(steps[Y_AXIS], steps[Z_AXIS]));  
-  
+  uint32_t step_event_count = max(steps[X_AXIS], max(steps[Y_AXIS], steps[Z_AXIS]));
+
   // To ensure global acceleration is not exceeded, reduce the governing axes nominal rate
   // by adjusting the actual axes distance traveled per step. This is the same procedure
   // used in the main planner to account for distance traveled when moving multiple axes.
@@ -103,7 +103,7 @@ static void homing_cycle(bool x_axis, bool y_axis, bool z_axis, int8_t pos_dir,
 
   // Compute the adjusted step rate change with each acceleration tick. (in step/min/acceleration_tick)
   uint32_t delta_rate = ceil( ds*settings.acceleration/(60*ACCELERATION_TICKS_PER_SECOND));
-  
+
   // Nominal and initial time increment per step. Nominal should always be greater then 3
   // usec, since they are based on the same parameters as the main stepper routine. Initial
   // is based on the MINIMUM_STEPS_PER_MINUTE config. Since homing feed can be very slow,
@@ -111,12 +111,12 @@ static void homing_cycle(bool x_axis, bool y_axis, bool z_axis, int8_t pos_dir,
   uint32_t dt_min = lround(1000000*60/(ds*homing_rate)); // Cruising (usec/step)
   uint32_t dt = 1000000*60/MINIMUM_STEPS_PER_MINUTE; // Initial (usec/step)
   if (dt > dt_min) { dt = dt_min; } // Disable acceleration for very slow rates.
-      
-  // Set default out_bits. 
+
+  // Set default out_bits.
   uint8_t out_bits0 = settings.invert_mask;
   out_bits0 ^= (settings.homing_dir_mask & DIRECTION_MASK); // Apply homing direction settings
   if (!pos_dir) { out_bits0 ^= DIRECTION_MASK; }   // Invert bits, if negative dir.
-  
+
   // Initialize stepping variables
   int32_t counter_x = -(step_event_count >> 1); // Bresenham counters
   int32_t counter_y = counter_x;
@@ -127,14 +127,14 @@ static void homing_cycle(bool x_axis, bool y_axis, bool z_axis, int8_t pos_dir,
   uint8_t out_bits;
   uint8_t limit_state;
   for(;;) {
-  
+
     // Reset out bits. Both direction and step pins appropriately inverted and set.
     out_bits = out_bits0;
-    
+
     // Get limit pin state.
     limit_state = LIMIT_PIN;
     if (invert_pin) { limit_state ^= LIMIT_MASK; } // If leaving switch, invert to move.
-    
+
     // Set step pins by Bresenham line algorithm. If limit switch reached, disable and
     // flag for completion.
     if (x_axis) {
@@ -160,20 +160,20 @@ static void homing_cycle(bool x_axis, bool y_axis, bool z_axis, int8_t pos_dir,
         else { z_axis = false; }
         counter_z -= step_event_count;
       }
-    }        
-    
+    }
+
     // Check if we are done or for system abort
     protocol_execute_runtime();
     if (!(x_axis || y_axis || z_axis) || sys.abort) { return; }
-        
+
     // Perform step.
     STEPPING_PORT = (STEPPING_PORT & ~STEP_MASK) | (out_bits & STEP_MASK);
     delay_us(settings.pulse_microseconds);
     STEPPING_PORT = out_bits0;
     delay_us(step_delay);
-    
+
     // Track and set the next step delay, if required. This routine uses another Bresenham
-    // line algorithm to follow the constant acceleration line in the velocity and time 
+    // line algorithm to follow the constant acceleration line in the velocity and time
     // domain. This is a lite version of the same routine used in the main stepper program.
     if (dt > dt_min) { // Unless cruising, check for time update.
       trap_counter += dt; // Track time passed since last update.
@@ -189,16 +189,16 @@ static void homing_cycle(bool x_axis, bool y_axis, bool z_axis, int8_t pos_dir,
 }
 
 
-void limits_go_home() 
-{  
+void limits_go_home()
+{
   // Enable only the steppers, not the cycle. Cycle should be complete.
   st_wake_up();
-  
+
   // Jog all axes toward home to engage their limit switches at faster homing seek rate.
   homing_cycle(false, false, true, true, false, settings.homing_seek_rate);  // First jog the z axis
   homing_cycle(true, true, false, true, false, settings.homing_seek_rate);  // Then jog the x and y axis
   delay_ms(settings.homing_debounce_delay); // Delay to debounce signal
-    
+
   // Now in proximity of all limits. Carefully leave and approach switches in multiple cycles
   // to precisely hone in on the machine zero location. Moves at slower homing feed rate.
   int8_t n_cycle = N_HOMING_CYCLE;
@@ -206,7 +206,7 @@ void limits_go_home()
     // Leave all switches to release them. After cycles complete, this is machine zero.
     homing_cycle(true, true, true, false, true, settings.homing_feed_rate);
     delay_ms(settings.homing_debounce_delay);
-    
+
     if (n_cycle > 0) {
       // Re-approach all switches to re-engage them.
       homing_cycle(true, true, true, true, false, settings.homing_feed_rate);
@@ -214,5 +214,5 @@ void limits_go_home()
     }
   }
 
-  st_go_idle(); // Call main stepper shutdown routine.  
+  st_go_idle(); // Call main stepper shutdown routine.
 }

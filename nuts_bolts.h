@@ -3,7 +3,7 @@
   Part of Grbl
 
   Copyright (c) 2009-2011 Simen Svale Skogsrud
-  Copyright (c) 2011-2012 Sungeun K. Jeon  
+  Copyright (c) 2011-2012 Sungeun K. Jeon
 
   Grbl is free software: you can redistribute it and/or modify
   it under the terms of the GNU General Public License as published by
@@ -45,17 +45,17 @@
 #define min(a,b) (((a) < (b)) ? (a) : (b))
 
 // Bit field and masking macros
-#define bit(n) (1 << n) 
+#define bit(n) (1 << n)
 #define bit_true(x,mask) (x |= mask)
 #define bit_false(x,mask) (x &= ~mask)
 #define bit_toggle(x,mask) (x ^= mask)
 #define bit_istrue(x,mask) ((x & mask) != 0)
 #define bit_isfalse(x,mask) ((x & mask) == 0)
 
-// Define system executor bit map. Used internally by runtime protocol as runtime command flags, 
+// Define system executor bit map. Used internally by runtime protocol as runtime command flags,
 // which notifies the main program to execute the specified runtime command asynchronously.
 // NOTE: The system executor uses an unsigned 8-bit volatile variable (8 flag limit.) The default
-// flags are always false, so the runtime protocol only needs to check for a non-zero value to 
+// flags are always false, so the runtime protocol only needs to check for a non-zero value to
 // know when there is a runtime command to execute.
 #define EXEC_STATUS_REPORT  bit(0) // bitmask 00000001
 #define EXEC_CYCLE_START    bit(1) // bitmask 00000010
@@ -83,16 +83,16 @@ typedef struct {
   uint8_t abort;                 // System abort flag. Forces exit back to main loop for reset.
   uint8_t state;                 // Tracks the current state of Grbl.
   volatile uint8_t execute;      // Global system runtime executor bitflag variable. See EXEC bitmasks.
-  int32_t position[3];           // Real-time machine (aka home) position vector in steps. 
-                                 // NOTE: This may need to be a volatile variable, if problems arise.   
+  int32_t position[N_AXIS];           // Real-time machine (aka home) position vector in steps.
+                                 // NOTE: This may need to be a volatile variable, if problems arise.
   uint8_t auto_start;            // Planner auto-start flag. Toggled off during feed hold. Defaulted by settings.
 //   uint8_t feed_hold;             // Feed hold flag. Held true during feed hold. Released when ready to resume.
-//   volatile uint8_t cycle_start;  // Cycle start flag. Set by stepper subsystem or main program. 
+//   volatile uint8_t cycle_start;  // Cycle start flag. Set by stepper subsystem or main program.
 } system_t;
 extern system_t sys;
 
-// Read a floating point value from a string. Line points to the input buffer, char_counter 
-// is the indexer pointing to the current character of the line, while float_ptr is 
+// Read a floating point value from a string. Line points to the input buffer, char_counter
+// is the indexer pointing to the current character of the line, while float_ptr is
 // a pointer to the result variable. Returns true when it succeeds
 int read_float(char *line, uint8_t *char_counter, float *float_ptr);
 
