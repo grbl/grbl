@@ -182,7 +182,7 @@ ISR(TIMER2_COMPA_vect)
         // Initialize Ranade variables
         st.d_counter = current_block->d_next;  
         st.delta_d = current_block->initial_rate;
-        st.ramp_count = INTERRUPTS_PER_ACCELERATION_TICK/2;
+        st.ramp_count = ISR_TICKS_PER_ACCELERATION_TICK/2;
         
         // Initialize ramp type.
         if (st.step_events_remaining == current_block->decelerate_after) { st.ramp_type = DECEL_RAMP; }
@@ -203,7 +203,7 @@ ISR(TIMER2_COMPA_vect)
     // Tick acceleration ramp counter
     st.ramp_count--;
     if (st.ramp_count == 0) {
-      st.ramp_count = INTERRUPTS_PER_ACCELERATION_TICK; // Reload ramp counter
+      st.ramp_count = ISR_TICKS_PER_ACCELERATION_TICK; // Reload ramp counter
       if (st.ramp_type == ACCEL_RAMP) { // Adjust velocity for acceleration
         st.delta_d += current_block->rate_delta;
         if (st.delta_d >= current_block->nominal_rate) { // Reached cruise state.
@@ -232,7 +232,7 @@ ISR(TIMER2_COMPA_vect)
     if (sys.state == STATE_HOLD) {
       if (st.ramp_type != DECEL_RAMP) {
         st.ramp_type = DECEL_RAMP;
-        st.ramp_count = INTERRUPTS_PER_ACCELERATION_TICK/2; 
+        st.ramp_count = ISR_TICKS_PER_ACCELERATION_TICK/2; 
       } 
       if (st.delta_d <= current_block->rate_delta) {
         st_go_idle();
@@ -279,9 +279,9 @@ ISR(TIMER2_COMPA_vect)
           st.ramp_type = DECEL_RAMP;
           if (st.step_events_remaining == current_block->decelerate_after) {
             if (st.delta_d == current_block->nominal_rate) {
-              st.ramp_count = INTERRUPTS_PER_ACCELERATION_TICK/2;  // Set ramp counter for trapezoid
+              st.ramp_count = ISR_TICKS_PER_ACCELERATION_TICK/2;  // Set ramp counter for trapezoid
             } else {
-              st.ramp_count = INTERRUPTS_PER_ACCELERATION_TICK-st.ramp_count; // Set ramp counter for triangle
+              st.ramp_count = ISR_TICKS_PER_ACCELERATION_TICK-st.ramp_count; // Set ramp counter for triangle
             }
           }
         }
@@ -373,7 +373,7 @@ void st_cycle_reinitialize()
     // Replan buffer from the feed hold stop location.
     plan_cycle_reinitialize(st.step_events_remaining);
     st.ramp_type = ACCEL_RAMP;
-    st.ramp_count = INTERRUPTS_PER_ACCELERATION_TICK/2; 
+    st.ramp_count = ISR_TICKS_PER_ACCELERATION_TICK/2; 
     st.delta_d = 0;
     sys.state = STATE_QUEUED;
   } else {

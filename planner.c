@@ -32,7 +32,7 @@
 #include "protocol.h"
 
 #define SOME_LARGE_VALUE 1.0E+38 // Used by rapids and acceleration maximization calculations. Just needs
-                                 // to be larger than any feasible mm/min or mm/sec^2 value.
+                                 // to be larger than any feasible (mm/min)^2 or mm/sec^2 value.
 
 static block_t block_buffer[BLOCK_BUFFER_SIZE];  // A ring buffer for motion instructions
 static volatile uint8_t block_buffer_head;       // Index of the next block to be pushed
@@ -51,12 +51,6 @@ typedef struct {
 } planner_t;
 static planner_t pl;
 
-
-void plan_init() 
-{
-  plan_reset_buffer();
-  memset(&pl, 0, sizeof(pl)); // Clear planner struct
-}
 
 // Returns the index of the next block in the ring buffer
 // NOTE: Removed modulo (%) operator, which uses an expensive divide and multiplication.
@@ -342,11 +336,12 @@ static void planner_recalculate()
 //   }
 }
 
-void plan_reset_buffer() 
+void plan_init() 
 {
   block_buffer_tail = block_buffer_head;
   next_buffer_head = next_block_index(block_buffer_head);
 //   block_buffer_planned = block_buffer_head;
+  memset(&pl, 0, sizeof(pl)); // Clear planner struct
 }
 
 inline void plan_discard_current_block() 

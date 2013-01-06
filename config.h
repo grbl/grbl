@@ -125,7 +125,7 @@
 #define ACCELERATION_TICKS_PER_SECOND 120L 
 
 // NOTE: Make sure this value is less than 256, when adjusting both dependent parameters.
-#define INTERRUPTS_PER_ACCELERATION_TICK (ISR_TICKS_PER_SECOND/ACCELERATION_TICKS_PER_SECOND)
+#define ISR_TICKS_PER_ACCELERATION_TICK (ISR_TICKS_PER_SECOND/ACCELERATION_TICKS_PER_SECOND)
 
 // The Ranade algorithm can use either floating point or long integers for its counters, but for 
 // integers the counter values must be scaled since these values can be very small (10^-6). This

@@ -73,9 +73,6 @@ void plan_set_current_position(int32_t x, int32_t y, int32_t z);
 // Reinitialize plan with a partially completed block
 void plan_cycle_reinitialize(int32_t step_events_remaining);
 
-// Reset buffer
-void plan_reset_buffer();
-
 // Returns the status of the block ring buffer. True, if buffer is full.
 uint8_t plan_check_full_buffer();
 
