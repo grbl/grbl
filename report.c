@@ -90,6 +90,7 @@ void report_alarm_message(int8_t alarm_code)
     printPgmString(PSTR("Abort during cycle")); break;
   }
   printPgmString(PSTR(". MPos?\r\n"));
+  delay_ms(500); // Force delay to ensure message clears serial write buffer.
 }
 
 // Prints feedback messages. This serves as a centralized method to provide additional

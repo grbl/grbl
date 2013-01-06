@@ -218,6 +218,8 @@ void mc_go_home()
   LIMIT_PCMSK &= ~LIMIT_MASK; // Disable hard limits pin change register for cycle duration
   
   limits_go_home(); // Perform homing routine.
+
+  protocol_execute_runtime(); // Check for reset and set system abort.
   if (sys.abort) { return; } // Did not complete. Alarm state set by mc_alarm.
 
   // The machine should now be homed and machine zero has been located. Upon completion, 
