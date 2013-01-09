@@ -98,7 +98,7 @@ uint8_t gc_execute_line(char *line)
   uint8_t absolute_override = false; // true(1) = absolute motion for this block only {G53}
   uint8_t non_modal_action = NON_MODAL_NONE; // Tracks the actions of modal group 0 (non-modal)
   
-  float target[3], offset[3];  
+  float target[N_AXIS], offset[N_AXIS];
   clear_vector(target); // XYZ(ABC) axes parameters.
   clear_vector(offset); // IJK Arc offsets are incremental. Value of zero indicates no change.
     
