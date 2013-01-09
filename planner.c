@@ -393,7 +393,7 @@ void plan_buffer_line(float x, float y, float z, float feed_rate, uint8_t invert
   block_t *block = &block_buffer[block_buffer_head];
 
   // Calculate target position in absolute steps
-  int32_t target[3];
+  int32_t target[N_AXIS];
   target[X_AXIS] = lround(x*settings.steps_per_mm[X_AXIS]);
   target[Y_AXIS] = lround(y*settings.steps_per_mm[Y_AXIS]);
   target[Z_AXIS] = lround(z*settings.steps_per_mm[Z_AXIS]);     
@@ -408,7 +408,7 @@ void plan_buffer_line(float x, float y, float z, float feed_rate, uint8_t invert
   if (block->step_event_count == 0) { return; };
   
   // Compute path vector in terms of absolute step target and current positions
-  float delta_mm[3];
+  float delta_mm[N_AXIS];
   delta_mm[X_AXIS] = x-pl.last_x;
   delta_mm[Y_AXIS] = y-pl.last_y; 
   delta_mm[Z_AXIS] = z-pl.last_z;

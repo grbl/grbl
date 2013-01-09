@@ -96,7 +96,7 @@ static void homing_cycle(uint8_t cycle_mask, int8_t pos_dir, bool invert_pin, fl
   // and speedy homing routine.
   // NOTE: For each axes enabled, the following calculations assume they physically move 
   // an equal distance over each time step until they hit a limit switch, aka dogleg.
-  uint32_t steps[3];
+  uint32_t steps[N_AXIS];
   uint8_t dist = 0;
   clear_vector(steps);
   if (cycle_mask & (1<<X_AXIS)) { 
