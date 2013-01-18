@@ -252,7 +252,11 @@ uint8_t gc_execute_line(char *line)
     //  ([M6]: Tool change should be executed here.)
 
     // [M3,M4,M5]: Update spindle state
-    spindle_run(gc.spindle_direction);
+    if (value == 3 || value == 4) {
+      spindle_run(gc.spindle_direction);
+    } else if (value == 5) {
+      spindle_stop(gc.spindle_direction);
+    }
   
     // [*M7,M8,M9]: Update coolant state
     coolant_run(gc.coolant_mode);
