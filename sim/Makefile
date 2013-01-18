@@ -15,13 +15,10 @@
 #  You should have received a copy of the GNU General Public License
 #  along with Grbl.  If not, see <http://www.gnu.org/licenses/>.
 
-OBJECTS    = main.o simulator.o runtime.o ../protocol.o ../planner.o ../settings.o ../print.o ../nuts_bolts.o eeprom.o serial.o avr\pgmspace.o avr\interrupt.o util\delay.o util\floatunsisf.o ../stepper.o ../gcode.o ../spindle_control.o ../motion_control.o ../limits.o ../report.o ../coolant_control.o
-
-             
+OBJECTS    = main.o simulator.o runtime.o ../protocol.o ../planner.o ../settings.o ../print.o ../nuts_bolts.o eeprom.o serial.o avr/pgmspace.o avr/interrupt.o util/delay.o util/floatunsisf.o ../stepper.o ../gcode.o ../spindle_control.o ../motion_control.o ../limits.o ../report.o ../coolant_control.o
 CLOCK      = 16000000
-EXE_NAME= grbl_sim.exe
-COMPILER= C:\MinGW\bin\gcc.exe
-COMPILE = $(COMPILER) -Wall -Os -DF_CPU=$(CLOCK) -include config.h -I.
+EXE_NAME   = grbl_sim.exe
+COMPILE    = $(CC) -Wall -Os -DF_CPU=$(CLOCK) -include config.h -I.
 
 # symbolic targets:
 all:	main
@@ -33,15 +30,15 @@ clean:
 
 # file targets:
 main: $(OBJECTS)
-	$(COMPILE) -o $(EXE_NAME) $(OBJECTS) -lm -Wl,--gc-sections
+	$(COMPILE) -o $(EXE_NAME) $(OBJECTS) -lm
 
 %.o: %.c
 	$(COMPILE) -c $< -o $@
-	
+
 ../protocol.o: ../protocol.c
-	$(COMPILE) -include rename_execute_runtime.h -c $< -o $@ 
-	
+	$(COMPILE) -include rename_execute_runtime.h -c $< -o $@
+
 ../planner.o: ../planner.c
-	$(COMPILE) -include planner_inject_accessors.c -c $< -o $@ 
-	
-	
+	$(COMPILE) -include planner_inject_accessors.c -c $< -o $@
+
+
