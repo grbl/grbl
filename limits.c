@@ -187,8 +187,7 @@ static void homing_cycle(uint8_t cycle_mask, int8_t pos_dir, bool invert_pin, fl
     }        
     
     // Check if we are done or for system abort
-    protocol_execute_runtime();
-    if (!(cycle_mask) || sys.abort) { return; }
+    if (!(cycle_mask) || (sys.execute & EXEC_RESET)) { return; }
         
     // Perform step.
     STEPPING_PORT = (STEPPING_PORT & ~STEP_MASK) | (out_bits & STEP_MASK);

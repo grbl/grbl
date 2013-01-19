@@ -90,6 +90,7 @@ void report_alarm_message(int8_t alarm_code)
     printPgmString(PSTR("Abort during cycle")); break;
   }
   printPgmString(PSTR(". MPos?\r\n"));
+  delay_ms(500); // Force delay to ensure message clears serial write buffer.
 }
 
 // Prints feedback messages. This serves as a centralized method to provide additional
@@ -326,7 +327,7 @@ void report_realtime_status()
       print_position[i] -= gc.coord_system[i]+gc.coord_offset[i];
     }
     printFloat(print_position[i]);
-    if (i < N_AXIS-1) { printPgmString(PSTR(",")); }
+    if (i < (N_AXIS-1)) { printPgmString(PSTR(",")); }
   }
     
   printPgmString(PSTR(">\r\n"));
