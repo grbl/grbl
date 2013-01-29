@@ -51,9 +51,9 @@ int main(int argc, char *argv[]) {
   // to the real grbl.
   // Theoretically flushing could be limited to complete lines. Unfortunately Windows
   // does not know line buffered streams. So for now we stick to flushing every character.
-  //setvbuf(stdout, NULL, _IONBF, 1);
-  //setvbuf(stderr, NULL, _IONBF, 1);
-  
+  setvbuf(stdout, NULL, _IONBF, 1);
+  setvbuf(stderr, NULL, _IONBF, 1);
+
   st_init(); // Setup stepper pins and interrupt timers
   memset(&sys, 0, sizeof(sys));  // Clear all system variables
   //settings_reset(); TODO: implement read_settings from eeprom
@@ -72,17 +72,17 @@ int main(int argc, char *argv[]) {
   //printf("st_reset():\n");
   st_reset(); // Clear stepper subsystem variables.
   sys.auto_start = true; // runtime commands are not processed. We start to simulate immediately
-  
+
   // Main loop of command processing until EOF is encountered
   //printf("protocol_process():\n");
   protocol_process();
-  
+
   // flush the block buffer and print stepper info on any pending blocks
   plan_synchronize();
 
   // Graceful exit
   fclose(block_out_file);
   fclose(step_out_file);
-  
+
   exit(EXIT_SUCCESS);
 }
