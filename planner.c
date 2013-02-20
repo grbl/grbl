@@ -34,6 +34,8 @@
 #include "protocol.h"
 #include "motion_control.h"
 
+uint32_t planner_steps_counter;
+
 #define SOME_LARGE_VALUE 1.0E+38 // Used by rapids and acceleration maximization calculations. Just needs
                                  // to be larger than any feasible (mm/min)^2 or mm/sec^2 value.
 
@@ -210,6 +212,7 @@ static uint8_t planner_recalculate()
   block_t *curr_block = &block_buffer[current_block_idx];
   uint8_t plan_unchanged= 1;
   
+  planner_steps_counter= 0;
   if(current_block_idx!=block_buffer_tail) { // we cannot do anything to only one block
     float max_entry_speed_sqr;
     float next_entry_speed_sqr= 0.0;
@@ -219,6 +222,7 @@ static uint8_t planner_recalculate()
         planned_block_tail= current_block_idx;
         break;
       }
+      planner_steps_counter++;
 
       // TODO: Determine maximum entry speed at junction for feedrate overrides, since they can alter
       // the planner nominal speeds at any time. This calc could be done in the override handler, but

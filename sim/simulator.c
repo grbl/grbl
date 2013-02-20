@@ -157,7 +157,8 @@ void printBlock() {
     else block_position[2]+= b->steps_z;
     fprintf(block_out_file,"%d, ", block_position[2]);
 
-    fprintf(block_out_file,"%f", b->entry_speed_sqr);
+    fprintf(block_out_file,"%f, ", b->entry_speed_sqr);
+    fprintf(block_out_file,"%d", planner_steps_counter);
     fprintf(block_out_file,"\n");
 
     last_block= b;
