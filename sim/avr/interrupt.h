@@ -49,6 +49,7 @@ extern uint16_t pcicr;
 
 // enable interrupts does nothing in the simulation environment
 void sei();
+void cli();
 
 // dummy macros for interrupt related registers
 #define TIMSK0 timsk0
