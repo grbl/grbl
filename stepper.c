@@ -62,6 +62,7 @@ static uint8_t out_bits;        // The next stepping-bits to be output
 // this blocking variable is no longer needed. Only here for safety reasons.
 static volatile uint8_t busy;   // True when "Stepper Driver Interrupt" is being serviced. Used to avoid retriggering that handler.
 
+
 //         __________________________
 //        /|                        |\     _________________         ^
 //       / |                        | \   /|               |\        |
@@ -380,3 +381,8 @@ void st_cycle_reinitialize()
     sys.state = STATE_IDLE;
   }
 }
+
+uint8_t st_is_decelerating() {
+  return st.ramp_type == DECEL_RAMP;
+}
+
