@@ -40,3 +40,4 @@ uint16_t pcmsk0;
 uint16_t pcicr;
 
 void sei() {};
+void cli() {};

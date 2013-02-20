@@ -45,4 +45,6 @@ void st_cycle_reinitialize();
 // Initiates a feed hold of the running program
 void st_feed_hold();
 
+uint8_t st_is_decelerating();
+
 #endif
