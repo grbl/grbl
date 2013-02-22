@@ -23,6 +23,7 @@
 /* The ring buffer implementation gleaned from the wiring_serial library by David A. Mellis. */
 
 #include <avr/interrupt.h>
+#include <util/atomic.h>
 #include <inttypes.h>    
 #include <stdlib.h>
 #include <stdio.h>
@@ -33,8 +34,6 @@
 #include "config.h"
 #include "protocol.h"
 #include "motion_control.h"
-
-uint32_t planner_steps_counter;
 
 #define SOME_LARGE_VALUE 1.0E+38 // Used by rapids and acceleration maximization calculations. Just needs
                                  // to be larger than any feasible (mm/min)^2 or mm/sec^2 value.
@@ -103,7 +102,8 @@ static uint8_t prev_block_index(uint8_t block_index)
 static uint8_t calculate_trapezoid_for_block(block_t *block, uint8_t idx, float entry_speed_sqr, float exit_speed_sqr)
 {  
   // Compute new initial rate for stepper algorithm
-  uint32_t initial_rate = ceil(sqrt(entry_speed_sqr)*(RANADE_MULTIPLIER/(60*ISR_TICKS_PER_SECOND))); // (mult*mm/isr_tic)
+  // volatile is necessary so that the optimizer doesn't move the calculation in the ATOMIC_BLOCK
+  volatile uint32_t initial_rate = ceil(sqrt(entry_speed_sqr)*(RANADE_MULTIPLIER/(60*ISR_TICKS_PER_SECOND))); // (mult*mm/isr_tic)
           
   // TODO: Compute new nominal rate if a feedrate override occurs.
   // block->nominal_rate = ceil(feed_rate*(RANADE_MULTIPLIER/(60.0*ISR_TICKS_PER_SECOND))); // (mult*mm/isr_tic)
@@ -132,23 +132,50 @@ static uint8_t calculate_trapezoid_for_block(block_t *block, uint8_t idx, float 
     if (decelerate_after > block->step_event_count) { decelerate_after = block->step_event_count; }
   }
 
-  // safe block adjustment
-  cli();
-  uint8_t block_buffer_tail_hold= block_buffer_tail; // store to avoid reading volatile twice
-  uint8_t block_buffer_head_hold= block_buffer_head; // store to avoid reading volatile twice
-  uint8_t idx_inside_queue;
-  // is the current block inside the queue? if not: the stepper overtook us
-  if(block_buffer_head_hold>=block_buffer_tail_hold) idx_inside_queue= idx>=block_buffer_tail_hold && idx<=block_buffer_head_hold;
-  else idx_inside_queue= idx<=block_buffer_head_hold || idx>=block_buffer_tail_hold;
-  if(idx_inside_queue && (idx!=block_buffer_tail_hold || idx==block_buffer_head_hold || !st_is_decelerating())) {
+  uint8_t block_buffer_tail_hold= block_buffer_tail; // store to avoid rereading volatile
+  // check if we got overtaken by the stepper
+  if(idx==prev_block_index(block_buffer_tail_hold)) {
+    return false;
+  }
+
+  // check where the stepper is currently working relative to the block we want to update
+  uint8_t block_buffer_tail_next= next_block_index(block_buffer_tail_hold);
+  if(idx==block_buffer_tail_hold || idx==block_buffer_tail_next) {
+    // we are close to were the stepper is working, so we need to block it for a short time
+    // to safely adjust the block
+
+    // I counted the cycles in this block from the assembler code
+    // It's 42 cycles worst case including the call to st_is_decelerating
+    // @ 16MHz this is  2.6250e-06 seconds, 30kHz cycle duration is 3.3333e-05 seconds
+    // -> this block will delay the stepper timer by max 8%
+    // given that this occurs not very often, it should be ok
+    // but test will have to show
+
+    // ATOMIC_BLOCK only works with compiler parameter --std=c99
+    ATOMIC_BLOCK(ATOMIC_FORCEON) {
+      // reload block_buffer_tail in case it changed
+      uint8_t block_buffer_tail_hold2= block_buffer_tail;
+      if(idx!=block_buffer_tail_hold2) {
+        if(block_buffer_tail_hold2==block_buffer_tail_next)
+          return false; // the stepper didn't overtook in the meantime
+      } else {
+        if(st_is_decelerating())
+          return false; // we want to change the currently running block and it has already started to decelerate
+      }
+
+      block->decelerate_after= decelerate_after;
+      block->initial_rate= initial_rate;
+      return true;
+    }
+  } else {
+    // let's assume the stepper did not complete two blocks since we loaded block_buffer_tail to block_buffer_tail_hold
+    // so the block we want to change is not currently being run by the stepper and it's safe to touch it without precautions
     block->decelerate_after= decelerate_after;
     block->initial_rate= initial_rate;
-    sei();
-    return(true);
-  } else {
-    sei();
-    return(false); // this block is currently being processed by the stepper and it already finished accelerating or the stepper is already finished with this block: we can no longer change anything here
+    return true;
   }
+
+  return false;
 }     
                                         
 
@@ -212,7 +239,6 @@ static uint8_t planner_recalculate()
   block_t *curr_block = &block_buffer[current_block_idx];
   uint8_t plan_unchanged= 1;
   
-  planner_steps_counter= 0;
   if(current_block_idx!=block_buffer_tail) { // we cannot do anything to only one block
     float max_entry_speed_sqr;
     float next_entry_speed_sqr= 0.0;
@@ -222,7 +248,6 @@ static uint8_t planner_recalculate()
         planned_block_tail= current_block_idx;
         break;
       }
-      planner_steps_counter++;
 
       // TODO: Determine maximum entry speed at junction for feedrate overrides, since they can alter
       // the planner nominal speeds at any time. This calc could be done in the override handler, but
