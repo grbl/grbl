@@ -74,6 +74,7 @@ ISR(LIMIT_INT_vect)
     if (bit_isfalse(sys.execute,EXEC_ALARM)) {
       mc_reset(); // Initiate system kill.
       sys.execute |= EXEC_CRIT_EVENT; // Indicate hard limit critical event
+      sys.state = STATE_HARD_LIMIT;
     }
   }
 }
