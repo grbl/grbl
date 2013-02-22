@@ -259,17 +259,17 @@ static uint8_t planner_recalculate()
       // check for maximum allowable speed reductions to ensure maximum possible planned speed.
       if (curr_block->entry_speed_sqr != curr_block->max_entry_speed_sqr) {
         // default if next_entry_speed_sqr > curr_block->max_entry_speed_sqr || max_entry_speed_sqr > curr_block->max_entry_speed_sqr
-        curr_block->entry_speed_sqr = curr_block->max_entry_speed_sqr;
+        curr_block->new_entry_speed_sqr = curr_block->max_entry_speed_sqr;
 
         if (next_entry_speed_sqr < curr_block->max_entry_speed_sqr) {
           // Computes: v_entry^2 = v_exit^2 + 2*acceleration*distance
           max_entry_speed_sqr = next_entry_speed_sqr + 2*curr_block->acceleration*curr_block->millimeters;
           if (max_entry_speed_sqr < curr_block->max_entry_speed_sqr) {
-            curr_block->entry_speed_sqr = max_entry_speed_sqr;
+            curr_block->new_entry_speed_sqr = max_entry_speed_sqr;
           }
         }
       }
-      next_entry_speed_sqr= curr_block->entry_speed_sqr;
+      next_entry_speed_sqr= curr_block->new_entry_speed_sqr;
 
       current_block_idx= prev_block_index( current_block_idx );
       curr_block= &block_buffer[current_block_idx];
@@ -286,7 +286,7 @@ static uint8_t planner_recalculate()
       // If the current block is an acceleration block, but it is not long enough to complete the
       // full speed change within the block, we need to adjust the exit speed accordingly. Entry
       // speeds have already been reset, maximized, and reverse planned by reverse planner.
-      if (curr_block->entry_speed_sqr < next_block->entry_speed_sqr) {
+      if (curr_block->entry_speed_sqr < next_block->new_entry_speed_sqr) {
         // Compute block exit speed based on the current block speed and distance
         // Computes: v_exit^2 = v_entry^2 + 2*acceleration*distance
         max_exit_speed_sqr = curr_block->entry_speed_sqr + 2*curr_block->acceleration*curr_block->millimeters;
@@ -296,8 +296,8 @@ static uint8_t planner_recalculate()
       }
 
       // adjust max_exit_speed_sqr in case this is a deceleration block or max accel cannot be reached
-      if(max_exit_speed_sqr>next_block->entry_speed_sqr) {
-        max_exit_speed_sqr= next_block->entry_speed_sqr;
+      if(max_exit_speed_sqr>next_block->new_entry_speed_sqr) {
+        max_exit_speed_sqr= next_block->new_entry_speed_sqr;
       } else {
         // this block has reached max acceleration, it is optimal
         planned_block_tail= next_block_idx;

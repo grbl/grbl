@@ -120,6 +120,7 @@ void st_go_idle()
       STEPPERS_DISABLE_PORT |= (1<<STEPPERS_DISABLE_BIT); 
     }   
   }
+  st.ramp_type = ACCEL_RAMP;
 }
 
 
