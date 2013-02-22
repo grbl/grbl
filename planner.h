@@ -43,7 +43,6 @@ typedef struct {
   float new_entry_speed_sqr;         // Temporary entry speed used by the planner
   float millimeters;                 // The total travel of this block in mm
   float acceleration;
-  uint8_t recalculate_flag;          // Planner flag to recalculate trapezoids on entry junction
 
   // Settings for the trapezoid generator
   uint32_t initial_rate;              // The step rate at start of block  

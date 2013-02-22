@@ -105,7 +105,7 @@ static uint8_t calculate_trapezoid_for_block(block_t *block, uint8_t idx, float 
   // volatile is necessary so that the optimizer doesn't move the calculation in the ATOMIC_BLOCK
   volatile uint32_t initial_rate = ceil(sqrt(entry_speed_sqr)*(RANADE_MULTIPLIER/(60*ISR_TICKS_PER_SECOND))); // (mult*mm/isr_tic)
           
-  // TODO: Compute new nominal rate if a feedrate override occurs.
+  // TODO: Compute new nominal rate if a feedrate override occurs. Could be performed by simple scalar.
   // block->nominal_rate = ceil(feed_rate*(RANADE_MULTIPLIER/(60.0*ISR_TICKS_PER_SECOND))); // (mult*mm/isr_tic)
     
   // Compute efficiency variable for following calculations. Removes a float divide and multiply.
@@ -400,8 +400,9 @@ void plan_buffer_line(float x, float y, float z, float feed_rate, uint8_t invert
   if (block->step_event_count == 0) { return; };
   
   // Compute path vector in terms of absolute step target and current positions
+  // NOTE: Operates by arithmetic rather than expensive division.
   float delta_mm[N_AXIS];
-  delta_mm[X_AXIS] = x-pl.last_x; // what difference would it make to use block->steps_x/settings.steps_per_mm[X_AXIS];  instead?
+  delta_mm[X_AXIS] = x-pl.last_x;
   delta_mm[Y_AXIS] = y-pl.last_y; 
   delta_mm[Z_AXIS] = z-pl.last_z;
   block->millimeters = sqrt(delta_mm[X_AXIS]*delta_mm[X_AXIS] + delta_mm[Y_AXIS]*delta_mm[Y_AXIS] + 
@@ -435,19 +436,23 @@ void plan_buffer_line(float x, float y, float z, float feed_rate, uint8_t invert
     }
   }
 
-  // Compute nominal speed and rates
+  // Compute nominal speed
   block->nominal_speed_sqr = feed_rate*feed_rate; // (mm/min)^2. Always > 0
-  block->nominal_rate = ceil(feed_rate*(RANADE_MULTIPLIER/(60.0*ISR_TICKS_PER_SECOND))); // (mult*mm/isr_tic)
 
-  // Compute the acceleration and distance traveled per step event for the stepper algorithm.
-  // TODO: obsolete?
+  // Pre-calculate stepper algorithm values: Acceleration rate, distance traveled per step event, and nominal rate.
+  // TODO: Obsolete? Sort of. This pre-calculates this value so the stepper algorithm doesn't have to upon loading.
+  //   The multiply and ceil() may take too many cycles but removing it would save (BUFFER_SIZE-1)*4 bytes of memory.
+  block->nominal_rate = ceil(feed_rate*(RANADE_MULTIPLIER/(60.0*ISR_TICKS_PER_SECOND))); // (mult*mm/isr_tic)
   block->rate_delta = ceil(block->acceleration*
     ((RANADE_MULTIPLIER/(60.0*60.0))/(ISR_TICKS_PER_SECOND*ACCELERATION_TICKS_PER_SECOND))); // (mult*mm/isr_tic/accel_tic)
   block->d_next = ceil((block->millimeters*RANADE_MULTIPLIER)/block->step_event_count); // (mult*mm/step)
   
   // Compute direction bits. Bit enabled always means direction is negative.
+  // TODO: Check if this can be combined with steps_x calcs to speed up. Not sure though since
+  //   this only has to perform a negative check on already existing values. I think I've measured
+  //   the speed difference. This should be optimal in speed and flash space, I believe.
   block->direction_bits = 0;
-  if (unit_vec[X_AXIS] < 0) { block->direction_bits |= (1<<X_DIRECTION_BIT); } // maybe more efficient to be calculated together with block->steps_x
+  if (unit_vec[X_AXIS] < 0) { block->direction_bits |= (1<<X_DIRECTION_BIT); }
   if (unit_vec[Y_AXIS] < 0) { block->direction_bits |= (1<<Y_DIRECTION_BIT); }
   if (unit_vec[Z_AXIS] < 0) { block->direction_bits |= (1<<Z_DIRECTION_BIT); }
 
@@ -490,10 +495,9 @@ void plan_buffer_line(float x, float y, float z, float feed_rate, uint8_t invert
   }  
 
   // Initialize block entry speed
+  // TODO: Check if this is computed in the recalculate function automatically. Although this 
+  //   never changes since this already computed as the optimum.
   block->entry_speed_sqr = MINIMUM_PLANNER_SPEED*MINIMUM_PLANNER_SPEED;
-
-  // Set new block to be recalculated for conversion to stepper data.
-  block->recalculate_flag = true; // TODO: obsolete?
 
   // Update previous path unit_vector and nominal speed (squared)
   memcpy(pl.previous_unit_vec, unit_vec, sizeof(unit_vec)); // pl.previous_unit_vec[] = unit_vec[]
@@ -516,7 +520,8 @@ void plan_buffer_line(float x, float y, float z, float feed_rate, uint8_t invert
   }
 
   // Update buffer head and next buffer head indices
-  // Mind that updating block_buffer_head after the planner changes the planner logic a bit
+  // NOTE: Mind that updating block_buffer_head after the planner changes the planner logic a bit
+  // TODO: Check if this is better to place after recalculate or before in terms of buffer executing.
   block_buffer_head = next_buffer_head;  
   next_buffer_head = next_block_index(block_buffer_head);
 }
@@ -547,6 +552,5 @@ void plan_cycle_reinitialize(int32_t step_events_remaining)
   // Re-plan from a complete stop. Reset planner entry speeds and flags.
   block->entry_speed_sqr = 0.0;
   block->max_entry_speed_sqr = 0.0;
-  block->recalculate_flag = true;
   planner_recalculate();  
 }
