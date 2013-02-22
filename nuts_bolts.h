@@ -79,6 +79,8 @@
 #define STATE_ALARM      6 // In alarm state. Locks out all g-code processes. Allows settings access.
 #define STATE_CHECK_MODE 7 // G-code check mode. Locks out planner and motion only.
 // #define STATE_JOG     8 // Jogging mode is unique like homing.
+#define STATE_HARD_LIMIT 9
+#define STATE_SOFT_LIMIT 10
 
 // Define global system variables
 typedef struct {

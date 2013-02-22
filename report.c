@@ -88,6 +88,8 @@ void report_alarm_message(int8_t alarm_code)
     printPgmString(PSTR("Hard limit")); break;
     case ALARM_ABORT_CYCLE: 
     printPgmString(PSTR("Abort during cycle")); break;
+    case ALARM_SOFT_LIMIT:
+    printPgmString(PSTR("Soft limit")); break;
   }
   printPgmString(PSTR(". MPos?\r\n"));
   delay_ms(500); // Force delay to ensure message clears serial write buffer.
@@ -169,7 +171,14 @@ void report_grbl_settings() {
   printPgmString(PSTR(" (homing feed, mm/min)\r\n$20=")); printFloat(settings.homing_seek_rate);
   printPgmString(PSTR(" (homing seek, mm/min)\r\n$21=")); printInteger(settings.homing_debounce_delay);
   printPgmString(PSTR(" (homing debounce, msec)\r\n$22=")); printFloat(settings.homing_pulloff);
-  printPgmString(PSTR(" (homing pull-off, mm)\r\n")); 
+  printPgmString(PSTR(" (homing pull-off, mm)\r\n$23=")); printFloat(settings.soft_limits_max[X_AXIS]);
+  printPgmString(PSTR(" (x, max soft limit)\r\n$24=")); printFloat(settings.soft_limits_max[Y_AXIS]);
+  printPgmString(PSTR(" (y, max soft limit)\r\n$25=")); printFloat(settings.soft_limits_max[Z_AXIS]);
+  printPgmString(PSTR(" (z, max soft limit)\r\n$26=")); printFloat(settings.soft_limits_min[X_AXIS]);
+  printPgmString(PSTR(" (x, max soft limit)\r\n$27=")); printFloat(settings.soft_limits_min[Y_AXIS]);
+  printPgmString(PSTR(" (y, max soft limit)\r\n$28=")); printFloat(settings.soft_limits_min[Z_AXIS]);
+  printPgmString(PSTR(" (z, max soft limit)\r\n$29="));printInteger(bit_istrue(settings.flags,BITFLAG_SOFT_LIMIT_ENABLE));
+  printPgmString(PSTR(" (soft limits enabled, bool)\r\n"));  
 }
 
 
@@ -304,6 +313,8 @@ void report_realtime_status()
     case STATE_HOMING: printPgmString(PSTR("<Home")); break;
     case STATE_ALARM: printPgmString(PSTR("<Alarm")); break;
     case STATE_CHECK_MODE: printPgmString(PSTR("<Check")); break;
+    case STATE_HARD_LIMIT: printPgmString(PSTR("<HardLimit")); break;
+    case STATE_SOFT_LIMIT: printPgmString(PSTR("<SoftLimit")); break;
   }
  
   // Report machine position

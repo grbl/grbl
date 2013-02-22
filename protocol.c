@@ -98,6 +98,7 @@ void protocol_execute_runtime()
 {
   if (sys.execute) { // Enter only if any bit flag is true
     uint8_t rt_exec = sys.execute; // Avoid calling volatile multiple times
+    uint8_t rt_state = sys.state;
     
     // System alarm. Everything has shutdown by something that has gone severely wrong. Report
     // the source of the error to the user. If critical, Grbl disables by entering an infinite
@@ -107,7 +108,17 @@ void protocol_execute_runtime()
 
       // Critical event. Only hard limit qualifies. Update this as new critical events surface.
       if (rt_exec & EXEC_CRIT_EVENT) {
-        report_alarm_message(ALARM_HARD_LIMIT); 
+      switch(rt_state) {
+      case STATE_HARD_LIMIT:
+        report_alarm_message(ALARM_HARD_LIMIT);
+        break;
+      case STATE_SOFT_LIMIT:
+        report_alarm_message(ALARM_SOFT_LIMIT);
+        break;
+      default :
+        break;
+        }
+        
         report_feedback_message(MESSAGE_CRITICAL_EVENT);
         bit_false(sys.execute,EXEC_RESET); // Disable any existing reset
         do { 
@@ -115,7 +126,7 @@ void protocol_execute_runtime()
           // typically occur while unattended or not paying attention. Gives the user time
           // to do what is needed before resetting, like killing the incoming stream.
         } while (bit_isfalse(sys.execute,EXEC_RESET));
-
+    
       // Standard alarm event. Only abort during motion qualifies.
       } else {
         // Runtime abort command issued during a cycle, feed hold, or homing cycle. Message the

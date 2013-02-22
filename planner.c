@@ -376,7 +376,7 @@ void plan_buffer_line(float x, float y, float z, float feed_rate, uint8_t invert
   delta_mm[Z_AXIS] = (target[Z_AXIS]-pl.position[Z_AXIS])/settings.steps_per_mm[Z_AXIS];
   block->millimeters = sqrt(delta_mm[X_AXIS]*delta_mm[X_AXIS] + delta_mm[Y_AXIS]*delta_mm[Y_AXIS] + 
                             delta_mm[Z_AXIS]*delta_mm[Z_AXIS]);
-  float inverse_millimeters = 1.0/block->millimeters;  // Inverse millimeters to remove multiple divides	
+  float inverse_millimeters = 1.0/block->millimeters;  // Inverse millimeters to remove multiple divides    
   
   // Calculate speed in mm/minute for each axis. No divide by zero due to previous checks.
   // NOTE: Minimum stepper speed is limited by MINIMUM_STEPS_PER_MINUTE in stepper.c

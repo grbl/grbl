@@ -195,6 +195,16 @@ uint8_t settings_store_global_setting(int parameter, float value) {
     case 20: settings.homing_seek_rate = value; break;
     case 21: settings.homing_debounce_delay = round(value); break;
     case 22: settings.homing_pulloff = value; break;
+    case 23: case 24: case 25
+    if (value <= 0.0) { return(STATUS_SETTING_VALUE_NEG); } 
+      settings.soft_limits[parameter-23] = value; break;
+    case 26: case 27: case 28
+    if (value > 0.0) { return(STATUS_SETTING_VALUE_NEG); } 
+      settings.soft_limits[parameter-26] = value; break;
+    case 29:
+    if (value) { settings.flags |= BITFLAG_SOFT_LIMIT_ENABLE; }
+      else { settings.flags &= ~BITFLAG_SOFT_LIMIT_ENABLE; }
+      break;
     default: 
       return(STATUS_INVALID_STATEMENT);
   }

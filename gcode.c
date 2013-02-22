@@ -85,7 +85,7 @@ uint8_t gc_execute_line(char *line)
 
   // If in alarm state, don't process. Immediately return with error.
   // NOTE: Might not be right place for this, but also prevents $N storing during alarm.
-  if (sys.state == STATE_ALARM) { return(STATUS_ALARM_LOCK); }
+  if ( (sys.state == STATE_ALARM)||(sys.state == STATE_HARD_LIMIT) ||(sys.state == STATE_SOFT_LIMIT) ) { return(STATUS_ALARM_LOCK); }
  
   uint8_t char_counter = 0;  
   char letter;
