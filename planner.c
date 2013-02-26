@@ -257,7 +257,7 @@ static uint8_t planner_recalculate()
       // If entry speed is already at the maximum entry speed, no need to recheck. Block is cruising.
       // If not, block in state of acceleration or deceleration. Reset entry speed to maximum and
       // check for maximum allowable speed reductions to ensure maximum possible planned speed.
-      if (curr_block->entry_speed_sqr != curr_block->max_entry_speed_sqr) {
+      if (curr_block->entry_speed_sqr >= curr_block->max_entry_speed_sqr) {
         // default if next_entry_speed_sqr > curr_block->max_entry_speed_sqr || max_entry_speed_sqr > curr_block->max_entry_speed_sqr
         curr_block->new_entry_speed_sqr = curr_block->max_entry_speed_sqr;
 
@@ -268,6 +268,8 @@ static uint8_t planner_recalculate()
             curr_block->new_entry_speed_sqr = max_entry_speed_sqr;
           }
         }
+      } else {
+        curr_block->new_entry_speed_sqr = curr_block->entry_speed_sqr;
       }
       next_entry_speed_sqr= curr_block->new_entry_speed_sqr;
 
