@@ -35,6 +35,7 @@
 #include "planner.h"
 #include "limits.h"
 #include "protocol.h"
+#include "report.h"
 
 // Execute linear motion in absolute millimeter coordinates. Feed rate given in millimeters/second
 // unless invert_feed_rate is true. Then the feed_rate means that the motion should be completed in
@@ -49,9 +50,21 @@
 // backlash segment(s).
 void mc_line(float x, float y, float z, float feed_rate, uint8_t invert_feed_rate)
 {
-  // TODO: Perform soft limit check here. Just check if the target x,y,z values are outside the 
+  // TO TEST: Perform soft limit check here. Just check if the target x,y,z values are outside the 
   // work envelope. Should be straightforward and efficient. By placing it here, rather than in 
   // the g-code parser, it directly picks up motions from everywhere in Grbl.
+  if (bit_istrue(settings.flags,BITFLAG_SOFT_LIMIT_ENABLE)) {
+    if(  (x> settings.mm_soft_limit[X_AXIS])||(y>settings.mm_soft_limit[Y_AXIS])||(z>settings.mm_soft_limit[Z_AXIS])) {
+            if (sys.state != STATE_ALARM) { 
+                if (bit_isfalse(sys.execute,EXEC_ALARM)) {
+                    mc_reset(); // Initiate system kill.
+                    report_alarm_message(ALARM_SOFT_LIMIT);
+                    sys.state = STATE_ALARM;
+                    sys.execute |= EXEC_CRIT_EVENT; // Indicate hard limit critical event 
+                }
+            }
+        }
+  }
 
   // If in check gcode mode, prevent motion by blocking planner.
   if (sys.state == STATE_CHECK_MODE) { return; }

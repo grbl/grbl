@@ -104,10 +104,8 @@ void protocol_execute_runtime()
     // loop until system reset/abort.
     if (rt_exec & (EXEC_ALARM | EXEC_CRIT_EVENT)) {      
       sys.state = STATE_ALARM; // Set system alarm state
-
-      // Critical event. Only hard limit qualifies. Update this as new critical events surface.
-      if (rt_exec & EXEC_CRIT_EVENT) {
-        report_alarm_message(ALARM_HARD_LIMIT); 
+      
+      if (rt_exec & EXEC_CRIT_EVENT) { 
         report_feedback_message(MESSAGE_CRITICAL_EVENT);
         bit_false(sys.execute,EXEC_RESET); // Disable any existing reset
         do { 
