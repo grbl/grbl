@@ -57,6 +57,9 @@ void mc_line(float *target, float feed_rate, uint8_t invert_feed_rate)
   if (bit_istrue(settings.flags,BITFLAG_SOFT_LIMIT_ENABLE)) { 
     uint8_t i;
     for (i=0; i<N_AXIS; i++) {
+      // TODO: This does not account for homing switches on the other side of travel, meaning that
+      // the machine travel envelope is flipped or negative, instead of positive. There needs to be
+      // a fix to this problem before release.
       if ((target[i] < 0) || (target[i] > settings.max_travel[i])) {
         // TODO: Need to make this more in-line with the rest of the alarm and runtime execution handling.
         // Not quite right. Also this should force Grbl to feed hold and exit, rather than stopping and alarm
@@ -265,13 +268,13 @@ void mc_go_home()
   float target[N_AXIS];
   target[X_AXIS] = target[Y_AXIS] = target[Z_AXIS] = settings.homing_pulloff;
   if (HOMING_LOCATE_CYCLE & (1<<X_AXIS)) { 
-    if (bit_isfalse(settings.homing_dir_mask,(1<<X_DIRECTION_BIT))) { target[X_AXIS] *= -1; }
+    if (bit_isfalse(settings.homing_dir_mask,(1<<X_DIRECTION_BIT))) { target[X_AXIS] = -target[X_AXIS]; }
   }
   if (HOMING_LOCATE_CYCLE & (1<<Y_AXIS)) { 
-    if (bit_isfalse(settings.homing_dir_mask,(1<<Y_DIRECTION_BIT))) { target[Y_AXIS] *= -1; }
+    if (bit_isfalse(settings.homing_dir_mask,(1<<Y_DIRECTION_BIT))) { target[Y_AXIS] = -target[Y_AXIS]; }
   }
   if (HOMING_LOCATE_CYCLE & (1<<Z_AXIS)) { 
-    if (bit_isfalse(settings.homing_dir_mask,(1<<Z_DIRECTION_BIT))) { target[Z_AXIS] *= -1; }
+    if (bit_isfalse(settings.homing_dir_mask,(1<<Z_DIRECTION_BIT))) { target[Z_AXIS] = -target[Z_AXIS]; }
   }
   mc_line(target, settings.homing_seek_rate, false);
   st_cycle_start(); // Move it. Nothing should be in the buffer except this motion. 
