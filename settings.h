@@ -36,8 +36,8 @@
 #define BITFLAG_AUTO_START         bit(1)
 #define BITFLAG_INVERT_ST_ENABLE   bit(2)
 #define BITFLAG_HARD_LIMIT_ENABLE  bit(3)
-#define BITFLAG_HOMING_ENABLE      bit(4)
-#define BITFLAG_SOFT_LIMIT_ENABLE  bit(5)
+#define BITFLAG_SOFT_LIMIT_ENABLE  bit(4)
+#define BITFLAG_HOMING_ENABLE      bit(5)
 
 // Define EEPROM memory address location values for Grbl settings and parameters
 // NOTE: The Atmega328p has 1KB EEPROM. The upper half is reserved for parameters and
@@ -75,7 +75,7 @@ typedef struct {
   uint8_t stepper_idle_lock_time; // If max value 255, steppers do not disable.
   uint8_t decimal_places;
   float max_velocity[N_AXIS];
-  float mm_soft_limit[N_AXIS];
+  float max_travel[N_AXIS];
 //  uint8_t status_report_mask; // Mask to indicate desired report data.
 } settings_t;
 extern settings_t settings;

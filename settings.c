@@ -201,10 +201,10 @@ uint8_t settings_store_global_setting(int parameter, float value) {
     case 24: settings.homing_debounce_delay = round(value); break;
     case 25: settings.homing_pulloff = value; break;
     case 26: case 27: case 28:
-    if (value <= 0.0) { return(STATUS_SETTING_VALUE_NEG); } 
-      settings.mm_soft_limit[parameter-26] = value; break;
+      if (value <= 0.0) { return(STATUS_SETTING_VALUE_NEG); } 
+      settings.max_travel[parameter-26] = value; break;
     case 29:
-    if (value) { settings.flags |= BITFLAG_SOFT_LIMIT_ENABLE; }
+      if (value) { settings.flags |= BITFLAG_SOFT_LIMIT_ENABLE; }
       else { settings.flags &= ~BITFLAG_SOFT_LIMIT_ENABLE; }
       break;
     default: 
