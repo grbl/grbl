@@ -71,7 +71,7 @@ unsigned char eeprom_get_char( unsigned int addr )
  *  \param  addr  EEPROM address to write to.
  *  \param  new_value  New EEPROM value.
  */
-void eeprom_put_char( unsigned int addr, unsigned char new_value )
+void eeprom_put_char( unsigned int addr, char new_value )
 {
 	char old_value; // Old EEPROM value.
 	char diff_mask; // Difference mask, i.e. old value XOR new value.
