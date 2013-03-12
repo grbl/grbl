@@ -271,6 +271,8 @@ uint8_t gc_execute_line(char *line)
   // [G4,G10,G28,G30,G92,G92.1]: Perform dwell, set coordinate system data, homing, or set axis offsets.
   // NOTE: These commands are in the same modal group, hence are mutually exclusive. G53 is in this
   // modal group and do not effect these actions.
+  uint8_t home_select;
+  
   switch (non_modal_action) {
     case NON_MODAL_DWELL:
       if (p < 0) { // Time cannot be negative.
@@ -328,7 +330,7 @@ uint8_t gc_execute_line(char *line)
       }
       // Retreive G28/30 go-home position data (in machine coordinates) from EEPROM
       float coord_data[N_AXIS];
-      uint8_t home_select = SETTING_INDEX_G28;
+      home_select = SETTING_INDEX_G28;
       if (non_modal_action == NON_MODAL_GO_HOME_1) { home_select = SETTING_INDEX_G30; }
       if (!settings_read_coord_data(home_select,coord_data)) { return(STATUS_SETTING_READ_FAIL); }
       mc_line(coord_data[X_AXIS], coord_data[Y_AXIS], coord_data[Z_AXIS], settings.default_seek_rate, false); 
