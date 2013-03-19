@@ -282,28 +282,29 @@ uint8_t gc_execute_line(char *line)
       break;
     case NON_MODAL_SET_COORDINATE_DATA:
       int_value = trunc(p); // Convert p value to int.
-      if ((l != 2 && l != 20) || (int_value < 1 || int_value > N_COORDINATE_SYSTEM)) { // L2 and L20. P1=G54, P2=G55, ... 
+      if ((l != 2 && l != 20) || (int_value < 0 || int_value > N_COORDINATE_SYSTEM)) { // L2 and L20. P1=G54, P2=G55, ... 
         FAIL(STATUS_UNSUPPORTED_STATEMENT); 
       } else if (!axis_words && l==2) { // No axis words.
         FAIL(STATUS_INVALID_STATEMENT);
       } else {
-        int_value--; // Adjust P index to EEPROM coordinate data indexing.
-        if (l == 20) {
-          settings_write_coord_data(int_value,gc.position);
-          // Update system coordinate system if currently active.
-          if (gc.coord_select == int_value) { memcpy(gc.coord_system,gc.position,sizeof(gc.position)); }
-        } else {
-          float coord_data[N_AXIS];
-          if (!settings_read_coord_data(int_value,coord_data)) { return(STATUS_SETTING_READ_FAIL); }
-          // Update axes defined only in block. Always in machine coordinates. Can change non-active system.
-          uint8_t i;
-          for (i=0; i<N_AXIS; i++) { // Axes indices are consistent, so loop may be used.
-            if ( bit_istrue(axis_words,bit(i)) ) { coord_data[i] = target[i]; }
+        if (int_value > 0) { int_value--; } // Adjust P1-P6 index to EEPROM coordinate data indexing.
+        else { int_value = gc.coord_select; } // Index P0 as the active coordinate system
+        float coord_data[N_AXIS];
+        if (!settings_read_coord_data(int_value,coord_data)) { return(STATUS_SETTING_READ_FAIL); }
+        uint8_t i;
+        // Update axes defined only in block. Always in machine coordinates. Can change non-active system.
+        for (i=0; i<N_AXIS; i++) { // Axes indices are consistent, so loop may be used.
+          if (bit_istrue(axis_words,bit(i)) ) {
+            if (l == 20) {
+              coord_data[i] = gc.position[i]-target[i]; // L20: Update axis current position to target
+            } else {
+              coord_data[i] = target[i]; // L2: Update coordinate system axis
+            }
           }
-          settings_write_coord_data(int_value,coord_data);
-          // Update system coordinate system if currently active.
-          if (gc.coord_select == int_value) { memcpy(gc.coord_system,coord_data,sizeof(coord_data)); }
         }
+        settings_write_coord_data(int_value,coord_data);
+        // Update system coordinate system if currently active.
+        if (gc.coord_select == int_value) { memcpy(gc.coord_system,coord_data,sizeof(coord_data)); }
       }
       axis_words = 0; // Axis words used. Lock out from motion modes by clearing flags.
       break;
