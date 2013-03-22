@@ -3,7 +3,7 @@
   Part of Grbl
 
   Copyright (c) 2009-2011 Simen Svale Skogsrud
-  Copyright (c) 2011-2012 Sungeun K. Jeon  
+  Copyright (c) 2011-2013 Sungeun K. Jeon  
 
   Grbl is free software: you can redistribute it and/or modify
   it under the terms of the GNU General Public License as published by
@@ -52,7 +52,7 @@ typedef struct {
   uint32_t d_next;                    // Scaled distance to next step
 } block_t;
       
-// Initialize the motion plan subsystem      
+// Initialize the motion plan subsystem
 void plan_init();
 
 // Add a new linear movement to the buffer. x, y and z is the signed, absolute target position in 

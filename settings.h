@@ -3,7 +3,7 @@
   Part of Grbl
 
   Copyright (c) 2009-2011 Simen Svale Skogsrud
-  Copyright (c) 2011-2012 Sungeun K. Jeon
+  Copyright (c) 2011-2013 Sungeun K. Jeon
   
   Grbl is free software: you can redistribute it and/or modify
   it under the terms of the GNU General Public License as published by
@@ -29,7 +29,7 @@
 
 // Version of the EEPROM data. Will be used to migrate existing data from older versions of Grbl
 // when firmware is upgraded. Always stored in byte 0 of eeprom
-#define SETTINGS_VERSION 52
+#define SETTINGS_VERSION 53
 
 // Define bit flag masks for the boolean settings in settings.flag.
 #define BITFLAG_REPORT_INCHES      bit(0)
@@ -37,6 +37,7 @@
 #define BITFLAG_INVERT_ST_ENABLE   bit(2)
 #define BITFLAG_HARD_LIMIT_ENABLE  bit(3)
 #define BITFLAG_HOMING_ENABLE      bit(4)
+#define BITFLAG_SOFT_LIMIT_ENABLE  bit(5)
 
 // Define EEPROM memory address location values for Grbl settings and parameters
 // NOTE: The Atmega328p has 1KB EEPROM. The upper half is reserved for parameters and
@@ -74,7 +75,7 @@ typedef struct {
   uint8_t stepper_idle_lock_time; // If max value 255, steppers do not disable.
   uint8_t decimal_places;
   float max_velocity[N_AXIS];
-//  float mm_soft_limit[N_AXIS];
+  float max_travel[N_AXIS];
 //  uint8_t status_report_mask; // Mask to indicate desired report data.
 } settings_t;
 extern settings_t settings;

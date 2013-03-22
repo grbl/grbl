@@ -3,6 +3,7 @@
   Part of Grbl
 
   Copyright (c) 2009-2011 Simen Svale Skogsrud
+  Copyright (c) 2013 Sungeun K. Jeon  
 
   Grbl is free software: you can redistribute it and/or modify
   it under the terms of the GNU General Public License as published by
@@ -21,10 +22,13 @@
 #ifndef limits_h
 #define limits_h 
 
-// initialize the limits module
+// Initialize the limits module
 void limits_init();
 
-// perform the homing cycle
+// Perform the homing cycle
 void limits_go_home();
+
+// Check for soft limit violations
+void limits_soft_check(float *target);
 
 #endif

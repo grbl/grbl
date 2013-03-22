@@ -3,7 +3,7 @@
   Part of Grbl
 
   Copyright (c) 2009-2011 Simen Svale Skogsrud
-  Copyright (c) 2011-2012 Sungeun K. Jeon  
+  Copyright (c) 2011-2013 Sungeun K. Jeon  
 
   Grbl is free software: you can redistribute it and/or modify
   it under the terms of the GNU General Public License as published by
@@ -105,15 +105,17 @@ void protocol_execute_runtime()
     if (rt_exec & (EXEC_ALARM | EXEC_CRIT_EVENT)) {      
       sys.state = STATE_ALARM; // Set system alarm state
 
-      // Critical event. Only hard limit qualifies. Update this as new critical events surface.
+      // Critical event. Only hard/soft limit errors currently qualify.
       if (rt_exec & EXEC_CRIT_EVENT) {
-        report_alarm_message(ALARM_HARD_LIMIT); 
+        report_alarm_message(ALARM_LIMIT_ERROR); 
         report_feedback_message(MESSAGE_CRITICAL_EVENT);
         bit_false(sys.execute,EXEC_RESET); // Disable any existing reset
         do { 
           // Nothing. Block EVERYTHING until user issues reset or power cycles. Hard limits
           // typically occur while unattended or not paying attention. Gives the user time
-          // to do what is needed before resetting, like killing the incoming stream.
+          // to do what is needed before resetting, like killing the incoming stream. The 
+          // same could be said about soft limits. While the position is not lost, the incoming
+          // stream could be still engaged and cause a serious crash if it continues afterwards.
         } while (bit_isfalse(sys.execute,EXEC_RESET));
 
       // Standard alarm event. Only abort during motion qualifies.

@@ -3,7 +3,7 @@
   Part of Grbl
 
   Copyright (c) 2009-2011 Simen Svale Skogsrud
-  Copyright (c) 2012 Sungeun K. Jeon
+  Copyright (c) 2012-2013 Sungeun K. Jeon
 
   Grbl is free software: you can redistribute it and/or modify
   it under the terms of the GNU General Public License as published by
@@ -243,4 +243,30 @@ void limits_go_home()
   }
 
   st_go_idle(); // Call main stepper shutdown routine.  
+}
+
+
+// Performs a soft limit check. Called from mc_line() only. Assumes the machine has been homed,
+// and the workspace volume is in all negative space.
+void limits_soft_check(float *target)
+{
+  if ( target[X_AXIS] > 0 || target[X_AXIS] < -settings.max_travel[X_AXIS] || 
+       target[Y_AXIS] > 0 || target[Y_AXIS] < -settings.max_travel[Y_AXIS] || 
+       target[Z_AXIS] > 0 || target[Z_AXIS] < -settings.max_travel[Z_AXIS] ) {
+       
+    // Force feed hold if cycle is active. All buffered blocks are guaranteed to be within 
+    // workspace volume so just come to a controlled stop so position is not lost. When complete
+    // enter alarm mode.
+    if (sys.state == STATE_CYCLE) {
+      st_feed_hold();
+      while (sys.state == STATE_HOLD) {
+        protocol_execute_runtime();
+        if (sys.abort) { return; }
+      }
+    }
+    
+    mc_reset(); // Issue system reset and ensure spindle and coolant are shutdown.
+    sys.execute |= EXEC_CRIT_EVENT; // Indicate soft limit critical event
+    protocol_execute_runtime(); // Execute to enter critical event loop and system abort
+  }
 }

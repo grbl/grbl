@@ -3,7 +3,7 @@
   Part of Grbl
 
   Copyright (c) 2009-2011 Simen Svale Skogsrud
-  Copyright (c) 2011-2012 Sungeun K. Jeon
+  Copyright (c) 2011-2013 Sungeun K. Jeon
   
   Grbl is free software: you can redistribute it and/or modify
   it under the terms of the GNU General Public License as published by
@@ -322,7 +322,7 @@ uint8_t gc_execute_line(char *line)
             target[i] = gc.position[i];
           }
         }
-        mc_line(target[X_AXIS], target[Y_AXIS], target[Z_AXIS], -1.0, false);
+        mc_line(target, -1.0, false);
       }
       // Retreive G28/30 go-home position data (in machine coordinates) from EEPROM
       float coord_data[N_AXIS];
@@ -331,7 +331,7 @@ uint8_t gc_execute_line(char *line)
       } else {
         if (!settings_read_coord_data(SETTING_INDEX_G30,coord_data)) { return(STATUS_SETTING_READ_FAIL); }
       }
-      mc_line(coord_data[X_AXIS], coord_data[Y_AXIS], coord_data[Z_AXIS], -1.0, false); 
+      mc_line(coord_data, -1.0, false); 
       memcpy(gc.position, coord_data, sizeof(coord_data)); // gc.position[] = coord_data[];
       axis_words = 0; // Axis words used. Lock out from motion modes by clearing flags.
       break;
@@ -404,7 +404,7 @@ uint8_t gc_execute_line(char *line)
         break;
       case MOTION_MODE_SEEK:
         if (!axis_words) { FAIL(STATUS_INVALID_STATEMENT);} 
-        else { mc_line(target[X_AXIS], target[Y_AXIS], target[Z_AXIS], -1.0, false); }
+        else { mc_line(target, -1.0, false); }
         break;
       case MOTION_MODE_LINEAR:
         // TODO: Inverse time requires F-word with each statement. Need to do a check. Also need
@@ -412,8 +412,7 @@ uint8_t gc_execute_line(char *line)
         // and after an inverse time move and then check for non-zero feed rate each time. This
         // should be efficient and effective.
         if (!axis_words) { FAIL(STATUS_INVALID_STATEMENT);} 
-        else { mc_line(target[X_AXIS], target[Y_AXIS], target[Z_AXIS], 
-          (gc.inverse_feed_rate_mode) ? inverse_feed_rate : gc.feed_rate, gc.inverse_feed_rate_mode); }
+        else { mc_line(target, (gc.inverse_feed_rate_mode) ? inverse_feed_rate : gc.feed_rate, gc.inverse_feed_rate_mode); }
         break;
       case MOTION_MODE_CW_ARC: case MOTION_MODE_CCW_ARC:
         // Check if at least one of the axes of the selected plane has been specified. If in center 

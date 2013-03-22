@@ -3,7 +3,7 @@
   Part of Grbl
 
   Copyright (c) 2009-2011 Simen Svale Skogsrud
-  Copyright (c) 2011-2012 Sungeun K. Jeon
+  Copyright (c) 2011-2013 Sungeun K. Jeon
   Copyright (c) 2011 Jens Geisler
   
   Grbl is free software: you can redistribute it and/or modify
@@ -41,19 +41,15 @@
 // (1 minute)/feed_rate time.
 // NOTE: This is the primary gateway to the grbl planner. All line motions, including arc line 
 // segments, must pass through this routine before being passed to the planner. The seperation of
-// mc_line and plan_buffer_line is done primarily to make backlash compensation or canned cycle
-// integration simple and direct.
-// TODO: Check for a better way to avoid having to push the arguments twice for non-backlash cases.
-// However, this keeps the memory requirements lower since it doesn't have to call and hold two 
-// plan_buffer_lines in memory. Grbl only has to retain the original line input variables during a
-// backlash segment(s).
-void mc_line(float x, float y, float z, float feed_rate, uint8_t invert_feed_rate)
+// mc_line and plan_buffer_line is done primarily to place non-planner-type functions from being
+// in the planner and to let backlash compensation or canned cycle integration simple and direct.
+void mc_line(float *target, float feed_rate, uint8_t invert_feed_rate)
 {
-  // TODO: Perform soft limit check here. Just check if the target x,y,z values are outside the 
-  // work envelope. Should be straightforward and efficient. By placing it here, rather than in 
-  // the g-code parser, it directly picks up motions from everywhere in Grbl.
-
-  // If in check gcode mode, prevent motion by blocking planner.
+  // If enabled, check for soft limit violations. Placed here all line motions are picked up
+  // from everywhere in Grbl.
+  if (bit_istrue(settings.flags,BITFLAG_SOFT_LIMIT_ENABLE)) { limits_soft_check(target); }    
+      
+  // If in check gcode mode, prevent motion by blocking planner. Soft limits still work.
   if (sys.state == STATE_CHECK_MODE) { return; }
     
   // TODO: Backlash compensation may be installed here. Only need direction info to track when
@@ -68,22 +64,15 @@ void mc_line(float x, float y, float z, float feed_rate, uint8_t invert_feed_rat
   do {
     protocol_execute_runtime(); // Check for any run-time commands
     if (sys.abort) { return; } // Bail, if system abort.
-  } while ( plan_check_full_buffer() );
-  plan_buffer_line(x, y, z, feed_rate, invert_feed_rate);
+    if ( plan_check_full_buffer() ) { mc_auto_cycle_start(); } // Auto-cycle start when buffer is full.
+    else { break; }
+  } while (1);
+
+  plan_buffer_line(target[X_AXIS], target[Y_AXIS], target[Z_AXIS], feed_rate, invert_feed_rate);
 
   // If idle, indicate to the system there is now a planned block in the buffer ready to cycle 
   // start. Otherwise ignore and continue on.
   if (!sys.state) { sys.state = STATE_QUEUED; }
-  
-  // Auto-cycle start immediately after planner finishes. Enabled/disabled by grbl settings. During 
-  // a feed hold, auto-start is disabled momentarily until the cycle is resumed by the cycle-start 
-  // runtime command.
-  // NOTE: This is allows the user to decide to exclusively use the cycle start runtime command to
-  // begin motion or let grbl auto-start it for them. This is useful when: manually cycle-starting
-  // when the buffer is completely full and primed; auto-starting, if there was only one g-code 
-  // command sent during manual operation; or if a system is prone to buffer starvation, auto-start
-  // helps make sure it minimizes any dwelling/motion hiccups and keeps the cycle going. 
-  // if (sys.auto_start) { st_cycle_start(); }
 }
 
 
@@ -191,14 +180,14 @@ void mc_arc(float *position, float *target, float *offset, uint8_t axis_0, uint8
       arc_target[axis_0] = center_axis0 + r_axis0;
       arc_target[axis_1] = center_axis1 + r_axis1;
       arc_target[axis_linear] += linear_per_segment;
-      mc_line(arc_target[X_AXIS], arc_target[Y_AXIS], arc_target[Z_AXIS], feed_rate, invert_feed_rate);
+      mc_line(arc_target, feed_rate, invert_feed_rate);
       
       // Bail mid-circle on system abort. Runtime command check already performed by mc_line.
       if (sys.abort) { return; }
     }
   }
   // Ensure last segment arrives at target location.
-  mc_line(target[X_AXIS], target[Y_AXIS], target[Z_AXIS], feed_rate, invert_feed_rate);
+  mc_line(target, feed_rate, invert_feed_rate);
 }
 
 
@@ -230,31 +219,35 @@ void mc_go_home()
   protocol_execute_runtime(); // Check for reset and set system abort.
   if (sys.abort) { return; } // Did not complete. Alarm state set by mc_alarm.
 
-  // The machine should now be homed and machine zero has been located. Upon completion, 
-  // reset system position and sync internal position vectors.
-  clear_vector_float(sys.position); // Set machine zero
-  sys_sync_current_position();
-  sys.state = STATE_IDLE; // Set system state to IDLE to complete motion and indicate homed.
-  
-  // Pull-off axes (that have been homed) from limit switches before continuing motion. 
+  // The machine should now be homed and machine limits have been located. By default, 
+  // grbl defines machine space as all negative, as do most CNCs. Since limit switches
+  // can be on either side of an axes, check and set machine zero appropriately.
+  // At the same time, set up pull-off maneuver from axes limit switches that have been homed.
   // This provides some initial clearance off the switches and should also help prevent them 
   // from falsely tripping when hard limits are enabled.
-  int8_t x_dir, y_dir, z_dir;
-  x_dir = y_dir = z_dir = 0;
-  if (HOMING_LOCATE_CYCLE & (1<<X_AXIS)) { 
-    if (settings.homing_dir_mask & (1<<X_DIRECTION_BIT)) { x_dir = 1; }
-    else { x_dir = -1; }
+  // TODO: Need to improve dir_mask[] to be more axes independent.
+  float pulloff_target[N_AXIS];
+  clear_vector_float(pulloff_target); // Zero pulloff target.
+  clear_vector_long(sys.position); // Zero current position for now.
+  uint8_t i;
+  uint8_t dir_mask[N_AXIS] = { bit(X_DIRECTION_BIT),bit(Y_DIRECTION_BIT),bit(Z_DIRECTION_BIT) };
+  for (i=0; i<N_AXIS; i++) {
+    // Set up pull off targets and machine positions for limit switches homed in the negative
+    // direction, rather than the traditional positive. Leave non-homed positions as zero and
+    // do not move them.
+    if (HOMING_LOCATE_CYCLE & bit(i)) {
+      if (settings.homing_dir_mask & dir_mask[i]) {
+        pulloff_target[i] = settings.homing_pulloff-settings.max_travel[i];
+        sys.position[i] = -lround(settings.max_travel[i]*settings.steps_per_mm[i]);
+      } else {
+        pulloff_target[i] = -settings.homing_pulloff;
+      }
+    }
   }
-  if (HOMING_LOCATE_CYCLE & (1<<Y_AXIS)) { 
-    if (settings.homing_dir_mask & (1<<Y_DIRECTION_BIT)) { y_dir = 1; }
-    else { y_dir = -1; }
-  }
-  if (HOMING_LOCATE_CYCLE & (1<<Z_AXIS)) { 
-    if (settings.homing_dir_mask & (1<<Z_DIRECTION_BIT)) { z_dir = 1; }
-    else { z_dir = -1; }
-  }
-  mc_line(x_dir*settings.homing_pulloff, y_dir*settings.homing_pulloff, 
-          z_dir*settings.homing_pulloff, settings.homing_seek_rate, false);
+  sys_sync_current_position();
+  sys.state = STATE_IDLE; // Set system state to IDLE to complete motion and indicate homed.
+
+  mc_line(pulloff_target, settings.homing_seek_rate, false);
   st_cycle_start(); // Move it. Nothing should be in the buffer except this motion. 
   plan_synchronize(); // Make sure the motion completes.
   
@@ -265,6 +258,17 @@ void mc_go_home()
   if (bit_istrue(settings.flags,BITFLAG_HARD_LIMIT_ENABLE)) { LIMIT_PCMSK |= LIMIT_MASK; }
   // Finished! 
 }
+
+
+// Auto-cycle start is a user setting that automatically begins the cycle when a user enters
+// a valid motion command either manually or by a streaming tool. This is intended as a beginners
+// feature to help new users to understand g-code. It can be disabled. Otherwise, the normal
+// operation of cycle start is manually issuing a cycle start command whenever the user is
+// ready and there is a valid motion command in the planner queue.
+// NOTE: This function is called from the main loop and mc_line() only and executes when one of
+// two conditions exist respectively: There are no more blocks sent (i.e. streaming is finished),
+// or the planner buffer is full and ready to go.
+void mc_auto_cycle_start() { if (sys.auto_start) { st_cycle_start(); } }
 
 
 // Method to ready the system to reset by setting the runtime reset command and killing any

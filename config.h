@@ -3,7 +3,7 @@
   Part of Grbl
 
   Copyright (c) 2009-2011 Simen Svale Skogsrud
-  Copyright (c) 2011-2012 Sungeun K. Jeon
+  Copyright (c) 2011-2013 Sungeun K. Jeon
 
   Grbl is free software: you can redistribute it and/or modify
   it under the terms of the GNU General Public License as published by
@@ -107,13 +107,12 @@
 
 // The "Stepper Driver Interrupt" employs the Pramod Ranade inverse time algorithm to manage the
 // Bresenham line stepping algorithm. The value ISR_TICKS_PER_SECOND is the frequency(Hz) at which
-// the Ranade algorithm ticks at. Maximum step frequencies are limited by the Ranade frequency by
-// approximately 0.75-0.9 * ISR_TICK_PER_SECOND. Meaning for 20kHz, the max step frequency is roughly
-// 15-18kHz. An Arduino can safely complete a single interrupt of the current stepper driver algorithm 
-// theoretically up to a frequency of 35-40kHz, but CPU overhead increases exponentially as this
-// frequency goes up. So there will be little left for other processes like arcs.  
-//   In future versions, more work will be done to increase the step rates but still stay around
-// 20kHz by performing two steps per step event, rather than just one.
+// the Ranade algorithm ticks at. Recommended step frequencies are limited by the Ranade frequency by
+// approximately 0.75-0.9 * ISR_TICK_PER_SECOND. Meaning for 30kHz, the max step frequency is roughly
+// 22.5-27kHz, but 30kHz is still possible, just not optimal. An Arduino can safely complete a single
+// interrupt of the current stepper driver algorithm theoretically up to a frequency of 35-40kHz, but 
+// CPU overhead increases exponentially as this frequency goes up. So there will be little left for 
+// other processes like arcs.  
 #define ISR_TICKS_PER_SECOND 30000L  // Integer (Hz)
 
 // The temporal resolution of the acceleration management subsystem. Higher number give smoother
@@ -208,7 +207,7 @@
 
 // The number of linear motions in the planner buffer to be planned at any give time. The vast
 // majority of RAM that Grbl uses is based on this buffer size. Only increase if there is extra 
-// available RAM, like when re-compiling for a Teensy or Sanguino. Or decrease if the Arduino
+// available RAM, like when re-compiling for a Mega or Sanguino. Or decrease if the Arduino
 // begins to crash due to the lack of available RAM or if the CPU is having trouble keeping
 // up with planning new incoming motions as they are executed. 
 // #define BLOCK_BUFFER_SIZE 18  // Uncomment to override default in planner.h.

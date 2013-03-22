@@ -3,7 +3,7 @@
   Part of Grbl
 
   Copyright (c) 2009-2011 Simen Svale Skogsrud
-  Copyright (c) 2011-2012 Sungeun K. Jeon
+  Copyright (c) 2011-2013 Sungeun K. Jeon
   Copyright (c) 2011 Jens Geisler  
   
   Grbl is free software: you can redistribute it and/or modify
@@ -360,11 +360,7 @@ inline block_t *plan_get_current_block()
 // Returns the availability status of the block ring buffer. True, if full.
 uint8_t plan_check_full_buffer()
 {
-  if (block_buffer_tail == next_buffer_head) { 
-    // TODO: Move this back into motion control. Shouldn't be here, but it's efficient.
-    if (sys.auto_start) { st_cycle_start(); } // Auto-cycle start when buffer is full.
-    return(true); 
-  }
+  if (block_buffer_tail == next_buffer_head) { return(true); }
   return(false);
 }
 

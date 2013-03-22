@@ -2,7 +2,7 @@
   defaults.h - defaults settings configuration file
   Part of Grbl
 
-  Copyright (c) 2012 Sungeun K. Jeon
+  Copyright (c) 2012-2013 Sungeun K. Jeon
 
   Grbl is free software: you can redistribute it and/or modify
   it under the terms of the GNU General Public License as published by
@@ -42,6 +42,7 @@
   #define DEFAULT_REPORT_INCHES 0 // false
   #define DEFAULT_AUTO_START 1 // true
   #define DEFAULT_INVERT_ST_ENABLE 0 // false
+  #define DEFAULT_SOFT_LIMIT_ENABLE 0 // false
   #define DEFAULT_HARD_LIMIT_ENABLE 0  // false
   #define DEFAULT_HOMING_ENABLE 0  // false
   #define DEFAULT_HOMING_DIR_MASK 0 // move positive dir
@@ -51,6 +52,9 @@
   #define DEFAULT_HOMING_PULLOFF 1.0 // mm
   #define DEFAULT_STEPPER_IDLE_LOCK_TIME 25 // msec (0-255)
   #define DEFAULT_DECIMAL_PLACES 3
+  #define DEFAULT_X_MAX_TRAVEL 200 // mm
+  #define DEFAULT_Y_MAX_TRAVEL 200 // mm
+  #define DEFAULT_Z_MAX_TRAVEL 200 // mm
 #endif
 
 #ifdef DEFAULTS_SHERLINE_5400
@@ -72,6 +76,7 @@
   #define DEFAULT_REPORT_INCHES 1 // false
   #define DEFAULT_AUTO_START 1 // true
   #define DEFAULT_INVERT_ST_ENABLE 0 // false
+  #define DEFAULT_SOFT_LIMIT_ENABLE 0 // false
   #define DEFAULT_HARD_LIMIT_ENABLE 0  // false
   #define DEFAULT_HOMING_ENABLE 0  // false
   #define DEFAULT_HOMING_DIR_MASK 0 // move positive dir
@@ -81,6 +86,9 @@
   #define DEFAULT_HOMING_PULLOFF 1.0 // mm
   #define DEFAULT_STEPPER_IDLE_LOCK_TIME 25 // msec (0-255)
   #define DEFAULT_DECIMAL_PLACES 3
+  #define DEFAULT_X_MAX_TRAVEL 200 // mm
+  #define DEFAULT_Y_MAX_TRAVEL 200 // mm
+  #define DEFAULT_Z_MAX_TRAVEL 200 // mm  
 #endif
 
 #ifdef DEFAULTS_SHAPEOKO
@@ -105,6 +113,7 @@
   #define DEFAULT_REPORT_INCHES 0 // false
   #define DEFAULT_AUTO_START 1 // true
   #define DEFAULT_INVERT_ST_ENABLE 0 // false
+  #define DEFAULT_SOFT_LIMIT_ENABLE 0 // false  
   #define DEFAULT_HARD_LIMIT_ENABLE 0  // false
   #define DEFAULT_HOMING_ENABLE 0  // false
   #define DEFAULT_HOMING_DIR_MASK 0 // move positive dir
@@ -114,6 +123,9 @@
   #define DEFAULT_HOMING_PULLOFF 1.0 // mm
   #define DEFAULT_STEPPER_IDLE_LOCK_TIME 255 // msec (0-255)
   #define DEFAULT_DECIMAL_PLACES 3
+  #define DEFAULT_X_MAX_TRAVEL 200 // mm
+  #define DEFAULT_Y_MAX_TRAVEL 200 // mm
+  #define DEFAULT_Z_MAX_TRAVEL 200 // mm  
 #endif
 
 #ifdef DEFAULTS_ZEN_TOOLWORKS_7x7
@@ -136,6 +148,7 @@
   #define DEFAULT_REPORT_INCHES 0 // false
   #define DEFAULT_AUTO_START 1 // true
   #define DEFAULT_INVERT_ST_ENABLE 0 // false
+  #define DEFAULT_SOFT_LIMIT_ENABLE 0 // false  
   #define DEFAULT_HARD_LIMIT_ENABLE 0  // false
   #define DEFAULT_HOMING_ENABLE 0  // false
   #define DEFAULT_HOMING_DIR_MASK 0 // move positive dir
@@ -145,6 +158,9 @@
   #define DEFAULT_HOMING_PULLOFF 1.0 // mm
   #define DEFAULT_STEPPER_IDLE_LOCK_TIME 25 // msec (0-255)
   #define DEFAULT_DECIMAL_PLACES 3
+  #define DEFAULT_X_MAX_TRAVEL 200 // mm
+  #define DEFAULT_Y_MAX_TRAVEL 200 // mm
+  #define DEFAULT_Z_MAX_TRAVEL 200 // mm  
 #endif
 
 #endif
