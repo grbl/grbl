@@ -58,6 +58,10 @@ void mc_line(float *target, float feed_rate, uint8_t invert_feed_rate)
   // backlash steps will need to be also tracked. Not sure what the best strategy is for this,
   // i.e. keep the planner independent and do the computations in the status reporting, or let
   // the planner handle the position corrections. The latter may get complicated.
+  // TODO: Backlash comp positioning values may need to be kept at a system level, i.e. tracking 
+  // true position after a feed hold in the middle of a backlash move. The difficulty is in making 
+  // sure that the stepper subsystem and planner are working in sync, and the status report 
+  // position also takes this into account.
 
   // If the buffer is full: good! That means we are well ahead of the robot. 
   // Remain in this loop until there is room in the buffer.
@@ -229,8 +233,11 @@ void mc_go_home()
   float pulloff_target[N_AXIS];
   clear_vector_float(pulloff_target); // Zero pulloff target.
   clear_vector_long(sys.position); // Zero current position for now.
+  uint8_t dir_mask[N_AXIS];
+  dir_mask[X_AXIS] = (1<<X_DIRECTION_BIT);
+  dir_mask[Y_AXIS] = (1<<Y_DIRECTION_BIT);
+  dir_mask[Z_AXIS] = (1<<Z_DIRECTION_BIT);
   uint8_t i;
-  uint8_t dir_mask[N_AXIS] = { bit(X_DIRECTION_BIT),bit(Y_DIRECTION_BIT),bit(Z_DIRECTION_BIT) };
   for (i=0; i<N_AXIS; i++) {
     // Set up pull off targets and machine positions for limit switches homed in the negative
     // direction, rather than the traditional positive. Leave non-homed positions as zero and
@@ -266,8 +273,8 @@ void mc_go_home()
 // operation of cycle start is manually issuing a cycle start command whenever the user is
 // ready and there is a valid motion command in the planner queue.
 // NOTE: This function is called from the main loop and mc_line() only and executes when one of
-// two conditions exist respectively: There are no more blocks sent (i.e. streaming is finished),
-// or the planner buffer is full and ready to go.
+// two conditions exist respectively: There are no more blocks sent (i.e. streaming is finished, 
+// single commands), or the planner buffer is full and ready to go.
 void mc_auto_cycle_start() { if (sys.auto_start) { st_cycle_start(); } }
 
 

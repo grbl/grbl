@@ -96,22 +96,16 @@ static void homing_cycle(uint8_t cycle_mask, int8_t pos_dir, bool invert_pin, fl
   // and speedy homing routine.
   // NOTE: For each axes enabled, the following calculations assume they physically move 
   // an equal distance over each time step until they hit a limit switch, aka dogleg.
-  uint32_t steps[N_AXIS];
-  uint8_t dist = 0;
+  uint32_t step_event_count, steps[N_AXIS];
+  uint8_t i, dist = 0;
   clear_vector(steps);
-  if (cycle_mask & (1<<X_AXIS)) { 
-    dist++;
-    steps[X_AXIS] = lround(settings.steps_per_mm[X_AXIS]); 
+  for (i=0; i<N_AXIS; i++) {
+    if (cycle_mask & (1<<i)) { 
+      dist++;
+      steps[i] = lround(settings.steps_per_mm[i]); 
+    }
   }
-  if (cycle_mask & (1<<Y_AXIS)) { 
-    dist++;
-    steps[Y_AXIS] = lround(settings.steps_per_mm[Y_AXIS]); 
-  }
-  if (cycle_mask & (1<<Z_AXIS)) {
-    dist++;
-    steps[Z_AXIS] = lround(settings.steps_per_mm[Z_AXIS]);
-  }
-  uint32_t step_event_count = max(steps[X_AXIS], max(steps[Y_AXIS], steps[Z_AXIS]));  
+  step_event_count = max(steps[X_AXIS], max(steps[Y_AXIS], steps[Z_AXIS]));  
   
   // To ensure global acceleration is not exceeded, reduce the governing axes nominal rate
   // by adjusting the actual axes distance traveled per step. This is the same procedure

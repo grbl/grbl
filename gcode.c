@@ -77,8 +77,9 @@ static float to_millimeters(float value)
 
 // Executes one line of 0-terminated G-Code. The line is assumed to contain only uppercase
 // characters and signed floating point values (no whitespace). Comments and block delete
-// characters have been removed. All units and positions are converted and exported to grbl's
-// internal functions in terms of (mm, mm/min) and absolute machine coordinates, respectively.
+// characters have been removed. In this function, all units and positions are converted and 
+// exported to grbl's internal functions in terms of (mm, mm/min) and absolute machine 
+// coordinates, respectively.
 uint8_t gc_execute_line(char *line) 
 {
 
@@ -203,7 +204,10 @@ uint8_t gc_execute_line(char *line)
   
   /* Pass 2: Parameters. All units converted according to current block commands. Position 
      parameters are converted and flagged to indicate a change. These can have multiple connotations
-     for different commands. Each will be converted to their proper value upon execution. */
+     for different commands. Each will be converted to their proper value upon execution. 
+     NOTE: Grbl unconventionally pre-converts these parameter values based on the block G and M 
+     commands. This is set out of the order of execution defined by NIST only for code efficiency/size 
+     purposes, but should not affect proper g-code execution. */ 
   float p = 0, r = 0;
   uint8_t l = 0;
   char_counter = 0;
@@ -242,10 +246,8 @@ uint8_t gc_execute_line(char *line)
   if (gc.status_code) { return(gc.status_code); }
   
   
-  /* Execute Commands: Perform by order of execution defined in NIST RS274-NGC.v3, Table 8, pg.41.
-     NOTE: Independent non-motion/settings parameters are set out of this order for code efficiency 
-     and simplicity purposes, but this should not affect proper g-code execution. */
-  
+  /* Execute Commands: Perform by order of execution defined in NIST RS274-NGC.v3, Table 8, pg.41. */
+    
   // ([F]: Set feed rate.)
     
   if (sys.state != STATE_CHECK_MODE) { 

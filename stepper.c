@@ -2,7 +2,7 @@
   stepper.c - stepper motor driver: executes motion plans using stepper motors
   Part of Grbl
 
-  Copyright (c) 2011-2012 Sungeun K. Jeon
+  Copyright (c) 2011-2013 Sungeun K. Jeon
   Copyright (c) 2009-2011 Simen Svale Skogsrud
   
   Grbl is free software: you can redistribute it and/or modify
@@ -107,6 +107,7 @@ void st_go_idle()
   // Disable stepper driver interrupt. Allow Timer0 to finish. It will disable itself.
   TIMSK2 &= ~(1<<OCIE2A); // Disable Timer2 interrupt
   TCCR2B = 0; // Disable Timer2
+  busy = false;
 
   // Disable steppers only upon system alarm activated or by user setting to not be kept enabled.
   if ((settings.stepper_idle_lock_time != 0xff) || bit_istrue(sys.execute,EXEC_ALARM)) {
@@ -193,7 +194,6 @@ ISR(TIMER2_COMPA_vect)
     } else {
       st_go_idle();
       bit_true(sys.execute,EXEC_CYCLE_STOP); // Flag main program for cycle end
-      busy = false;
       return; // Nothing to do but exit.
     }  
   } 
@@ -237,7 +237,6 @@ ISR(TIMER2_COMPA_vect)
       if (st.delta_d <= current_block->rate_delta) {
         st_go_idle();
         bit_true(sys.execute,EXEC_CYCLE_STOP);
-        busy = false;
         return;
       }
     }
@@ -330,7 +329,7 @@ void st_init()
   TCNT2 = 0; // Clear Timer2 counter
   TCCR2A = (1<<WGM21);  // Set CTC mode
   OCR2A = (F_CPU/ISR_TICKS_PER_SECOND)/8 - 1; // Set Timer2 CTC rate
-  
+
   // Configure Timer 0
   TIMSK0 &= ~(1<<TOIE0);
   TCCR0A = 0; // Normal operation
