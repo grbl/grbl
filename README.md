@@ -11,7 +11,7 @@ Grbl includes full acceleration management with look ahead. That means the contr
 
 ##Downloads (Right-Click and Save-Link-As):
 _**Master Branch:**_
-* [Grbl v0.8c Atmega328p 16mhz 9600baud](http://bit.ly/SSdCJE) Last updated: 2013-03-19
+* [Grbl v0.8c Atmega328p 16mhz 9600baud](http://bit.ly/SSdCJE) Last updated: 2013-04-05 (Line buffer increased and overflow feedback added.)
 
 _**Edge/Development Branch:**_
 * [Grbl v0.9a Build 2013-03-19](http://bit.ly/Y0tMHo) : Updated g-code G10.
