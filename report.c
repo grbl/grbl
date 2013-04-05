@@ -74,6 +74,8 @@ void report_status_message(uint8_t status_code)
       printPgmString(PSTR("Busy or queued")); break;
       case STATUS_ALARM_LOCK:
       printPgmString(PSTR("Alarm lock")); break;
+      case STATUS_OVERFLOW:
+      printPgmString(PSTR("Line overflow")); break;
     }
     printPgmString(PSTR("\r\n"));
   }

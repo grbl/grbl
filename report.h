@@ -35,6 +35,7 @@
 #define STATUS_SETTING_READ_FAIL 10
 #define STATUS_IDLE_ERROR 11
 #define STATUS_ALARM_LOCK 12
+#define STATUS_OVERFLOW 13
 
 // Define Grbl alarm codes. Less than zero to distinguish alarm error from status error.
 #define ALARM_HARD_LIMIT -1

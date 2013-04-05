@@ -185,11 +185,11 @@
 // each of the startup blocks, as they are each stored as a string of this size. Make sure
 // to account for the available EEPROM at the defined memory address in settings.h and for
 // the number of desired startup blocks.
-// NOTE: 50 characters is not a problem except for extreme cases, but the line buffer size 
+// NOTE: 70 characters is not a problem except for extreme cases, but the line buffer size 
 // can be too small and g-code blocks can get truncated. Officially, the g-code standards 
 // support up to 256 characters. In future versions, this default will be increased, when 
 // we know how much extra memory space we can re-invest into this.
-// #define LINE_BUFFER_SIZE 50  // Uncomment to override default in protocol.h
+// #define LINE_BUFFER_SIZE 70  // Uncomment to override default in protocol.h
   
 // Serial send and receive buffer size. The receive buffer is often used as another streaming
 // buffer to store incoming blocks to be processed by Grbl when its ready. Most streaming
