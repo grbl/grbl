@@ -76,6 +76,8 @@ void report_status_message(uint8_t status_code)
       printPgmString(PSTR("Alarm lock")); break;
       case STATUS_SOFT_LIMIT_ERROR:
       printPgmString(PSTR("Homing not enabled")); break;
+      case STATUS_OVERFLOW:
+      printPgmString(PSTR("Line overflow")); break; 
     }
     printPgmString(PSTR("\r\n"));
   }

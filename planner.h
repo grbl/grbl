@@ -24,7 +24,7 @@
                  
 // The number of linear motions that can be in the plan at any give time
 #ifndef BLOCK_BUFFER_SIZE
-  #define BLOCK_BUFFER_SIZE 18
+  #define BLOCK_BUFFER_SIZE 17
 #endif
 
 // This struct is used when buffering the setup for each linear movement "nominal" values are as specified in 

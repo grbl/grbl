@@ -37,10 +37,16 @@ static uint8_t char_counter; // Last character counter in line variable.
 static uint8_t iscomment; // Comment/block delete flag for processor to ignore comment characters.
 
 
+static void protocol_reset_line_buffer()
+{
+  char_counter = 0;
+  iscomment = false;
+}
+
+
 void protocol_init() 
 {
-  char_counter = 0; // Reset line input
-  iscomment = false;
+  protocol_reset_line_buffer(); // Reset line input
   report_init_message(); // Welcome message   
   
   PINOUT_DDR &= ~(PINOUT_MASK); // Set as input pins
@@ -48,6 +54,7 @@ void protocol_init()
   PINOUT_PCMSK |= PINOUT_MASK;   // Enable specific pins of the Pin Change Interrupt
   PCICR |= (1 << PINOUT_INT);   // Enable Pin Change Interrupt
 }
+
 
 // Executes user startup script, if stored.
 void protocol_execute_startup() 
@@ -64,6 +71,7 @@ void protocol_execute_startup()
     } 
   }  
 }
+
 
 // Pin change interrupt for pin-out commands, i.e. cycle start, feed hold, and reset. Sets
 // only the runtime command execute variable to have the main program execute these when 
@@ -305,9 +313,8 @@ void protocol_process()
         // Empty or comment line. Skip block.
         report_status_message(STATUS_OK); // Send status message for syncing purposes.
       }
-      char_counter = 0; // Reset line buffer index
-      iscomment = false; // Reset comment flag
-      
+      protocol_reset_line_buffer();
+            
     } else {
       if (iscomment) {
         // Throw away all comment characters
@@ -324,7 +331,9 @@ void protocol_process()
           // Enable comments flag and ignore all characters until ')' or EOL.
           iscomment = true;
         } else if (char_counter >= LINE_BUFFER_SIZE-1) {
-          // Throw away any characters beyond the end of the line buffer          
+          // Detect line buffer overflow. Report error and reset line buffer.
+          report_status_message(STATUS_OVERFLOW);
+          protocol_reset_line_buffer();
         } else if (c >= 'a' && c <= 'z') { // Upcase lowercase
           line[char_counter++] = c-'a'+'A';
         } else {

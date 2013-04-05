@@ -245,7 +245,8 @@ uint8_t gc_execute_line(char *line)
   // If there were any errors parsing this line, we will return right away with the bad news
   if (gc.status_code) { return(gc.status_code); }
   
-  
+  uint8_t i;
+
   /* Execute Commands: Perform by order of execution defined in NIST RS274-NGC.v3, Table 8, pg.41. */
     
   // ([F]: Set feed rate.)
@@ -290,7 +291,6 @@ uint8_t gc_execute_line(char *line)
         else { int_value = gc.coord_select; } // Index P0 as the active coordinate system
         float coord_data[N_AXIS];
         if (!settings_read_coord_data(int_value,coord_data)) { return(STATUS_SETTING_READ_FAIL); }
-        uint8_t i;
         // Update axes defined only in block. Always in machine coordinates. Can change non-active system.
         for (i=0; i<N_AXIS; i++) { // Axes indices are consistent, so loop may be used.
           if (bit_istrue(axis_words,bit(i)) ) {
@@ -312,7 +312,6 @@ uint8_t gc_execute_line(char *line)
       // and absolute and incremental modes.
       if (axis_words) {
         // Apply absolute mode coordinate offsets or incremental mode offsets.
-        uint8_t i;
         for (i=0; i<N_AXIS; i++) { // Axes indices are consistent, so loop may be used.
           if ( bit_istrue(axis_words,bit(i)) ) {
             if (gc.absolute_mode) {
@@ -350,7 +349,6 @@ uint8_t gc_execute_line(char *line)
       } else {
         // Update axes defined only in block. Offsets current system to defined value. Does not update when
         // active coordinate system is selected, but is still active unless G92.1 disables it. 
-        uint8_t i;
         for (i=0; i<N_AXIS; i++) { // Axes indices are consistent, so loop may be used.
           if (bit_istrue(axis_words,bit(i)) ) {
             gc.coord_offset[i] = gc.position[i]-gc.coord_system[i]-target[i];
@@ -385,7 +383,6 @@ uint8_t gc_execute_line(char *line)
     // Convert all target position data to machine coordinates for executing motion. Apply
     // absolute mode coordinate offsets or incremental mode offsets.
     // NOTE: Tool offsets may be appended to these conversions when/if this feature is added.
-    uint8_t i;
     for (i=0; i<N_AXIS; i++) { // Axes indices are consistent, so loop may be used to save flash space.
       if ( bit_istrue(axis_words,bit(i)) ) {
         if (!absolute_override) { // Do not update target in absolute override mode
