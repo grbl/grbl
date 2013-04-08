@@ -91,7 +91,7 @@ void serial_write(uint8_t data) {
 }
 
 // Data Register Empty Interrupt handler
-#ifdef __AVR_ATmega644P__
+#if defined(__AVR_ATmega644P__) || defined(__AVR_ATmega1284P__)
 ISR(USART0_UDRE_vect)
 #else
 ISR(USART_UDRE_vect)
@@ -144,7 +144,7 @@ uint8_t serial_read()
   }
 }
 
-#ifdef __AVR_ATmega644P__
+#if defined(__AVR_ATmega644P__) || defined(__AVR_ATmega1284P__)
 ISR(USART0_RX_vect)
 #else
 ISR(USART_RX_vect)
