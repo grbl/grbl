@@ -23,10 +23,15 @@
    used to be a part of the Arduino project. */ 
 
 #include <avr/interrupt.h>
+#include <avr/io.h> 
 #include "serial.h"
 #include "config.h"
 #include "motion_control.h"
 #include "protocol.h"
+
+#define BAUD BAUD_RATE
+#include <util/setbaud.h>
+
 
 uint8_t rx_buffer[RX_BUFFER_SIZE];
 uint8_t rx_buffer_head = 0;
@@ -52,15 +57,17 @@ volatile uint8_t tx_buffer_tail = 0;
 void serial_init()
 {
   // Set baud rate
-  #if BAUD_RATE < 57600
-    uint16_t UBRR0_value = ((F_CPU / (8L * BAUD_RATE)) - 1)/2 ;
-    UCSR0A &= ~(1 << U2X0); // baud doubler off  - Only needed on Uno XXX
+  UBRR0H = UBRRH_VALUE;
+  UBRR0L = UBRRL_VALUE;
+
+  #if USE_2X
+   /* U2X-Modus erforderlich */
+   UCSR0A |= (1 << U2X0);
   #else
-    uint16_t UBRR0_value = ((F_CPU / (4L * BAUD_RATE)) - 1)/2;
-    UCSR0A |= (1 << U2X0);  // baud doubler on for high baud rates, i.e. 115200
+   /* U2X-Modus nicht erforderlich */
+   UCSR0A &= ~(1 << U2X0);
   #endif
-  UBRR0H = UBRR0_value >> 8;
-  UBRR0L = UBRR0_value;
+
             
   // enable rx and tx
   UCSR0B |= 1<<RXEN0;
@@ -70,6 +77,7 @@ void serial_init()
   UCSR0B |= 1<<RXCIE0;
 	  
   // defaults to 8-bit, no parity, 1 stop bit
+  UCSR0C = (1<<UCSZ01)|(1<<UCSZ00);
 }
 
 void serial_write(uint8_t data) {
@@ -91,7 +99,7 @@ void serial_write(uint8_t data) {
 }
 
 // Data Register Empty Interrupt handler
-#ifdef __AVR_ATmega644P__
+#if defined(__AVR_ATmega644P__) || defined(__AVR_ATmega1284P__)
 ISR(USART0_UDRE_vect)
 #else
 ISR(USART_UDRE_vect)
@@ -144,7 +152,7 @@ uint8_t serial_read()
   }
 }
 
-#ifdef __AVR_ATmega644P__
+#if defined(__AVR_ATmega644P__) || defined(__AVR_ATmega1284P__)
 ISR(USART0_RX_vect)
 #else
 ISR(USART_RX_vect)

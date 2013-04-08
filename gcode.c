@@ -229,7 +229,7 @@ uint8_t gc_execute_line(char *line)
       case 'S': 
         if (value < 0) { FAIL(STATUS_INVALID_STATEMENT); } // Cannot be negative
         // TBD: Spindle speed not supported due to PWM issues, but may come back once resolved.
-        // gc.spindle_speed = value;
+        gc.spindle_speed = (uint16_t)value;
         break;
       case 'T': 
         if (value < 0) { FAIL(STATUS_INVALID_STATEMENT); } // Cannot be negative
@@ -254,7 +254,7 @@ uint8_t gc_execute_line(char *line)
     //  ([M6]: Tool change should be executed here.)
 
     // [M3,M4,M5]: Update spindle state
-    spindle_run(gc.spindle_direction);
+    spindle_run(gc.spindle_direction,gc.spindle_speed);
   
     // [*M7,M8,M9]: Update coolant state
     coolant_run(gc.coolant_mode);
