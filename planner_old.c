@@ -34,7 +34,7 @@
 #define SOME_LARGE_VALUE 1.0E+38 // Used by rapids and acceleration maximization calculations. Just needs
                                  // to be larger than any feasible (mm/min)^2 or mm/sec^2 value.
 
-static plan_block_t block_buffer[BLOCK_BUFFER_SIZE];  // A ring buffer for motion instructions
+static block_t block_buffer[BLOCK_BUFFER_SIZE];  // A ring buffer for motion instructions
 static volatile uint8_t block_buffer_tail;       // Index of the block to process now
 static uint8_t block_buffer_head;                // Index of the next block to be pushed
 static uint8_t next_buffer_head;                 // Index of the next buffer head
@@ -47,6 +47,7 @@ typedef struct {
                                      // i.e. arcs, canned cycles, and backlash compensation.
   float previous_unit_vec[N_AXIS];   // Unit vector of previous path line segment
   float previous_nominal_speed_sqr;  // Nominal speed of previous path line segment
+  float last_target[N_AXIS];         // Target position of previous path line segment
 } planner_t;
 static planner_t pl;
 
@@ -68,7 +69,65 @@ static uint8_t prev_block_index(uint8_t block_index)
   block_index--;
   return(block_index);
 }
-                            
+
+
+/*       STEPPER VELOCITY PROFILE DEFINITION 
+                                                  less than nominal rate->  + 
+                    +--------+ <- nominal_rate                             /|\                                         
+                   /          \                                           / | \                      
+  initial_rate -> +            \                                         /  |  + <- next->initial_rate         
+                  |             + <- next->initial_rate                 /   |  |                       
+                  +-------------+                      initial_rate -> +----+--+                   
+                   time -->  ^  ^                                           ^  ^                       
+                             |  |                                           |  |                       
+                     decelerate distance                           decelerate distance  
+                                                        
+  Calculates trapezoid parameters for stepper algorithm. Each block velocity profiles can be 
+  described as either a trapezoidal or a triangular shape. The trapezoid occurs when the block
+  reaches the nominal speed of the block and cruises for a period of time. A triangle occurs
+  when the nominal speed is not reached within the block. Some other special cases exist, 
+  such as pure ac/de-celeration velocity profiles from beginning to end or a trapezoid that
+  has no deceleration period when the next block resumes acceleration. 
+  
+  The following function determines the type of velocity profile and stores the minimum required
+  information for the stepper algorithm to execute the calculated profiles. In this case, only
+  the new initial rate and n_steps until deceleration are computed, since the stepper algorithm
+  already handles acceleration and cruising and just needs to know when to start decelerating.
+*/
+static void calculate_trapezoid_for_block(block_t *block, float entry_speed_sqr, float exit_speed_sqr) 
+{  
+  // Compute new initial rate for stepper algorithm
+  block->initial_rate = ceil(sqrt(entry_speed_sqr)*(INV_TIME_MULTIPLIER/(60*ISR_TICKS_PER_SECOND))); // (mult*mm/isr_tic)
+          
+  // TODO: Compute new nominal rate if a feedrate override occurs.
+  // block->nominal_rate = ceil(feed_rate*(RANADE_MULTIPLIER/(60.0*ISR_TICKS_PER_SECOND))); // (mult*mm/isr_tic)
+    
+  // Compute efficiency variable for following calculations. Removes a float divide and multiply.
+  // TODO: If memory allows, this can be kept in the block buffer since it doesn't change, even after feed holds.
+  float steps_per_mm_div_2_acc = block->step_event_count/(2*block->acceleration*block->millimeters); 
+  
+  // First determine intersection distance (in steps) from the exit point for a triangular profile.
+  // Computes: steps_intersect = steps/mm * ( distance/2 + (v_entry^2-v_exit^2)/(4*acceleration) )
+  int32_t intersect_distance = ceil( 0.5*(block->step_event_count + steps_per_mm_div_2_acc*(entry_speed_sqr-exit_speed_sqr)) );  
+  
+  // Check if this is a pure acceleration block by a intersection distance less than zero. Also
+  // prevents signed and unsigned integer conversion errors.
+  if (intersect_distance <= 0) {
+    block->decelerate_after = 0; 
+  } else {
+    // Determine deceleration distance (in steps) from nominal speed to exit speed for a trapezoidal profile.
+    // Value is never negative. Nominal speed is always greater than or equal to the exit speed.
+    // Computes: steps_decelerate = steps/mm * ( (v_nominal^2 - v_exit^2)/(2*acceleration) )
+    block->decelerate_after = ceil(steps_per_mm_div_2_acc * (block->nominal_speed_sqr - exit_speed_sqr));
+
+    // The lesser of the two triangle and trapezoid distances always defines the velocity profile.
+    if (block->decelerate_after > intersect_distance) { block->decelerate_after = intersect_distance; }
+    
+    // Finally, check if this is a pure deceleration block.
+    if (block->decelerate_after > block->step_event_count) { block->decelerate_after = block->step_event_count; }
+  }
+}     
+                                        
 
 /*                            PLANNER SPEED DEFINITION                                              
                                      +--------+   <- current->nominal_speed
@@ -128,19 +187,15 @@ static void planner_recalculate()
 {     
   // Last/newest block in buffer. Exit speed is set with MINIMUM_PLANNER_SPEED. Always recalculated.
   uint8_t block_index = block_buffer_head;
-  plan_block_t *current = &block_buffer[block_index]; // Set as last/newest block in buffer
+  block_t *current = &block_buffer[block_index]; // Set as last/newest block in buffer
   
-  // Ping the stepper algorithm to check if we can alter the parameters of the currently executing
-  // block. If not, skip it and work on the next block. 
-  // TODO: Need to look into if there are conditions where this fails.
+  // Determine safe point for which to plan to.
   uint8_t block_buffer_safe = next_block_index( block_buffer_tail );
-  
-  // TODO: Need to recompute buffer tail millimeters based on how much is completed.
   
   if (block_buffer_safe == next_buffer_head) { // Only one safe block in buffer to operate on
 
     block_buffer_planned = block_buffer_safe;
-//     calculate_trapezoid_for_block(current, 0.0, MINIMUM_PLANNER_SPEED*MINIMUM_PLANNER_SPEED);
+    calculate_trapezoid_for_block(current, 0.0, MINIMUM_PLANNER_SPEED*MINIMUM_PLANNER_SPEED);
 
   } else {
   
@@ -150,14 +205,14 @@ static void planner_recalculate()
     // Calculate trapezoid for the last/newest block.
     current->entry_speed_sqr = min( current->max_entry_speed_sqr,
        MINIMUM_PLANNER_SPEED*MINIMUM_PLANNER_SPEED + 2*current->acceleration*current->millimeters);
-//     calculate_trapezoid_for_block(current, current->entry_speed_sqr, MINIMUM_PLANNER_SPEED*MINIMUM_PLANNER_SPEED);
+    calculate_trapezoid_for_block(current, current->entry_speed_sqr, MINIMUM_PLANNER_SPEED*MINIMUM_PLANNER_SPEED);
 
       
     // Reverse Pass: Back plan the deceleration curve from the last block in buffer. Cease
     // planning when: (1) the last optimal planned pointer is reached. (2) the safe block 
     // pointer is reached, whereby the planned pointer is updated.
     float entry_speed_sqr;
-    plan_block_t *next;
+    block_t *next;
     block_index = prev_block_index(block_index);
     while (block_index != block_buffer_planned) {
       next = current;
@@ -209,7 +264,7 @@ static void planner_recalculate()
       
       // Automatically recalculate trapezoid for all buffer blocks from last plan's optimal planned
       // pointer to the end of the buffer, except the last block.
-//       calculate_trapezoid_for_block(current, current->entry_speed_sqr, next->entry_speed_sqr);
+      calculate_trapezoid_for_block(current, current->entry_speed_sqr, next->entry_speed_sqr);
       block_index = next_block_index( block_index );
     }
     
@@ -220,7 +275,6 @@ static void planner_recalculate()
 
 void plan_init() 
 {
-  block_buffer_head = 0;
   block_buffer_tail = block_buffer_head;
   next_buffer_head = next_block_index(block_buffer_head);
   block_buffer_planned = block_buffer_head;
@@ -228,7 +282,7 @@ void plan_init()
 }
 
 
-void plan_discard_current_block() 
+inline void plan_discard_current_block() 
 {
   if (block_buffer_head != block_buffer_tail) {
     block_buffer_tail = next_block_index( block_buffer_tail );
@@ -236,17 +290,10 @@ void plan_discard_current_block()
 }
 
 
-plan_block_t *plan_get_current_block() 
+inline block_t *plan_get_current_block() 
 {
   if (block_buffer_head == block_buffer_tail) { return(NULL); }
   return(&block_buffer[block_buffer_tail]);
-}
-
-
-plan_block_t *plan_get_block_by_index(uint8_t block_index) 
-{
-  if (block_buffer_head == block_index) { return(NULL); }
-  return(&block_buffer[block_index]);
 }
 
 
@@ -282,7 +329,7 @@ void plan_synchronize()
 void plan_buffer_line(float *target, float feed_rate, uint8_t invert_feed_rate) 
 {
   // Prepare and initialize new block
-  plan_block_t *block = &block_buffer[block_buffer_head];
+  block_t *block = &block_buffer[block_buffer_head];
   block->step_event_count = 0;
   block->millimeters = 0;
   block->direction_bits = 0;
@@ -293,7 +340,7 @@ void plan_buffer_line(float *target, float feed_rate, uint8_t invert_feed_rate)
   float unit_vec[N_AXIS], delta_mm;
   uint8_t idx;
   for (idx=0; idx<N_AXIS; idx++) {
-    // Calculate target position in absolute steps. This conversion should be consistent throughout.
+    // Calculate target position in absolute steps
     target_steps[idx] = lround(target[idx]*settings.steps_per_mm[idx]);
   
     // Number of steps for each axis and determine max step events
@@ -301,17 +348,16 @@ void plan_buffer_line(float *target, float feed_rate, uint8_t invert_feed_rate)
     block->step_event_count = max(block->step_event_count, block->steps[idx]);
     
     // Compute individual axes distance for move and prep unit vector calculations.
-    // NOTE: Computes true distance from converted step values.
-    delta_mm = (target_steps[idx] - pl.position[idx])/settings.steps_per_mm[idx];
+    delta_mm = target[idx] - pl.last_target[idx];
     unit_vec[idx] = delta_mm; // Store unit vector numerator. Denominator computed later.
-        
+    
+    // Incrementally compute total move distance by Euclidean norm
+    block->millimeters += delta_mm*delta_mm;
+    
     // Set direction bits. Bit enabled always means direction is negative.
     if (delta_mm < 0 ) { block->direction_bits |= get_direction_mask(idx); }
-    
-    // Incrementally compute total move distance by Euclidean norm. First add square of each term.
-    block->millimeters += delta_mm*delta_mm;
   }
-  block->millimeters = sqrt(block->millimeters); // Complete millimeters calculation with sqrt()
+  block->millimeters = sqrt(block->millimeters); // Complete millimeters calculation 
   
   // Bail if this is a zero-length block
   if (block->step_event_count == 0) { return; } 
@@ -373,13 +419,13 @@ void plan_buffer_line(float *target, float feed_rate, uint8_t invert_feed_rate)
   }
 
   // Store block nominal speed and rate
-  block->nominal_speed_sqr = feed_rate*feed_rate; // (mm/min). Always > 0
-//   block->nominal_rate = ceil(feed_rate*(INV_TIME_MULTIPLIER/(60.0*ISR_TICKS_PER_SECOND))); // (mult*mm/isr_tic)
-// 
-//   // Compute and store acceleration and distance traveled per step event.
-//   block->rate_delta = ceil(block->acceleration*
-//     ((INV_TIME_MULTIPLIER/(60.0*60.0))/(ISR_TICKS_PER_SECOND*ACCELERATION_TICKS_PER_SECOND))); // (mult*mm/isr_tic/accel_tic)
-//   block->d_next = ceil((block->millimeters*INV_TIME_MULTIPLIER)/block->step_event_count); // (mult*mm/step)
+  block->nominal_speed_sqr = feed_rate*feed_rate; // (mm/min)^2. Always > 0
+  block->nominal_rate = ceil(feed_rate*(INV_TIME_MULTIPLIER/(60.0*ISR_TICKS_PER_SECOND))); // (mult*mm/isr_tic)
+
+  // Compute and store acceleration and distance traveled per step event.
+  block->rate_delta = ceil(block->acceleration*
+    ((INV_TIME_MULTIPLIER/(60.0*60.0))/(ISR_TICKS_PER_SECOND*ACCELERATION_TICKS_PER_SECOND))); // (mult*mm/isr_tic/accel_tic)
+  block->d_next = ceil((block->millimeters*INV_TIME_MULTIPLIER)/block->step_event_count); // (mult*mm/step)
 
   // Update previous path unit_vector and nominal speed (squared)
   memcpy(pl.previous_unit_vec, unit_vec, sizeof(unit_vec)); // pl.previous_unit_vec[] = unit_vec[]
@@ -387,6 +433,7 @@ void plan_buffer_line(float *target, float feed_rate, uint8_t invert_feed_rate)
     
   // Update planner position
   memcpy(pl.position, target_steps, sizeof(target_steps)); // pl.position[] = target_steps[]
+  memcpy(pl.last_target, target, sizeof(target)); // pl.last_target[] = target[]
 
   planner_recalculate(); 
 
@@ -404,74 +451,16 @@ void plan_sync_position()
   uint8_t idx;
   for (idx=0; idx<N_AXIS; idx++) {
     pl.position[idx] = sys.position[idx];
+    pl.last_target[idx] = sys.position[idx]/settings.steps_per_mm[idx];
   }
 }
-
-
-/*       STEPPER VELOCITY PROFILE DEFINITION 
-                                                  less than nominal rate->  + 
-                    +--------+ <- nominal_rate                             /|\                                         
-                   /          \                                           / | \                      
-  initial_rate -> +            \                                         /  |  + <- next->initial_rate         
-                  |             + <- next->initial_rate                 /   |  |                       
-                  +-------------+                      initial_rate -> +----+--+                   
-                   time -->  ^  ^                                           ^  ^                       
-                             |  |                                           |  |                       
-                     decelerate distance                           decelerate distance  
-                                                        
-  Calculates trapezoid parameters for stepper algorithm. Each block velocity profiles can be 
-  described as either a trapezoidal or a triangular shape. The trapezoid occurs when the block
-  reaches the nominal speed of the block and cruises for a period of time. A triangle occurs
-  when the nominal speed is not reached within the block. Some other special cases exist, 
-  such as pure ac/de-celeration velocity profiles from beginning to end or a trapezoid that
-  has no deceleration period when the next block resumes acceleration. 
-  
-  The following function determines the type of velocity profile and stores the minimum required
-  information for the stepper algorithm to execute the calculated profiles. In this case, only
-  the new initial rate and n_steps until deceleration are computed, since the stepper algorithm
-  already handles acceleration and cruising and just needs to know when to start decelerating.
-*/
-int32_t calculate_trapezoid_for_block(uint8_t block_index) 
-{  
-  plan_block_t *current_block = &block_buffer[block_index];
-  
-  // Determine current block exit speed
-  float exit_speed_sqr;
-  uint8_t next_index = next_block_index(block_index);
-  plan_block_t *next_block = plan_get_block_by_index(next_index);
-  if (next_block == NULL) { exit_speed_sqr = 0; } // End of planner buffer. Zero speed.
-  else { exit_speed_sqr = next_block->entry_speed_sqr; } // Entry speed of next block
-  
-  // First determine intersection distance (in steps) from the exit point for a triangular profile.
-  // Computes: steps_intersect = steps/mm * ( distance/2 + (v_entry^2-v_exit^2)/(4*acceleration) )
-  float intersect_distance = 0.5*( current_block->millimeters + (current_block->entry_speed_sqr-exit_speed_sqr)/(2*current_block->acceleration) );  
-  
-  // Check if this is a pure acceleration block by a intersection distance less than zero. Also
-  // prevents signed and unsigned integer conversion errors.
-  if (intersect_distance > 0 ) {
-    float decelerate_distance;
-    // Determine deceleration distance (in steps) from nominal speed to exit speed for a trapezoidal profile.
-    // Value is never negative. Nominal speed is always greater than or equal to the exit speed.
-    // Computes: steps_decelerate = steps/mm * ( (v_nominal^2 - v_exit^2)/(2*acceleration) )
-    decelerate_distance = (current_block->nominal_speed_sqr - exit_speed_sqr)/(2*current_block->acceleration);
-
-    // The lesser of the two triangle and trapezoid distances always defines the velocity profile.
-    if (decelerate_distance > intersect_distance) { decelerate_distance = intersect_distance; }
-    
-    // Finally, check if this is a pure deceleration block.
-    if (decelerate_distance > current_block->millimeters) { decelerate_distance = current_block->millimeters; }
-    
-    return(ceil(((current_block->millimeters-decelerate_distance)*current_block->step_event_count)/ current_block->millimeters));
-  }
-  return(0);
-}        
 
 
 // Re-initialize buffer plan with a partially completed block, assumed to exist at the buffer tail.
 // Called after a steppers have come to a complete stop for a feed hold and the cycle is stopped.
 void plan_cycle_reinitialize(int32_t step_events_remaining) 
 {
-  plan_block_t *block = &block_buffer[block_buffer_tail]; // Point to partially completed block
+  block_t *block = &block_buffer[block_buffer_tail]; // Point to partially completed block
   
   // Only remaining millimeters and step_event_count need to be updated for planner recalculate. 
   // Other variables (step_x, step_y, step_z, rate_delta, etc.) all need to remain the same to

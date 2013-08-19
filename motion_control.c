@@ -72,7 +72,7 @@ void mc_line(float *target, float feed_rate, uint8_t invert_feed_rate)
     else { break; }
   } while (1);
 
-  plan_buffer_line(target[X_AXIS], target[Y_AXIS], target[Z_AXIS], feed_rate, invert_feed_rate);
+  plan_buffer_line(target, feed_rate, invert_feed_rate);
 
   // If idle, indicate to the system there is now a planned block in the buffer ready to cycle 
   // start. Otherwise ignore and continue on.
@@ -148,8 +148,8 @@ void mc_arc(float *position, float *target, float *offset, uint8_t axis_0, uint8
        This is important when there are successive arc motions. 
     */
     // Computes: cos_T = 1 - theta_per_segment^2/2, sin_T = theta_per_segment - theta_per_segment^3/6) in ~52usec
-    float cos_T = 2 - theta_per_segment*theta_per_segment;
-    float sin_T = theta_per_segment*0.16666667*(cos_T + 4);
+    float cos_T = 2.0 - theta_per_segment*theta_per_segment;
+    float sin_T = theta_per_segment*0.16666667*(cos_T + 4.0);
     cos_T *= 0.5;
 
     float arc_target[N_AXIS];
@@ -229,37 +229,34 @@ void mc_go_home()
   // At the same time, set up pull-off maneuver from axes limit switches that have been homed.
   // This provides some initial clearance off the switches and should also help prevent them 
   // from falsely tripping when hard limits are enabled.
-  // TODO: Need to improve dir_mask[] to be more axes independent.
   float pulloff_target[N_AXIS];
   clear_vector_float(pulloff_target); // Zero pulloff target.
   clear_vector_long(sys.position); // Zero current position for now.
-  uint8_t dir_mask[N_AXIS];
-  dir_mask[X_AXIS] = (1<<X_DIRECTION_BIT);
-  dir_mask[Y_AXIS] = (1<<Y_DIRECTION_BIT);
-  dir_mask[Z_AXIS] = (1<<Z_DIRECTION_BIT);
-  uint8_t i;
-  for (i=0; i<N_AXIS; i++) {
+  uint8_t idx;
+  for (idx=0; idx<N_AXIS; idx++) {
     // Set up pull off targets and machine positions for limit switches homed in the negative
     // direction, rather than the traditional positive. Leave non-homed positions as zero and
     // do not move them.
-    if (HOMING_LOCATE_CYCLE & bit(i)) {
-      if (settings.homing_dir_mask & dir_mask[i]) {
-        pulloff_target[i] = settings.homing_pulloff-settings.max_travel[i];
-        sys.position[i] = -lround(settings.max_travel[i]*settings.steps_per_mm[i]);
+    // NOTE: settings.max_travel[] is stored as a negative value.
+    if (HOMING_LOCATE_CYCLE & bit(idx)) {
+      if ( settings.homing_dir_mask & get_direction_mask(idx) ) {
+        pulloff_target[idx] = settings.homing_pulloff+settings.max_travel[idx];
+        sys.position[idx] = lround(settings.max_travel[idx]*settings.steps_per_mm[idx]);
       } else {
-        pulloff_target[i] = -settings.homing_pulloff;
+        pulloff_target[idx] = -settings.homing_pulloff;
       }
     }
   }
-  sys_sync_current_position();
+  plan_sync_position(); // Sync planner position to home for pull-off move.
+
   sys.state = STATE_IDLE; // Set system state to IDLE to complete motion and indicate homed.
 
   mc_line(pulloff_target, settings.homing_seek_rate, false);
   st_cycle_start(); // Move it. Nothing should be in the buffer except this motion. 
   plan_synchronize(); // Make sure the motion completes.
   
-  // The gcode parser position circumvented by the pull-off maneuver, so sync position vectors.
-  sys_sync_current_position();
+  // The gcode parser position circumvented by the pull-off maneuver, so sync position now.
+  gc_sync_position();
 
   // If hard limits feature enabled, re-enable hard limits pin change register after homing cycle.
   if (bit_istrue(settings.flags,BITFLAG_HARD_LIMIT_ENABLE)) { LIMIT_PCMSK |= LIMIT_MASK; }

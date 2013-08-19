@@ -96,16 +96,17 @@ static void homing_cycle(uint8_t cycle_mask, int8_t pos_dir, bool invert_pin, fl
   // and speedy homing routine.
   // NOTE: For each axes enabled, the following calculations assume they physically move 
   // an equal distance over each time step until they hit a limit switch, aka dogleg.
-  uint32_t step_event_count, steps[N_AXIS];
+  uint32_t step_event_count = 0;
   uint8_t i, dist = 0;
+  uint32_t steps[N_AXIS];
   clear_vector(steps);
   for (i=0; i<N_AXIS; i++) {
     if (cycle_mask & (1<<i)) { 
       dist++;
       steps[i] = lround(settings.steps_per_mm[i]); 
+      step_event_count = max(step_event_count,steps[i]);
     }
   }
-  step_event_count = max(steps[X_AXIS], max(steps[Y_AXIS], steps[Z_AXIS]));  
   
   // To ensure global acceleration is not exceeded, reduce the governing axes nominal rate
   // by adjusting the actual axes distance traveled per step. This is the same procedure
@@ -244,23 +245,26 @@ void limits_go_home()
 // and the workspace volume is in all negative space.
 void limits_soft_check(float *target)
 {
-  if ( target[X_AXIS] > 0 || target[X_AXIS] < -settings.max_travel[X_AXIS] || 
-       target[Y_AXIS] > 0 || target[Y_AXIS] < -settings.max_travel[Y_AXIS] || 
-       target[Z_AXIS] > 0 || target[Z_AXIS] < -settings.max_travel[Z_AXIS] ) {
-       
-    // Force feed hold if cycle is active. All buffered blocks are guaranteed to be within 
-    // workspace volume so just come to a controlled stop so position is not lost. When complete
-    // enter alarm mode.
-    if (sys.state == STATE_CYCLE) {
-      st_feed_hold();
-      while (sys.state == STATE_HOLD) {
-        protocol_execute_runtime();
-        if (sys.abort) { return; }
-      }
-    }
+  uint8_t idx;
+  for (idx=0; idx<N_AXIS; idx++) { 
+    if (target[idx] > 0 || target[idx] < settings.max_travel[idx]) {  // NOTE: max_travel is stored as negative
     
-    mc_reset(); // Issue system reset and ensure spindle and coolant are shutdown.
-    sys.execute |= EXEC_CRIT_EVENT; // Indicate soft limit critical event
-    protocol_execute_runtime(); // Execute to enter critical event loop and system abort
+      // Force feed hold if cycle is active. All buffered blocks are guaranteed to be within 
+      // workspace volume so just come to a controlled stop so position is not lost. When complete
+      // enter alarm mode.
+      if (sys.state == STATE_CYCLE) {
+        st_feed_hold();
+        while (sys.state == STATE_HOLD) {
+          protocol_execute_runtime();
+          if (sys.abort) { return; }
+        }
+      }
+      
+      mc_reset(); // Issue system reset and ensure spindle and coolant are shutdown.
+      sys.execute |= EXEC_CRIT_EVENT; // Indicate soft limit critical event
+      protocol_execute_runtime(); // Execute to enter critical event loop and system abort
+      return;
+    
+    }
   }
 }

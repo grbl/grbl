@@ -19,6 +19,9 @@
   along with Grbl.  If not, see <http://www.gnu.org/licenses/>.
 */
 
+/* The timer calculations of this module informed by the 'RepRap cartesian firmware' by Zack Smith
+   and Philipp Tiefenbacher. */
+
 #include <avr/interrupt.h>
 #include "stepper.h"
 #include "config.h"
@@ -37,8 +40,8 @@ typedef struct {
   int32_t counter_x,        // Counter variables for the bresenham line tracer
           counter_y, 
           counter_z;
-  uint32_t event_count;     // Total event count. Retained for feed holds. 
-  uint32_t step_events_remaining;  // Steps remaining in motion
+  int32_t event_count;     // Total event count. Retained for feed holds. 
+  int32_t step_events_remaining;  // Steps remaining in motion
 
   // Used by Pramod Ranade inverse time algorithm
   int32_t delta_d;     // Ranade distance traveled per interrupt tick
@@ -93,9 +96,9 @@ void st_wake_up()
     step_pulse_time = -(((settings.pulse_microseconds-2)*TICKS_PER_MICROSECOND) >> 3);
     // Enable stepper driver interrupt
     st.execute_step = false;
-    TCNT0 = 0; // Clear Timer2
-    TIMSK0 |= (1<<OCIE0A); // Enable Timer0 Compare Match A interrupt
-    TCCR0B = (1<<CS21); // Begin Timer0. Full speed, 1/8 prescaler
+    TCNT2 = 0; // Clear Timer2
+    TIMSK2 |= (1<<OCIE2A); // Enable Timer2 Compare Match A interrupt
+    TCCR2B = (1<<CS21); // Begin Timer2. Full speed, 1/8 prescaler
   }
 }
 
@@ -103,9 +106,9 @@ void st_wake_up()
 // Stepper shutdown
 void st_go_idle() 
 {
-  // Disable stepper driver interrupt. Allow Timer2 to finish. It will disable itself.
-  TIMSK0 &= ~(1<<OCIE0A); // Disable Timer0 interrupt
-  TCCR0B = 0; // Disable Timer0
+  // Disable stepper driver interrupt. Allow Timer0 to finish. It will disable itself.
+  TIMSK2 &= ~(1<<OCIE2A); // Disable Timer2 interrupt
+  TCCR2B = 0; // Disable Timer2
   busy = false;
 
   // Disable steppers only upon system alarm activated or by user setting to not be kept enabled.
@@ -122,134 +125,49 @@ void st_go_idle()
 }
 
 
-/* "The Stepper Driver Interrupt" - This timer interrupt is the workhorse of Grbl. It is based
-   on the Pramod Ranade inverse time stepper algorithm, where a timer ticks at a constant
-   frequency and uses time-distance counters to track when its the approximate time for any 
-   step event. However, the Ranade algorithm, as described, is susceptible to numerical round-off,
-   meaning that some axes steps may not execute/cause a phasing drift error between multiple axes.
-     Grbl's algorithm differs by using a single Ranade-type time-distance counter to manage
-   a Bresenham line algorithm for multi-axis step events, which ensures the number of steps for
-   each axis are executed exactly and always in phase by inherent algorithm design. In other
-   words, it uses a Bresenham within a Bresenham algorithm, where one tracks time(Ranade) and
-   the other steps.
-     This interrupt pops blocks from the block_buffer and executes them by pulsing the stepper pins
-   appropriately. It is supported by The Stepper Port Reset Interrupt which it uses to reset the 
-   stepper port after each pulse. The bresenham line tracer algorithm controls all three stepper
-   outputs simultaneously with these two interrupts. */
+// "The Stepper Driver Interrupt" - This timer interrupt is the workhorse of Grbl. It is based
+// on the Pramod Ranade inverse time stepper algorithm, where a timer ticks at a constant
+// frequency and uses time-distance counters to track when its the approximate time for any 
+// step event. However, the Ranade algorithm, as described, is susceptible to numerical round-off,
+// meaning that some axes steps may not execute for a given multi-axis motion.
+//   Grbl's algorithm slightly differs by using a single Ranade time-distance counter to manage
+// a Bresenham line algorithm for multi-axis step events which ensures the number of steps for
+// each axis are executed exactly. In other words, it uses a Bresenham within a Bresenham algorithm,
+// where one tracks time(Ranade) and the other steps.
+//   This interrupt pops blocks from the block_buffer and executes them by pulsing the stepper pins
+// appropriately. It is supported by The Stepper Port Reset Interrupt which it uses to reset the 
+// stepper port after each pulse. The bresenham line tracer algorithm controls all three stepper
+// outputs simultaneously with these two interrupts.
+//
 // NOTE: Average time in this ISR is: 5 usec iterating timers only, 20-25 usec with step event, or
 // 15 usec when popping a block. So, ensure Ranade frequency and step pulse times work with this.
-
-ISR(TIMER0_COMPA_vect)
+ISR(TIMER2_COMPA_vect)
 {
 // SPINDLE_ENABLE_PORT ^= 1<<SPINDLE_ENABLE_BIT; // Debug: Used to time ISR
+  if (busy) { return; } // The busy-flag is used to avoid reentering this interrupt
   
   // Pulse stepper port pins, if flagged. New block dir will always be set one timer tick 
   // before any step pulse due to algorithm design.
   if (st.execute_step) {
     st.execute_step = false;
     STEPPING_PORT = ( STEPPING_PORT & ~(DIRECTION_MASK | STEP_MASK) ) | out_bits;
-    TCNT2 = step_pulse_time; // Reload Timer2 counter.
-    TCCR2B = (1<<CS21); // Begin Timer2. Full speed, 1/8 prescaler
+    TCNT0 = step_pulse_time; // Reload Timer0 counter.
+    TCCR0B = (1<<CS21); // Begin Timer0. Full speed, 1/8 prescaler
   }
-
-// Assume that this takes less than 5 usec. If not, then this might not work on an 328p.
-// Two sei() commands in two different interrupts will be hard to manage. If the main program
-// can push fast enough, then this might be ok.
-//   sei(); //  ??? The falling edge interrupt needs to fire before the rest of this executes.
-    
-    
-/* 
-1. Upon start, load segment/block.
-   - Set direction bit for entire block early. This never changes.
-   - Load Bresenham variables. Initialize their counters.
-   - If using segments, counters cannot be updated, but this breaks the direction bit? No. Only set when block begins.
-
-   (3) Generate step event. Can take up to an additional 10-15usec for the math.
-
-
-
-Override idea: Main program can request the step event count from the stepper algorithm, which will
-check for the request and write it to a safe variable for the main program. The main program will
-then wait until the request is fulfilled via a flag. From there, the main program can determine
-the safe point from which it can plan. This may require a snapshot of variables. Hopefully this 
-won't take too much time in the interrupt.
-*/    
-    
-  // Iterate inverse time counter. Triggers each Bresenham step event.
-  if (st.delta_d < MINIMUM_STEP_RATE) { st.d_counter -= MINIMUM_STEP_RATE; }
-  else { st.d_counter -= st.delta_d; }
   
-  // Prepare Bresenham step event, when it's time to do so.
-  if (st.d_counter < 0) {  
-    st.d_counter += current_block->d_next;
-      
-    // Load next step
-    out_bits = current_block->direction_bits; // Reset out_bits and reload direction bits
-    st.execute_step = true;
-    
-    // Execute step displacement profile by Bresenham line algorithm
-    st.counter_x -= current_block->steps_x;
-    if (st.counter_x < 0) {
-      out_bits |= (1<<X_STEP_BIT);
-      st.counter_x += st.event_count;
-    }
-    st.counter_y -= current_block->steps_y;
-    if (st.counter_y < 0) {
-      out_bits |= (1<<Y_STEP_BIT);
-      st.counter_y += st.event_count;
-    }
-    st.counter_z -= current_block->steps_z;
-    if (st.counter_z < 0) {
-      out_bits |= (1<<Z_STEP_BIT);
-      st.counter_z += st.event_count;
-    }
-
-    // Check step events for trapezoid change or end of block.
-    st.step_events_remaining--; // Decrement step events count
-    if (st.step_events_remaining == 0) {
-      // Load next line motion
-    }
-
-    out_bits ^= settings.invert_mask;  // Apply step port invert mask  
-    
-    
-    
-    
-    // TIMSK2 |= (1<<OCIE2B); // Enable Timer2 Compare Match B interrupt
-        
-  }
-// SPINDLE_ENABLE_PORT ^= 1<<SPINDLE_ENABLE_BIT;  
-}
-
-
-// This needs to complete and load before the next timer?
-ISR(TIMER0_COMPB_vect)
-{
-  if (busy) { return; }
   busy = true;
-  TIMSK0 &= ~(1<<OCIE0B); // Disable Timer2 Compare Match B interrupt
-  sei();
+  sei(); // Re-enable interrupts. This ISR will still finish before returning to main program.
   
-  if (out_bits & (1<<X_DIRECTION_BIT)) { sys.position[X_AXIS]--; }
-      else { sys.position[X_AXIS]++; }
-    
-          // If current block is finished, reset pointer 
-      current_block = NULL;
-      plan_discard_current_block();
-
-  
-    // If there is no current block, attempt to pop one from the buffer
+  // If there is no current block, attempt to pop one from the buffer
   if (current_block == NULL) {
   
     // Anything in the buffer? If so, initialize next motion.
     current_block = plan_get_current_block();
     if (current_block != NULL) {
       // By algorithm design, the loading of the next block never coincides with a step event,
-      // since there is always one inverse time tick before a step event occurs. This means
+      // since there is always one Ranade timer tick before a step event occurs. This means
       // that the Bresenham counter math never is performed at the same time as the loading 
-      // of a block, hence helping minimize total time spent in this interrupt. Also, this
-      // allows the direction bits for the block to be always set one timer tick before the 
-      // first step event.
+      // of a block, hence helping minimize total time spent in this interrupt.
 
       // Initialize direction bits for block      
       out_bits = current_block->direction_bits ^ settings.invert_mask;
@@ -262,7 +180,7 @@ ISR(TIMER0_COMPB_vect)
       st.event_count = current_block->step_event_count;
       st.step_events_remaining = st.event_count;
       
-      // During feed hold, do not update inverse time counter, rate, or ramp type. Keep decelerating.
+      // During feed hold, do not update Ranade counter, rate, or ramp type. Keep decelerating.
       if (sys.state == STATE_CYCLE) {
         // Initialize Ranade variables
         st.d_counter = current_block->d_next;  
@@ -282,7 +200,7 @@ ISR(TIMER0_COMPB_vect)
     }  
   } 
   
-    // Adjust inverse time counter for ac/de-celerations
+  // Adjust inverse time counter for ac/de-celerations
   if (st.ramp_type) {
     // Tick acceleration ramp counter
     st.ramp_count--;
@@ -303,8 +221,15 @@ ISR(TIMER0_COMPB_vect)
       }
     }
   }
+    
+  // Iterate Pramod Ranade inverse time counter. Triggers each Bresenham step event.
+  if (st.delta_d < MINIMUM_STEP_RATE) { st.d_counter -= MINIMUM_STEP_RATE; }
+  else { st.d_counter -= st.delta_d; }
   
-      
+  // Execute Bresenham step event, when it's time to do so.
+  if (st.d_counter < 0) {  
+    st.d_counter += current_block->d_next;
+    
     // Check for feed hold state and execute accordingly.
     if (sys.state == STATE_HOLD) {
       if (st.ramp_type != DECEL_RAMP) {
@@ -317,8 +242,39 @@ ISR(TIMER0_COMPB_vect)
         return;
       }
     }
-  
-        if (st.ramp_type != DECEL_RAMP) {
+    
+    // TODO: Vary Bresenham resolution for smoother motions or enable faster step rates (>20kHz).
+    
+    out_bits = current_block->direction_bits; // Reset out_bits and reload direction bits
+    st.execute_step = true;
+    
+    // Execute step displacement profile by Bresenham line algorithm
+    st.counter_x -= current_block->steps[X_AXIS];
+    if (st.counter_x < 0) {
+      out_bits |= (1<<X_STEP_BIT);
+      st.counter_x += st.event_count;
+      if (out_bits & (1<<X_DIRECTION_BIT)) { sys.position[X_AXIS]--; }
+      else { sys.position[X_AXIS]++; }
+    }
+    st.counter_y -= current_block->steps[Y_AXIS];
+    if (st.counter_y < 0) {
+      out_bits |= (1<<Y_STEP_BIT);
+      st.counter_y += st.event_count;
+      if (out_bits & (1<<Y_DIRECTION_BIT)) { sys.position[Y_AXIS]--; }
+      else { sys.position[Y_AXIS]++; }
+    }
+    st.counter_z -= current_block->steps[Z_AXIS];
+    if (st.counter_z < 0) {
+      out_bits |= (1<<Z_STEP_BIT);
+      st.counter_z += st.event_count;
+      if (out_bits & (1<<Z_DIRECTION_BIT)) { sys.position[Z_AXIS]--; }
+      else { sys.position[Z_AXIS]++; }
+    }
+
+    // Check step events for trapezoid change or end of block.
+    st.step_events_remaining--; // Decrement step events count
+    if (st.step_events_remaining) {
+      if (st.ramp_type != DECEL_RAMP) {
         // Acceleration and cruise handled by ramping. Just check for deceleration.
         if (st.step_events_remaining <=  current_block->decelerate_after) {
           st.ramp_type = DECEL_RAMP;
@@ -332,18 +288,25 @@ ISR(TIMER0_COMPB_vect)
         }
       }
     } else {
-  
+      // If current block is finished, reset pointer 
+      current_block = NULL;
+      plan_discard_current_block();
+    }
+
+    out_bits ^= settings.invert_mask;  // Apply step port invert mask    
+  }
   busy = false;
+// SPINDLE_ENABLE_PORT ^= 1<<SPINDLE_ENABLE_BIT;  
 }
 
 
-// The Stepper Port Reset Interrupt: Timer2 OVF interrupt handles the falling edge of the
-// step pulse. This should always trigger before the next Timer0 COMPA interrupt and independently
-// finish, if Timer0 is disabled after completing a move.
-ISR(TIMER2_OVF_vect)
+// The Stepper Port Reset Interrupt: Timer0 OVF interrupt handles the falling edge of the
+// step pulse. This should always trigger before the next Timer2 COMPA interrupt and independently
+// finish, if Timer2 is disabled after completing a move.
+ISR(TIMER0_OVF_vect)
 {
   STEPPING_PORT = (STEPPING_PORT & ~STEP_MASK) | (settings.invert_mask & STEP_MASK); 
-  TCCR2B = 0; // Disable timer until needed.
+  TCCR0B = 0; // Disable timer until needed.
 }
 
 
@@ -364,18 +327,18 @@ void st_init()
   STEPPING_PORT = (STEPPING_PORT & ~STEPPING_MASK) | settings.invert_mask;
   STEPPERS_DISABLE_DDR |= 1<<STEPPERS_DISABLE_BIT;
 	
-  // Configure Timer 0
-  TIMSK0 &= ~(1<<OCIE0A); // Disable Timer0 interrupt while configuring it
-  TCCR0B = 0; // Disable Timer2 until needed
-  TCNT0 = 0; // Clear Timer2 counter
-  TCCR0A = (1<<WGM21);  // Set CTC mode
-  OCR0A = (F_CPU/ISR_TICKS_PER_SECOND)/8 - 1; // Set Timer2 CTC rate
-
   // Configure Timer 2
-  TIMSK2 &= ~(1<<TOIE2);
-  TCCR2A = 0; // Normal operation
+  TIMSK2 &= ~(1<<OCIE2A); // Disable Timer2 interrupt while configuring it
   TCCR2B = 0; // Disable Timer2 until needed
-  TIMSK2 |= (1<<TOIE2); // Enable overflow interrupt
+  TCNT2 = 0; // Clear Timer2 counter
+  TCCR2A = (1<<WGM21);  // Set CTC mode
+  OCR2A = (F_CPU/ISR_TICKS_PER_SECOND)/8 - 1; // Set Timer2 CTC rate
+
+  // Configure Timer 0
+  TIMSK0 &= ~(1<<TOIE0);
+  TCCR0A = 0; // Normal operation
+  TCCR0B = 0; // Disable Timer0 until needed
+  TIMSK0 |= (1<<TOIE0); // Enable overflow interrupt
   
   // Start in the idle state, but first wake up to check for keep steppers enabled option.
   st_wake_up();

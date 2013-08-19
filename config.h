@@ -25,7 +25,7 @@
 // IMPORTANT: Any changes here requires a full re-compiling of the source code to propagate them.
 
 // Default settings. Used when resetting EEPROM. Change to desired name in defaults.h
-#define DEFAULTS_GENERIC
+#define DEFAULTS_ZEN_TOOLWORKS_7x7
 
 // Serial baud rate
 #define BAUD_RATE 9600
@@ -113,7 +113,7 @@
 // interrupt of the current stepper driver algorithm theoretically up to a frequency of 35-40kHz, but 
 // CPU overhead increases exponentially as this frequency goes up. So there will be little left for 
 // other processes like arcs.  
-#define ISR_TICKS_PER_SECOND 30000L  // Integer (Hz)
+#define ISR_TICKS_PER_SECOND 20000L  // Integer (Hz)
 
 // The temporal resolution of the acceleration management subsystem. Higher number give smoother
 // acceleration but may impact performance. If you run at very high feedrates (>15kHz or so) and 
@@ -121,7 +121,8 @@
 // profiles and how the stepper program actually performs them. The correct value for this parameter
 // is machine dependent, so it's advised to set this only as high as needed. Approximate successful
 // values can widely range from 50 to 200 or more. Cannot be greater than ISR_TICKS_PER_SECOND/2.
-#define ACCELERATION_TICKS_PER_SECOND 120L 
+// NOTE: Ramp count variable type in stepper module may need to be updated if changed.
+#define ACCELERATION_TICKS_PER_SECOND 100L 
 
 // NOTE: Make sure this value is less than 256, when adjusting both dependent parameters.
 #define ISR_TICKS_PER_ACCELERATION_TICK (ISR_TICKS_PER_SECOND/ACCELERATION_TICKS_PER_SECOND)
@@ -134,7 +135,7 @@
 // applications, the following multiplier value will work more than well enough. If you do have
 // happened to weird stepper motion issues, try modifying this value by adding or subtracting a 
 // zero and report it to the Grbl administrators. 
-#define RANADE_MULTIPLIER 100000000.0
+#define INV_TIME_MULTIPLIER 10000000.0
 
 // Minimum planner junction speed. Sets the default minimum speed the planner plans for at the end
 // of the buffer and all stops. This should not be much greater than zero and should only be changed

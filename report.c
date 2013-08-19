@@ -157,9 +157,9 @@ void report_grbl_settings() {
   printPgmString(PSTR(" (z v_max, mm/min)\r\n$6=")); printFloat(settings.acceleration[X_AXIS]/(60*60)); // Convert from mm/min^2 for human readability
   printPgmString(PSTR(" (x accel, mm/sec^2)\r\n$7=")); printFloat(settings.acceleration[Y_AXIS]/(60*60)); // Convert from mm/min^2 for human readability
   printPgmString(PSTR(" (y accel, mm/sec^2)\r\n$8=")); printFloat(settings.acceleration[Z_AXIS]/(60*60)); // Convert from mm/min^2 for human readability
-  printPgmString(PSTR(" (z accel, mm/sec^2)\r\n$9=")); printFloat(settings.max_travel[X_AXIS]);
-  printPgmString(PSTR(" (x max travel, mm)\r\n$10=")); printFloat(settings.max_travel[Y_AXIS]);
-  printPgmString(PSTR(" (y max travel, mm)\r\n$11=")); printFloat(settings.max_travel[Z_AXIS]);
+  printPgmString(PSTR(" (z accel, mm/sec^2)\r\n$9=")); printFloat(-settings.max_travel[X_AXIS]); // Grbl internally store this as negative.
+  printPgmString(PSTR(" (x max travel, mm)\r\n$10=")); printFloat(-settings.max_travel[Y_AXIS]); // Grbl internally store this as negative.
+  printPgmString(PSTR(" (y max travel, mm)\r\n$11=")); printFloat(-settings.max_travel[Z_AXIS]); // Grbl internally store this as negative.
   printPgmString(PSTR(" (z max travel, mm)\r\n$12=")); printInteger(settings.pulse_microseconds);
   printPgmString(PSTR(" (step pulse, usec)\r\n$13=")); printFloat(settings.default_feed_rate);
   printPgmString(PSTR(" (default feed, mm/min)\r\n$14=")); printInteger(settings.invert_mask); 

@@ -72,7 +72,8 @@ int main(void)
 
       // Sync cleared gcode and planner positions to current system position, which is only
       // cleared upon startup, not a reset/abort. 
-      sys_sync_current_position();
+      plan_sync_position();
+      gc_sync_position();
 
       // Reset system variables.
       sys.abort = false;
@@ -101,12 +102,12 @@ int main(void)
     }
     
     protocol_execute_runtime();
-    protocol_process(); // ... process the serial protocol
     
     // When the serial protocol returns, there are no more characters in the serial read buffer to
     // be processed and executed. This indicates that individual commands are being issued or 
     // streaming is finished. In either case, auto-cycle start, if enabled, any queued moves.
     mc_auto_cycle_start();
+    protocol_process(); // ... process the serial protocol
     
   }
   return 0;   /* never reached */

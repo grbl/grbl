@@ -169,9 +169,9 @@ uint8_t settings_store_global_setting(int parameter, float value) {
     case 6: settings.acceleration[X_AXIS] = value*60*60; break; // Convert to mm/min^2 for grbl internal use.
     case 7: settings.acceleration[Y_AXIS] = value*60*60; break; // Convert to mm/min^2 for grbl internal use.
     case 8: settings.acceleration[Z_AXIS] = value*60*60; break; // Convert to mm/min^2 for grbl internal use.
-    case 9: settings.max_travel[X_AXIS] = value; break;
-    case 10: settings.max_travel[Y_AXIS] = value; break;
-    case 11: settings.max_travel[Z_AXIS] = value; break;
+    case 9: settings.max_travel[X_AXIS] = -value; break;  // Store as negative for grbl internal use.
+    case 10: settings.max_travel[Y_AXIS] = -value; break; // Store as negative for grbl internal use.
+    case 11: settings.max_travel[Z_AXIS] = -value; break; // Store as negative for grbl internal use.
     case 12: 
       if (value < 3) { return(STATUS_SETTING_STEP_PULSE_MIN); }
       settings.pulse_microseconds = round(value); break;
@@ -206,7 +206,10 @@ uint8_t settings_store_global_setting(int parameter, float value) {
       break;
     case 24:
       if (value) { settings.flags |= BITFLAG_HOMING_ENABLE; }
-      else { settings.flags &= ~BITFLAG_HOMING_ENABLE; }
+      else { 
+        settings.flags &= ~BITFLAG_HOMING_ENABLE; 
+        settings.flags &= ~BITFLAG_SOFT_LIMIT_ENABLE; 
+      }
       break;
     case 25: settings.homing_dir_mask = trunc(value); break;
     case 26: settings.homing_feed_rate = value; break;

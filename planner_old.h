@@ -25,7 +25,7 @@
 
 // The number of linear motions that can be in the plan at any give time
 #ifndef BLOCK_BUFFER_SIZE
-  #define BLOCK_BUFFER_SIZE 18
+  #define BLOCK_BUFFER_SIZE 17
 #endif
 
 // This struct is used when buffering the setup for each linear movement "nominal" values are as specified in 
@@ -33,21 +33,25 @@
 typedef struct {
 
   // Fields used by the bresenham algorithm for tracing the line
-  uint8_t direction_bits;            // The direction bit set for this block (refers to *_DIRECTION_BIT in config.h)
-  int32_t steps[N_AXIS];             // Step count along each axis
-  int32_t step_event_count;          // The number of step events required to complete this block
+  uint8_t  direction_bits;            // The direction bit set for this block (refers to *_DIRECTION_BIT in config.h)
+  uint32_t steps[N_AXIS];             // Step count along each axis
+  int32_t  step_event_count;          // The number of step events required to complete this block
 
   // Fields used by the motion planner to manage acceleration
   float nominal_speed_sqr;           // Axis-limit adjusted nominal speed for this block in (mm/min)^2
   float entry_speed_sqr;             // Entry speed at previous-current block junction in (mm/min)^2
   float max_entry_speed_sqr;         // Maximum allowable junction entry speed in (mm/min)^2
+  float millimeters;                 // The total travel of this block in mm
   float acceleration;                // Axes-limit adjusted line acceleration in mm/min^2
-  float millimeters;                 // The total travel for this block to be executed in mm
-  
-  // Settings for the trapezoid generator
-//   int32_t decelerate_after;  // The index of the step event on which to start decelerating
 
-} plan_block_t;
+  // Settings for the trapezoid generator
+  uint32_t initial_rate;              // The step rate at start of block  
+  int32_t rate_delta;                 // The steps/minute to add or subtract when changing speed (must be positive)
+  uint32_t decelerate_after;          // The index of the step event on which to start decelerating
+  uint32_t nominal_rate;              // The nominal step rate for this block in step_events/minute
+  uint32_t d_next;                    // Scaled distance to next step
+
+} block_t;
       
 // Initialize the motion plan subsystem
 void plan_init();
@@ -62,11 +66,7 @@ void plan_buffer_line(float *target, float feed_rate, uint8_t invert_feed_rate);
 void plan_discard_current_block();
 
 // Gets the current block. Returns NULL if buffer empty
-plan_block_t *plan_get_current_block();
-
-plan_block_t *plan_get_block_by_index(uint8_t block_index);
-
-int32_t calculate_trapezoid_for_block(uint8_t block_index);
+block_t *plan_get_current_block();
 
 // Reset the planner position vector (in steps)
 void plan_sync_position();
