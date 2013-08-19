@@ -2,8 +2,8 @@
   config.h - compile time configuration
   Part of Grbl
 
+  Copyright (c) 2011-2013 Sungeun K. Jeon
   Copyright (c) 2009-2011 Simen Svale Skogsrud
-  Copyright (c) 2011-2012 Sungeun K. Jeon
 
   Grbl is free software: you can redistribute it and/or modify
   it under the terms of the GNU General Public License as published by
@@ -19,10 +19,14 @@
   along with Grbl.  If not, see <http://www.gnu.org/licenses/>.
 */
 
-#ifndef config_h
-#define config_h
+// This file contains compile-time configurations for Grbl's internal system. For the most part,
+// users will not need to directly modify these, but they are here for specific needs, i.e.
+// performance tuning or adjusting to non-typical machines.
 
 // IMPORTANT: Any changes here requires a full re-compiling of the source code to propagate them.
+
+#ifndef config_h
+#define config_h
 
 // Default settings. Used when resetting EEPROM. Change to desired name in defaults.h
 #define DEFAULTS_GENERIC
@@ -30,18 +34,9 @@
 // Serial baud rate
 #define BAUD_RATE 9600
 
-// Pin mappings, pick one and comment others
-#define DEFAULT_328P
-//#define DEFAULT_2560
-//#define CUSTOM_PINS
-
-if defined(DEFAULT_328P)
-  #include config_default_328p.h
-elif defined(DEFAULT_2560)
-  #include config_default_2560.h
-elif defined(CUSTOM_PINS)
-  #include config_custom.h // Create from the closest pre-existing config_default_*.h
-#endif
+// Default pin mappings. Grbl officially supports the Arduino Uno only. Other processor types
+// may exist from user-supplied templates or directly user-defined in pin_map.h
+#define ARDUINO_UNO
 
 // Define runtime command special characters. These characters are 'picked-off' directly from the
 // serial read data stream and are not passed to the grbl line execution parser. Select characters

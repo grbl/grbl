@@ -27,20 +27,6 @@
 
 #include "nuts_bolts.h"
 
-#if defined(USART_RX_vect) // For atmega328p (Arduino Uno) etc.
-#define Serial_RX_vect USART_RX_vect
-#define Serial_UDRE_vect USART_UDRE_vect
-#elif defined(USART0_RX_vect) // For atmega644p, atmega1280 and atmega2560 (ArduinoMEGA) etc.
-#define Serial_RX_vect USART0_RX_vect
-#define Serial_UDRE_vect USART0_UDRE_vect
-#elif defined(USART_RXC_vect) // For some odd chips
-#define Serial_RX_vect USART_RXC_vect
-#define Serial_UDRE_vect USART_UDRE_vect
-#elif defined(USART1_RX_vect)// Some AVRs have 1 USB and a single USART (USART1), though the USB is often preffered for serial comms (like Arduino Leonardo etc.)
-#define Serial1_RX_vect USART1_RX_vect
-#define Serial1_UDRE_vect USART1_UDRE_vect
-#endif
-
 #ifndef RX_BUFFER_SIZE
   #define RX_BUFFER_SIZE 128
 #endif
