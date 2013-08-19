@@ -91,11 +91,7 @@ void serial_write(uint8_t data) {
 }
 
 // Data Register Empty Interrupt handler
-#ifdef __AVR_ATmega644P__
-ISR(USART0_UDRE_vect)
-#else
-ISR(USART_UDRE_vect)
-#endif
+ISR(Serial_UDRE_vect)
 {
   // Temporary tx_buffer_tail (to optimize for volatile)
   uint8_t tail = tx_buffer_tail;
@@ -144,11 +140,7 @@ uint8_t serial_read()
   }
 }
 
-#ifdef __AVR_ATmega644P__
-ISR(USART0_RX_vect)
-#else
-ISR(USART_RX_vect)
-#endif
+ISR(Serial_RX_vect)
 {
   uint8_t data = UDR0;
   uint8_t next_head;
