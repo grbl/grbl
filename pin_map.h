@@ -25,11 +25,11 @@
 #ifndef pin_map_h
 #define pin_map_h
 
-#ifdef ARDUINO_UNO // AVR 328p, Officially supported by Grbl.
+#ifdef PIN_MAP_ARDUINO_UNO // AVR 328p, Officially supported by Grbl.
 
   // Serial port pins
-  #define Serial_RX_vect USART_RX_vect
-  #define Serial_UDRE_vect USART_UDRE_vect
+  #define SERIAL_RX USART_RX_vect
+  #define SERIAL_UDRE USART_UDRE_vect
 
   // NOTE: All step bit and direction pins must be on the same port.
   #define STEPPING_DDR       DDRD
@@ -97,11 +97,11 @@
 #endif
 
 
-#ifdef ARDUINO_MEGA_2560 // Unsupported. Doesn't work. Supplied by @elmom.
+#ifdef PIN_MAP_ARDUINO_MEGA_2560 // Unsupported. Doesn't work. Supplied by @elmom.
 
   // Serial port pins
-  #define Serial_RX_vect USART0_RX_vect
-  #define Serial_UDRE_vect USART0_UDRE_vect
+  #define SERIAL_RX USART0_RX_vect
+  #define SERIAL_UDRE USART0_UDRE_vect
 
   // NOTE: All step bit and direction pins must be on the same port.
   #define STEPPING_DDR      DDRA
@@ -171,7 +171,7 @@
 #endif
 
 /* 
-#ifdef CUSTOM_PROC
+#ifdef PIN_MAP_CUSTOM_PROC
   // For a custom pin map or different processor, copy and paste one of the default pin map
   // settings above and modify it to your needs. Then, make sure the defined name is also
   // changed in the config.h file.
