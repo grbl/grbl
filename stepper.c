@@ -42,7 +42,7 @@
 #define ST_DECEL 2
 #define ST_DECEL_EOB 3
 
-#define SEGMENT_BUFFER_SIZE 10
+#define SEGMENT_BUFFER_SIZE 6
 
 // Stepper state variable. Contains running data and trapezoid variables.
 typedef struct {
@@ -50,11 +50,11 @@ typedef struct {
   int32_t counter_x,        // Counter variables for the bresenham line tracer
           counter_y, 
           counter_z;
-  uint8_t segment_steps_remaining;  // Steps remaining in line motion
+  uint8_t segment_steps_remaining;  // Steps remaining in line segment motion
 
   // Used by inverse time algorithm to track step rate
-  int32_t counter_d;    // Inverse time distance traveled since last step event
-  uint32_t delta_d;      // Inverse time distance traveled per interrupt tick
+  int32_t counter_d;       // Inverse time distance traveled since last step event
+  uint32_t delta_d;        // Inverse time distance traveled per interrupt tick
   uint32_t d_per_tick;
   
   // Used by the stepper driver interrupt
@@ -68,9 +68,11 @@ typedef struct {
 } stepper_t;
 static stepper_t st;
 
-// Stores stepper buffer common data. Can change planner mid-block in special conditions.
+// Stores stepper buffer common data for a planner block. Data can change mid-block when the planner
+// updates the remaining block velocity profile with a more optimal plan or a feedrate override occurs.
+// NOTE: Normally, this buffer is only partially used, but can fill up completely in certain conditions.
 typedef struct {  
-  int32_t step_events_remaining; // Tracks step event count for the executing planner block
+  int32_t step_events_remaining;  // Tracks step event count for the executing planner block
   uint32_t d_next;                // Scaled distance to next step
   uint32_t initial_rate;          // Initialized step rate at re/start of a planner block
   uint32_t nominal_rate;          // The nominal step rate for this block in step_events/minute
@@ -80,16 +82,17 @@ typedef struct {
 } st_data_t;
 static st_data_t segment_data[SEGMENT_BUFFER_SIZE];
 
-// Primary stepper motion buffer
+// Primary stepper buffer. Contains small, short line segments for the stepper algorithm to execute checked
+// out incrementally from the first block in the planner buffer. These step segments 
 typedef struct {
-  uint8_t n_step;
-  uint8_t st_data_index;
-  uint8_t flag;
+  uint8_t n_step;         // Number of step events to be executed for this segment
+  uint8_t st_data_index;  // Stepper buffer common data index. Uses this information to execute this segment.
+  uint8_t flag;           // Stepper algorithm execution flag to notify special conditions.
 } st_segment_t;
 static st_segment_t segment_buffer[SEGMENT_BUFFER_SIZE];
 
 static volatile uint8_t segment_buffer_tail;
-static uint8_t segment_buffer_head;
+static volatile uint8_t segment_buffer_head;
 static uint8_t segment_next_head;
 
 static volatile uint8_t busy;   // Used to avoid ISR nesting of the "Stepper Driver Interrupt". Should never occur though.
@@ -97,10 +100,15 @@ static plan_block_t *pl_current_block;  // A pointer to the planner block curren
 static st_segment_t *st_current_segment;
 static st_data_t *st_current_data;
 
+// Pointers for the step segment being prepped from the planner buffer. Accessed only by the
+// main program. Pointers may be planning segments or planner blocks ahead of what being executed.
 static plan_block_t *pl_prep_block;  // A pointer to the planner block being prepped into the stepper buffer
 static uint8_t pl_prep_index;
 static st_data_t *st_prep_data;
 static uint8_t st_data_prep_index;
+
+static uint8_t pl_partial_block_flag;
+
 
 
 // Returns the index of the next block in the ring buffer
@@ -115,7 +123,7 @@ static uint8_t next_block_index(uint8_t block_index)
 static uint8_t next_block_pl_index(uint8_t block_index) 
 {
   block_index++;
-  if (block_index == 18) { block_index = 0; }
+  if (block_index == BLOCK_BUFFER_SIZE) { block_index = 0; }
   return(block_index);
 }
 
@@ -255,22 +263,20 @@ ISR(TIMER2_COMPA_vect)
         
         // Initialize inverse time and step rate counter data
         st.counter_d = st_current_data->d_next;  // d_next always greater than delta_d.   
+        if (st.delta_d < MINIMUM_STEP_RATE) { st.d_per_tick = MINIMUM_STEP_RATE; }
+        else { st.d_per_tick = st.delta_d; }
                 
         // During feed hold, do not update rate or ramp type. Keep decelerating.
 //         if (sys.state == STATE_CYCLE) {
           st.delta_d = st_current_data->initial_rate; 
-//           if (st.delta_d == st_current_data->nominal_rate) {
-//           st.ramp_type = RAMP_NOOP_CRUISE;
-          st.ramp_type = RAMP_ACCEL;
           st.ramp_count = ISR_TICKS_PER_ACCELERATION_TICK/2;  // Set ramp counter for trapezoid
-//           }
+          if (st.delta_d == st_current_data->nominal_rate) { st.ramp_type = RAMP_NOOP_CRUISE; }
+          else { st.ramp_type = RAMP_ACCEL; }
 //         }
-        if (st.delta_d < MINIMUM_STEP_RATE) { st.d_per_tick = MINIMUM_STEP_RATE; }
-        else { st.d_per_tick = st.delta_d; }
       
       }
 
-      // Acceleration and cruise handled by ramping. Just check for deceleration.
+      // Acceleration and cruise handled by ramping. Just check if deceleration needs to begin.
       if (st_current_segment->flag == ST_DECEL || st_current_segment->flag == ST_DECEL_EOB) {
         if (st.ramp_type == RAMP_NOOP_CRUISE) {
           st.ramp_count = ISR_TICKS_PER_ACCELERATION_TICK/2;  // Set ramp counter for trapezoid
@@ -292,6 +298,8 @@ ISR(TIMER2_COMPA_vect)
   } 
   
   // Adjust inverse time counter for ac/de-celerations
+  // NOTE: Accelerations are handled by the stepper algorithm as it's thought to be more computationally
+  // efficient on the Arduino AVR. This could change eventually, but it definitely will with ARM development.
   if (st.ramp_type) {
     st.ramp_count--; // Tick acceleration ramp counter
     if (st.ramp_count == 0) { // Adjust step rate when its time
@@ -396,14 +404,20 @@ ISR(TIMER0_OVF_vect)
 void st_reset()
 {
   memset(&st, 0, sizeof(st));
-  pl_current_block = NULL;
-  pl_prep_block = NULL;
-  pl_prep_index =   0;
-  st_data_prep_index = 0;
+  
   st.load_flag = LOAD_BLOCK;
   busy = false;
+
+  pl_current_block = NULL; // Planner block pointer used by stepper algorithm
+  pl_prep_block = NULL;  // Planner block pointer used by segment buffer
+  pl_prep_index =   0; // Planner buffer indices are also reset to zero.
+  st_data_prep_index = 0;
+  
   segment_buffer_tail = 0;
+  segment_buffer_head = 0; // empty = tail
   segment_next_head = 1;
+    
+  pl_partial_block_flag = false;
 }
 
 
@@ -485,7 +499,7 @@ void st_cycle_reinitialize()
 }
 
 
-/* Preps stepper buffer. Called from main program. 
+/* Prepares step segment buffer. Continuously called from main program. 
 
    NOTE: There doesn't seem to be a great way to figure out how many steps occur within
    a set number of ISR ticks. Numerical round-off and CPU overhead always seems to be a
@@ -510,41 +524,75 @@ void st_cycle_reinitialize()
    been doing here limit this phase issue by truncating some of the ramp timing for certain
    events like deceleration initialization and end of block. 
 */
+
+// !!! Need to make sure when a single partially completed block can be re-computed here with
+//     new deceleration point and the segment manager begins accelerating again immediately.
 void st_prep_buffer()
 {
   while (segment_buffer_tail != segment_next_head) { // Check if we need to fill the buffer.
     
     // Determine if we need to load a new planner block.
     if (pl_prep_block == NULL) {
-      pl_prep_block = plan_get_block_by_index(pl_prep_index);
-      if (pl_prep_block == NULL) { return; } // No more planner blocks. Let stepper finish out.
+      pl_prep_block = plan_get_block_by_index(pl_prep_index); // Query planner for a queued block
+      if (pl_prep_block == NULL) { return; } // No planner blocks. Exit.
       
-      // Prepare commonly shared planner block data for the ensuing step buffer moves
-      st_data_prep_index = next_block_index(st_data_prep_index);
-      st_prep_data = &segment_data[st_data_prep_index];
-      
-      // Initialize Bresenham variables
-      st_prep_data->step_events_remaining = pl_prep_block->step_event_count;
+      // Check if the planner has re-computed this block mid-execution. If so, push the old segment block
+      // data Otherwise, prepare a new segment block data.
+      if (pl_partial_block_flag) {
+        
+        // Prepare new shared segment block data and copy the relevant last segment block data.
+        st_data_t *last_st_prep_data;
+        last_st_prep_data = &segment_data[st_data_prep_index];
+        st_data_prep_index = next_block_index(st_data_prep_index);
+        st_prep_data = &segment_data[st_data_prep_index];
+            
+        st_prep_data->step_events_remaining = last_st_prep_data->step_events_remaining;
+        st_prep_data->rate_delta = last_st_prep_data->rate_delta;
+        st_prep_data->d_next = last_st_prep_data->d_next;
+        st_prep_data->nominal_rate = last_st_prep_data->nominal_rate; // TODO: Recompute with feedrate overrides.
+       
+        st_prep_data->mm_per_step = last_st_prep_data->mm_per_step;
 
-      // Convert new block to stepper variables.
-      // NOTE: This data can change mid-block from normal planner updates and feedrate overrides. Must
-      // be maintained as these execute.
-      // TODO: If the planner updates this block, particularly from a deceleration to an acceleration,
-      // we must reload the initial rate data, such that the velocity profile is re-constructed correctly.
-      st_prep_data->initial_rate = ceil(sqrt(pl_prep_block->entry_speed_sqr)*(INV_TIME_MULTIPLIER/(60*ISR_TICKS_PER_SECOND))); // (mult*mm/isr_tic)
-      st_prep_data->nominal_rate = ceil(sqrt(pl_prep_block->nominal_speed_sqr)*(INV_TIME_MULTIPLIER/(60.0*ISR_TICKS_PER_SECOND))); // (mult*mm/isr_tic)
- 
-      // This data doesn't change. Could be performed in the planner, but fits nicely here.
-      // Although, acceleration can change for S-curves. So keep it here.
-      st_prep_data->rate_delta = ceil(pl_prep_block->acceleration*
-        ((INV_TIME_MULTIPLIER/(60.0*60.0))/(ISR_TICKS_PER_SECOND*ACCELERATION_TICKS_PER_SECOND))); // (mult*mm/isr_tic/accel_tic)
-      // This definitely doesn't change, but could be precalculated in a way to help some of the 
-      // math in this handler, i.e. millimeters per step event data.
-      st_prep_data->d_next = ceil((pl_prep_block->millimeters*INV_TIME_MULTIPLIER)/pl_prep_block->step_event_count); // (mult*mm/step)
-      st_prep_data->mm_per_step = pl_prep_block->millimeters/pl_prep_block->step_event_count;
-              
-      // Calculate trapezoid data from planner.
-      st_prep_data->decelerate_after = calculate_trapezoid_for_block(pl_prep_index);
+        pl_partial_block_flag = false; // Reset flag
+        
+        // TODO: If the planner updates this block, particularly from a deceleration to an acceleration,
+        // we must reload the initial rate data, such that the velocity profile is re-constructed correctly.
+        // The stepper algorithm must be flagged to adjust the acceleration counters.
+
+      } else {
+      
+        // Prepare commonly shared planner block data for the ensuing segment buffer moves ad-hoc, since 
+        // the planner buffer can dynamically change the velocity profile data as blocks are added.
+        st_data_prep_index = next_block_index(st_data_prep_index);
+        st_prep_data = &segment_data[st_data_prep_index];
+      
+        // Initialize Bresenham variables
+        st_prep_data->step_events_remaining = pl_prep_block->step_event_count;
+
+        // Convert planner block velocity profile data to stepper rate and step distance data.
+        st_prep_data->nominal_rate = ceil(sqrt(pl_prep_block->nominal_speed_sqr)*(INV_TIME_MULTIPLIER/(60.0*ISR_TICKS_PER_SECOND))); // (mult*mm/isr_tic)
+        st_prep_data->rate_delta = ceil(pl_prep_block->acceleration*
+          ((INV_TIME_MULTIPLIER/(60.0*60.0))/(ISR_TICKS_PER_SECOND*ACCELERATION_TICKS_PER_SECOND))); // (mult*mm/isr_tic/accel_tic)
+        st_prep_data->d_next = ceil((pl_prep_block->millimeters*INV_TIME_MULTIPLIER)/pl_prep_block->step_event_count); // (mult*mm/step)
+        
+        // TODO: Check if we really need to store this.
+        st_prep_data->mm_per_step = pl_prep_block->millimeters/pl_prep_block->step_event_count;        
+    
+      }
+      
+      // Convert planner entry speed to stepper initial rate. 
+      st_prep_data->initial_rate = ceil(sqrt(pl_prep_block->entry_speed_sqr)*(INV_TIME_MULTIPLIER/(60.0*ISR_TICKS_PER_SECOND))); // (mult*mm/isr_tic)
+
+      // TODO: Nominal rate changes with feedrate override.
+      // st_prep_data->nominal_rate = ceil(sqrt(pl_prep_block->nominal_speed_sqr)*(INV_TIME_MULTIPLIER/(60.0*ISR_TICKS_PER_SECOND))); // (mult*mm/isr_tic)
+
+      // Calculate the planner block velocity profile type and determine deceleration point.
+      float mm_decelerate_after = plan_calculate_velocity_profile(pl_prep_index);
+      if (mm_decelerate_after == pl_prep_block->millimeters) {
+        st_prep_data->decelerate_after = st_prep_data->step_events_remaining;
+      } else {
+        st_prep_data->decelerate_after = ceil( mm_decelerate_after/st_prep_data->mm_per_step );
+      }
       
     }
 
@@ -564,77 +612,108 @@ void st_prep_buffer()
          - From deceleration to acceleration, i.e. common with jogging when new blocks are added.
     */
 
-    st_segment_t *st_prep_segment = &segment_buffer[segment_buffer_head];
-    st_prep_segment->st_data_index = st_data_prep_index;
+    st_segment_t *new_segment = &segment_buffer[segment_buffer_head];
+    new_segment->st_data_index = st_data_prep_index;
 
     // TODO: How do you cheaply compute n_step without a sqrt()? Could be performed as 'bins'.
-    st_prep_segment->n_step = 250; //floor( (exit_speed*approx_time)/mm_per_step );   
-//      st_segment->n_step = max(st_segment->n_step,MINIMUM_STEPS_PER_BLOCK); // Ensure it moves for very slow motions?
-//      st_segment->n_step = min(st_segment->n_step,MAXIMUM_STEPS_PER_BLOCK); // Prevent unsigned int8 overflow.
+    // The basic equation is: s = u*t + 0.5*a*t^2
+    // For the most part, we can store the acceleration portion in the st_data buffer and all
+    // we would need to do is track the current approximate speed per loop with: v = u + a*t
+    // Each loop would require 3 multiplication and 2 additions, since most of the variables 
+    // are constants and would get compiled out.
+    
+//!!! Doesn't work as is. Requires last_velocity and acceleration in terms of steps, not mm.    
+//     new_segment->n_step = ceil(last_velocity*TIME_PER_SEGMENT/mm_per_step);
+//     if (st_prep_data->decelerate_after > 0) {
+//       new_segment->n_step += ceil(pl_prep_block->acceleration*(0.5*TIME_PER_SEGMENT*TIME_PER_SEGMENT/(60*60))/mm_per_step);
+//     } else {
+//       new_segment->n_step -= ceil(pl_prep_block->acceleration*(0.5*TIME_PER_SEGMENT*TIME_PER_SEGMENT/(60*60))/mm_per_step);
+//     }
+    
+    new_segment->n_step = 7; //floor( (exit_speed*approx_time)/mm_per_step );   
+//      new_segment->n_step = max(new_segment->n_step,MINIMUM_STEPS_PER_BLOCK); // Ensure it moves for very slow motions?
+//      new_segment->n_step = min(new_segment->n_step,MAXIMUM_STEPS_PER_BLOCK); // Prevent unsigned int8 overflow.
+
     
     // Check if n_step exceeds steps remaining in planner block. If so, truncate.
-    if (st_prep_segment->n_step > st_prep_data->step_events_remaining) { 
-      st_prep_segment->n_step = st_prep_data->step_events_remaining; 
+    if (new_segment->n_step > st_prep_data->step_events_remaining) { 
+      new_segment->n_step = st_prep_data->step_events_remaining; 
+      
+      // Don't need to compute last velocity, since it will be refreshed with a new block.
     }
 
     // Check if n_step exceeds decelerate point in block. Need to perform this so that the
     // ramp counters are reset correctly in the stepper algorithm. Can be 1 step, but should
     // be OK since it is likely moving at a fast rate already.
     if (st_prep_data->decelerate_after > 0) {
-      if (st_prep_segment->n_step > st_prep_data->decelerate_after) { 
-        st_prep_segment->n_step = st_prep_data->decelerate_after; 
-      } 
-    }
-
-//     float distance, exit_speed_sqr;
-//     distance = st_prep_segment->n_step*st_prep_data->mm_per_step; // Always greater than zero
-//     if (st_prep_data->step_events_remaining >= pl_prep_block->decelerate_after) {
-//       exit_speed_sqr = pl_prep_block->entry_speed_sqr - 2*pl_prep_block->acceleration*distance; 
-//     } else { // Acceleration or cruising ramp
-//       if (pl_prep_block->entry_speed_sqr < pl_prep_block->nominal_speed_sqr) {
-//         exit_speed_sqr = pl_prep_block->entry_speed_sqr + 2*pl_prep_block->acceleration*distance; 
-//         if (exit_speed_sqr > pl_prep_block->nominal_speed_sqr) { exit_speed_sqr = pl_prep_block->nominal_speed_sqr; }
-//       } else {
-//         exit_speed_sqr = pl_prep_block->nominal_speed_sqr;
+      if (new_segment->n_step > st_prep_data->decelerate_after) { 
+        new_segment->n_step = st_prep_data->decelerate_after; 
+      }
+// !!! Doesn't work. Remove if not using.
+//       if (last_velocity < last_nominal_v) {
+//       // !!! Doesn't work since distance changes and gets truncated.
+//         last_velocity += pl_prep_block->acceleration*(TIME_PER_SEGMENT/(60*60)); // In acceleration ramp.
+//         if {last_velocity > last_nominal_v) { last_velocity = last_nominal_v; } // Set to cruising.
 //       }
-//     }
-    
-    // Update planner block variables.
-//     pl_prep_block->entry_speed_sqr = max(0.0,exit_speed_sqr);
-//      pl_prep_block->max_entry_speed_sqr = exit_speed_sqr; // ??? Overwrites the corner speed. May need separate variable.
-//     pl_prep_block->millimeters -= distance; // Potential round-off error near end of block.
-//     pl_prep_block->millimeters = max(0.0,pl_prep_block->millimeters); // Shouldn't matter.
+//     } else { // In deceleration ramp
+//       last_velocity -= pl_prep_block->acceleration*(TIME_PER_SEGMENT/(60*60));
+    }
         
     // Update stepper block variables.
-    st_prep_data->step_events_remaining -= st_prep_segment->n_step;
+    st_prep_data->step_events_remaining -= new_segment->n_step;
     if ( st_prep_data->step_events_remaining == 0 ) { 
       // Move planner pointer to next block
       if (st_prep_data->decelerate_after == 0) {         
-        st_prep_segment->flag = ST_DECEL_EOB;
+        new_segment->flag = ST_DECEL_EOB;  // Flag when deceleration begins and ends at EOB. Could rewrite to use bit flags too.
       } else {
-        st_prep_segment->flag = ST_END_OF_BLOCK;
+        new_segment->flag = ST_END_OF_BLOCK;
       }
       pl_prep_index = next_block_pl_index(pl_prep_index);
       pl_prep_block = NULL;
-printString("EOB");
     } else {
+      // Current segment is mid-planner block. Just set the DECEL/NOOP acceleration flags.
       if (st_prep_data->decelerate_after == 0) {         
-        st_prep_segment->flag = ST_DECEL;
+        new_segment->flag = ST_DECEL;
       } else {
-        st_prep_segment->flag = ST_NOOP;
+        new_segment->flag = ST_NOOP;
       }
-printString("x");
+      st_prep_data->decelerate_after -= new_segment->n_step;
     }
-      st_prep_data->decelerate_after -= st_prep_segment->n_step;
+    
 
-    // New step block completed. Increment step buffer indices.
+    // New step segment completed. Increment segment buffer indices.
     segment_buffer_head = segment_next_head;
     segment_next_head = next_block_index(segment_buffer_head);   
 
-printInteger((long)st_prep_segment->n_step);
-printString(" ");      
-printInteger((long)st_prep_data->decelerate_after);
-printString(" ");      
-printInteger((long)st_prep_data->step_events_remaining);
   } 
 }      
+
+uint8_t st_get_prep_block_index() 
+{
+// Returns only the index but doesn't state if the block has been partially executed. How do we simply check for this?
+  return(pl_prep_index);
+}
+
+void st_fetch_partial_block_parameters(uint8_t block_index, float *millimeters_remaining, uint8_t *is_decelerating)
+{
+ // if called, can we assume that this always changes and needs to be updated? if so, then
+ // we can perform all of the segment buffer setup tasks here to make sure the next time
+ // the segments are loaded, the st_data buffer is updated correctly.
+ // !!! Make sure that this is always pointing to the correct st_prep_data block. 
+ 
+ // When a mid-block acceleration occurs, we have to make sure the ramp counters are updated
+ // correctly, much in the same fashion as the deceleration counters. Need to think about this 
+ // make sure this is right, but i'm pretty sure it is.
+  
+  // TODO: NULL means that the segment buffer has completed the block. Need to clean this up a bit.
+  if (pl_prep_block != NULL) {
+    *millimeters_remaining = st_prep_data->step_events_remaining*st_prep_data->mm_per_step;
+    if (st_prep_data->decelerate_after > 0) { *is_decelerating = false; } 
+    else { *is_decelerating = true; }
+
+    // Flag for new prep_block when st_prep_buffer() is called after the planner recomputes.
+    pl_partial_block_flag = true;
+    pl_prep_block = NULL;
+  }
+  return;
+}

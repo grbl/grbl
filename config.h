@@ -2,8 +2,8 @@
   config.h - compile time configuration
   Part of Grbl
 
-  Copyright (c) 2009-2011 Simen Svale Skogsrud
   Copyright (c) 2011-2013 Sungeun K. Jeon
+  Copyright (c) 2009-2011 Simen Svale Skogsrud
 
   Grbl is free software: you can redistribute it and/or modify
   it under the terms of the GNU General Public License as published by
@@ -19,80 +19,24 @@
   along with Grbl.  If not, see <http://www.gnu.org/licenses/>.
 */
 
-#ifndef config_h
-#define config_h
+// This file contains compile-time configurations for Grbl's internal system. For the most part,
+// users will not need to directly modify these, but they are here for specific needs, i.e.
+// performance tuning or adjusting to non-typical machines.
 
 // IMPORTANT: Any changes here requires a full re-compiling of the source code to propagate them.
+
+#ifndef config_h
+#define config_h
 
 // Default settings. Used when resetting EEPROM. Change to desired name in defaults.h
 #define DEFAULTS_ZEN_TOOLWORKS_7x7
 
 // Serial baud rate
-#define BAUD_RATE 9600
+#define BAUD_RATE 115200
 
-// Define pin-assignments
-// NOTE: All step bit and direction pins must be on the same port.
-#define STEPPING_DDR       DDRD
-#define STEPPING_PORT      PORTD
-#define X_STEP_BIT         2  // Uno Digital Pin 2
-#define Y_STEP_BIT         3  // Uno Digital Pin 3
-#define Z_STEP_BIT         4  // Uno Digital Pin 4
-#define X_DIRECTION_BIT    5  // Uno Digital Pin 5
-#define Y_DIRECTION_BIT    6  // Uno Digital Pin 6
-#define Z_DIRECTION_BIT    7  // Uno Digital Pin 7
-#define STEP_MASK ((1<<X_STEP_BIT)|(1<<Y_STEP_BIT)|(1<<Z_STEP_BIT)) // All step bits
-#define DIRECTION_MASK ((1<<X_DIRECTION_BIT)|(1<<Y_DIRECTION_BIT)|(1<<Z_DIRECTION_BIT)) // All direction bits
-#define STEPPING_MASK (STEP_MASK | DIRECTION_MASK) // All stepping-related bits (step/direction)
-
-#define STEPPERS_DISABLE_DDR    DDRB
-#define STEPPERS_DISABLE_PORT   PORTB
-#define STEPPERS_DISABLE_BIT    0  // Uno Digital Pin 8
-#define STEPPERS_DISABLE_MASK (1<<STEPPERS_DISABLE_BIT)
-
-// NOTE: All limit bit pins must be on the same port
-#define LIMIT_DDR       DDRB
-#define LIMIT_PIN       PINB
-#define LIMIT_PORT      PORTB
-#define X_LIMIT_BIT     1  // Uno Digital Pin 9
-#define Y_LIMIT_BIT     2  // Uno Digital Pin 10
-#define Z_LIMIT_BIT     3  // Uno Digital Pin 11
-#define LIMIT_INT       PCIE0  // Pin change interrupt enable pin
-#define LIMIT_INT_vect  PCINT0_vect 
-#define LIMIT_PCMSK     PCMSK0 // Pin change interrupt register
-#define LIMIT_MASK ((1<<X_LIMIT_BIT)|(1<<Y_LIMIT_BIT)|(1<<Z_LIMIT_BIT)) // All limit bits
-
-#define SPINDLE_ENABLE_DDR   DDRB
-#define SPINDLE_ENABLE_PORT  PORTB
-#define SPINDLE_ENABLE_BIT   4  // Uno Digital Pin 12
-
-#define SPINDLE_DIRECTION_DDR   DDRB
-#define SPINDLE_DIRECTION_PORT  PORTB
-#define SPINDLE_DIRECTION_BIT   5  // Uno Digital Pin 13 (NOTE: D13 can't be pulled-high input due to LED.)
-
-#define COOLANT_FLOOD_DDR   DDRC
-#define COOLANT_FLOOD_PORT  PORTC
-#define COOLANT_FLOOD_BIT   3  // Uno Analog Pin 3
-
-// NOTE: Uno analog pins 4 and 5 are reserved for an i2c interface, and may be installed at
-// a later date if flash and memory space allows.
-// #define ENABLE_M7  // Mist coolant disabled by default. Uncomment to enable.
-#ifdef ENABLE_M7
-  #define COOLANT_MIST_DDR   DDRC
-  #define COOLANT_MIST_PORT  PORTC
-  #define COOLANT_MIST_BIT   4 // Uno Analog Pin 4
-#endif  
-
-// NOTE: All pinouts pins must be on the same port
-#define PINOUT_DDR       DDRC
-#define PINOUT_PIN       PINC
-#define PINOUT_PORT      PORTC
-#define PIN_RESET        0  // Uno Analog Pin 0
-#define PIN_FEED_HOLD    1  // Uno Analog Pin 1
-#define PIN_CYCLE_START  2  // Uno Analog Pin 2
-#define PINOUT_INT       PCIE1  // Pin change interrupt enable pin
-#define PINOUT_INT_vect  PCINT1_vect
-#define PINOUT_PCMSK     PCMSK1 // Pin change interrupt register
-#define PINOUT_MASK ((1<<PIN_RESET)|(1<<PIN_FEED_HOLD)|(1<<PIN_CYCLE_START))
+// Default pin mappings. Grbl officially supports the Arduino Uno only. Other processor types
+// may exist from user-supplied templates or directly user-defined in pin_map.h
+#define PIN_MAP_ARDUINO_UNO
 
 // Define runtime command special characters. These characters are 'picked-off' directly from the
 // serial read data stream and are not passed to the grbl line execution parser. Select characters
@@ -137,11 +81,6 @@
 // zero and report it to the Grbl administrators. 
 #define INV_TIME_MULTIPLIER 10000000.0
 
-// Minimum planner junction speed. Sets the default minimum speed the planner plans for at the end
-// of the buffer and all stops. This should not be much greater than zero and should only be changed
-// if unwanted behavior is observed on a user's machine when running at very slow speeds.
-#define MINIMUM_PLANNER_SPEED 0.0 // (mm/min)
-
 // Minimum stepper rate for the "Stepper Driver Interrupt". Sets the absolute minimum stepper rate 
 // in the stepper program and never runs slower than this value. If the RANADE_MULTIPLIER value
 // changes, it will affect how this value works. So, if a zero is add/subtracted from the
@@ -151,6 +90,14 @@
 
 // Minimum stepper rate. Only used by homing at this point. May be removed in later releases.
 #define MINIMUM_STEPS_PER_MINUTE 800 // (steps/min) - Integer value only
+
+// Minimum planner junction speed. Sets the default minimum junction speed the planner plans to at
+// every buffer block junction, except for starting from rest and end of the buffer, which are always
+// zero. This value controls how fast the machine moves through junctions with no regard for acceleration
+// limits or angle between neighboring block line move directions. This is useful for machines that can't
+// tolerate the tool dwelling for a split second, i.e. 3d printers or laser cutters. If used, this value
+// should not be much greater than zero or to the minimum value necessary for the machine to work.
+#define MINIMUM_JUNCTION_SPEED 0.0 // (mm/min)
 
 // Time delay increments performed during a dwell. The default value is set at 50ms, which provides
 // a maximum time delay of roughly 55 minutes, more than enough for most any application. Increasing
@@ -217,7 +164,7 @@
 // each of the startup blocks, as they are each stored as a string of this size. Make sure
 // to account for the available EEPROM at the defined memory address in settings.h and for
 // the number of desired startup blocks.
-// NOTE: 50 characters is not a problem except for extreme cases, but the line buffer size 
+// NOTE: 70 characters is not a problem except for extreme cases, but the line buffer size 
 // can be too small and g-code blocks can get truncated. Officially, the g-code standards 
 // support up to 256 characters. In future versions, this default will be increased, when 
 // we know how much extra memory space we can re-invest into this.

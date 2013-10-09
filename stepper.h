@@ -47,4 +47,8 @@ void st_feed_hold();
 
 void st_prep_buffer();
 
+uint8_t st_get_prep_block_index();
+
+void st_fetch_partial_block_parameters(uint8_t block_index, float *millimeters_remaining, uint8_t *is_decelerating);
+
 #endif
