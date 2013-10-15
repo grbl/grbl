@@ -343,6 +343,9 @@ printString("x");
       // Any acceleration detected in the forward pass automatically moves the optimal planned
       // pointer forward, since everything before this is all optimal. In other words, nothing
       // can improve the plan from the buffer tail to the planned pointer by logic.
+      // TODO: Need to check if the planned flag logic is correct for all scenarios. It may not
+      // be for certain conditions. However, if the block reaches nominal speed, it can be a valid
+      // breakpoint substitute.
       if (current->entry_speed_sqr < next->entry_speed_sqr) {
         entry_speed_sqr = current->entry_speed_sqr + 2*current->acceleration*current->millimeters;
         // If true, current block is full-acceleration and we can move the planned pointer forward.

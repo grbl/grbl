@@ -57,7 +57,7 @@
 // interrupt of the current stepper driver algorithm theoretically up to a frequency of 35-40kHz, but 
 // CPU overhead increases exponentially as this frequency goes up. So there will be little left for 
 // other processes like arcs.  
-#define ISR_TICKS_PER_SECOND 20000L  // Integer (Hz)
+#define ISR_TICKS_PER_SECOND 30000L  // Integer (Hz)
 
 // The temporal resolution of the acceleration management subsystem. Higher number give smoother
 // acceleration but may impact performance. If you run at very high feedrates (>15kHz or so) and 
@@ -66,7 +66,7 @@
 // is machine dependent, so it's advised to set this only as high as needed. Approximate successful
 // values can widely range from 50 to 200 or more. Cannot be greater than ISR_TICKS_PER_SECOND/2.
 // NOTE: Ramp count variable type in stepper module may need to be updated if changed.
-#define ACCELERATION_TICKS_PER_SECOND 100L 
+#define ACCELERATION_TICKS_PER_SECOND 120L 
 
 // NOTE: Make sure this value is less than 256, when adjusting both dependent parameters.
 #define ISR_TICKS_PER_ACCELERATION_TICK (ISR_TICKS_PER_SECOND/ACCELERATION_TICKS_PER_SECOND)
