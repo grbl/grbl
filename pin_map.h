@@ -113,19 +113,19 @@
   #define STEPPING_DDR      DDRA
   #define STEPPING_PORT     PORTA
   #define STEPPING_PIN      PINA
-  #define X_STEP_BIT        0 // MEGA2560 Digital Pin 22
-  #define Y_STEP_BIT        1 // MEGA2560 Digital Pin 23
-  #define Z_STEP_BIT        2 // MEGA2560 Digital Pin 24
-  #define X_DIRECTION_BIT   4 // MEGA2560 Digital Pin 26
-  #define Y_DIRECTION_BIT   5 // MEGA2560 Digital Pin 27
-  #define Z_DIRECTION_BIT   6 // MEGA2560 Digital Pin 28
+  #define X_STEP_BIT        2 // MEGA2560 Digital Pin 24
+  #define Y_STEP_BIT        3 // MEGA2560 Digital Pin 25
+  #define Z_STEP_BIT        4 // MEGA2560 Digital Pin 26
+  #define X_DIRECTION_BIT   5 // MEGA2560 Digital Pin 27
+  #define Y_DIRECTION_BIT   6 // MEGA2560 Digital Pin 28
+  #define Z_DIRECTION_BIT   7 // MEGA2560 Digital Pin 29
   #define STEP_MASK ((1<<X_STEP_BIT)|(1<<Y_STEP_BIT)|(1<<Z_STEP_BIT)) // All step bits
   #define DIRECTION_MASK ((1<<X_DIRECTION_BIT)|(1<<Y_DIRECTION_BIT)|(1<<Z_DIRECTION_BIT)) // All direction bits
   #define STEPPING_MASK (STEP_MASK | DIRECTION_MASK) // All stepping-related bits (step/direction)
 
-  #define STEPPERS_DISABLE_DDR   DDRC
-  #define STEPPERS_DISABLE_PORT  PORTC
-  #define STEPPERS_DISABLE_BIT   7 // MEGA2560 Digital Pin 30
+  #define STEPPERS_DISABLE_DDR   DDRB
+  #define STEPPERS_DISABLE_PORT  PORTB
+  #define STEPPERS_DISABLE_BIT   7 // MEGA2560 Digital Pin 13
   #define STEPPERS_DISABLE_MASK (1<<STEPPERS_DISABLE_BIT)
 
   // NOTE: All limit bit pins must be on the same port
