@@ -115,23 +115,6 @@ static uint8_t st_data_prep_index;    // Index of stepper common data block bein
 static uint8_t pl_partial_block_flag; // Flag indicating the planner has modified the prepped planner block
 
 
-// Returns the index of the next block in the ring buffer
-// NOTE: Removed modulo (%) operator, which uses an expensive divide and multiplication.
-static uint8_t next_block_index(uint8_t block_index) 
-{
-  block_index++;
-  if (block_index == SEGMENT_BUFFER_SIZE) { block_index = 0; }
-  return(block_index);
-}
-
-static uint8_t next_block_pl_index(uint8_t block_index) 
-{
-  block_index++;
-  if (block_index == BLOCK_BUFFER_SIZE) { block_index = 0; }
-  return(block_index);
-}
-
-
 /*        __________________________
          /|                        |\     _________________         ^
         / |                        | \   /|               |\        |
@@ -334,9 +317,7 @@ ISR(TIMER2_COMPA_vect)
         st.ramp_count = ISR_TICKS_PER_ACCELERATION_TICK; // Reload ramp counter
         if (st.delta_d > st_current_data->rate_delta) {
           st.delta_d -= st_current_data->rate_delta;
-        } else {
-        
-          // Moving near zero feed rate. Gracefully slow down.
+        } else { // Moving near zero feed rate. Gracefully slow down.
           st.delta_d >>= 1; // Integer divide by 2 until complete. Also prevents overflow.
 
           // TODO: Check for and handle feed hold exit? At this point, machine is stopped.
@@ -392,16 +373,16 @@ ISR(TIMER2_COMPA_vect)
     // Check step events for trapezoid change or end of block.
     st.segment_steps_remaining--; // Decrement step events count    
     if (st.segment_steps_remaining == 0) {
-
-      // NOTE: sys.position updates could be done here. The bresenham counters can have 
-      // their own fast 8-bit addition-only counters. Here we would check the direction and 
-      // apply it to sys.position accordingly. However, this could take too much time 
-      // combined with loading a new segment during next cycle too. 
-      // TODO: Measure the time it would take in the worst case. It could still be faster
-      // overall during segment execution if uint8 step counters tracked this and was added
-      // to the system position variables here. Compared to worst case now, it wouldn't be 
-      // that much different.
       /*
+        NOTE: sys.position updates could be done here. The bresenham counters can have 
+        their own fast 8-bit addition-only counters. Here we would check the direction and 
+        apply it to sys.position accordingly. However, this could take too much time 
+        combined with loading a new segment during next cycle too. 
+        TODO: Measure the time it would take in the worst case. It could still be faster
+        overall during segment execution if uint8 step counters tracked this and was added
+        to the system position variables here. Compared to worst case now, it wouldn't be 
+        that much different.
+
         // TODO: Upon loading, step counters would need to be zeroed. 
         // TODO: For feedrate overrides, we will have to execute add these values.. although
         //   for probing, this breaks. Current values won't be correct, unless we query it. 
@@ -429,8 +410,8 @@ ISR(TIMER2_COMPA_vect)
         st.load_flag = LOAD_SEGMENT;
       }
       
-      // Discard current segment
-      segment_buffer_tail = next_block_index( segment_buffer_tail );
+      // Discard current segment by advancing buffer tail index
+      if ( ++segment_buffer_tail == SEGMENT_BUFFER_SIZE) { segment_buffer_tail = 0; }
             
     }
 
@@ -552,28 +533,32 @@ void st_cycle_reinitialize()
 
 /* Prepares step segment buffer. Continuously called from main program. 
 
-   NOTE: There doesn't seem to be a great way to figure out how many steps occur within
-   a set number of ISR ticks. Numerical round-off and CPU overhead always seems to be a
-   critical problem. So, either numerical round-off checks could be made to account for 
-   them, while CPU overhead could be minimized in some way, or we can flip the algorithm
-   around to have the stepper algorithm track number of steps over an indeterminant amount
-   of time instead. 
-     In other words, we use the planner velocity floating point data to get an estimate of
-   the number of steps we want to execute. We then back out the approximate velocity for
-   the planner to use, which should be much more robust to round-off error. The main problem
-   now is that we are loading the stepper algorithm to handle acceleration now, rather than
-   pre-calculating with the main program. This approach does make sense in the way that
-   planner velocities and stepper profiles can be traced more accurately. 
-     Which is better? Very hard to tell. The time-based algorithm would be able to handle 
-   Bresenham step adaptive-resolution much easier and cleaner. Whereas, the step-based would
-   require some additional math in the stepper algorithm to adjust on the fly, plus adaptation
-   would occur in a non-deterministic manner.
-     I suppose it wouldn't hurt to build both to see what's better. Just a lot more work.
+   The segment buffer is an intermediary buffer interface between the execution of steps
+   by the stepper algorithm and the velocity profiles generated by the planner. The stepper
+   algorithm only executes steps within the segment buffer and is filled by the main program
+   when steps are "checked-out" from the first block in the planner buffer. This keeps the
+   step execution and planning optimization processes atomic and protected from each other.
+   The number of steps "checked-out" from the planner buffer and the number of segments in
+   the segment buffer is sized and computed such that no operation in the main program takes
+   longer than the time it takes the stepper algorithm to empty it before refilling it. 
+   Currently, the segment buffer conservatively holds roughly up to 40-60 msec of steps. 
 
-   TODO: Need to describe the importance of continuations of step pulses between ramp states
-   and planner blocks. This has to do with Alden's problem with step "phase". The things I've
-   been doing here limit this phase issue by truncating some of the ramp timing for certain
-   events like deceleration initialization and end of block. 
+   NOTE: The segment buffer executes a set number of steps over an approximate time period.
+   If we try to execute over a set time period, it is difficult to guarantee or predict how
+   many steps will execute over it, especially when the step pulse phasing between the
+   neighboring segments are kept consistent. Meaning that, if the last segment step pulses
+   right before its end, the next segment must delay its first pulse so that the step pulses
+   are consistently spaced apart over time to keep the step pulse train nice and smooth. 
+   Keeping track of phasing and ensuring that the exact number of steps are executed as
+   defined by the planner block, the related computational overhead gets quickly and
+   prohibitively expensive, especially in real-time.
+     Since the stepper algorithm automatically takes care of the step pulse phasing with
+   its ramp and inverse time counters, we don't have to explicitly and expensively track the
+   exact number of steps, time, or phasing of steps. All we need to do is approximate
+   the number of steps in each segment such that the segment buffer has enough execution time
+   for the main program to do what it needs to do and refill it when it has time. In other
+   words, we just need to compute a cheap approximation of the current velocity and the 
+   number of steps over it. 
 */
 
 /* 
@@ -606,7 +591,7 @@ void st_prep_buffer()
       pl_prep_block = plan_get_block_by_index(pl_prep_index); // Query planner for a queued block
       if (pl_prep_block == NULL) { return; } // No planner blocks. Exit.
         
-      // Increment stepper common data buffer index 
+      // Increment stepper common data index 
       if ( ++st_data_prep_index == (SEGMENT_BUFFER_SIZE-1) ) { st_data_prep_index = 0; }
         
       // Check if the planner has re-computed this block mid-execution. If so, push the previous segment
@@ -666,7 +651,10 @@ void st_prep_buffer()
     // Set new segment to point to the current segment data block.
     prep_segment->st_data_index = st_data_prep_index;
 
-    // Approximate the velocity over the new segment
+    // Approximate the velocity over the new segment using the already computed rate values.
+    // NOTE: This assumes that each segment will have an execution time roughly equal to every ACCELERATION_TICK.
+    // We do this to minimize memory and computational requirements. However, this could easily be replaced with
+    // a more exact approximation or have a unique time per segment, if CPU and memory overhead allows.
     if (st_prep_data->decelerate_after <= 0) {
       if (st_prep_data->decelerate_after == 0) { prep_segment->flag = SEGMENT_DECEL; }
       else { st_prep_data->current_approx_rate -= st_prep_data->rate_delta; }
@@ -680,15 +668,15 @@ void st_prep_buffer()
       }
     }
     
-    // Compute the number of steps in the prepped segment based on the approximate current rate. The execution
-    // time of each segment should be about every ACCELERATION_TICK.
+    // Compute the number of steps in the prepped segment based on the approximate current rate.
     // NOTE: The d_next divide cancels out the INV_TIME_MULTIPLIER and converts the rate value to steps.
-    // NOTE: As long as the ACCELERATION_TICKS_PER_SECOND is valid, n_step should never exceed 255.
     prep_segment->n_step = ceil(max(MINIMUM_STEP_RATE,st_prep_data->current_approx_rate)*
                                 (ISR_TICKS_PER_SECOND/ACCELERATION_TICKS_PER_SECOND)/st_prep_data->d_next);    
-    prep_segment->n_step = max(prep_segment->n_step,MINIMUM_STEPS_PER_SEGMENT); // Ensure it moves for very slow motions?
+    // NOTE: Ensures it moves for very slow motions, but MINIMUM_STEP_RATE should always set this too. Perhaps
+    // a compile-time check to see if MINIMUM_STEP_RATE is set high enough is all that is needed.
+    prep_segment->n_step = max(prep_segment->n_step,MINIMUM_STEPS_PER_SEGMENT);
+    // NOTE: As long as the ACCELERATION_TICKS_PER_SECOND is valid, n_step should never exceed 255 and overflow.
     // prep_segment->n_step = min(prep_segment->n_step,MAXIMUM_STEPS_PER_BLOCK); // Prevent unsigned int8 overflow.
-
     
     // Check if n_step exceeds steps remaining in planner block. If so, truncate.
     if (prep_segment->n_step > st_prep_data->step_events_remaining) { 
@@ -703,7 +691,7 @@ void st_prep_buffer()
       }
     }
  
-    // Update stepper block variables.
+    // Update stepper common data variables.
     st_prep_data->decelerate_after -= prep_segment->n_step;
     st_prep_data->step_events_remaining -= prep_segment->n_step;
     
@@ -712,13 +700,13 @@ void st_prep_buffer()
       // Set EOB bitflag so stepper algorithm discards the planner block after this segment completes.
       prep_segment->flag |= SEGMENT_END_OF_BLOCK;
       // Move planner pointer to next block and flag to load a new block for the next segment.
-      pl_prep_index = next_block_pl_index(pl_prep_index);
+      pl_prep_index = plan_next_block_index(pl_prep_index);
       pl_prep_block = NULL;
     }    
 
     // New step segment completed. Increment segment buffer indices.
     segment_buffer_head = segment_next_head;
-    segment_next_head = next_block_index(segment_buffer_head);   
+    if ( ++segment_next_head == SEGMENT_BUFFER_SIZE ) { segment_next_head = 0; }
     
 // long a = prep_segment->n_step;    
 // printInteger(a);

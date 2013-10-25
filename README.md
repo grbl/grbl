@@ -11,7 +11,7 @@ Grbl includes full acceleration management with look ahead. That means the contr
 
 ##Changelog for v0.9 from v0.8
   - **ALPHA status: Under heavy development.**
-  - New stepper algorithm:  Based on the Pramod Ranade inverse time algorithm, but modified to ensure steps are executed exactly. This algorithm performs a constant timer tick and has a hard limit of 30kHz maximum step frequency. It is also highly tuneable and should be very easy to port to other microcontroller architectures. Overall, a much better, smoother stepper algorithm with the capability of very high speeds.
+  - New stepper algorithm:  Based on an inverse time algorithm, but modified to ensure steps are executed exactly. This algorithm performs a constant timer tick and has a hard limit of 30kHz maximum step frequency. It is also highly tuneable and should be very easy to port to other microcontroller architectures. Overall, a much better, smoother stepper algorithm with the capability of very high speeds.
   - Planner optimizations: Multiple changes to increase planner execution speed and removed redundant variables.
   - Acceleration independence: Each axes may be defined with different acceleration parameters and Grbl will automagically calculate the maximum acceleration through a path depending on the direction traveled. This is very useful for machine that have very different axes properties, like the ShapeOko z-axis.
   - Maximum velocity independence: As with acceleration, the maximum velocity of individual axes may be defined. All seek/rapids motions will move at these maximum rates, but never exceed any one axes. So, when two or more axes move, the limiting axis will move at its maximum rate, while the other axes are scaled down.

@@ -49,9 +49,9 @@
 #define CMD_CYCLE_START '~'
 #define CMD_RESET 0x18 // ctrl-x
 
-// The "Stepper Driver Interrupt" employs the Pramod Ranade inverse time algorithm to manage the
-// Bresenham line stepping algorithm. The value ISR_TICKS_PER_SECOND is the frequency(Hz) at which
-// the Ranade algorithm ticks at. Recommended step frequencies are limited by the Ranade frequency by
+// The "Stepper Driver Interrupt" employs an inverse time algorithm to manage the Bresenham line 
+// stepping algorithm. The value ISR_TICKS_PER_SECOND is the frequency(Hz) at which the inverse time
+// algorithm ticks at. Recommended step frequencies are limited by the inverse time frequency by
 // approximately 0.75-0.9 * ISR_TICK_PER_SECOND. Meaning for 30kHz, the max step frequency is roughly
 // 22.5-27kHz, but 30kHz is still possible, just not optimal. An Arduino can safely complete a single
 // interrupt of the current stepper driver algorithm theoretically up to a frequency of 35-40kHz, but 
@@ -71,7 +71,7 @@
 // NOTE: Make sure this value is less than 256, when adjusting both dependent parameters.
 #define ISR_TICKS_PER_ACCELERATION_TICK (ISR_TICKS_PER_SECOND/ACCELERATION_TICKS_PER_SECOND)
 
-// The Ranade algorithm can use either floating point or long integers for its counters, but for 
+// The inverse time algorithm can use either floating point or long integers for its counters, but for 
 // integers the counter values must be scaled since these values can be very small (10^-6). This
 // multiplier value scales the floating point counter values for use in a long integer. Long integers
 // are finite so select the multiplier value high enough to avoid any numerical round-off issues and
@@ -82,10 +82,10 @@
 #define INV_TIME_MULTIPLIER 10000000.0
 
 // Minimum stepper rate for the "Stepper Driver Interrupt". Sets the absolute minimum stepper rate 
-// in the stepper program and never runs slower than this value. If the RANADE_MULTIPLIER value
+// in the stepper program and never runs slower than this value. If the INVE_TIME_MULTIPLIER value
 // changes, it will affect how this value works. So, if a zero is add/subtracted from the
-// RANADE_MULTIPLIER value, do the same to this value if you want to same response. 
-// NOTE: Compute by (desired_step_rate/60) * RANADE_MULTIPLIER/ISR_TICKS_PER_SECOND. (mm/min)
+// INV_TIME_MULTIPLIER value, do the same to this value if you want to same response. 
+// NOTE: Compute by (desired_step_rate/60) * INV_TIME_MULTIPLIER/ISR_TICKS_PER_SECOND. (mm/min)
 #define MINIMUM_STEP_RATE 1000L // Integer (mult*mm/isr_tic)
 
 // Minimum stepper rate. Only used by homing at this point. May be removed in later releases.
@@ -158,7 +158,7 @@
 // available RAM, like when re-compiling for a Mega or Sanguino. Or decrease if the Arduino
 // begins to crash due to the lack of available RAM or if the CPU is having trouble keeping
 // up with planning new incoming motions as they are executed. 
-// #define BLOCK_BUFFER_SIZE 17  // Uncomment to override default in planner.h.
+// #define BLOCK_BUFFER_SIZE 18  // Uncomment to override default in planner.h.
 
 // Line buffer size from the serial input stream to be executed. Also, governs the size of 
 // each of the startup blocks, as they are each stored as a string of this size. Make sure
@@ -193,4 +193,12 @@
 
 // TODO: Install compile-time option to send numeric status codes rather than strings.
 
+// ---------------------------------------------------------------------------------------
+// COMPILE-TIME ERROR CHECKING OF DEFINE VALUES:
+
+#if (ISR_TICKS_PER_ACCELERATION_TICK > 255)
+#error Parameters ACCELERATION_TICKS / ISR_TICKS must be < 256 to prevent integer overflow.
+#endif
+
+// ---------------------------------------------------------------------------------------
 #endif

@@ -51,9 +51,9 @@ typedef struct {
 static planner_t pl;
 
 
-// Returns the index of the next block in the ring buffer
+// Returns the index of the next block in the ring buffer. Also called by stepper segment buffer.
 // NOTE: Removed modulo (%) operator, which uses an expensive divide and multiplication.
-static uint8_t next_block_index(uint8_t block_index) 
+uint8_t plan_next_block_index(uint8_t block_index) 
 {
   block_index++;
   if (block_index == BLOCK_BUFFER_SIZE) { block_index = 0; }
@@ -62,15 +62,13 @@ static uint8_t next_block_index(uint8_t block_index)
 
 
 // Returns the index of the previous block in the ring buffer
-static uint8_t prev_block_index(uint8_t block_index) 
+static uint8_t plan_prev_block_index(uint8_t block_index) 
 {
   if (block_index == 0) { block_index = BLOCK_BUFFER_SIZE; }
   block_index--;
   return(block_index);
 }
                             
-
-
 
 // Update the entry speed and millimeters remaining to execute for a partially completed block. Called only
 // when the planner knows it will be changing the conditions of this block.
@@ -109,8 +107,6 @@ void plan_update_partial_block(uint8_t block_index, float exit_speed_sqr)
 }
 
 
-
-
 /*                            PLANNER SPEED DEFINITION                                              
                                      +--------+   <- current->nominal_speed
                                     /          \                                
@@ -119,55 +115,41 @@ void plan_update_partial_block(uint8_t block_index, float exit_speed_sqr)
                                    +-------------+                              
                                        time -->                      
                                                   
-  Recalculates the motion plan according to the following algorithm:
+  Recalculates the motion plan according to the following basic guidelines:
   
-    1. Go over every block in reverse order and calculate a junction speed reduction (i.e. block_t.entry_speed) 
-       so that:
-      a. The junction speed is equal to or less than the maximum junction speed limit
-      b. No speed reduction within one block requires faster deceleration than the acceleration limits.
-      c. The last (or newest appended) block is planned from a complete stop.
+    1. Go over every feasible block sequentially in reverse order and calculate the junction speeds
+        (i.e. current->entry_speed) such that:
+      a. No junction speed exceeds the pre-computed maximum junction speed limit or nominal speeds of 
+         neighboring blocks.
+      b. A block entry speed cannot exceed one reverse-computed from its exit speed (next->entry_speed)
+         with a maximum allowable deceleration over the block travel distance.
+      c. The last (or newest appended) block is planned from a complete stop (an exit speed of zero).
     2. Go over every block in chronological (forward) order and dial down junction speed values if 
-      a. The speed increase within one block would require faster acceleration than the acceleration limits.
+      a. The exit speed exceeds the one forward-computed from its entry speed with the maximum allowable
+         acceleration over the block travel distance.
   
-  When these stages are complete, all blocks have a junction entry speed that will allow all speed changes
-  to be performed using the overall limiting acceleration value, and where no junction speed is greater
-  than the max limit. In other words, it just computed the fastest possible velocity profile through all 
-  buffered blocks, where the final buffered block is planned to come to a full stop when the buffer is fully
-  executed. Finally it will:
+  When these stages are complete, the planner will have maximized the velocity profiles throughout the all
+  of the planner blocks, where every block is operating at its maximum allowable acceleration limits. In 
+  other words, for all of the blocks in the planner, the plan is optimal and no further speed improvements
+  are possible. If a new block is added to the buffer, the plan is recomputed according to the said 
+  guidelines for a new optimal plan.
   
-    3. Convert the plan to data that the stepper algorithm needs. Only block trapezoids adjacent to a
-       a planner-modified junction speed with be updated, the others are assumed ok as is.
+  To increase computational efficiency of these guidelines, a set of planner block pointers have been
+  created to indicate stop-compute points for when the planner guidelines cannot logically make any further
+  changes or improvements to the plan when in normal operation and new blocks are streamed and added to the
+  planner buffer. For example, if a subset of sequential blocks in the planner have been planned and are 
+  bracketed by junction velocities at their maximums (or by the first planner block as well), no new block
+  added to the planner buffer will alter the velocity profiles within them. So we no longer have to compute
+  them. Or, if a set of sequential blocks from the first block in the planner (or a optimal stop-compute
+  point) are all accelerating, they are all optimal and can not be altered by a new block added to the
+  planner buffer, as this will only further increase the plan speed to chronological blocks until a maximum
+  junction velocity is reached. However, if the operational conditions of the plan changes from infrequently
+  used feed holds or feedrate overrides, the stop-compute pointers will be reset and the entire plan is  
+  recomputed as stated in the general guidelines.
   
-  All planner computations(1)(2) are performed in floating point to minimize numerical round-off errors. Only
-  when planned values are converted to stepper rate parameters(3), these are integers. If another motion block
-  is added while executing, the planner will re-plan and update the stored optimal velocity profile as it goes.
-  
-  Conceptually, the planner works like blowing up a balloon, where the balloon is the velocity profile. It's
-  constrained by the speeds at the beginning and end of the buffer, along with the maximum junction speeds and
-  nominal speeds of each block. Once a plan is computed, or balloon filled, this is the optimal velocity profile
-  through all of the motions in the buffer. Whenever a new block is added, this changes some of the limiting
-  conditions, or how the balloon is filled, so it has to be re-calculated to get the new optimal velocity profile.
-  
-  Also, since the planner only computes on what's in the planner buffer, some motions with lots of short line
-  segments, like arcs, may seem to move slow. This is because there simply isn't enough combined distance traveled 
-  in the entire buffer to accelerate up to the nominal speed and then decelerate to a stop at the end of the
-  buffer. There are a few simple solutions to this: (1) Maximize the machine acceleration. The planner will be 
-  able to compute higher speed profiles within the same combined distance. (2) Increase line segment(s) distance.
-  The more combined distance the planner has to use, the faster it can go. (3) Increase the MINIMUM_JUNCTION_SPEED.
-  Not recommended. This will change what speed the planner plans to at the end of the buffer. Can lead to lost 
-  steps when coming to a stop. (4) [BEST] Increase the planner buffer size. The more combined distance, the 
-  bigger the balloon, or faster it can go. But this is not possible for 328p Arduinos because its limited memory 
-  is already maxed out. Future ARM versions should not have this issue, with look-ahead planner blocks numbering 
-  up to a hundred or more.
-
-  NOTE: Since this function is constantly re-calculating for every new incoming block, it must be as efficient
-  as possible. For example, in situations like arc generation or complex curves, the short, rapid line segments
-  can execute faster than new blocks can be added, and the planner buffer will then starve and empty, leading
-  to weird hiccup-like jerky motions.
-
-  Index mapping:
-  - block_buffer_head: Points to the newest incoming buffer block just added by plan_buffer_line(). The planner
-      never touches the exit speed of this block, which always defaults to MINIMUM_JUNCTION_SPEED.
+  Planner buffer index mapping:
+  - block_buffer_head: Points to the newest incoming buffer block just added by plan_buffer_line(). The 
+      planner never touches the exit speed of this block, which always defaults to 0.
   - block_buffer_tail: Points to the beginning of the planner buffer. First to be executed or being executed. 
       Can dynamically change with the old stepper algorithm, but with the new algorithm, this should be impossible
       as long as the segment buffer is not empty.
@@ -193,71 +175,47 @@ void plan_update_partial_block(uint8_t block_index, float exit_speed_sqr)
       entry speed.
 
       !!! Need to check if this is the start of the non-optimal or the end of the optimal block.
+
+  
+  NOTE: All planner computations are performed in floating point to minimize numerical round-off errors.
+  When a planner block is executed, the floating point values are converted to fast integers by the stepper
+  algorithm segment buffer. See the stepper module for details. 
+  
+  NOTE: Since the planner only computes on what's in the planner buffer, some motions with lots of short 
+  line segments, like G2/3 arcs or complex curves, may seem to move slow. This is because there simply isn't
+  enough combined distance traveled in the entire buffer to accelerate up to the nominal speed and then 
+  decelerate to a complete stop at the end of the buffer, as stated by the guidelines. If this happens and
+  becomes an annoyance, there are a few simple solutions: (1) Maximize the machine acceleration. The planner
+  will be able to compute higher velocity profiles within the same combined distance. (2) Maximize line 
+  segment(s) distance per block to a desired tolerance. The more combined distance the planner has to use,
+  the faster it can go. (3) Maximize the planner buffer size. This also will increase the combined distance
+  for the planner to compute over. It also increases the number of computations the planner has to perform
+  to compute an optimal plan, so select carefully. The Arduino 328p memory is already maxed out, but future
+  ARM versions should have enough memory and speed for look-ahead blocks numbering up to a hundred or more.
+
 */
 static void planner_recalculate() 
 {   
+
+  // Initialize block index to the last block in the planner buffer.
+  uint8_t block_index = prev_block_index(block_buffer_head);
+
   // Query stepper module for safe planner block index to recalculate to, which corresponds to the end
   // of the step segment buffer.
   uint8_t block_buffer_safe = st_get_prep_block_index();
+    
   // TODO: Make sure that we don't have to check for the block_buffer_tail condition, if the stepper module
   // returns a NULL pointer or something. This could happen when the segment buffer is empty. Although,
   // this call won't return a NULL, only an index.. I have to make sure that this index is synced with the
   // planner at all times. 
-  
-  /* - In theory, the state of the segment buffer can exist anywhere within the planner buffer tail and head-1 
-       or is empty, when there is nothing in the segment queue.  The safe pointer can be the buffer head only
-       when the planner queue has been entirely queued into the segment buffer and there are no more blocks
-       in the planner buffer. The segment buffer will to continue to execute the remainder of it, but the
-       planner should be able to treat a newly added block during this time as an empty planner buffer since 
-       we can't touch the segment buffer.
-       
-     - The segment buffer is atomic to the planner buffer, because the main program computes these seperately.
-       Even if we move the planner head pointer early at the end of plan_buffer_line(), this shouldn't
-       effect the safe pointer. 
-
-     - If the safe pointer is at head-1, this means that the stepper algorithm has segments queued and may
-       be executing. This is the last block in the planner queue, so it has been planned to decelerate to 
-       zero at its end. When adding a new block, there will be at least two blocks to work with. When resuming,
-       from a feed hold, we only have this block and will be computing nothing. The planner doesn't have to 
-       do anything, since the trapezoid calculations called by the stepper module should complete the block plan.
-  
-     - In most cases, the safe pointer is at the plan tail or the block after, and rarely on the block two
-       beyond the tail. Since the safe pointer points to the block used at the end of the segment buffer, it 
-       can be in any one of these states. As the stepper module executes the planner block, the buffer tail, 
-       and hence the safe pointer, can push forward through the planner blocks and overcome the planned
-       pointer at any time. 
-
-     - Does the reverse pass not touch either the safe or the plan pointer blocks? The plan pointer only 
-       allows the velocity profile within it to be altered, but not the entry speed, so the reverse pass
-       ignores this block. The safe pointer is the same way, where the entry speed does not change, but 
-       the velocity profile within it does.
-       
-     - The planned pointer can exist anywhere in a given plan, except for the planner buffer head, if everything
-       operates as anticipated. Since the planner buffer can be executed by the stepper algorithm as any
-       rate and could empty the planner buffer quickly, the planner tail can overtake the planned pointer
-       at any time, but will never go around the ring buffer and re-encounter itself, the plan itself is not
-       changed by adding a new block or something else.
-       
-     - The planner recalculate function should always reset the planned pointer at the proper break points
-       or when it encounters the safe block pointer, but will only do so when there are more than one block
-       in the buffer. In the case of single blocks, the planned pointer should always be set to the first
-       write-able block in the buffer, aka safe block. 
-
-     - When does this not work? There might be an issue when the planned pointer moves from the tail to the
-       next head as a new block is being added and planned. Otherwise, the planned pointer should remain 
-       static within the ring buffer no matter what the buffer is doing: being executed, adding new blocks, 
-       or both simultaneously. Need to make sure that this case is covered.
-  */
-
-  
+    
   // Recompute plan only when there is more than one planner block in the buffer. Can't do anything with one.  
-  // NOTE: block_buffer_safe can be equal to block_buffer_head if the segment buffer has completely queued up
-  // the remainder of the planner buffer. In this case, a new planner block will be treated as a single block.
-  if (block_buffer_head == block_buffer_safe) { // Also catches head = tail
+  // NOTE: block_buffer_safe can be the last planner block if the segment buffer has completely queued up the
+  // remainder of the planner buffer. In this case, a new planner block will be treated as a single block.
+  if (block_index == block_buffer_safe) { // Also catches (head-1) = tail
     
     // Just set block_buffer_planned pointer.
-    block_buffer_planned = block_buffer_head;
-    printString("z");
+    block_buffer_planned = block_index;
 
     // TODO: Feedrate override of one block needs to update the partial block with an exit speed of zero. For
     //   a single added block and recalculate after a feed hold, we don't need to compute this, since we already
@@ -271,7 +229,6 @@ static void planner_recalculate()
     //       all junctions before proceeding.
 
     // Initialize planner buffer pointers and indexing.
-    uint8_t block_index = block_buffer_head;
     plan_block_t *current = &block_buffer[block_index];
 
     // Calculate maximum entry speed for last block in buffer, where the exit speed is always zero.
@@ -285,7 +242,7 @@ static void planner_recalculate()
     // will be recomputed within the plan. So, we need to update it if it is partially completed.
     float entry_speed_sqr;
     plan_block_t *next;
-    block_index = prev_block_index(block_index);
+    block_index = plan_prev_block_index(block_index);
 
     if (block_index == block_buffer_safe) { // !! OR plan pointer? Yes I think so.
       
@@ -294,7 +251,6 @@ static void planner_recalculate()
       // !!! Need to make the current entry speed calculation after this.
       plan_update_partial_block(block_index, 0.0);
       block_buffer_planned = block_index;
-printString("y");
     
     } else {
       
@@ -306,7 +262,7 @@ printString("y");
 
         // Increment block index early to check if the safe block is before the current block. If encountered,
         // this is an exit condition as we can't go further than this block in the reverse pass.
-        block_index = prev_block_index(block_index);
+        block_index = plan_prev_block_index(block_index);
         if (block_index == block_buffer_safe) {
           // Check if the safe block is partially completed. If so, update it before its exit speed 
           // (=current->entry speed) is over-written.
@@ -314,7 +270,7 @@ printString("y");
           // the previous nominal speed to update this block with. There will need to be something along the
           // lines of a nominal speed change check and send the correct value to this function.
           plan_update_partial_block(block_index,current->entry_speed_sqr);
-printString("x");
+
           // Set planned pointer at safe block and for loop exit after following computation is done.
           block_buffer_planned = block_index; 
         } 
@@ -335,8 +291,8 @@ printString("x");
     // Forward Pass: Forward plan the acceleration curve from the planned pointer onward.
     // Also scans for optimal plan breakpoints and appropriately updates the planned pointer.
     next = &block_buffer[block_buffer_planned]; // Begin at buffer planned pointer
-    block_index = next_block_index(block_buffer_planned); 
-    while (block_index != next_buffer_head) {
+    block_index = plan_next_block_index(block_buffer_planned); 
+    while (block_index != block_buffer_head) {
       current = next;
       next = &block_buffer[block_index];
       
@@ -363,11 +319,63 @@ printString("x");
         block_buffer_planned = block_index; // Set optimal plan pointer
       }
       
-      block_index = next_block_index( block_index );
+      block_index = plan_next_block_index( block_index );
     }
     
   }  
   
+/* 
+   uint8_t block_buffer_safe = st_get_prep_block_index();
+   if (block_buffer_head == block_buffer_safe) { // Also catches head = tail
+     block_buffer_planned = block_buffer_head;
+   } else {
+     uint8_t block_index = block_buffer_head;
+     plan_block_t *current = &block_buffer[block_index];
+     current->entry_speed_sqr = min( current->max_entry_speed_sqr, 2*current->acceleration*current->millimeters);
+     float entry_speed_sqr;
+     plan_block_t *next;
+     block_index = plan_prev_block_index(block_index);
+     if (block_index == block_buffer_safe) { // !! OR plan pointer? Yes I think so.
+       plan_update_partial_block(block_index, 0.0);
+       block_buffer_planned = block_index;
+     } else {
+       while (block_index != block_buffer_planned) { 
+         next = current;
+         current = &block_buffer[block_index];
+         block_index = plan_prev_block_index(block_index);
+         if (block_index == block_buffer_safe) {
+           plan_update_partial_block(block_index,current->entry_speed_sqr);
+           block_buffer_planned = block_index; 
+         } 
+         if (current->entry_speed_sqr != current->max_entry_speed_sqr) {
+           entry_speed_sqr = next->entry_speed_sqr + 2*current->acceleration*current->millimeters;
+           if (entry_speed_sqr < current->max_entry_speed_sqr) {
+             current->entry_speed_sqr = entry_speed_sqr;
+           } else {
+             current->entry_speed_sqr = current->max_entry_speed_sqr;
+           }
+         }
+       }
+   
+     }    
+     next = &block_buffer[block_buffer_planned]; // Begin at buffer planned pointer
+     block_index = plan_next_block_index(block_buffer_planned); 
+     while (block_index != next_buffer_head) {
+       current = next;
+       next = &block_buffer[block_index];
+       if (current->entry_speed_sqr < next->entry_speed_sqr) {
+         entry_speed_sqr = current->entry_speed_sqr + 2*current->acceleration*current->millimeters;
+         if (entry_speed_sqr < next->entry_speed_sqr) {
+           next->entry_speed_sqr = entry_speed_sqr; // Always <= max_entry_speed_sqr. Backward pass sets this.
+           block_buffer_planned = block_index; // Set optimal plan pointer.
+         }
+       }
+       if (next->entry_speed_sqr == next->max_entry_speed_sqr) {
+         block_buffer_planned = block_index; // Set optimal plan pointer
+       } 
+       block_index = plan_next_block_index( block_index );
+     }
+   }  */
 }
 
 
@@ -376,11 +384,12 @@ void plan_reset_buffer()
   block_buffer_planned = block_buffer_tail;
 }
 
+
 void plan_init() 
 {
   block_buffer_tail = 0;
   block_buffer_head = 0; // Empty = tail
-  next_buffer_head = 1; // next_block_index(block_buffer_head)
+  next_buffer_head = 1; // plan_next_block_index(block_buffer_head)
   plan_reset_buffer();
   memset(&pl, 0, sizeof(pl)); // Clear planner struct
 }
@@ -389,7 +398,7 @@ void plan_init()
 void plan_discard_current_block() 
 {
   if (block_buffer_head != block_buffer_tail) { // Discard non-empty buffer.
-    block_buffer_tail = next_block_index( block_buffer_tail );
+    block_buffer_tail = plan_next_block_index( block_buffer_tail );
   }
 }
 
@@ -484,10 +493,8 @@ void plan_buffer_line(float *target, float feed_rate, uint8_t invert_feed_rate)
   if (feed_rate < 0) { feed_rate = SOME_LARGE_VALUE; } // Scaled down to absolute max/rapids rate later
   else if (invert_feed_rate) { feed_rate = block->millimeters/feed_rate; }
 
-  // Calculate the unit vector of the line move and the block maximum feed rate and acceleration limited
-  // by the maximum possible values. Block rapids rates are computed or feed rates are scaled down so
-  // they don't exceed the maximum axes velocities. The block acceleration is maximized based on direction
-  // and axes properties as well.
+  // Calculate the unit vector of the line move and the block maximum feed rate and acceleration scaled 
+  // down such that no individual axes maximum values are exceeded with respect to the line direction. 
   // NOTE: This calculation assumes all axes are orthogonal (Cartesian) and works with ABC-axes,
   // if they are also orthogonal/independent. Operates on the absolute value of the unit vector.
   float inverse_unit_vec_value;
@@ -514,10 +521,6 @@ void plan_buffer_line(float *target, float feed_rate, uint8_t invert_feed_rate)
   if (block_buffer_head == block_buffer_tail) {
   
     // Initialize block entry speed as zero. Assume it will be starting from rest. Planner will correct this later.
-    // !!! Ensures when the first block starts from zero speed. If we do this in the planner, this will break
-    // feedrate overrides later, as you can override this single block and it maybe moving already at a given rate.
-    // Better to do it here and make it clean.
-    // !!! Shouldn't need this for anything other than a single block.
     block->entry_speed_sqr = 0.0;
     block->max_junction_speed_sqr = 0.0; // Starting from rest. Enforce start from zero velocity.
   
@@ -541,10 +544,9 @@ void plan_buffer_line(float *target, float feed_rate, uint8_t invert_feed_rate)
        a continuous mode path, but ARM-based microcontrollers most certainly do. 
        
        NOTE: The max junction speed is a fixed value, since machine acceleration limits cannot be
-       changed dynamically during operation nor can the line segment geometry. This must be kept in
+       changed dynamically during operation nor can the line move geometry. This must be kept in
        memory in the event of a feedrate override changing the nominal speeds of blocks, which can 
        change the overall maximum entry speed conditions of all blocks.
-       
     */
     // NOTE: Computed without any expensive trig, sin() or acos(), by trig half angle identity of cos(theta).
     float sin_theta_d2 = sqrt(0.5*(1.0-junction_cos_theta)); // Trig half angle identity. Always positive.
@@ -558,7 +560,6 @@ void plan_buffer_line(float *target, float feed_rate, uint8_t invert_feed_rate)
   block->nominal_speed_sqr = feed_rate*feed_rate; // (mm/min). Always > 0
   
   // Compute the junction maximum entry based on the minimum of the junction speed and neighboring nominal speeds.
-  // TODO: Should call a function to determine this. The function can be used elsewhere for feedrate overrides later.
   block->max_entry_speed_sqr = min(block->max_junction_speed_sqr, 
                                    min(block->nominal_speed_sqr,pl.previous_nominal_speed_sqr));
   
@@ -569,17 +570,16 @@ void plan_buffer_line(float *target, float feed_rate, uint8_t invert_feed_rate)
   // Update planner position
   memcpy(pl.position, target_steps, sizeof(target_steps)); // pl.position[] = target_steps[]
 
-  planner_recalculate(); 
-
-  // Update buffer head and next buffer head indices. Advance only after new plan has been computed.
+  // New block is all set. Update buffer head and next buffer head indices.
   block_buffer_head = next_buffer_head;  
-  next_buffer_head = next_block_index(block_buffer_head);
+  next_buffer_head = plan_next_block_index(block_buffer_head);
   
+  // Finish up by recalculating the plan with the new block.
+  planner_recalculate();
 
-
-int32_t blength = block_buffer_head - block_buffer_tail;
-if (blength < 0) { blength += BLOCK_BUFFER_SIZE; } 
-printInteger(blength);
+// int32_t blength = block_buffer_head - block_buffer_tail;
+// if (blength < 0) { blength += BLOCK_BUFFER_SIZE; } 
+// printInteger(blength);
 
 
 }
@@ -595,36 +595,34 @@ void plan_sync_position()
 }
 
 
-
-
 /*       STEPPER VELOCITY PROFILE DEFINITION 
-                                                  less than nominal rate->  + 
-                    +--------+ <- nominal_rate                             /|\                                         
+                                                 less than nominal speed->  + 
+                    +--------+ <- nominal_speed                            /|\                                         
                    /          \                                           / | \                      
-  initial_rate -> +            \                                         /  |  + <- next->initial_rate         
-                  |             + <- next->initial_rate                 /   |  |                       
-                  +-------------+                      initial_rate -> +----+--+                   
+   entry_speed -> +            \                                         /  |  + <- next->entry_speed
+                  |             + <- next->entry_speed                  /   |  |                       
+                  +-------------+                       entry_speed -> +----+--+                   
                    time -->  ^  ^                                           ^  ^                       
                              |  |                                           |  |                       
                      decelerate distance                           decelerate distance  
                                                         
-  Calculates the "trapezoid" velocity profile parameters of a planner block for the stepper 
-  algorithm. The planner computes the entry and exit speeds of each block, but does not bother to 
-  determine the details of the velocity profiles within them, as they aren't needed for computing 
-  an optimal plan. When the stepper algorithm begins to execute a block, the block velocity profiles 
-  are computed ad hoc. 
+  Calculates the type of velocity profile for a given planner block and provides the deceleration
+  distance for the stepper algorithm to use to accurately trace the profile exactly. The planner
+  computes the entry and exit speeds of each block, but does not bother to determine the details of
+  the velocity profiles within them, as they aren't needed for computing an optimal plan. When the
+  stepper algorithm begins to execute a block, the block velocity profiles are computed ad hoc. 
   
   Each block velocity profiles can be described as either a trapezoidal or a triangular shape. The
   trapezoid occurs when the block reaches the nominal speed of the block and cruises for a period of
   time. A triangle occurs when the nominal speed is not reached within the block. Both of these 
   velocity profiles may also be truncated on either end with no acceleration or deceleration ramps, 
-  as they can be influenced by the conditions of neighboring blocks.
+  as they can be influenced by the conditions of neighboring blocks, where the acceleration ramps
+  are defined by constant acceleration equal to the maximum allowable acceleration of a block.
   
-  The following function determines the type of velocity profile and stores the minimum required
-  information for the stepper algorithm to execute the calculated profiles. Since the stepper 
-  algorithm always assumes to begin accelerating from the initial_rate and cruise if the nominal_rate
-  is reached, we only need to know when to begin deceleration to the end of the block. Hence, only
-  the distance from the end of the block to begin a deceleration ramp are computed.
+  Since the stepper algorithm already assumes to begin executing a planner block by accelerating
+  from the planner entry speed and cruise if the nominal speed is reached, we only need to know 
+  when to begin deceleration to the end of the block. Hence, only the distance from the end of the
+  block to begin a deceleration ramp is computed for the stepper algorithm when requested.
 */
 float plan_calculate_velocity_profile(uint8_t block_index) 
 {  
@@ -632,7 +630,7 @@ float plan_calculate_velocity_profile(uint8_t block_index)
   
   // Determine current block exit speed
   float exit_speed_sqr = 0.0; // Initialize for end of planner buffer. Zero speed.
-  plan_block_t *next_block = plan_get_block_by_index(next_block_index(block_index));
+  plan_block_t *next_block = plan_get_block_by_index(plan_next_block_index(block_index));
   if (next_block != NULL) { exit_speed_sqr = next_block->entry_speed_sqr; } // Exit speed is the entry speed of next buffer block
   
   // First determine intersection distance (in steps) from the exit point for a triangular profile.

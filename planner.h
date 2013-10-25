@@ -64,6 +64,8 @@ void plan_discard_current_block();
 // Gets the current block. Returns NULL if buffer empty
 plan_block_t *plan_get_current_block();
 
+uint8_t plan_next_block_index(uint8_t block_index);
+
 plan_block_t *plan_get_block_by_index(uint8_t block_index);
 
 float plan_calculate_velocity_profile(uint8_t block_index);
