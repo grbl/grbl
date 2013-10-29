@@ -104,7 +104,9 @@ ISR(PINOUT_INT_vect)
 // limit switches, or the main program.
 void protocol_execute_runtime()
 {
+  // Reload step segment buffer
   st_prep_buffer();
+  
   if (sys.execute) { // Enter only if any bit flag is true
     uint8_t rt_exec = sys.execute; // Avoid calling volatile multiple times
     

@@ -71,12 +71,13 @@
 // NOTE: Make sure this value is less than 256, when adjusting both dependent parameters.
 #define ISR_TICKS_PER_ACCELERATION_TICK (ISR_TICKS_PER_SECOND/ACCELERATION_TICKS_PER_SECOND)
 
-// The inverse time algorithm can use either floating point or long integers for its counters, but for 
-// integers the counter values must be scaled since these values can be very small (10^-6). This
-// multiplier value scales the floating point counter values for use in a long integer. Long integers
-// are finite so select the multiplier value high enough to avoid any numerical round-off issues and
-// still have enough range to account for all motion types. However, in most all imaginable CNC
-// applications, the following multiplier value will work more than well enough. If you do have
+// The inverse time algorithm can use either floating point or long integers for its counters (usually
+// very small values ~10^-6), but with integers, the counter values must be scaled to be greater than
+// one. This multiplier value scales the floating point counter values for use in a long integer, which 
+// are significantly faster to compute with a slightly higher precision ceiling than floats. Long 
+// integers are finite so select the multiplier value high enough to avoid any numerical round-off 
+// issues and still have enough range to account for all motion types. However, in most all imaginable 
+// CNC applications, the following multiplier value will work more than well enough. If you do have
 // happened to weird stepper motion issues, try modifying this value by adding or subtracting a 
 // zero and report it to the Grbl administrators. 
 #define INV_TIME_MULTIPLIER 10000000.0

@@ -50,7 +50,7 @@
   #define DEFAULT_HOMING_FEEDRATE 25.0 // mm/min
   #define DEFAULT_HOMING_DEBOUNCE_DELAY 100 // msec (0-65k)
   #define DEFAULT_HOMING_PULLOFF 1.0 // mm
-  #define DEFAULT_STEPPER_IDLE_LOCK_TIME 25 // msec (0-255)
+  #define DEFAULT_STEPPER_IDLE_LOCK_TIME 25 // msec (0-254, 255 keeps steppers enabled)
   #define DEFAULT_DECIMAL_PLACES 3
   #define DEFAULT_X_MAX_TRAVEL 200 // mm
   #define DEFAULT_Y_MAX_TRAVEL 200 // mm
@@ -84,7 +84,7 @@
   #define DEFAULT_HOMING_FEEDRATE 25.0 // mm/min
   #define DEFAULT_HOMING_DEBOUNCE_DELAY 100 // msec (0-65k)
   #define DEFAULT_HOMING_PULLOFF 1.0 // mm
-  #define DEFAULT_STEPPER_IDLE_LOCK_TIME 25 // msec (0-255)
+  #define DEFAULT_STEPPER_IDLE_LOCK_TIME 25 // msec (0-254, 255 keeps steppers enabled)
   #define DEFAULT_DECIMAL_PLACES 3
   #define DEFAULT_X_MAX_TRAVEL 200 // mm
   #define DEFAULT_Y_MAX_TRAVEL 200 // mm
@@ -121,7 +121,7 @@
   #define DEFAULT_HOMING_FEEDRATE 25.0 // mm/min
   #define DEFAULT_HOMING_DEBOUNCE_DELAY 100 // msec (0-65k)
   #define DEFAULT_HOMING_PULLOFF 1.0 // mm
-  #define DEFAULT_STEPPER_IDLE_LOCK_TIME 255 // msec (0-255)
+  #define DEFAULT_STEPPER_IDLE_LOCK_TIME 255 // msec (0-254, 255 keeps steppers enabled)
   #define DEFAULT_DECIMAL_PLACES 3
   #define DEFAULT_X_MAX_TRAVEL 200 // mm
   #define DEFAULT_Y_MAX_TRAVEL 200 // mm
@@ -156,7 +156,7 @@
   #define DEFAULT_HOMING_FEEDRATE 50.0 // mm/min
   #define DEFAULT_HOMING_DEBOUNCE_DELAY 100 // msec (0-65k)
   #define DEFAULT_HOMING_PULLOFF 1.0 // mm
-  #define DEFAULT_STEPPER_IDLE_LOCK_TIME 25 // msec (0-255)
+  #define DEFAULT_STEPPER_IDLE_LOCK_TIME 25 // msec (0-254, 255 keeps steppers enabled)
   #define DEFAULT_DECIMAL_PLACES 3
   #define DEFAULT_X_MAX_TRAVEL 200 // mm
   #define DEFAULT_Y_MAX_TRAVEL 200 // mm

@@ -59,12 +59,6 @@ void limits_init()
 // your e-stop switch to the Arduino reset pin, since it is the most correct way to do this.
 ISR(LIMIT_INT_vect) 
 {
-  // TODO: This interrupt may be used to manage the homing cycle directly with the main stepper
-  // interrupt without adding too much to it. All it would need is some way to stop one axis 
-  // when its limit is triggered and continue the others. This may reduce some of the code, but
-  // would make Grbl a little harder to read and understand down road. Holding off on this until
-  // we move on to new hardware or flash space becomes an issue. If it ain't broke, don't fix it.
-
   // Ignore limit switches if already in an alarm state or in-process of executing an alarm.
   // When in the alarm state, Grbl should have been reset or will force a reset, so any pending 
   // moves in the planner and serial buffers are all cleared and newly sent blocks will be 
@@ -89,6 +83,19 @@ ISR(LIMIT_INT_vect)
 // NOTE: Only the abort runtime command can interrupt this process.
 static void homing_cycle(uint8_t cycle_mask, int8_t pos_dir, bool invert_pin, float homing_rate) 
 {
+
+  /* TODO: Change homing routine to call planner instead moving at the maximum seek rates
+     and (max_travel+10mm?) for each axes during the search phase. The routine should monitor
+     the state of the limit pins and when a pin is triggered, it can disable that axes by 
+     setting the respective step_x, step_y, or step_z value in the executing planner block.
+     This keeps the stepper algorithm counters from triggering the step on that particular
+     axis. When all axes have been triggered, we can then disable the steppers and reset
+     the stepper and planner buffers. This same method can be used for the locate cycles. 
+     This will also fix the slow max feedrate of the homing 'lite' stepper algorithm.
+     
+     Need to check if setting the planner steps will require them to be volatile or not. */
+  
+  
   // Determine governing axes with finest step resolution per distance for the Bresenham
   // algorithm. This solves the issue when homing multiple axes that have different 
   // resolutions without exceeding system acceleration setting. It doesn't have to be
