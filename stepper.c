@@ -39,8 +39,8 @@
 
 #define SEGMENT_NOOP 0
 #define SEGMENT_END_OF_BLOCK bit(0)
-#define SEGMENT_ACCEL bit(1)
-#define SEGMENT_DECEL bit(2)
+#define RAMP_CHANGE_ACCEL bit(1)
+#define RAMP_CHANGE_DECEL bit(2)
 
 #define MINIMUM_STEPS_PER_SEGMENT 1 // Don't change
 
@@ -76,7 +76,7 @@ static stepper_t st;
 // the number of accessible stepper buffer segments (SEGMENT_BUFFER_SIZE-1).
 typedef struct {  
   int32_t step_events_remaining; // Tracks step event count for the executing planner block
-  uint32_t dist_next_step;               // Scaled distance to next step
+  uint32_t dist_per_step;               // Scaled distance to next step
   uint32_t initial_rate;         // Initialized step rate at re/start of a planner block
   uint32_t nominal_rate;         // The nominal step rate for this block in step_events/minute
   uint32_t rate_delta;           // The steps/minute to add or subtract when changing speed (must be positive)
@@ -254,7 +254,7 @@ ISR(TIMER2_COMPA_vect)
         st.counter_z = st.counter_x;
         
         // Initialize inverse time, step rate data, and acceleration ramp counters
-        st.counter_dist = st_current_data->dist_next_step;  // dist_next_step always greater than ramp_rate.   
+        st.counter_dist = st_current_data->dist_per_step;  // dist_per_step always greater than ramp_rate.   
         st.ramp_rate = st_current_data->initial_rate; 
         st.counter_ramp = ISR_TICKS_PER_ACCELERATION_TICK/2;  // Initialize ramp counter via midpoint rule
         st.ramp_type = RAMP_NOOP_CRUISE; // Initialize as no ramp operation. Corrected later if necessary. 
@@ -265,7 +265,7 @@ ISR(TIMER2_COMPA_vect)
       }
 
       // Check if ramp conditions have changed. If so, update ramp counters and control variables.
-      if ( st_current_segment->flag & (SEGMENT_DECEL | SEGMENT_ACCEL) ) {
+      if ( st_current_segment->flag & (RAMP_CHANGE_DECEL | RAMP_CHANGE_ACCEL) ) {
         /* Compute correct ramp count for a ramp change. Upon a switch from acceleration to deceleration,
            or vice-versa, the new ramp count must be set to trigger the next acceleration tick equal to
            the number of ramp ISR ticks counted since the last acceleration tick. This is ensures the 
@@ -274,7 +274,7 @@ ISR(TIMER2_COMPA_vect)
            as mandated by the mid-point rule. For the latter conditions, the ramp count have been
            initialized such that the following computation is still correct. */
         st.counter_ramp = ISR_TICKS_PER_ACCELERATION_TICK-st.counter_ramp;
-        if ( st_current_segment->flag & SEGMENT_DECEL ) { st.ramp_type = RAMP_DECEL; }
+        if ( st_current_segment->flag & RAMP_CHANGE_DECEL ) { st.ramp_type = RAMP_DECEL; }
         else { st.ramp_type = RAMP_ACCEL; }
       }
       
@@ -319,7 +319,7 @@ ISR(TIMER2_COMPA_vect)
   
   // Execute Bresenham step event, when it's time to do so.
   if (st.counter_dist < 0) {  
-    st.counter_dist += st_current_data->dist_next_step; // Reload inverse time counter
+    st.counter_dist += st_current_data->dist_per_step; // Reload inverse time counter
 
     st.out_bits = pl_current_block->direction_bits; // Reset out_bits and reload direction bits
     st.execute_step = true;
@@ -493,21 +493,21 @@ void st_cycle_reinitialize()
    Currently, the segment buffer conservatively holds roughly up to 40-60 msec of steps. 
 
    NOTE: The segment buffer executes a set number of steps over an approximate time period.
-   If we try to execute over a set time period, it is difficult to guarantee or predict how
-   many steps will execute over it, especially when the step pulse phasing between the
-   neighboring segments are kept consistent. Meaning that, if the last segment step pulses
-   right before its end, the next segment must delay its first pulse so that the step pulses
-   are consistently spaced apart over time to keep the step pulse train nice and smooth. 
-   Keeping track of phasing and ensuring that the exact number of steps are executed as
-   defined by the planner block, the related computational overhead gets quickly and
+   If we try to execute over a fixed time period, it is difficult to guarantee or predict 
+   how many steps will execute over it, especially when the step pulse phasing between the
+   neighboring segments must also be kept consistent. Meaning that, if the last segment step 
+   pulses right before a segment end, the next segment must delay its first pulse so that the
+   step pulses are consistently spaced apart over time to keep the step pulse train nice and
+   smooth. Keeping track of phasing and ensuring that the exact number of steps are executed
+   as defined by the planner block, the related computational overhead can get quickly and
    prohibitively expensive, especially in real-time.
      Since the stepper algorithm automatically takes care of the step pulse phasing with
-   its ramp and inverse time counters, we don't have to explicitly and expensively track the
-   exact number of steps, time, or phasing of steps. All we need to do is approximate
-   the number of steps in each segment such that the segment buffer has enough execution time
-   for the main program to do what it needs to do and refill it when it has time. In other
-   words, we just need to compute a cheap approximation of the current velocity and the 
-   number of steps over it. 
+   its ramp and inverse time counters by retaining the count remainders, we don't have to
+   explicitly and expensively track and synchronize the exact number of steps, time, and
+   phasing of steps. All we need to do is approximate the number of steps in each segment 
+   such that the segment buffer has enough execution time for the main program to do what 
+   it needs to do and refill it when it comes back. In other words, we just need to compute
+   a cheap approximation of the current velocity and the number of steps over it. 
 */
 
 /* 
@@ -529,7 +529,7 @@ void st_cycle_reinitialize()
 */
 void st_prep_buffer()
 {
-  if (sys.state != STATE_QUEUED) { // Block until a motion state is issued
+  if (sys.state == STATE_QUEUED) { return; } // Block until a motion state is issued
   while (segment_buffer_tail != segment_next_head) { // Check if we need to fill the buffer.
     
     // Initialize new segment
@@ -555,7 +555,7 @@ void st_prep_buffer()
             
         st_prep_data->step_events_remaining = last_st_prep_data->step_events_remaining;
         st_prep_data->rate_delta = last_st_prep_data->rate_delta;
-        st_prep_data->dist_next_step = last_st_prep_data->dist_next_step;
+        st_prep_data->dist_per_step = last_st_prep_data->dist_per_step;
         st_prep_data->nominal_rate = last_st_prep_data->nominal_rate; // TODO: Feedrate overrides recomputes this.
        
         st_prep_data->mm_per_step = last_st_prep_data->mm_per_step;
@@ -575,7 +575,7 @@ void st_prep_buffer()
         st_prep_data->nominal_rate = ceil(sqrt(pl_prep_block->nominal_speed_sqr)*(INV_TIME_MULTIPLIER/(60.0*ISR_TICKS_PER_SECOND))); // (mult*mm/isr_tic)
         st_prep_data->rate_delta = ceil(pl_prep_block->acceleration*
           ((INV_TIME_MULTIPLIER/(60.0*60.0))/(ISR_TICKS_PER_SECOND*ACCELERATION_TICKS_PER_SECOND))); // (mult*mm/isr_tic/accel_tic)
-        st_prep_data->dist_next_step = ceil((pl_prep_block->millimeters*INV_TIME_MULTIPLIER)/pl_prep_block->step_event_count); // (mult*mm/step)
+        st_prep_data->dist_per_step = ceil((pl_prep_block->millimeters*INV_TIME_MULTIPLIER)/pl_prep_block->step_event_count); // (mult*mm/step)
         
         // TODO: Check if we really need to store this.
         st_prep_data->mm_per_step = pl_prep_block->millimeters/pl_prep_block->step_event_count;        
@@ -593,8 +593,8 @@ void st_prep_buffer()
       // Calculate the planner block velocity profile type, determine deceleration point, and initial ramp.
       float mm_decelerate_after = plan_calculate_velocity_profile(pl_prep_index);
       st_prep_data->decelerate_after = ceil( mm_decelerate_after/st_prep_data->mm_per_step );
-      if (st_prep_data->decelerate_after > 0) { // If 0, SEGMENT_DECEL flag is set later.
-        if (st_prep_data->initial_rate != st_prep_data->nominal_rate) { prep_segment->flag = SEGMENT_ACCEL; }
+      if (st_prep_data->decelerate_after > 0) { // If 0, RAMP_CHANGE_DECEL flag is set later.
+        if (st_prep_data->initial_rate != st_prep_data->nominal_rate) { prep_segment->flag = RAMP_CHANGE_ACCEL; }
       }
     }
 
@@ -604,9 +604,9 @@ void st_prep_buffer()
     // Approximate the velocity over the new segment using the already computed rate values.
     // NOTE: This assumes that each segment will have an execution time roughly equal to every ACCELERATION_TICK.
     // We do this to minimize memory and computational requirements. However, this could easily be replaced with
-    // a more exact approximation or have a unique time per segment, if CPU and memory overhead allows.
+    // a more exact approximation or have an user-defined time per segment, if CPU and memory overhead allows.
     if (st_prep_data->decelerate_after <= 0) {
-      if (st_prep_data->decelerate_after == 0) { prep_segment->flag = SEGMENT_DECEL; } // Set segment deceleration flag
+      if (st_prep_data->decelerate_after == 0) { prep_segment->flag = RAMP_CHANGE_DECEL; } // Set segment deceleration flag
       else { st_prep_data->current_approx_rate -= st_prep_data->rate_delta; }
       if (st_prep_data->current_approx_rate < st_prep_data->rate_delta) { st_prep_data->current_approx_rate >>= 1; }
     } else {    
@@ -618,10 +618,12 @@ void st_prep_buffer()
       }
     }
     
+    // TODO: Look into replacing the following dist_per_step divide with multiplying its inverse to save cycles.
+    
     // Compute the number of steps in the prepped segment based on the approximate current rate.
-    // NOTE: The dist_next_step divide cancels out the INV_TIME_MULTIPLIER and converts the rate value to steps.
+    // NOTE: The dist_per_step divide cancels out the INV_TIME_MULTIPLIER and converts the rate value to steps.
     prep_segment->n_step = ceil(max(MINIMUM_STEP_RATE,st_prep_data->current_approx_rate)*
-                                (ISR_TICKS_PER_SECOND/ACCELERATION_TICKS_PER_SECOND)/st_prep_data->dist_next_step);    
+                                (ISR_TICKS_PER_SECOND/ACCELERATION_TICKS_PER_SECOND)/st_prep_data->dist_per_step);    
     // NOTE: Ensures it moves for very slow motions, but MINIMUM_STEP_RATE should always set this too. Perhaps
     // a compile-time check to see if MINIMUM_STEP_RATE is set high enough is all that is needed.
     prep_segment->n_step = max(prep_segment->n_step,MINIMUM_STEPS_PER_SEGMENT);
@@ -668,7 +670,6 @@ void st_prep_buffer()
 // printString(" ");
 
   } 
-  }
 }      
 
 uint8_t st_get_prep_block_index() 

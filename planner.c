@@ -148,34 +148,18 @@ void plan_update_partial_block(uint8_t block_index, float exit_speed_sqr)
   recomputed as stated in the general guidelines.
   
   Planner buffer index mapping:
-  - block_buffer_head: Points to the newest incoming buffer block just added by plan_buffer_line(). The 
-      planner never touches the exit speed of this block, which always defaults to 0.
   - block_buffer_tail: Points to the beginning of the planner buffer. First to be executed or being executed. 
-      Can dynamically change with the old stepper algorithm, but with the new algorithm, this should be impossible
-      as long as the segment buffer is not empty.
-  - next_buffer_head: Points to next planner buffer block after the last block. Should always be empty.
-  - block_buffer_safe: Points to the first planner block in the buffer for which it is safe to change. Since
-      the stepper can be executing the first block and if the planner changes its conditions, this will cause
-      a discontinuity and error in the stepper profile with lost steps likely. With the new stepper algorithm,
-      the block_buffer_safe is always where the stepper segment buffer ends and can never be overwritten, but
-      this can change the state of the block profile from a pure trapezoid assumption. Meaning, if that block
-      is decelerating, the planner conditions can change such that the block can new accelerate mid-block.
-      
-      !!! I need to make sure that the stepper algorithm can modify the acceleration mid-block. Needed for feedrate overrides too.
-      
-      !!! planner_recalculate() may not work correctly with re-planning.... may need to artificially set both the
-          block_buffer_head and next_buffer_head back one index so that this works correctly, or allow the operation
-          of this function to accept two different conditions to operate on.
-          
-  - block_buffer_planned: Points to the first buffer block after the last optimally fixed block, which can no longer be 
-      improved. This block and the trailing buffer blocks that can still be altered when new blocks are added. This planned
-      block points to the transition point between the fixed and non-fixed states and is handled slightly different. The entry
-      speed is fixed, indicating the reverse pass cannot maximize the speed further, but the velocity profile within it
-      can still be changed, meaning the forward pass calculations must start from here and influence the following block
-      entry speed.
-
-      !!! Need to check if this is the start of the non-optimal or the end of the optimal block.
-
+  - block_buffer_head: Points to the buffer block after the last block in the buffer. Used to indicate whether
+      the buffer is full or empty. As described for standard ring buffers, this block is always empty.
+  - next_buffer_head: Points to next planner buffer block after the buffer head block. When equal to the 
+      buffer tail, this indicates the buffer is full.
+  - block_buffer_safe: Points to the first sequential planner block for which it is safe to recompute, which
+      is defined to be where the stepper's step segment buffer ends. This may or may not be the buffer tail, 
+      since the step segment buffer queues steps which may have not finished executing and could span a few
+      blocks, if the block moves are very short.   
+  - block_buffer_planned: Points to the first buffer block after the last optimally planned block for normal
+      streaming operating conditions. Use for planning optimizations by avoiding recomputing parts of the 
+      planner buffer that don't change with the addition of a new block, as describe above.
   
   NOTE: All planner computations are performed in floating point to minimize numerical round-off errors.
   When a planner block is executed, the floating point values are converted to fast integers by the stepper
@@ -198,7 +182,7 @@ static void planner_recalculate()
 {   
 
   // Initialize block index to the last block in the planner buffer.
-  uint8_t block_index = prev_block_index(block_buffer_head);
+  uint8_t block_index = plan_prev_block_index(block_buffer_head);
 
   // Query stepper module for safe planner block index to recalculate to, which corresponds to the end
   // of the step segment buffer.
@@ -324,58 +308,6 @@ static void planner_recalculate()
     
   }  
   
-/* 
-   uint8_t block_buffer_safe = st_get_prep_block_index();
-   if (block_buffer_head == block_buffer_safe) { // Also catches head = tail
-     block_buffer_planned = block_buffer_head;
-   } else {
-     uint8_t block_index = block_buffer_head;
-     plan_block_t *current = &block_buffer[block_index];
-     current->entry_speed_sqr = min( current->max_entry_speed_sqr, 2*current->acceleration*current->millimeters);
-     float entry_speed_sqr;
-     plan_block_t *next;
-     block_index = plan_prev_block_index(block_index);
-     if (block_index == block_buffer_safe) { // !! OR plan pointer? Yes I think so.
-       plan_update_partial_block(block_index, 0.0);
-       block_buffer_planned = block_index;
-     } else {
-       while (block_index != block_buffer_planned) { 
-         next = current;
-         current = &block_buffer[block_index];
-         block_index = plan_prev_block_index(block_index);
-         if (block_index == block_buffer_safe) {
-           plan_update_partial_block(block_index,current->entry_speed_sqr);
-           block_buffer_planned = block_index; 
-         } 
-         if (current->entry_speed_sqr != current->max_entry_speed_sqr) {
-           entry_speed_sqr = next->entry_speed_sqr + 2*current->acceleration*current->millimeters;
-           if (entry_speed_sqr < current->max_entry_speed_sqr) {
-             current->entry_speed_sqr = entry_speed_sqr;
-           } else {
-             current->entry_speed_sqr = current->max_entry_speed_sqr;
-           }
-         }
-       }
-   
-     }    
-     next = &block_buffer[block_buffer_planned]; // Begin at buffer planned pointer
-     block_index = plan_next_block_index(block_buffer_planned); 
-     while (block_index != next_buffer_head) {
-       current = next;
-       next = &block_buffer[block_index];
-       if (current->entry_speed_sqr < next->entry_speed_sqr) {
-         entry_speed_sqr = current->entry_speed_sqr + 2*current->acceleration*current->millimeters;
-         if (entry_speed_sqr < next->entry_speed_sqr) {
-           next->entry_speed_sqr = entry_speed_sqr; // Always <= max_entry_speed_sqr. Backward pass sets this.
-           block_buffer_planned = block_index; // Set optimal plan pointer.
-         }
-       }
-       if (next->entry_speed_sqr == next->max_entry_speed_sqr) {
-         block_buffer_planned = block_index; // Set optimal plan pointer
-       } 
-       block_index = plan_next_block_index( block_index );
-     }
-   }  */
 }
 
 
@@ -439,16 +371,16 @@ void plan_synchronize()
 }
 
 
-// Add a new linear movement to the buffer. target[N_AXIS] is the signed, absolute target position
-// in millimeters. Feed rate specifies the speed of the motion. If feed rate is inverted, the feed
-// rate is taken to mean "frequency" and would complete the operation in 1/feed_rate minutes.
-// All position data passed to the planner must be in terms of machine position to keep the planner 
-// independent of any coordinate system changes and offsets, which are handled by the g-code parser.
-// NOTE: Assumes buffer is available. Buffer checks are handled at a higher level by motion_control.
-// In other words, the buffer head is never equal to the buffer tail.  Also the feed rate input value
-// is used in three ways: as a normal feed rate if invert_feed_rate is false, as inverse time if
-// invert_feed_rate is true, or as seek/rapids rate if the feed_rate value is negative (and
-// invert_feed_rate always false).
+/* Add a new linear movement to the buffer. target[N_AXIS] is the signed, absolute target position
+   in millimeters. Feed rate specifies the speed of the motion. If feed rate is inverted, the feed
+   rate is taken to mean "frequency" and would complete the operation in 1/feed_rate minutes.
+   All position data passed to the planner must be in terms of machine position to keep the planner 
+   independent of any coordinate system changes and offsets, which are handled by the g-code parser.
+   NOTE: Assumes buffer is available. Buffer checks are handled at a higher level by motion_control.
+   In other words, the buffer head is never equal to the buffer tail.  Also the feed rate input value
+   is used in three ways: as a normal feed rate if invert_feed_rate is false, as inverse time if
+   invert_feed_rate is true, or as seek/rapids rate if the feed_rate value is negative (and
+   invert_feed_rate always false). */
 void plan_buffer_line(float *target, float feed_rate, uint8_t invert_feed_rate) 
 {
   // Prepare and initialize new block
@@ -675,3 +607,63 @@ void plan_cycle_reinitialize(int32_t step_events_remaining)
   block_buffer_planned = block_buffer_tail;
   planner_recalculate();  
 }
+
+
+/*
+TODO:
+  When a feed hold or feedrate override is reduced, the velocity profile must execute a 
+  deceleration over the existing plan. By logic, since the plan already decelerates to zero
+  at the end of the buffer, any replanned deceleration mid-way will never exceed this. It
+  will only asymptotically approach this in the worst case scenario.
+  
+  - For a feed hold, we simply need to plan and compute the stopping point within a block 
+    when velocity decelerates to zero. We then can recompute the plan with the already 
+    existing partial block planning code and set the system to a QUEUED state.
+    - When a feed hold is initiated, the main program should be able to continue doing what
+      it has been, i.e. arcs, parsing, but needs to be able to reinitialize the plan after
+      it has come to a stop.
+    
+  - For a feed rate override (reduce-only), we need to enforce a deceleration until we 
+    intersect the reduced nominal speed of a block after it's been planned with the new
+    overrides and the newly planned block is accelerating or cruising only. If the new plan
+    block is decelerating at the intersection point, we keep decelerating until we find a 
+    valid intersection point. Once we find this point, we can then resume onto the new plan,
+    but we may need to adjust the deceleration point in the intersection block since the 
+    feedrate override could have intersected at an acceleration ramp. This would change the
+    acceleration ramp to a cruising, so the deceleration point will have changed, but the 
+    plan will have not. It should still be valid for the rest of the buffer. Coding this
+    can get complicated, but it should be doable. One issue could be is in how to handle 
+    scenarios when a user issues several feedrate overrides and inundates this code. Does 
+    this method still work and is robust enough to compute all of this on the fly? This is
+    the critical question. However, we could block user input until the planner has time to 
+    catch to solve this as well. 
+  
+  - When the feed rate override increases, we don't have to do anything special. We just
+    replan the entire buffer with the new nominal speeds and adjust the maximum junction
+    speeds accordingly.
+
+void plan_compute_deceleration() {
+
+}
+
+
+void plan_recompute_max_junction_velocity() {
+  // Assumes the nominal_speed_sqr values have been updated. May need to just multiply 
+  // override values here.
+  // PROBLEM: Axes-limiting velocities get screwed up. May need to store an int8 value for the
+  // max override value possible for each block when the line is added. So the nominal_speed
+  // is computed with that ceiling, but still retained if the rates change again.
+  uint8_t block_index = block_buffer_tail;
+  plan_block_t *block = &block_buffer[block_index];
+  pl.previous_nominal_speed_sqr = block->nominal_speed_sqr;
+  block_index = plan_next_block_index(block_index);
+  while (block_index != block_buffer_head) {
+    block = &block_buffer[block_index];
+    block->max_entry_speed_sqr = min(block->max_junction_speed_sqr, 
+                                     min(block->nominal_speed_sqr,pl.previous_nominal_speed_sqr));    
+    pl.previous_nominal_speed_sqr = block->nominal_speed_sqr;
+    block_index = plan_next_block_index(block_index);
+  }
+}
+
+*/

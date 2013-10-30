@@ -153,6 +153,8 @@ void protocol_execute_runtime()
     
     // Initiate stepper feed hold
     if (rt_exec & EXEC_FEED_HOLD) {
+      // !!! During a cycle, the segment buffer has just been reloaded and full. So the math involved
+      // with the feed hold should be fine for most, if not all, operational scenarios.
       st_feed_hold(); // Initiate feed hold.
       bit_false(sys.execute,EXEC_FEED_HOLD);
     }
