@@ -77,7 +77,7 @@ void print_uint8_base2(uint8_t n)
 		serial_write('0' + buf[i - 1]);
 }
 
-static void print_uint32_base10(unsigned long n)
+void print_uint32_base10(unsigned long n)
 { 
   unsigned char buf[10]; 
   uint8_t i = 0;

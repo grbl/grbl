@@ -82,7 +82,11 @@ typedef struct {
   float coord_system[N_AXIS];      // Current work coordinate system (G54+). Stores offset from absolute machine
                                    // position in mm. Loaded from EEPROM when called.
   float coord_offset[N_AXIS];      // Retains the G92 coordinate offset (work coordinates) relative to
-                                   // machine zero in mm. Non-persistent. Cleared upon reset and boot.        
+                                   // machine zero in mm. Non-persistent. Cleared upon reset and boot.    
+                                   
+  float arc_radius; 
+  float arc_offset[N_AXIS];
+                                         
 } parser_state_t;
 extern parser_state_t gc;
 
@@ -93,6 +97,6 @@ void gc_init();
 uint8_t gc_execute_line(char *line);
 
 // Set g-code parser position. Input in steps.
-void gc_set_current_position(int32_t x, int32_t y, int32_t z); 
+void gc_sync_position(); 
 
 #endif

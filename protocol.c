@@ -3,7 +3,7 @@
   Part of Grbl
 
   Copyright (c) 2009-2011 Simen Svale Skogsrud
-  Copyright (c) 2011-2012 Sungeun K. Jeon  
+  Copyright (c) 2011-2013 Sungeun K. Jeon  
 
   Grbl is free software: you can redistribute it and/or modify
   it under the terms of the GNU General Public License as published by
@@ -37,10 +37,16 @@ static uint8_t char_counter; // Last character counter in line variable.
 static uint8_t iscomment; // Comment/block delete flag for processor to ignore comment characters.
 
 
+static void protocol_reset_line_buffer()
+{
+  char_counter = 0;
+  iscomment = false;
+}
+
+
 void protocol_init() 
 {
-  char_counter = 0; // Reset line input
-  iscomment = false;
+  protocol_reset_line_buffer(); // Reset line input
   report_init_message(); // Welcome message   
   
   PINOUT_DDR &= ~(PINOUT_MASK); // Set as input pins
@@ -48,6 +54,7 @@ void protocol_init()
   PINOUT_PCMSK |= PINOUT_MASK;   // Enable specific pins of the Pin Change Interrupt
   PCICR |= (1 << PINOUT_INT);   // Enable Pin Change Interrupt
 }
+
 
 // Executes user startup script, if stored.
 void protocol_execute_startup() 
@@ -64,6 +71,7 @@ void protocol_execute_startup()
     } 
   }  
 }
+
 
 // Pin change interrupt for pin-out commands, i.e. cycle start, feed hold, and reset. Sets
 // only the runtime command execute variable to have the main program execute these when 
@@ -96,6 +104,9 @@ ISR(PINOUT_INT_vect)
 // limit switches, or the main program.
 void protocol_execute_runtime()
 {
+  // Reload step segment buffer
+  st_prep_buffer();
+  
   if (sys.execute) { // Enter only if any bit flag is true
     uint8_t rt_exec = sys.execute; // Avoid calling volatile multiple times
     
@@ -104,14 +115,18 @@ void protocol_execute_runtime()
     // loop until system reset/abort.
     if (rt_exec & (EXEC_ALARM | EXEC_CRIT_EVENT)) {      
       sys.state = STATE_ALARM; // Set system alarm state
-      
-      if (rt_exec & EXEC_CRIT_EVENT) { 
+
+      // Critical event. Only hard/soft limit errors currently qualify.
+      if (rt_exec & EXEC_CRIT_EVENT) {
+        report_alarm_message(ALARM_LIMIT_ERROR); 
         report_feedback_message(MESSAGE_CRITICAL_EVENT);
         bit_false(sys.execute,EXEC_RESET); // Disable any existing reset
         do { 
           // Nothing. Block EVERYTHING until user issues reset or power cycles. Hard limits
           // typically occur while unattended or not paying attention. Gives the user time
-          // to do what is needed before resetting, like killing the incoming stream.
+          // to do what is needed before resetting, like killing the incoming stream. The 
+          // same could be said about soft limits. While the position is not lost, the incoming
+          // stream could be still engaged and cause a serious crash if it continues afterwards.
         } while (bit_isfalse(sys.execute,EXEC_RESET));
 
       // Standard alarm event. Only abort during motion qualifies.
@@ -138,6 +153,8 @@ void protocol_execute_runtime()
     
     // Initiate stepper feed hold
     if (rt_exec & EXEC_FEED_HOLD) {
+      // !!! During a cycle, the segment buffer has just been reloaded and full. So the math involved
+      // with the feed hold should be fine for most, if not all, operational scenarios.
       st_feed_hold(); // Initiate feed hold.
       bit_false(sys.execute,EXEC_FEED_HOLD);
     }
@@ -301,9 +318,8 @@ void protocol_process()
         // Empty or comment line. Skip block.
         report_status_message(STATUS_OK); // Send status message for syncing purposes.
       }
-      char_counter = 0; // Reset line buffer index
-      iscomment = false; // Reset comment flag
-      
+      protocol_reset_line_buffer();
+            
     } else {
       if (iscomment) {
         // Throw away all comment characters
@@ -320,7 +336,9 @@ void protocol_process()
           // Enable comments flag and ignore all characters until ')' or EOL.
           iscomment = true;
         } else if (char_counter >= LINE_BUFFER_SIZE-1) {
-          // Throw away any characters beyond the end of the line buffer          
+          // Detect line buffer overflow. Report error and reset line buffer.
+          report_status_message(STATUS_OVERFLOW);
+          protocol_reset_line_buffer();
         } else if (c >= 'a' && c <= 'z') { // Upcase lowercase
           line[char_counter++] = c-'a'+'A';
         } else {

@@ -30,7 +30,7 @@
 // memory space we can invest into here or we re-write the g-code parser not to have his 
 // buffer.
 #ifndef LINE_BUFFER_SIZE
-  #define LINE_BUFFER_SIZE 50
+  #define LINE_BUFFER_SIZE 70
 #endif
 
 // Initialize the serial protocol

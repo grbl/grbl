@@ -3,7 +3,7 @@
   Part of Grbl
 
   Copyright (c) 2009-2011 Simen Svale Skogsrud
-  Copyright (c) 2011-2012 Sungeun K. Jeon
+  Copyright (c) 2011-2013 Sungeun K. Jeon
   
   Grbl is free software: you can redistribute it and/or modify
   it under the terms of the GNU General Public License as published by
@@ -45,5 +45,8 @@ void mc_go_home();
 
 // Performs system reset. If in motion state, kills all motion and sets system alarm.
 void mc_reset();
+
+// Executes the auto cycle feature, if enabled.
+void mc_auto_cycle_start();
 
 #endif
