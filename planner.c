@@ -22,18 +22,14 @@
 
 /* The ring buffer implementation gleaned from the wiring_serial library by David A. Mellis. */
 
-#include <avr/interrupt.h>
-#include <util/atomic.h>
 #include <inttypes.h>    
 #include <stdlib.h>
-#include <stdio.h>
 #include "planner.h"
 #include "nuts_bolts.h"
 #include "stepper.h"
 #include "settings.h"
 #include "config.h"
 #include "protocol.h"
-#include "motion_control.h"
 
 #define SOME_LARGE_VALUE 1.0E+38 // Used by rapids and acceleration maximization calculations. Just needs
                                  // to be larger than any feasible (mm/min)^2 or mm/sec^2 value.
@@ -451,6 +447,7 @@ void plan_buffer_line(float *target, float feed_rate, uint8_t invert_feed_rate)
       junction_cos_theta -= pl.previous_unit_vec[idx] * unit_vec[idx];
     }
   }
+
 
   // TODO: Need to check this method handling zero junction speeds when starting from rest.
   if (block_buffer_head == block_buffer_tail) {

@@ -92,8 +92,6 @@ void report_alarm_message(int8_t alarm_code)
     printPgmString(PSTR("Hard/soft limit")); break;
     case ALARM_ABORT_CYCLE: 
     printPgmString(PSTR("Abort during cycle")); break;
-    case ALARM_SOFT_LIMIT: 
-    printPgmString(PSTR("Soft Limit")); break;
   }
   printPgmString(PSTR(". MPos?\r\n"));
   delay_ms(500); // Force delay to ensure message clears serial write buffer.

@@ -177,7 +177,6 @@ void st_go_idle()
       STEPPERS_DISABLE_PORT |= (1<<STEPPERS_DISABLE_BIT); 
     }   
   }
-  st.ramp_type = ACCEL_RAMP;
 }
 
 
@@ -702,8 +701,3 @@ void st_fetch_partial_block_parameters(uint8_t block_index, float *millimeters_r
   }
   return;
 }
-
-uint8_t st_is_decelerating() {
-  return st.ramp_type == DECEL_RAMP;
-}
-

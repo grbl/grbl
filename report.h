@@ -41,7 +41,6 @@
 // Define Grbl alarm codes. Less than zero to distinguish alarm error from status error.
 #define ALARM_LIMIT_ERROR -1
 #define ALARM_ABORT_CYCLE -2
-#define ALARM_SOFT_LIMIT -3
 
 // Define Grbl feedback message codes.
 #define MESSAGE_CRITICAL_EVENT 1
