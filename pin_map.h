@@ -31,6 +31,10 @@
   #define SERIAL_RX USART_RX_vect
   #define SERIAL_UDRE USART_UDRE_vect
 
+  // Start of PWM & Stepper Enabled Spindle
+  // CURRENTLY IN TESTING USE WITH CAUTION @EliteEng
+  #define VARIABLE_SPINDLE // comment this out to disable PWM & Stepper on the spindle
+
   // NOTE: All step bit and direction pins must be on the same port.
   #define STEPPING_DDR       DDRD
   #define STEPPING_PORT      PORTD
@@ -49,6 +53,20 @@
   #define STEPPERS_DISABLE_BIT    0  // Uno Digital Pin 8
   #define STEPPERS_DISABLE_MASK (1<<STEPPERS_DISABLE_BIT)
 
+#ifdef VARIABLE_SPINDLE // Y LImit has been disabled to make room for the Spindle PWM
+  // NOTE: All limit bit pins must be on the same port
+  #define LIMIT_DDR       DDRB
+  #define LIMIT_PIN       PINB
+  #define LIMIT_PORT      PORTB
+  #define X_LIMIT_BIT     1  // Uno Digital Pin 9
+  #define Y_LIMIT_BIT     1  // Uno Digital Pin 9
+  #define Z_LIMIT_BIT     3  // Uno Digital Pin 11
+  #define LIMIT_INT       PCIE0  // Pin change interrupt enable pin
+  #define LIMIT_INT_vect  PCINT0_vect 
+  #define LIMIT_PCMSK     PCMSK0 // Pin change interrupt register
+  #define LIMIT_MASK ((1<<X_LIMIT_BIT)|(1<<Z_LIMIT_BIT)) // All limit bits
+
+#else
   // NOTE: All limit bit pins must be on the same port
   #define LIMIT_DDR       DDRB
   #define LIMIT_PIN       PINB
@@ -60,6 +78,8 @@
   #define LIMIT_INT_vect  PCINT0_vect 
   #define LIMIT_PCMSK     PCMSK0 // Pin change interrupt register
   #define LIMIT_MASK ((1<<X_LIMIT_BIT)|(1<<Y_LIMIT_BIT)|(1<<Z_LIMIT_BIT)) // All limit bits
+
+#endif
 
   #define SPINDLE_ENABLE_DDR   DDRB
   #define SPINDLE_ENABLE_PORT  PORTB
@@ -94,20 +114,58 @@
   #define PINOUT_PCMSK     PCMSK1 // Pin change interrupt register
   #define PINOUT_MASK ((1<<PIN_RESET)|(1<<PIN_FEED_HOLD)|(1<<PIN_CYCLE_START))
   
+
+#ifdef VARIABLE_SPINDLE
+
+//#define SPINDLE_IS_STEPPER // Uncomment this if your Spindle is a Stepper Motor
+#define SPINDLE_IS_PWM // Uncomment this if your Spindle uses PWM ie. DC Motor
+
+    #ifdef SPINDLE_IS_PWM
+      #define SPINDLE_MAX_RPM 255 // Max RPM of your spindle - This value is equal to 100% Duty Cycle on the PWM
+    #endif
+
+	#ifdef SPINDLE_IS_STEPPER
+      #define SPINDLE_STEPS_PER_REV	200 // if you have micro stepping enabled you need to calculate that to
+	#endif
+
+// Advanced Configuration Below You should not need to touch these variables
+
+//Set Timer up to use TIMER4 OCR4B which is attached to Digital Pin 7
+#define TCCRA_REGISTER TCCR1A
+#define TCCRB_REGISTER TCCR1B
+#define OCRA_REGISTER OCR1A
+#define OCRB_REGISTER OCR1B
+
+#define COMB_BIT COM1B1
+#define WAVE0_REGISTER WGM10
+#define WAVE1_REGISTER WGM11
+#define WAVE2_REGISTER WGM12
+#define WAVE3_REGISTER WGM13
+
+  #define SPINDLE_PWM_DDR   DDRB
+  #define SPINDLE_PWM_PORT  PORTB
+  #define SPINDLE_PWM_BIT   2 // UNO Digital Pin 10
+
+ #endif // End of VARIABLE_SPINDLE
 #endif
 
 
-#ifdef PIN_MAP_ARDUINO_MEGA_2560 // Working @EliteEng
+#ifdef PIN_MAP_ARDUINO_MEGA_2560 // Working @EliteEng - Currently testing Variable Spindle
+
+/* To Change the settings to usse the MEGA2560 you need to do the following
+ * - Change config.h line 39 to #define PIN_MAP_ARDUINO_MEGA_2560
+ * - Change Makefile line 31 to DEVICE     ?= atmega2560
+ */
 
   // Serial port pins
   #define SERIAL_RX USART0_RX_vect
   #define SERIAL_UDRE USART0_UDRE_vect
 
   // Increase Buffers to make use of extra SRAM
-  #define RX_BUFFER_SIZE 256
-  #define TX_BUFFER_SIZE 128
-  #define BLOCK_BUFFER_SIZE 36
-  #define LINE_BUFFER_SIZE 100
+  //#define RX_BUFFER_SIZE 256
+  //#define TX_BUFFER_SIZE 128
+  //#define BLOCK_BUFFER_SIZE 36
+  //#define LINE_BUFFER_SIZE 100
 
   // NOTE: All step bit and direction pins must be on the same port.
   #define STEPPING_DDR      DDRA
@@ -140,23 +198,23 @@
   #define LIMIT_PCMSK     PCMSK0 // Pin change interrupt register
   #define LIMIT_MASK ((1<<X_LIMIT_BIT)|(1<<Y_LIMIT_BIT)|(1<<Z_LIMIT_BIT)) // All limit bits
 
-  #define SPINDLE_ENABLE_DDR   DDRC
-  #define SPINDLE_ENABLE_PORT  PORTC
-  #define SPINDLE_ENABLE_BIT   2 // MEGA2560 Digital Pin 35
+  #define SPINDLE_ENABLE_DDR   DDRH
+  #define SPINDLE_ENABLE_PORT  PORTH
+  #define SPINDLE_ENABLE_BIT   3 // MEGA2560 Digital Pin 6
 
-  #define SPINDLE_DIRECTION_DDR   DDRC
-  #define SPINDLE_DIRECTION_PORT  PORTC
-  #define SPINDLE_DIRECTION_BIT   1 // MEGA2560 Digital Pin 36
+  #define SPINDLE_DIRECTION_DDR   DDRE
+  #define SPINDLE_DIRECTION_PORT  PORTE
+  #define SPINDLE_DIRECTION_BIT   3 // MEGA2560 Digital Pin 5
 
-  #define COOLANT_FLOOD_DDR   DDRC
-  #define COOLANT_FLOOD_PORT  PORTC
-  #define COOLANT_FLOOD_BIT   0 // MEGA2560 Digital Pin 37
+  #define COOLANT_FLOOD_DDR   DDRH
+  #define COOLANT_FLOOD_PORT  PORTH
+  #define COOLANT_FLOOD_BIT   5 // MEGA2560 Digital Pin 8
 
   // #define ENABLE_M7  // Mist coolant disabled by default. Uncomment to enable.
   #ifdef ENABLE_M7
-    #define COOLANT_MIST_DDR   DDRC
-    #define COOLANT_MIST_PORT  PORTC
-    #define COOLANT_MIST_BIT   3 // MEGA2560 Digital Pin 34
+    #define COOLANT_MIST_DDR   DDRH
+    #define COOLANT_MIST_PORT  PORTH
+    #define COOLANT_MIST_BIT   6 // MEGA2560 Digital Pin 9
   #endif  
 
   // NOTE: All pinouts pins must be on the same port
@@ -170,6 +228,42 @@
   #define PINOUT_INT_vect  PCINT2_vect
   #define PINOUT_PCMSK     PCMSK2 // Pin change interrupt register
   #define PINOUT_MASK ((1<<PIN_RESET)|(1<<PIN_FEED_HOLD)|(1<<PIN_CYCLE_START))
+
+// Start of PWM & Stepper Enabled Spindle
+ #define VARIABLE_SPINDLE // comment this out to disable PWM & Stepper on the spindle
+#ifdef VARIABLE_SPINDLE
+
+//#define SPINDLE_IS_STEPPER // Uncomment this if your Spindle is a Stepper Motor
+#define SPINDLE_IS_PWM // Uncomment this if your Spindle uses PWM ie. DC Motor
+
+    #ifdef SPINDLE_IS_PWM
+      #define SPINDLE_MAX_RPM 255 // Max RPM of your spindle
+    #endif
+
+	#ifdef SPINDLE_IS_STEPPER
+      #define SPINDLE_STEPS_PER_REV	200 // if you have micro stepping enabled you need to calculate that to
+	#endif
+
+// Advanced Configuration Below You should not need to touch these variables
+
+//Set Timer up to use TIMER4 OCR4B which is attached to Digital Pin 7
+#define TCCRA_REGISTER TCCR4A
+#define TCCRB_REGISTER TCCR4B
+#define OCRA_REGISTER OCR4A
+#define OCRB_REGISTER OCR4B
+
+#define COMB_BIT COM4B1
+#define WAVE0_REGISTER WGM40
+#define WAVE1_REGISTER WGM41
+#define WAVE2_REGISTER WGM42
+#define WAVE3_REGISTER WGM43
+
+  #define SPINDLE_PWM_DDR   DDRH
+  #define SPINDLE_PWM_PORT  PORTH
+  #define SPINDLE_PWM_BIT   4 // MEGA2560 Digital Pin 7
+
+
+ #endif // End of VARIABLE_SPINDLE
 
 #endif
 
