@@ -37,7 +37,11 @@ void spindle_init() {
 }
 
 void spindle_stop() {
+#ifdef INVERT_SPINDLE
+	SPINDLE_ENABLE_PORT |= (1<<SPINDLE_ENABLE_BIT);
+#else
 	SPINDLE_ENABLE_PORT &= ~(1<<SPINDLE_ENABLE_BIT);
+#endif
 #ifdef VARIABLE_SPINDLE
 	TCCRA_REGISTER &= ~(1<<COMB_BIT);
 #endif
@@ -114,7 +118,11 @@ void spindle_run(int8_t direction, uint16_t rpm) {
 			OCRB_REGISTER = ((float) rpm / (float) SPINDLE_MAX_RPM ) * 65535.0;
 #endif 
 #endif
-			SPINDLE_ENABLE_PORT |= (1<<SPINDLE_ENABLE_BIT);
+#ifdef INVERT_SPINDLE
+	SPINDLE_ENABLE_PORT &= ~(1<<SPINDLE_ENABLE_BIT);
+#else
+	SPINDLE_ENABLE_PORT |= (1<<SPINDLE_ENABLE_BIT);
+#endif
 
 		} else {
 			spindle_stop();

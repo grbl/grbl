@@ -81,6 +81,11 @@
 
 #endif
 
+// WARNING if INVERT_SPINDLE is defined the pin will be LOW(Active) on reset of controller until spindle_init() is called.
+// this should only be a very short period of time but will energise the spindle.
+  #define INVERT_SPINDLE // This will INVERT the Spindle LOW=Active
+// END WARNING
+
   #define SPINDLE_ENABLE_DDR   DDRB
   #define SPINDLE_ENABLE_PORT  PORTB
   #define SPINDLE_ENABLE_BIT   4  // Uno Digital Pin 12
@@ -197,6 +202,11 @@
   #define LIMIT_INT_vect  PCINT0_vect 
   #define LIMIT_PCMSK     PCMSK0 // Pin change interrupt register
   #define LIMIT_MASK ((1<<X_LIMIT_BIT)|(1<<Y_LIMIT_BIT)|(1<<Z_LIMIT_BIT)) // All limit bits
+
+// WARNING if INVERT_SPINDLE is defined the pin will be LOW(Active) on reset of controller until spindle_init() is called.
+// this should only be a very short period of time but will energise the spindle.
+  #define INVERT_SPINDLE // This will INVERT the Spindle LOW=Active
+// END WARNING
 
   #define SPINDLE_ENABLE_DDR   DDRH
   #define SPINDLE_ENABLE_PORT  PORTH
