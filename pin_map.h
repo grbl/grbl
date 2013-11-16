@@ -83,7 +83,7 @@
 
 // WARNING if INVERT_SPINDLE is defined the pin will be LOW(Active) on reset of controller until spindle_init() is called.
 // this should only be a very short period of time but will energise the spindle.
-  #define INVERT_SPINDLE // This will INVERT the Spindle LOW=Active
+// #define INVERT_SPINDLE // This will INVERT the Spindle LOW=Active
 // END WARNING
 
   #define SPINDLE_ENABLE_DDR   DDRB
@@ -205,7 +205,7 @@
 
 // WARNING if INVERT_SPINDLE is defined the pin will be LOW(Active) on reset of controller until spindle_init() is called.
 // this should only be a very short period of time but will energise the spindle.
-  #define INVERT_SPINDLE // This will INVERT the Spindle LOW=Active
+// #define INVERT_SPINDLE // This will INVERT the Spindle LOW=Active
 // END WARNING
 
   #define SPINDLE_ENABLE_DDR   DDRH
