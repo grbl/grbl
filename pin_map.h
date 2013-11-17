@@ -216,6 +216,11 @@
   #define SPINDLE_DIRECTION_PORT  PORTE
   #define SPINDLE_DIRECTION_BIT   3 // MEGA2560 Digital Pin 5
 
+// WARNING if INVERT_COOLANT is defined the pin will be LOW(Active) on reset of controller until coolant_init() is called.
+// this should only be a very short period of time but will energise the coolant pump.
+// #define INVERT_COOLANT // This will INVERT the Coolant LOW=Active
+// END WARNING
+
   #define COOLANT_FLOOD_DDR   DDRH
   #define COOLANT_FLOOD_PORT  PORTH
   #define COOLANT_FLOOD_BIT   5 // MEGA2560 Digital Pin 8
