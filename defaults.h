@@ -52,6 +52,7 @@
   #define DEFAULT_STEPPER_IDLE_LOCK_TIME 25 // msec (0-255)
   #define DEFAULT_DECIMAL_PLACES 3
   #define DEFAULT_N_ARC_CORRECTION 25
+  #define DEFAULT_LIMIT_POLARITY 0 // false (active low).
 #endif
 
 #ifdef DEFAULTS_SHERLINE_5400

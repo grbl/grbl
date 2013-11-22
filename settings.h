@@ -37,6 +37,7 @@
 #define BITFLAG_INVERT_ST_ENABLE   bit(2)
 #define BITFLAG_HARD_LIMIT_ENABLE  bit(3)
 #define BITFLAG_HOMING_ENABLE      bit(4)
+#define BITFLAG_LIMIT_POLARITY     bit(5)
 
 // Define EEPROM memory address location values for Grbl settings and parameters
 // NOTE: The Atmega328p has 1KB EEPROM. The upper half is reserved for parameters and
