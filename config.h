@@ -80,14 +80,14 @@
 // CNC applications, the following multiplier value will work more than well enough. If you do have
 // happened to weird stepper motion issues, try modifying this value by adding or subtracting a 
 // zero and report it to the Grbl administrators. 
-#define INV_TIME_MULTIPLIER 10000000.0
+#define INV_TIME_MULTIPLIER 100000
 
 // Minimum stepper rate for the "Stepper Driver Interrupt". Sets the absolute minimum stepper rate 
 // in the stepper program and never runs slower than this value. If the INVE_TIME_MULTIPLIER value
 // changes, it will affect how this value works. So, if a zero is add/subtracted from the
 // INV_TIME_MULTIPLIER value, do the same to this value if you want to same response. 
 // NOTE: Compute by (desired_step_rate/60) * INV_TIME_MULTIPLIER/ISR_TICKS_PER_SECOND. (mm/min)
-#define MINIMUM_STEP_RATE 1000L // Integer (mult*mm/isr_tic)
+// #define MINIMUM_STEP_RATE 1000L // Integer (mult*mm/isr_tic)
 
 // Minimum stepper rate. Only used by homing at this point. May be removed in later releases.
 #define MINIMUM_STEPS_PER_MINUTE 800 // (steps/min) - Integer value only
@@ -160,6 +160,14 @@
 // begins to crash due to the lack of available RAM or if the CPU is having trouble keeping
 // up with planning new incoming motions as they are executed. 
 // #define BLOCK_BUFFER_SIZE 18  // Uncomment to override default in planner.h.
+
+// Governs the size of the intermediary step segment buffer between the step execution algorithm
+// and the planner blocks. Each segment is set of steps executed at a constant velocity over a
+// fixed time defined by ACCELERATION_TICKS_PER_SECOND. They are computed such that the planner
+// block velocity profile is traced exactly. The size of this buffer governs how much step 
+// execution lead time there is for other Grbl processes have to compute and do their thing 
+// before having to come back and refill this buffer, currently at ~50msec of step moves.
+// #define SEGMENT_BUFFER_SIZE 7 // Uncomment to override default in stepper.h.
 
 // Line buffer size from the serial input stream to be executed. Also, governs the size of 
 // each of the startup blocks, as they are each stored as a string of this size. Make sure

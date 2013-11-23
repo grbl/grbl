@@ -35,7 +35,7 @@
                                  // to be larger than any feasible (mm/min)^2 or mm/sec^2 value.
 
 static plan_block_t block_buffer[BLOCK_BUFFER_SIZE];  // A ring buffer for motion instructions
-static uint8_t block_buffer_tail;       // Index of the block to process now
+static volatile uint8_t block_buffer_tail;       // Index of the block to process now
 static uint8_t block_buffer_head;                // Index of the next block to be pushed
 static uint8_t next_buffer_head;                 // Index of the next buffer head
 static uint8_t block_buffer_planned;             // Index of the optimally planned block
@@ -52,6 +52,7 @@ static planner_t pl;
 
 
 // Returns the index of the next block in the ring buffer. Also called by stepper segment buffer.
+// NOTE: Removed modulo (%) operator, which uses an expensive divide and multiplication.
 uint8_t plan_next_block_index(uint8_t block_index) 
 {
   block_index++;
@@ -66,6 +67,43 @@ static uint8_t plan_prev_block_index(uint8_t block_index)
   if (block_index == 0) { block_index = BLOCK_BUFFER_SIZE; }
   block_index--;
   return(block_index);
+}
+                            
+
+// Update the entry speed and millimeters remaining to execute for a partially completed block. Called only
+// when the planner knows it will be changing the conditions of this block.
+// TODO: Set up to be called from planner calculations. Need supporting code framework still, i.e. checking
+//   and executing this only when necessary, combine with the block_buffer_safe pointer.
+// TODO: This is very similar to the planner reinitialize after a feed hold. Could make this do double duty.
+void plan_update_partial_block(uint8_t block_index, float exit_speed_sqr)
+{
+// TODO: Need to make a condition to check if we need make these calculations. We don't if nothing has 
+//   been executed or placed into segment buffer. This happens with the first block upon startup or if 
+//   the segment buffer is exactly in between two blocks. Just check if the step_events_remaining is equal
+//   the total step_event_count in the block. If so, we don't have to do anything.
+
+  // !!! block index is the same as block_buffer_safe.
+  // See if we can reduce this down to just requesting the millimeters remaining..
+  uint8_t is_decelerating;
+  float millimeters_remaining = 0.0;
+  st_fetch_partial_block_parameters(block_index, &millimeters_remaining, &is_decelerating);
+ 
+  if (millimeters_remaining != 0.0) {
+    // Point to current block partially executed by stepper algorithm
+    plan_block_t *partial_block = plan_get_block_by_index(block_index);
+
+    // Compute the midway speed of the partially completely block at the end of the segment buffer.
+    if (is_decelerating) { // Block is decelerating
+      partial_block->entry_speed_sqr = exit_speed_sqr - 2*partial_block->acceleration*millimeters_remaining;
+    } else { // Block is accelerating or cruising
+      partial_block->entry_speed_sqr += 2*partial_block->acceleration*(partial_block->millimeters-millimeters_remaining);
+      partial_block->entry_speed_sqr = min(partial_block->entry_speed_sqr, partial_block->nominal_speed_sqr);
+    }
+
+    // Update only the relevant planner block information so the planner can plan correctly.
+    partial_block->millimeters = millimeters_remaining;
+    partial_block->max_entry_speed_sqr = partial_block->entry_speed_sqr; // Not sure if this needs to be updated.
+  }
 }
 
 
@@ -115,11 +153,17 @@ static uint8_t plan_prev_block_index(uint8_t block_index)
       the buffer is full or empty. As described for standard ring buffers, this block is always empty.
   - next_buffer_head: Points to next planner buffer block after the buffer head block. When equal to the 
       buffer tail, this indicates the buffer is full.
+  - block_buffer_safe: Points to the first sequential planner block for which it is safe to recompute, which
+      is defined to be where the stepper's step segment buffer ends. This may or may not be the buffer tail, 
+      since the step segment buffer queues steps which may have not finished executing and could span a few
+      blocks, if the block moves are very short.   
   - block_buffer_planned: Points to the first buffer block after the last optimally planned block for normal
       streaming operating conditions. Use for planning optimizations by avoiding recomputing parts of the 
-      planner buffer that don't change with the addition of a new block, as describe above. In addition, 
-      this block can never be less than block_buffer_tail and will always be pushed forward and maintain 
-      this requirement when encountered by the plan_discard_current_block() routine during a cycle.
+      planner buffer that don't change with the addition of a new block, as describe above.
+  
+  NOTE: All planner computations are performed in floating point to minimize numerical round-off errors.
+  When a planner block is executed, the floating point values are converted to fast integers by the stepper
+  algorithm segment buffer. See the stepper module for details. 
   
   NOTE: Since the planner only computes on what's in the planner buffer, some motions with lots of short 
   line segments, like G2/3 arcs or complex curves, may seem to move slow. This is because there simply isn't
@@ -136,110 +180,175 @@ static uint8_t plan_prev_block_index(uint8_t block_index)
 */
 static void planner_recalculate() 
 {   
+
   // Initialize block index to the last block in the planner buffer.
   uint8_t block_index = plan_prev_block_index(block_buffer_head);
-        
-  // Bail. Can't do anything with one only one plan-able block.
-  if (block_index == block_buffer_planned) { return; }
+
+  // Query stepper module for safe planner block index to recalculate to, which corresponds to the end
+  // of the step segment buffer.
+  uint8_t block_buffer_safe = st_get_prep_block_index();
+    
+  // TODO: Make sure that we don't have to check for the block_buffer_tail condition, if the stepper module
+  // returns a NULL pointer or something. This could happen when the segment buffer is empty. Although,
+  // this call won't return a NULL, only an index.. I have to make sure that this index is synced with the
+  // planner at all times. 
+    
+  // Recompute plan only when there is more than one planner block in the buffer. Can't do anything with one.  
+  // NOTE: block_buffer_safe can be the last planner block if the segment buffer has completely queued up the
+  // remainder of the planner buffer. In this case, a new planner block will be treated as a single block.
+  if (block_index == block_buffer_safe) { // Also catches (head-1) = tail
+    
+    // Just set block_buffer_planned pointer.
+    block_buffer_planned = block_index;
+
+    // TODO: Feedrate override of one block needs to update the partial block with an exit speed of zero. For
+    //   a single added block and recalculate after a feed hold, we don't need to compute this, since we already
+    //   know that the velocity starts and ends at zero. With an override, we can be traveling at some midblock
+    //   rate, and we have to calculate the new velocity profile from it.
+    // plan_update_partial_block(block_index,0.0);
+           
+  } else {
+    
+    // TODO: If the nominal speeds change during a feedrate override, we need to recompute the max entry speeds for 
+    //       all junctions before proceeding.
+
+    // Initialize planner buffer pointers and indexing.
+    plan_block_t *current = &block_buffer[block_index];
+
+    // Calculate maximum entry speed for last block in buffer, where the exit speed is always zero.
+    current->entry_speed_sqr = min( current->max_entry_speed_sqr, 2*current->acceleration*current->millimeters);
       
-  // Reverse Pass: Coarsely maximize all possible deceleration curves back-planning from the last
-  // block in buffer. Cease planning when the last optimal planned or tail pointer is reached.
-  // NOTE: Forward pass will later refine and correct the reverse pass to create an optimal plan.
-  float entry_speed_sqr;
-  plan_block_t *next;
-  plan_block_t *current = &block_buffer[block_index];
+    // Reverse Pass: Coarsely maximize all possible deceleration curves back-planning from the last
+    // block in buffer. Cease planning when: (1) the last optimal planned pointer is reached.
+    // (2) the safe block pointer is reached, whereby the planned pointer is updated.
+    // NOTE: Forward pass will later refine and correct the reverse pass to create an optimal plan.
+    // NOTE: If the safe block is encountered before the planned block pointer, we know the safe block
+    // will be recomputed within the plan. So, we need to update it if it is partially completed.
+    float entry_speed_sqr;
+    plan_block_t *next;
+    block_index = plan_prev_block_index(block_index);
 
-  // Calculate maximum entry speed for last block in buffer, where the exit speed is always zero.
-  current->entry_speed_sqr = min( current->max_entry_speed_sqr, 2*current->acceleration*current->millimeters);
-  
-  block_index = plan_prev_block_index(block_index);
-  if (block_index == block_buffer_planned) { // Only two plannable blocks in buffer. Reverse pass complete.
-    // Check if the first block is the tail. If so, notify stepper to update its current parameters.
-    if (block_index == block_buffer_tail) { st_update_plan_block_parameters(); }
-  } else { // Three or more plan-able blocks
-    while (block_index != block_buffer_planned) { 
-      next = current;
-      current = &block_buffer[block_index];
-      block_index = plan_prev_block_index(block_index);
+    if (block_index == block_buffer_safe) { // !! OR plan pointer? Yes I think so.
+      
+      // Only two plannable blocks in buffer. Compute previous block based on 
+      // !!! May only work if a new block is being added. Not for an override. The exit speed isn't zero.
+      // !!! Need to make the current entry speed calculation after this.
+      plan_update_partial_block(block_index, 0.0);
+      block_buffer_planned = block_index;
+    
+    } else {
+      
+      // Three or more plan-able 
+      while (block_index != block_buffer_planned) { 
 
-      // Check if next block is the tail block(=planned block). If so, update current stepper parameters.
-      if (block_index == block_buffer_tail) { st_update_plan_block_parameters(); } 
+        next = current;
+        current = &block_buffer[block_index];
 
-      // Compute maximum entry speed decelerating over the current block from its exit speed.
-      if (current->entry_speed_sqr != current->max_entry_speed_sqr) {
-        entry_speed_sqr = next->entry_speed_sqr + 2*current->acceleration*current->millimeters;
-        if (entry_speed_sqr < current->max_entry_speed_sqr) {
-          current->entry_speed_sqr = entry_speed_sqr;
-        } else {
-          current->entry_speed_sqr = current->max_entry_speed_sqr;
+        // Increment block index early to check if the safe block is before the current block. If encountered,
+        // this is an exit condition as we can't go further than this block in the reverse pass.
+        block_index = plan_prev_block_index(block_index);
+        if (block_index == block_buffer_safe) {
+          // Check if the safe block is partially completed. If so, update it before its exit speed 
+          // (=current->entry speed) is over-written.
+          // TODO: The update breaks with feedrate overrides, because the replanning process no longer has
+          // the previous nominal speed to update this block with. There will need to be something along the
+          // lines of a nominal speed change check and send the correct value to this function.
+          plan_update_partial_block(block_index,current->entry_speed_sqr);
+
+          // Set planned pointer at safe block and for loop exit after following computation is done.
+          block_buffer_planned = block_index; 
+        } 
+
+        // Compute maximum entry speed decelerating over the current block from its exit speed.
+        if (current->entry_speed_sqr != current->max_entry_speed_sqr) {
+          entry_speed_sqr = next->entry_speed_sqr + 2*current->acceleration*current->millimeters;
+          if (entry_speed_sqr < current->max_entry_speed_sqr) {
+            current->entry_speed_sqr = entry_speed_sqr;
+          } else {
+            current->entry_speed_sqr = current->max_entry_speed_sqr;
+          }
         }
       }
-    }
-  }    
+      
+    }    
 
-  // Forward Pass: Forward plan the acceleration curve from the planned pointer onward.
-  // Also scans for optimal plan breakpoints and appropriately updates the planned pointer.
-  next = &block_buffer[block_buffer_planned]; // Begin at buffer planned pointer
-  block_index = plan_next_block_index(block_buffer_planned); 
-  while (block_index != block_buffer_head) {
-    current = next;
-    next = &block_buffer[block_index];
-    
-    // Any acceleration detected in the forward pass automatically moves the optimal planned
-    // pointer forward, since everything before this is all optimal. In other words, nothing
-    // can improve the plan from the buffer tail to the planned pointer by logic.
-    if (current->entry_speed_sqr < next->entry_speed_sqr) {
-      entry_speed_sqr = current->entry_speed_sqr + 2*current->acceleration*current->millimeters;
-      // If true, current block is full-acceleration and we can move the planned pointer forward.
-      if (entry_speed_sqr < next->entry_speed_sqr) {
-        next->entry_speed_sqr = entry_speed_sqr; // Always <= max_entry_speed_sqr. Backward pass sets this.
-        block_buffer_planned = block_index; // Set optimal plan pointer.
+    // Forward Pass: Forward plan the acceleration curve from the planned pointer onward.
+    // Also scans for optimal plan breakpoints and appropriately updates the planned pointer.
+    next = &block_buffer[block_buffer_planned]; // Begin at buffer planned pointer
+    block_index = plan_next_block_index(block_buffer_planned); 
+    while (block_index != block_buffer_head) {
+      current = next;
+      next = &block_buffer[block_index];
+      
+      // Any acceleration detected in the forward pass automatically moves the optimal planned
+      // pointer forward, since everything before this is all optimal. In other words, nothing
+      // can improve the plan from the buffer tail to the planned pointer by logic.
+      // TODO: Need to check if the planned flag logic is correct for all scenarios. It may not
+      // be for certain conditions. However, if the block reaches nominal speed, it can be a valid
+      // breakpoint substitute.
+      if (current->entry_speed_sqr < next->entry_speed_sqr) {
+        entry_speed_sqr = current->entry_speed_sqr + 2*current->acceleration*current->millimeters;
+        // If true, current block is full-acceleration and we can move the planned pointer forward.
+        if (entry_speed_sqr < next->entry_speed_sqr) {
+          next->entry_speed_sqr = entry_speed_sqr; // Always <= max_entry_speed_sqr. Backward pass sets this.
+          block_buffer_planned = block_index; // Set optimal plan pointer.
+        }
       }
+      
+      // Any block set at its maximum entry speed also creates an optimal plan up to this
+      // point in the buffer. When the plan is bracketed by either the beginning of the
+      // buffer and a maximum entry speed or two maximum entry speeds, every block in between
+      // cannot logically be further improved. Hence, we don't have to recompute them anymore.
+      if (next->entry_speed_sqr == next->max_entry_speed_sqr) {
+        block_buffer_planned = block_index; // Set optimal plan pointer
+      }
+      
+      block_index = plan_next_block_index( block_index );
     }
     
-    // Any block set at its maximum entry speed also creates an optimal plan up to this
-    // point in the buffer. When the plan is bracketed by either the beginning of the
-    // buffer and a maximum entry speed or two maximum entry speeds, every block in between
-    // cannot logically be further improved. Hence, we don't have to recompute them anymore.
-    if (next->entry_speed_sqr == next->max_entry_speed_sqr) { block_buffer_planned = block_index; }
-    block_index = plan_next_block_index( block_index );
-  } 
+  }  
+  
+}
+
+
+void plan_reset_buffer()
+{
+  block_buffer_planned = block_buffer_tail;
 }
 
 
 void plan_init() 
 {
-  memset(&pl, 0, sizeof(pl)); // Clear planner struct
   block_buffer_tail = 0;
   block_buffer_head = 0; // Empty = tail
   next_buffer_head = 1; // plan_next_block_index(block_buffer_head)
-  block_buffer_planned = 0; // = block_buffer_tail;
+  plan_reset_buffer();
+  memset(&pl, 0, sizeof(pl)); // Clear planner struct
 }
 
 
 void plan_discard_current_block() 
 {
   if (block_buffer_head != block_buffer_tail) { // Discard non-empty buffer.
-    uint8_t block_index = plan_next_block_index( block_buffer_tail );
-    // Push block_buffer_planned pointer, if encountered.
-    if (block_buffer_tail == block_buffer_planned) { block_buffer_planned = block_index; }
-    block_buffer_tail = block_index;
+    block_buffer_tail = plan_next_block_index( block_buffer_tail );
   }
 }
 
 
 plan_block_t *plan_get_current_block() 
 {
-  if (block_buffer_head == block_buffer_tail) { return(NULL); } // Buffer empty  
+  if (block_buffer_head == block_buffer_tail) { // Buffer empty
+    plan_reset_buffer();
+    return(NULL); 
+  } 
   return(&block_buffer[block_buffer_tail]);
 }
 
 
-float plan_get_exec_block_exit_speed()
+plan_block_t *plan_get_block_by_index(uint8_t block_index) 
 {
-  uint8_t block_index = plan_next_block_index(block_buffer_tail);
-  if (block_index == block_buffer_head) { return( 0.0 ); }
-  return( sqrt( block_buffer[block_index].entry_speed_sqr ) ); 
+  if (block_buffer_head == block_index) { return(NULL); }
+  return(&block_buffer[block_index]);
 }
 
 
@@ -399,10 +508,12 @@ void plan_buffer_line(float *target, float feed_rate, uint8_t invert_feed_rate)
   
   // Finish up by recalculating the plan with the new block.
   planner_recalculate();
-  
+
 // int32_t blength = block_buffer_head - block_buffer_tail;
 // if (blength < 0) { blength += BLOCK_BUFFER_SIZE; } 
 // printInteger(blength);
+
+
 }
 
 
@@ -414,6 +525,68 @@ void plan_sync_position()
     pl.position[idx] = sys.position[idx];
   }
 }
+
+
+/*       STEPPER VELOCITY PROFILE DEFINITION 
+                                                 less than nominal speed->  + 
+                    +--------+ <- nominal_speed                            /|\                                         
+                   /          \                                           / | \                      
+   entry_speed -> +            \                                         /  |  + <- next->entry_speed
+                  |             + <- next->entry_speed                  /   |  |                       
+                  +-------------+                       entry_speed -> +----+--+                   
+                   time -->  ^  ^                                           ^  ^                       
+                             |  |                                           |  |                       
+                     decelerate distance                           decelerate distance  
+                                                        
+  Calculates the type of velocity profile for a given planner block and provides the deceleration
+  distance for the stepper algorithm to use to accurately trace the profile exactly. The planner
+  computes the entry and exit speeds of each block, but does not bother to determine the details of
+  the velocity profiles within them, as they aren't needed for computing an optimal plan. When the
+  stepper algorithm begins to execute a block, the block velocity profiles are computed ad hoc. 
+  
+  Each block velocity profiles can be described as either a trapezoidal or a triangular shape. The
+  trapezoid occurs when the block reaches the nominal speed of the block and cruises for a period of
+  time. A triangle occurs when the nominal speed is not reached within the block. Both of these 
+  velocity profiles may also be truncated on either end with no acceleration or deceleration ramps, 
+  as they can be influenced by the conditions of neighboring blocks, where the acceleration ramps
+  are defined by constant acceleration equal to the maximum allowable acceleration of a block.
+  
+  Since the stepper algorithm already assumes to begin executing a planner block by accelerating
+  from the planner entry speed and cruise if the nominal speed is reached, we only need to know 
+  when to begin deceleration to the end of the block. Hence, only the distance from the end of the
+  block to begin a deceleration ramp is computed for the stepper algorithm when requested.
+*/
+float plan_calculate_velocity_profile(uint8_t block_index) 
+{  
+  plan_block_t *current_block = &block_buffer[block_index];
+  
+  // Determine current block exit speed
+  float exit_speed_sqr = 0.0; // Initialize for end of planner buffer. Zero speed.
+  plan_block_t *next_block = plan_get_block_by_index(plan_next_block_index(block_index));
+  if (next_block != NULL) { exit_speed_sqr = next_block->entry_speed_sqr; } // Exit speed is the entry speed of next buffer block
+  
+  // First determine intersection distance (in steps) from the exit point for a triangular profile.
+  // Computes: d_intersect = distance/2 + (v_entry^2-v_exit^2)/(4*acceleration)
+  float intersect_distance = 0.5*( current_block->millimeters + (current_block->entry_speed_sqr-exit_speed_sqr)/(2*current_block->acceleration) );  
+  
+  // Check if this is a pure acceleration block by a intersection distance less than zero. Also
+  // prevents signed and unsigned integer conversion errors.
+  if (intersect_distance > 0 ) {
+    float decelerate_distance;
+    // Determine deceleration distance (in steps) from nominal speed to exit speed for a trapezoidal profile.
+    // Value is never negative. Nominal speed is always greater than or equal to the exit speed.
+    // Computes: d_decelerate = (v_nominal^2 - v_exit^2)/(2*acceleration)
+    decelerate_distance = (current_block->nominal_speed_sqr - exit_speed_sqr)/(2*current_block->acceleration);
+
+    // The lesser of the two triangle and trapezoid distances always defines the velocity profile.
+    if (decelerate_distance > intersect_distance) { decelerate_distance = intersect_distance; }
+    
+    // Finally, check if this is a pure deceleration block.
+    if (decelerate_distance > current_block->millimeters) { return(0.0); }
+    else { return( (current_block->millimeters-decelerate_distance) ); }
+  }
+  return( current_block->millimeters ); // No deceleration in velocity profile.
+}        
 
 
 // Re-initialize buffer plan with a partially completed block, assumed to exist at the buffer tail.
@@ -434,3 +607,63 @@ void plan_cycle_reinitialize(int32_t step_events_remaining)
   block_buffer_planned = block_buffer_tail;
   planner_recalculate();  
 }
+
+
+/*
+TODO:
+  When a feed hold or feedrate override is reduced, the velocity profile must execute a 
+  deceleration over the existing plan. By logic, since the plan already decelerates to zero
+  at the end of the buffer, any replanned deceleration mid-way will never exceed this. It
+  will only asymptotically approach this in the worst case scenario.
+  
+  - For a feed hold, we simply need to plan and compute the stopping point within a block 
+    when velocity decelerates to zero. We then can recompute the plan with the already 
+    existing partial block planning code and set the system to a QUEUED state.
+    - When a feed hold is initiated, the main program should be able to continue doing what
+      it has been, i.e. arcs, parsing, but needs to be able to reinitialize the plan after
+      it has come to a stop.
+    
+  - For a feed rate override (reduce-only), we need to enforce a deceleration until we 
+    intersect the reduced nominal speed of a block after it's been planned with the new
+    overrides and the newly planned block is accelerating or cruising only. If the new plan
+    block is decelerating at the intersection point, we keep decelerating until we find a 
+    valid intersection point. Once we find this point, we can then resume onto the new plan,
+    but we may need to adjust the deceleration point in the intersection block since the 
+    feedrate override could have intersected at an acceleration ramp. This would change the
+    acceleration ramp to a cruising, so the deceleration point will have changed, but the 
+    plan will have not. It should still be valid for the rest of the buffer. Coding this
+    can get complicated, but it should be doable. One issue could be is in how to handle 
+    scenarios when a user issues several feedrate overrides and inundates this code. Does 
+    this method still work and is robust enough to compute all of this on the fly? This is
+    the critical question. However, we could block user input until the planner has time to 
+    catch to solve this as well. 
+  
+  - When the feed rate override increases, we don't have to do anything special. We just
+    replan the entire buffer with the new nominal speeds and adjust the maximum junction
+    speeds accordingly.
+
+void plan_compute_deceleration() {
+
+}
+
+
+void plan_recompute_max_junction_velocity() {
+  // Assumes the nominal_speed_sqr values have been updated. May need to just multiply 
+  // override values here.
+  // PROBLEM: Axes-limiting velocities get screwed up. May need to store an int8 value for the
+  // max override value possible for each block when the line is added. So the nominal_speed
+  // is computed with that ceiling, but still retained if the rates change again.
+  uint8_t block_index = block_buffer_tail;
+  plan_block_t *block = &block_buffer[block_index];
+  pl.previous_nominal_speed_sqr = block->nominal_speed_sqr;
+  block_index = plan_next_block_index(block_index);
+  while (block_index != block_buffer_head) {
+    block = &block_buffer[block_index];
+    block->max_entry_speed_sqr = min(block->max_junction_speed_sqr, 
+                                     min(block->nominal_speed_sqr,pl.previous_nominal_speed_sqr));    
+    pl.previous_nominal_speed_sqr = block->nominal_speed_sqr;
+    block_index = plan_next_block_index(block_index);
+  }
+}
+
+*/

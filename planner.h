@@ -35,8 +35,8 @@ typedef struct {
   // Fields used by the bresenham algorithm for tracing the line
   // NOTE: Do not change any of these values once set. The stepper algorithm uses them to execute the block correctly.
   uint8_t direction_bits;            // The direction bit set for this block (refers to *_DIRECTION_BIT in config.h)
-  int32_t steps[N_AXIS];             // Step count along each axis
-  int32_t step_event_count;          // The maximum step axis count and number of steps required to complete this block. 
+  int32_t steps[N_AXIS];            // Step count along each axis
+  int32_t step_event_count;         // The maximum step axis count and number of steps required to complete this block. 
 
   // Fields used by the motion planner to manage acceleration
   float entry_speed_sqr;             // The current planned entry speed at block junction in (mm/min)^2
@@ -44,10 +44,11 @@ typedef struct {
                                      //   neighboring nominal speeds with overrides in (mm/min)^2
   float max_junction_speed_sqr;      // Junction entry speed limit based on direction vectors in (mm/min)^2
   float nominal_speed_sqr;           // Axis-limit adjusted nominal speed for this block in (mm/min)^2
-  float acceleration;                // Axis-limit adjusted line acceleration in mm/min^2
-  float millimeters;                 // The remaining distance for this block to be executed in mm
+  float acceleration;                // Axis-limit adjusted line acceleration in (mm/min^2)
+  float millimeters;                 // The remaining distance for this block to be executed in (mm)
   
 } plan_block_t;
+
       
 // Initialize the motion plan subsystem
 void plan_init();
@@ -64,13 +65,11 @@ void plan_discard_current_block();
 // Gets the current block. Returns NULL if buffer empty
 plan_block_t *plan_get_current_block();
 
+// Called periodically by step segment buffer. Mostly used internally by planner.
 uint8_t plan_next_block_index(uint8_t block_index);
 
-plan_block_t *plan_get_block_by_index(uint8_t block_index);
-
-float plan_calculate_velocity_profile(uint8_t block_index);
-
-// void plan_update_partial_block(uint8_t block_index, float millimeters_remaining, uint8_t is_decelerating);
+// Called by step segment buffer when computing executing block velocity profile.
+float plan_get_exec_block_exit_speed();
 
 // Reset the planner position vector (in steps)
 void plan_sync_position();

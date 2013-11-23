@@ -117,9 +117,7 @@ static uint8_t plan_prev_block_index(uint8_t block_index)
       buffer tail, this indicates the buffer is full.
   - block_buffer_planned: Points to the first buffer block after the last optimally planned block for normal
       streaming operating conditions. Use for planning optimizations by avoiding recomputing parts of the 
-      planner buffer that don't change with the addition of a new block, as describe above. In addition, 
-      this block can never be less than block_buffer_tail and will always be pushed forward and maintain 
-      this requirement when encountered by the plan_discard_current_block() routine during a cycle.
+      planner buffer that don't change with the addition of a new block, as describe above.
   
   NOTE: Since the planner only computes on what's in the planner buffer, some motions with lots of short 
   line segments, like G2/3 arcs or complex curves, may seem to move slow. This is because there simply isn't
@@ -139,31 +137,54 @@ static void planner_recalculate()
   // Initialize block index to the last block in the planner buffer.
   uint8_t block_index = plan_prev_block_index(block_buffer_head);
         
-  // Bail. Can't do anything with one only one plan-able block.
-  if (block_index == block_buffer_planned) { return; }
-      
-  // Reverse Pass: Coarsely maximize all possible deceleration curves back-planning from the last
-  // block in buffer. Cease planning when the last optimal planned or tail pointer is reached.
-  // NOTE: Forward pass will later refine and correct the reverse pass to create an optimal plan.
-  float entry_speed_sqr;
-  plan_block_t *next;
+  // Recompute plan only when there is more than one planner block in the buffer. Can't do anything with one.  
+  if (block_index == block_buffer_tail) {
+    // Just set block_buffer_planned pointer.
+    block_buffer_planned = block_buffer_tail;
+    return;
+  }
+  
+  // Initialize planner buffer pointers and indexing.
   plan_block_t *current = &block_buffer[block_index];
 
   // Calculate maximum entry speed for last block in buffer, where the exit speed is always zero.
   current->entry_speed_sqr = min( current->max_entry_speed_sqr, 2*current->acceleration*current->millimeters);
-  
+    
+  // Reverse Pass: Coarsely maximize all possible deceleration curves back-planning from the last
+  // block in buffer. Cease planning when: (1) the last optimal planned pointer is reached.
+  // (2) the safe block pointer is reached, whereby the planned pointer is updated.
+  // NOTE: Forward pass will later refine and correct the reverse pass to create an optimal plan.
+  // NOTE: If the safe block is encountered before the planned block pointer, we know the safe block
+  // will be recomputed within the plan. So, we need to update it if it is partially completed.
+  float entry_speed_sqr;
+  plan_block_t *next;
   block_index = plan_prev_block_index(block_index);
-  if (block_index == block_buffer_planned) { // Only two plannable blocks in buffer. Reverse pass complete.
-    // Check if the first block is the tail. If so, notify stepper to update its current parameters.
-    if (block_index == block_buffer_tail) { st_update_plan_block_parameters(); }
-  } else { // Three or more plan-able blocks
+  if (block_index == block_buffer_tail) { // !! OR plan pointer? Yes I think so.  
+    // Only two plannable blocks in buffer. Compute previous block based on 
+    // !!! May only work if a new block is being added. Not for an override. The exit speed isn't zero.
+    // !!! Need to make the current entry speed calculation after this.
+    st_update_plan_block_parameters();
+    block_buffer_planned = block_buffer_tail;
+  } else {
+    // Three or more plan-able blocks
     while (block_index != block_buffer_planned) { 
       next = current;
       current = &block_buffer[block_index];
-      block_index = plan_prev_block_index(block_index);
 
-      // Check if next block is the tail block(=planned block). If so, update current stepper parameters.
-      if (block_index == block_buffer_tail) { st_update_plan_block_parameters(); } 
+      // Increment block index early to check if the safe block is before the current block. If encountered,
+      // this is an exit condition as we can't go further than this block in the reverse pass.
+      block_index = plan_prev_block_index(block_index);
+      if (block_index == block_buffer_tail) {
+        // Check if the safe block is partially completed. If so, update it before its exit speed 
+        // (=current->entry speed) is over-written.
+        // TODO: The update breaks with feedrate overrides, because the replanning process no longer has
+        // the previous nominal speed to update this block with. There will need to be something along the
+        // lines of a nominal speed change check and send the correct value to this function.
+        st_update_plan_block_parameters();
+        
+        // Set planned pointer at safe block and for loop exit after following computation is done.
+        block_buffer_planned = block_buffer_tail; 
+      } 
 
       // Compute maximum entry speed decelerating over the current block from its exit speed.
       if (current->entry_speed_sqr != current->max_entry_speed_sqr) {
@@ -188,6 +209,9 @@ static void planner_recalculate()
     // Any acceleration detected in the forward pass automatically moves the optimal planned
     // pointer forward, since everything before this is all optimal. In other words, nothing
     // can improve the plan from the buffer tail to the planned pointer by logic.
+    // TODO: Need to check if the planned flag logic is correct for all scenarios. It may not
+    // be for certain conditions. However, if the block reaches nominal speed, it can be a valid
+    // breakpoint substitute.
     if (current->entry_speed_sqr < next->entry_speed_sqr) {
       entry_speed_sqr = current->entry_speed_sqr + 2*current->acceleration*current->millimeters;
       // If true, current block is full-acceleration and we can move the planned pointer forward.
@@ -201,7 +225,9 @@ static void planner_recalculate()
     // point in the buffer. When the plan is bracketed by either the beginning of the
     // buffer and a maximum entry speed or two maximum entry speeds, every block in between
     // cannot logically be further improved. Hence, we don't have to recompute them anymore.
-    if (next->entry_speed_sqr == next->max_entry_speed_sqr) { block_buffer_planned = block_index; }
+    if (next->entry_speed_sqr == next->max_entry_speed_sqr) {
+      block_buffer_planned = block_index; // Set optimal plan pointer
+    }
     block_index = plan_next_block_index( block_index );
   } 
 }
@@ -220,10 +246,7 @@ void plan_init()
 void plan_discard_current_block() 
 {
   if (block_buffer_head != block_buffer_tail) { // Discard non-empty buffer.
-    uint8_t block_index = plan_next_block_index( block_buffer_tail );
-    // Push block_buffer_planned pointer, if encountered.
-    if (block_buffer_tail == block_buffer_planned) { block_buffer_planned = block_index; }
-    block_buffer_tail = block_index;
+    block_buffer_tail = plan_next_block_index( block_buffer_tail );
   }
 }
 
