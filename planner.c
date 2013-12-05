@@ -399,10 +399,6 @@ void plan_buffer_line(float *target, float feed_rate, uint8_t invert_feed_rate)
   
   // Finish up by recalculating the plan with the new block.
   planner_recalculate();
-  
-// int32_t blength = block_buffer_head - block_buffer_tail;
-// if (blength < 0) { blength += BLOCK_BUFFER_SIZE; } 
-// printInteger(blength);
 }
 
 
@@ -418,19 +414,10 @@ void plan_sync_position()
 
 // Re-initialize buffer plan with a partially completed block, assumed to exist at the buffer tail.
 // Called after a steppers have come to a complete stop for a feed hold and the cycle is stopped.
-void plan_cycle_reinitialize(int32_t step_events_remaining) 
+void plan_cycle_reinitialize()
 {
-  plan_block_t *block = &block_buffer[block_buffer_tail]; // Point to partially completed block
-  
-  // Only remaining millimeters and step_event_count need to be updated for planner recalculate. 
-  // Other variables (step_x, step_y, step_z, rate_delta, etc.) all need to remain the same to
-  // ensure the original planned motion is resumed exactly.
-  block->millimeters = (block->millimeters*step_events_remaining)/block->step_event_count;
-  block->step_event_count = step_events_remaining;
-  
   // Re-plan from a complete stop. Reset planner entry speeds and buffer planned pointer.
-  block->entry_speed_sqr = 0.0;
-  block->max_entry_speed_sqr = 0.0;
+//   st_update_plan_block_parameters();
   block_buffer_planned = block_buffer_tail;
   planner_recalculate();  
 }

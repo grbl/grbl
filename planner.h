@@ -46,7 +46,7 @@ typedef struct {
   float nominal_speed_sqr;           // Axis-limit adjusted nominal speed for this block in (mm/min)^2
   float acceleration;                // Axis-limit adjusted line acceleration in (mm/min^2)
   float millimeters;                 // The remaining distance for this block to be executed in (mm)
-  
+  // uint8_t max_override;           // Maximum override value based on axis speed limits
 } plan_block_t;
 
       
@@ -75,7 +75,7 @@ float plan_get_exec_block_exit_speed();
 void plan_sync_position();
 
 // Reinitialize plan with a partially completed block
-void plan_cycle_reinitialize(int32_t step_events_remaining);
+void plan_cycle_reinitialize();
 
 // Returns the status of the block ring buffer. True, if buffer is full.
 uint8_t plan_check_full_buffer();
