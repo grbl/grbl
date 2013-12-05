@@ -70,6 +70,7 @@ typedef struct {
   uint8_t absolute_mode;           // 0 = relative motion, 1 = absolute motion {G90, G91}
   uint8_t program_flow;            // {M0, M1, M2, M30}
   int8_t spindle_direction;        // 1 = CW, -1 = CCW, 0 = Stop {M3, M4, M5}
+  uint16_t spindle_speed;
   uint8_t coolant_mode;            // 0 = Disable, 1 = Flood Enable {M8, M9}
   float feed_rate;                 // Millimeters/min
 //  float seek_rate;                 // Millimeters/min. Will be used in v0.9 when axis independence is installed
