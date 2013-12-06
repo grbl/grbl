@@ -3,7 +3,7 @@
   Part of Grbl
 
   Copyright (c) 2009-2011 Simen Svale Skogsrud
-  Copyright (c) 2011-2012 Sungeun K. Jeon  
+  Copyright (c) 2011-2013 Sungeun K. Jeon  
 
   Grbl is free software: you can redistribute it and/or modify
   it under the terms of the GNU General Public License as published by
@@ -32,11 +32,10 @@ settings_t settings;
 
 // Version 4 outdated settings record
 typedef struct {
-  float steps_per_mm[3];
+  float steps_per_mm[N_AXIS];
   uint8_t microsteps;
   uint8_t pulse_microseconds;
   float default_feed_rate;
-  float default_seek_rate;
   uint8_t invert_mask;
   float mm_per_arc_segment;
   float acceleration;
@@ -74,9 +73,13 @@ void settings_reset(bool reset_all) {
     settings.steps_per_mm[Z_AXIS] = DEFAULT_Z_STEPS_PER_MM;
     settings.pulse_microseconds = DEFAULT_STEP_PULSE_MICROSECONDS;
     settings.default_feed_rate = DEFAULT_FEEDRATE;
-    settings.default_seek_rate = DEFAULT_RAPID_FEEDRATE;
-    settings.acceleration = DEFAULT_ACCELERATION;
-    settings.mm_per_arc_segment = DEFAULT_MM_PER_ARC_SEGMENT;
+    settings.max_velocity[X_AXIS] = DEFAULT_RAPID_FEEDRATE;
+    settings.max_velocity[Y_AXIS] = DEFAULT_RAPID_FEEDRATE;
+    settings.max_velocity[Z_AXIS] = DEFAULT_RAPID_FEEDRATE;
+    settings.acceleration[X_AXIS] = DEFAULT_ACCELERATION;
+    settings.acceleration[Y_AXIS] = DEFAULT_ACCELERATION;
+    settings.acceleration[Z_AXIS] = DEFAULT_ACCELERATION;
+    settings.arc_tolerance = DEFAULT_ARC_TOLERANCE;
     settings.invert_mask = DEFAULT_STEPPING_INVERT_MASK;
     settings.junction_deviation = DEFAULT_JUNCTION_DEVIATION;
   }
@@ -85,6 +88,7 @@ void settings_reset(bool reset_all) {
   if (DEFAULT_REPORT_INCHES) { settings.flags |= BITFLAG_REPORT_INCHES; }
   if (DEFAULT_AUTO_START) { settings.flags |= BITFLAG_AUTO_START; }
   if (DEFAULT_INVERT_ST_ENABLE) { settings.flags |= BITFLAG_INVERT_ST_ENABLE; }
+  if (DEFAULT_SOFT_LIMIT_ENABLE) { settings.flags |= BITFLAG_SOFT_LIMIT_ENABLE; }
   if (DEFAULT_HARD_LIMIT_ENABLE) { settings.flags |= BITFLAG_HARD_LIMIT_ENABLE; }
   if (DEFAULT_HOMING_ENABLE) { settings.flags |= BITFLAG_HOMING_ENABLE; }
   settings.homing_dir_mask = DEFAULT_HOMING_DIR_MASK;
@@ -94,7 +98,9 @@ void settings_reset(bool reset_all) {
   settings.homing_pulloff = DEFAULT_HOMING_PULLOFF;
   settings.stepper_idle_lock_time = DEFAULT_STEPPER_IDLE_LOCK_TIME;
   settings.decimal_places = DEFAULT_DECIMAL_PLACES;
-  settings.n_arc_correction = DEFAULT_N_ARC_CORRECTION;
+  settings.max_travel[X_AXIS] = DEFAULT_X_MAX_TRAVEL;
+  settings.max_travel[Y_AXIS] = DEFAULT_Y_MAX_TRAVEL;
+  settings.max_travel[Z_AXIS] = DEFAULT_Z_MAX_TRAVEL;    
   write_global_settings();
 }
 
@@ -157,44 +163,59 @@ uint8_t settings_store_global_setting(int parameter, float value) {
     case 0: case 1: case 2:
       if (value <= 0.0) { return(STATUS_SETTING_VALUE_NEG); } 
       settings.steps_per_mm[parameter] = value; break;
-    case 3: 
+    case 3: settings.max_velocity[X_AXIS] = value; break;
+    case 4: settings.max_velocity[Y_AXIS] = value; break;
+    case 5: settings.max_velocity[Z_AXIS] = value; break;
+    case 6: settings.acceleration[X_AXIS] = value*60*60; break; // Convert to mm/min^2 for grbl internal use.
+    case 7: settings.acceleration[Y_AXIS] = value*60*60; break; // Convert to mm/min^2 for grbl internal use.
+    case 8: settings.acceleration[Z_AXIS] = value*60*60; break; // Convert to mm/min^2 for grbl internal use.
+    case 9: settings.max_travel[X_AXIS] = -value; break;  // Store as negative for grbl internal use.
+    case 10: settings.max_travel[Y_AXIS] = -value; break; // Store as negative for grbl internal use.
+    case 11: settings.max_travel[Z_AXIS] = -value; break; // Store as negative for grbl internal use.
+    case 12: 
       if (value < 3) { return(STATUS_SETTING_STEP_PULSE_MIN); }
       settings.pulse_microseconds = round(value); break;
-    case 4: settings.default_feed_rate = value; break;
-    case 5: settings.default_seek_rate = value; break;
-    case 6: settings.invert_mask = trunc(value); break;
-    case 7: settings.stepper_idle_lock_time = round(value); break;
-    case 8: settings.acceleration = value*60*60; break; // Convert to mm/min^2 for grbl internal use.
-    case 9: settings.junction_deviation = fabs(value); break;
-    case 10: settings.mm_per_arc_segment = value; break;
-    case 11: settings.n_arc_correction = round(value); break;
-    case 12: settings.decimal_places = round(value); break;
-    case 13:
+    case 13: settings.default_feed_rate = value; break;
+    case 14: settings.invert_mask = trunc(value); break;
+    case 15: settings.stepper_idle_lock_time = round(value); break;
+    case 16: settings.junction_deviation = fabs(value); break;
+    case 17: settings.arc_tolerance = value; break;
+    case 18: settings.decimal_places = round(value); break;
+    case 19:
       if (value) { settings.flags |= BITFLAG_REPORT_INCHES; }
       else { settings.flags &= ~BITFLAG_REPORT_INCHES; }
       break;
-    case 14: // Reset to ensure change. Immediate re-init may cause problems.
+    case 20: // Reset to ensure change. Immediate re-init may cause problems.
       if (value) { settings.flags |= BITFLAG_AUTO_START; }
       else { settings.flags &= ~BITFLAG_AUTO_START; }
       break;
-    case 15: // Reset to ensure change. Immediate re-init may cause problems.
+    case 21: // Reset to ensure change. Immediate re-init may cause problems.
       if (value) { settings.flags |= BITFLAG_INVERT_ST_ENABLE; }
       else { settings.flags &= ~BITFLAG_INVERT_ST_ENABLE; }
       break;
-    case 16:
+    case 22:
+      if (value) { 
+        if (bit_isfalse(settings.flags, BITFLAG_HOMING_ENABLE)) { return(STATUS_SOFT_LIMIT_ERROR); }
+        settings.flags |= BITFLAG_SOFT_LIMIT_ENABLE; 
+      } else { settings.flags &= ~BITFLAG_SOFT_LIMIT_ENABLE; }
+      break;
+    case 23:
       if (value) { settings.flags |= BITFLAG_HARD_LIMIT_ENABLE; }
       else { settings.flags &= ~BITFLAG_HARD_LIMIT_ENABLE; }
       limits_init(); // Re-init to immediately change. NOTE: Nice to have but could be problematic later.
       break;
-    case 17:
+    case 24:
       if (value) { settings.flags |= BITFLAG_HOMING_ENABLE; }
-      else { settings.flags &= ~BITFLAG_HOMING_ENABLE; }
+      else { 
+        settings.flags &= ~BITFLAG_HOMING_ENABLE; 
+        settings.flags &= ~BITFLAG_SOFT_LIMIT_ENABLE; 
+      }
       break;
-    case 18: settings.homing_dir_mask = trunc(value); break;
-    case 19: settings.homing_feed_rate = value; break;
-    case 20: settings.homing_seek_rate = value; break;
-    case 21: settings.homing_debounce_delay = round(value); break;
-    case 22: settings.homing_pulloff = value; break;
+    case 25: settings.homing_dir_mask = trunc(value); break;
+    case 26: settings.homing_feed_rate = value; break;
+    case 27: settings.homing_seek_rate = value; break;
+    case 28: settings.homing_debounce_delay = round(value); break;
+    case 29: settings.homing_pulloff = value; break;
     default: 
       return(STATUS_INVALID_STATEMENT);
   }

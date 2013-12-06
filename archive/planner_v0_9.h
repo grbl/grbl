@@ -25,7 +25,7 @@
 
 // The number of linear motions that can be in the plan at any give time
 #ifndef BLOCK_BUFFER_SIZE
-  #define BLOCK_BUFFER_SIZE 18
+  #define BLOCK_BUFFER_SIZE 17
 #endif
 
 // This struct is used when buffering the setup for each linear movement "nominal" values are as specified in 
@@ -33,22 +33,25 @@
 typedef struct {
 
   // Fields used by the bresenham algorithm for tracing the line
-  // NOTE: Do not change any of these values once set. The stepper algorithm uses them to execute the block correctly.
-  uint8_t direction_bits;            // The direction bit set for this block (refers to *_DIRECTION_BIT in config.h)
-  int32_t steps[N_AXIS];            // Step count along each axis
-  int32_t step_event_count;         // The maximum step axis count and number of steps required to complete this block. 
+  uint8_t  direction_bits;            // The direction bit set for this block (refers to *_DIRECTION_BIT in config.h)
+  uint32_t steps[N_AXIS];             // Step count along each axis
+  int32_t  step_event_count;          // The number of step events required to complete this block
 
   // Fields used by the motion planner to manage acceleration
-  float entry_speed_sqr;             // The current planned entry speed at block junction in (mm/min)^2
-  float max_entry_speed_sqr;         // Maximum allowable entry speed based on the minimum of junction limit and 
-                                     //   neighboring nominal speeds with overrides in (mm/min)^2
-  float max_junction_speed_sqr;      // Junction entry speed limit based on direction vectors in (mm/min)^2
   float nominal_speed_sqr;           // Axis-limit adjusted nominal speed for this block in (mm/min)^2
-  float acceleration;                // Axis-limit adjusted line acceleration in (mm/min^2)
-  float millimeters;                 // The remaining distance for this block to be executed in (mm)
-  // uint8_t max_override;           // Maximum override value based on axis speed limits
-} plan_block_t;
+  float entry_speed_sqr;             // Entry speed at previous-current block junction in (mm/min)^2
+  float max_entry_speed_sqr;         // Maximum allowable junction entry speed in (mm/min)^2
+  float millimeters;                 // The total travel of this block in mm
+  float acceleration;                // Axes-limit adjusted line acceleration in mm/min^2
 
+  // Settings for the trapezoid generator
+  uint32_t initial_rate;              // The step rate at start of block  
+  int32_t rate_delta;                 // The steps/minute to add or subtract when changing speed (must be positive)
+  uint32_t decelerate_after;          // The index of the step event on which to start decelerating
+  uint32_t nominal_rate;              // The nominal step rate for this block in step_events/minute
+  uint32_t d_next;                    // Scaled distance to next step
+
+} block_t;
       
 // Initialize the motion plan subsystem
 void plan_init();
@@ -63,19 +66,13 @@ void plan_buffer_line(float *target, float feed_rate, uint8_t invert_feed_rate);
 void plan_discard_current_block();
 
 // Gets the current block. Returns NULL if buffer empty
-plan_block_t *plan_get_current_block();
-
-// Called periodically by step segment buffer. Mostly used internally by planner.
-uint8_t plan_next_block_index(uint8_t block_index);
-
-// Called by step segment buffer when computing executing block velocity profile.
-float plan_get_exec_block_exit_speed();
+block_t *plan_get_current_block();
 
 // Reset the planner position vector (in steps)
 void plan_sync_position();
 
 // Reinitialize plan with a partially completed block
-void plan_cycle_reinitialize();
+void plan_cycle_reinitialize(int32_t step_events_remaining);
 
 // Returns the status of the block ring buffer. True, if buffer is full.
 uint8_t plan_check_full_buffer();

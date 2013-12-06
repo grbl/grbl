@@ -3,7 +3,7 @@
   Part of Grbl
 
   Copyright (c) 2009-2011 Simen Svale Skogsrud
-  Copyright (c) 2012 Sungeun K. Jeon
+  Copyright (c) 2012-2013 Sungeun K. Jeon
 
   Grbl is free software: you can redistribute it and/or modify
   it under the terms of the GNU General Public License as published by
@@ -59,12 +59,6 @@ void limits_init()
 // your e-stop switch to the Arduino reset pin, since it is the most correct way to do this.
 ISR(LIMIT_INT_vect) 
 {
-  // TODO: This interrupt may be used to manage the homing cycle directly with the main stepper
-  // interrupt without adding too much to it. All it would need is some way to stop one axis 
-  // when its limit is triggered and continue the others. This may reduce some of the code, but
-  // would make Grbl a little harder to read and understand down road. Holding off on this until
-  // we move on to new hardware or flash space becomes an issue. If it ain't broke, don't fix it.
-
   // Ignore limit switches if already in an alarm state or in-process of executing an alarm.
   // When in the alarm state, Grbl should have been reset or will force a reset, so any pending 
   // moves in the planner and serial buffers are all cleared and newly sent blocks will be 
@@ -89,6 +83,19 @@ ISR(LIMIT_INT_vect)
 // NOTE: Only the abort runtime command can interrupt this process.
 static void homing_cycle(uint8_t cycle_mask, int8_t pos_dir, bool invert_pin, float homing_rate) 
 {
+
+  /* TODO: Change homing routine to call planner instead moving at the maximum seek rates
+     and (max_travel+10mm?) for each axes during the search phase. The routine should monitor
+     the state of the limit pins and when a pin is triggered, it can disable that axes by 
+     setting the respective step_x, step_y, or step_z value in the executing planner block.
+     This keeps the stepper algorithm counters from triggering the step on that particular
+     axis. When all axes have been triggered, we can then disable the steppers and reset
+     the stepper and planner buffers. This same method can be used for the locate cycles. 
+     This will also fix the slow max feedrate of the homing 'lite' stepper algorithm.
+     
+     Need to check if setting the planner steps will require them to be volatile or not. */
+  
+  
   // Determine governing axes with finest step resolution per distance for the Bresenham
   // algorithm. This solves the issue when homing multiple axes that have different 
   // resolutions without exceeding system acceleration setting. It doesn't have to be
@@ -96,22 +103,17 @@ static void homing_cycle(uint8_t cycle_mask, int8_t pos_dir, bool invert_pin, fl
   // and speedy homing routine.
   // NOTE: For each axes enabled, the following calculations assume they physically move 
   // an equal distance over each time step until they hit a limit switch, aka dogleg.
-  uint32_t steps[3];
-  uint8_t dist = 0;
+  uint32_t step_event_count = 0;
+  uint8_t i, dist = 0;
+  uint32_t steps[N_AXIS];
   clear_vector(steps);
-  if (cycle_mask & (1<<X_AXIS)) { 
-    dist++;
-    steps[X_AXIS] = lround(settings.steps_per_mm[X_AXIS]); 
+  for (i=0; i<N_AXIS; i++) {
+    if (cycle_mask & (1<<i)) { 
+      dist++;
+      steps[i] = lround(settings.steps_per_mm[i]); 
+      step_event_count = max(step_event_count,steps[i]);
+    }
   }
-  if (cycle_mask & (1<<Y_AXIS)) { 
-    dist++;
-    steps[Y_AXIS] = lround(settings.steps_per_mm[Y_AXIS]); 
-  }
-  if (cycle_mask & (1<<Z_AXIS)) {
-    dist++;
-    steps[Z_AXIS] = lround(settings.steps_per_mm[Z_AXIS]);
-  }
-  uint32_t step_event_count = max(steps[X_AXIS], max(steps[Y_AXIS], steps[Z_AXIS]));  
   
   // To ensure global acceleration is not exceeded, reduce the governing axes nominal rate
   // by adjusting the actual axes distance traveled per step. This is the same procedure
@@ -121,7 +123,7 @@ static void homing_cycle(uint8_t cycle_mask, int8_t pos_dir, bool invert_pin, fl
   float ds = step_event_count/sqrt(dist);
 
   // Compute the adjusted step rate change with each acceleration tick. (in step/min/acceleration_tick)
-  uint32_t delta_rate = ceil( ds*settings.acceleration/(60*ACCELERATION_TICKS_PER_SECOND));
+  uint32_t delta_rate = ceil( ds*settings.acceleration[X_AXIS]/(60*ACCELERATION_TICKS_PER_SECOND));
   
   #ifdef HOMING_RATE_ADJUST
     // Adjust homing rate so a multiple axes moves all at the homing rate independently.
@@ -243,4 +245,33 @@ void limits_go_home()
   }
 
   st_go_idle(); // Call main stepper shutdown routine.  
+}
+
+
+// Performs a soft limit check. Called from mc_line() only. Assumes the machine has been homed,
+// and the workspace volume is in all negative space.
+void limits_soft_check(float *target)
+{
+  uint8_t idx;
+  for (idx=0; idx<N_AXIS; idx++) { 
+    if (target[idx] > 0 || target[idx] < settings.max_travel[idx]) {  // NOTE: max_travel is stored as negative
+    
+      // Force feed hold if cycle is active. All buffered blocks are guaranteed to be within 
+      // workspace volume so just come to a controlled stop so position is not lost. When complete
+      // enter alarm mode.
+      if (sys.state == STATE_CYCLE) {
+        st_feed_hold();
+        while (sys.state == STATE_HOLD) {
+          protocol_execute_runtime();
+          if (sys.abort) { return; }
+        }
+      }
+      
+      mc_reset(); // Issue system reset and ensure spindle and coolant are shutdown.
+      sys.execute |= EXEC_CRIT_EVENT; // Indicate soft limit critical event
+      protocol_execute_runtime(); // Execute to enter critical event loop and system abort
+      return;
+    
+    }
+  }
 }

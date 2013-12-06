@@ -3,7 +3,7 @@
   Part of Grbl
 
   Copyright (c) 2009-2011 Simen Svale Skogsrud
-  Copyright (c) 2011-2012 Sungeun K. Jeon  
+  Copyright (c) 2011-2013 Sungeun K. Jeon  
 
   Grbl is free software: you can redistribute it and/or modify
   it under the terms of the GNU General Public License as published by
@@ -33,16 +33,19 @@
 #define true 1
 
 #define N_AXIS 3 // Number of axes
-#define X_AXIS 0 // Axis indexing value
+#define X_AXIS 0 // Axis indexing value. Must start with 0 and be continuous.
 #define Y_AXIS 1
 #define Z_AXIS 2
 
 #define MM_PER_INCH (25.40)
 #define INCH_PER_MM (0.0393701)
 
+#define TICKS_PER_MICROSECOND (F_CPU/1000000)
+
 // Useful macros
 #define clear_vector(a) memset(a, 0, sizeof(a))
 #define clear_vector_float(a) memset(a, 0.0, sizeof(float)*N_AXIS)
+#define clear_vector_long(a) memset(a, 0.0, sizeof(long)*N_AXIS)
 #define max(a,b) (((a) > (b)) ? (a) : (b))
 #define min(a,b) (((a) < (b)) ? (a) : (b))
 
@@ -103,7 +106,6 @@ void delay_ms(uint16_t ms);
 // Delays variable-defined microseconds. Compiler compatibility fix for _delay_us().
 void delay_us(uint32_t us);
 
-// Syncs Grbl's gcode and planner position variables with the system position.
-void sys_sync_current_position();
+uint8_t get_direction_mask(uint8_t i);
 
 #endif

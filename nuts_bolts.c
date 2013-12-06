@@ -140,9 +140,16 @@ void delay_us(uint32_t us)
   }
 }
 
-// Syncs all internal position vectors to the current system position.
-void sys_sync_current_position()
+
+// Returns direction mask according to Grbl internal axis indexing.
+uint8_t get_direction_mask(uint8_t axis_idx)
 {
-  plan_set_current_position(sys.position[X_AXIS],sys.position[Y_AXIS],sys.position[Z_AXIS]);
-  gc_set_current_position(sys.position[X_AXIS],sys.position[Y_AXIS],sys.position[Z_AXIS]);
+  uint8_t axis_mask = 0;
+  switch( axis_idx ) {
+    case X_AXIS: axis_mask = (1<<X_DIRECTION_BIT); break;
+    case Y_AXIS: axis_mask = (1<<Y_DIRECTION_BIT); break;
+    case Z_AXIS: axis_mask = (1<<Z_DIRECTION_BIT); break;
+  }
+  return(axis_mask);
 }
+

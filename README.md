@@ -1,4 +1,8 @@
-#Grbl - An embedded g-code interpreter and motion-controller for the Arduino/AVR328 microcontroller
+#Grbl
+------------
+
+This branch serves only as a developmental platform for working on new ideas that may eventually be installed into Grbl's edge branch. Please do not use as there is no guarantee this code base is up-to-date or working.
+
 ------------
 
 Grbl is a no-compromise, high performance, low cost alternative to parallel-port-based motion control for CNC milling. It will run on a vanilla Arduino (Duemillanove/Uno) as long as it sports an Atmega 328. 
@@ -9,47 +13,17 @@ It accepts standards-compliant G-code and has been tested with the output of sev
 
 Grbl includes full acceleration management with look ahead. That means the controller will look up to 18 motions into the future and plan its velocities ahead to deliver smooth acceleration and jerk-free cornering.
 
-##Downloads (Right-Click and Save-Link-As):
-_**Master Branch:**_
-* [Grbl v0.8c Atmega328p 16mhz 9600baud](http://bit.ly/SSdCJE) Last updated: 2013-04-05 (Line buffer increased and overflow feedback added.)
-
-_**Edge/Development Branch:**_
-* [Grbl v0.9a Build 2013-03-19](http://bit.ly/Y0tMHo) : Updated g-code G10.
-* [Grbl v0.9a Build 2012-12-21](http://bit.ly/VWe4VW) : For testing only. New experimental stepper algorithm. Smoother. Axes acceleration and maximum velocity limits. Automatic arc segment scaling by tolerance setting, leading to much faster feedrates about them. 30kHz step rate absolute max. CAUTION: Bugs still exist. Settings WILL be over-written. Please let us know of any lingering bugs (except with homing).
-
-_**Archives:**_
-* [Grbl v0.8a Atmega328p 16mhz 9600baud](http://bit.ly/TVCTVv)
-* [Grbl v0.7d Atmega328p 16mhz 9600baud](http://bit.ly/ZhL15G)
-* [Grbl v0.6b Atmega328p 16mhz 9600baud](http://bit.ly/VD04A5)
-* [Grbl v0.6b Atmega168 16mhz 9600baud](http://bit.ly/SScWnE)
-* [Grbl v0.51 Atmega328p 16mhz 9600baud](http://bit.ly/W75BS1)
-* [Grbl v0.51 Atmega168 16mhz 9600baud](http://bit.ly/VXyrYu)
-
-
-##Changelog for v0.8 from v0.7:
-  - Major structural overhaul to allow for multi-tasking events and new feature sets.
-  - Run-time command control: Feed hold (pause), Cycle start (resume), Reset (abort), Status reporting (current position and state).
-  - Controlled feed hold with deceleration to ensure no skipped steps and loss of location.
-  - After feed hold, cycle accelerations are re-planned and may be resumed.
-  - Advanced homing cycle with direction and speed configuration options. (Requires limit switches.) When enabled, homing is required before use to ensure safety.
-  - Limit pins are held normal high with internal pull-up resistors. Wiring only requires a normally-open switch connected to ground. (For both ends of an axis, simply wire two in parallel into the same pin.)
-  - Hard limits option and plays nice with homing cycle, so switches can be used for both homing and hard limits.
-  - A check g-code mode has also been added to allow users to error check their programs.
-  - Re-factored g-code parser with robust error-checking.
-  - 6 work coordinate systems (G54-G59), offsets(G92), and machine coordinate system support. Work coordinate systems are stored in EEPROM and persistent.
-  - G10 L2 and L20 work coordinate settings support. L2 sets one or more axes values. L20 sets the current machine position to the specified work origin.
-  - G28.1 and G30.1 set home position support. These set the internal EEPROM parameter values to the current machine position. (G28 and G30 no longer perform homing cycle, '$H' does. They move to these stored positions.)
-  - Program stop(M0,M2,M30) support.
-  - Coolant control(M7*,M8,M9) support. (M7 is a compile-time option).
-  - G-code parser state and '#' parameters feedback.
-  - System reset re-initializes grbl without resetting the Arduino and retains machine/home position and work coordinates.
-  - Settings overhauled and dozens of new settings and internal commands are now available, when most were compile-time only.
-  - New startup line setting. Allows users to store a custom g-code block into Grbl's startup routine. Executes immediately upon startup or reset. May be used to set g-code defaults like G20/G21.
-  - Pin-outs of the cycle-start, feed-hold, and soft-reset runtime commands on pins A0-A2.
-  - Misc bug fixes and removed deprecated acceleration enabled code.  
-  - Advanced compile-time options: XON/XOFF flow control (limited support), direction and step pulse time delay, up to 5 startup lines, and homing sequence configurability.
+##Changelog for v0.9 from v0.8
+  - **ALPHA status: Under heavy development.**
+  - New stepper algorithm:  Based on an inverse time algorithm, but modified to ensure steps are executed exactly. This algorithm performs a constant timer tick and has a hard limit of 30kHz maximum step frequency. It is also highly tuneable and should be very easy to port to other microcontroller architectures. Overall, a much better, smoother stepper algorithm with the capability of very high speeds.
+  - Planner optimizations: Multiple changes to increase planner execution speed and removed redundant variables.
+  - Acceleration independence: Each axes may be defined with different acceleration parameters and Grbl will automagically calculate the maximum acceleration through a path depending on the direction traveled. This is very useful for machine that have very different axes properties, like the ShapeOko z-axis.
+  - Maximum velocity independence: As with acceleration, the maximum velocity of individual axes may be defined. All seek/rapids motions will move at these maximum rates, but never exceed any one axes. So, when two or more axes move, the limiting axis will move at its maximum rate, while the other axes are scaled down.
+  - Significantly improved arc performance: Arcs are now defined in terms of chordal tolerance, rather than segment length. Chordal tolerance will automatically scale all arc line segments depending on arc radius, such that the error does not exceed the tolerance value (default: 0.005 mm.) So, for larger radii arcs, Grbl can move faster through them, because the segments are always longer and the planner has more distance to plan with.
+  - Soft limits: Checks if any motion command exceeds workspace limits. Alarms out when found. Another safety feature, but, unlike hard limits, position does not get lost, as it forces a feed hold before erroring out.
+  - New Grbl SIMULATOR by @jgeisler: A completely independent wrapper of the Grbl main source code that may be compiled as an executable on a computer. No Arduino required. Simply simulates the responses of Grbl as if it was on an Arduino. May be used for many things: checking out how Grbl works, pre-process moves for GUI graphics, debugging of new features, etc. Much left to do, but potentially very powerful, as the dummy AVR variables can be written to output anything you need. 
+  - Homing routine updated: Sets workspace volume in all negative space regardless of limit switch position. Common on pro CNCs. Also reduces soft limits CPU overhead.
+  - Feedrate overrides: In the works, but planner has begun to be re-factored for this feature.
+  - Jogging controls: Methodology needs to be to figured out first. Could be dropped due to flash space concerns. Last item on the agenda.
   
-
-*Important note for Atmega 168 users:* Going forward, support for Atmega 168 will be dropped due to its limited memory and speed. However, legacy Grbl v0.51 "in the branch called 'v0_51' is still available for use.
-
 _The project was initially inspired by the Arduino GCode Interpreter by Mike Ellery_
