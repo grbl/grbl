@@ -30,7 +30,7 @@
 
 uint8_t rx_buffer[RX_BUFFER_SIZE];
 uint8_t rx_buffer_head = 0;
-uint8_t rx_buffer_tail = 0;
+volatile uint8_t rx_buffer_tail = 0;
 
 uint8_t tx_buffer[TX_BUFFER_SIZE];
 uint8_t tx_buffer_head = 0;
@@ -93,8 +93,7 @@ void serial_write(uint8_t data) {
 // Data Register Empty Interrupt handler
 ISR(SERIAL_UDRE)
 {
-  // Temporary tx_buffer_tail (to optimize for volatile)
-  uint8_t tail = tx_buffer_tail;
+  uint8_t tail = tx_buffer_tail; // Temporary tx_buffer_tail (to optimize for volatile)
   
   #ifdef ENABLE_XONXOFF
     if (flow_ctrl == SEND_XOFF) { 
@@ -122,12 +121,15 @@ ISR(SERIAL_UDRE)
 
 uint8_t serial_read()
 {
-  if (rx_buffer_head == rx_buffer_tail) {
+  uint8_t tail = rx_buffer_tail; // Temporary rx_buffer_tail (to optimize for volatile)
+  if (rx_buffer_head == tail) {
     return SERIAL_NO_DATA;
   } else {
-    uint8_t data = rx_buffer[rx_buffer_tail];
-    rx_buffer_tail++;
-    if (rx_buffer_tail == RX_BUFFER_SIZE) { rx_buffer_tail = 0; }
+    uint8_t data = rx_buffer[tail];
+    
+    tail++;
+    if (tail == RX_BUFFER_SIZE) { tail = 0; }
+    rx_buffer_tail = tail;
 
     #ifdef ENABLE_XONXOFF
       if ((get_rx_buffer_count() < RX_BUFFER_LOW) && flow_ctrl == XOFF_SENT) { 

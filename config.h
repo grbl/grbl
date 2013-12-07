@@ -198,6 +198,12 @@
 // case, please report any successes to grbl administrators!
 // #define ENABLE_XONXOFF // Default disabled. Uncomment to enable.
 
+// Uncomment the following define if you are using hardware that drives high when your limits
+// are reached. You will need to ensure that you have appropriate pull-down resistors on the
+// limit switch input pins, or that your hardware drives the pins low when they are open (non-
+// triggered).
+// #define LIMIT_SWITCHES_ACTIVE_HIGH
+
 // ---------------------------------------------------------------------------------------
 
 // TODO: Install compile-time option to send numeric status codes rather than strings.

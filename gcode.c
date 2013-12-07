@@ -140,7 +140,7 @@ uint8_t gc_execute_line(char *line)
           case 4: non_modal_action = NON_MODAL_DWELL; break;
           case 10: non_modal_action = NON_MODAL_SET_COORDINATE_DATA; break;
           case 17: select_plane(X_AXIS, Y_AXIS, Z_AXIS); break;
-          case 18: select_plane(X_AXIS, Z_AXIS, Y_AXIS); break;
+          case 18: select_plane(Z_AXIS, X_AXIS, Y_AXIS); break;
           case 19: select_plane(Y_AXIS, Z_AXIS, X_AXIS); break;
           case 20: gc.inches_mode = true; break;
           case 21: gc.inches_mode = false; break;

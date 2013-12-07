@@ -151,10 +151,10 @@ void report_grbl_settings() {
   printPgmString(PSTR("$0=")); printFloat(settings.steps_per_mm[X_AXIS]);
   printPgmString(PSTR(" (x, step/mm)\r\n$1=")); printFloat(settings.steps_per_mm[Y_AXIS]);
   printPgmString(PSTR(" (y, step/mm)\r\n$2=")); printFloat(settings.steps_per_mm[Z_AXIS]);
-  printPgmString(PSTR(" (z, step/mm)\r\n$3=")); printFloat(settings.max_velocity[X_AXIS]);
-  printPgmString(PSTR(" (x v_max, mm/min)\r\n$4=")); printFloat(settings.max_velocity[Y_AXIS]);
-  printPgmString(PSTR(" (y v_max, mm/min)\r\n$5=")); printFloat(settings.max_velocity[Z_AXIS]);
-  printPgmString(PSTR(" (z v_max, mm/min)\r\n$6=")); printFloat(settings.acceleration[X_AXIS]/(60*60)); // Convert from mm/min^2 for human readability
+  printPgmString(PSTR(" (z, step/mm)\r\n$3=")); printFloat(settings.max_rate[X_AXIS]);
+  printPgmString(PSTR(" (x max rate, mm/min)\r\n$4=")); printFloat(settings.max_rate[Y_AXIS]);
+  printPgmString(PSTR(" (y max rate, mm/min)\r\n$5=")); printFloat(settings.max_rate[Z_AXIS]);
+  printPgmString(PSTR(" (z max rate, mm/min)\r\n$6=")); printFloat(settings.acceleration[X_AXIS]/(60*60)); // Convert from mm/min^2 for human readability
   printPgmString(PSTR(" (x accel, mm/sec^2)\r\n$7=")); printFloat(settings.acceleration[Y_AXIS]/(60*60)); // Convert from mm/min^2 for human readability
   printPgmString(PSTR(" (y accel, mm/sec^2)\r\n$8=")); printFloat(settings.acceleration[Z_AXIS]/(60*60)); // Convert from mm/min^2 for human readability
   printPgmString(PSTR(" (z accel, mm/sec^2)\r\n$9=")); printFloat(-settings.max_travel[X_AXIS]); // Grbl internally store this as negative.

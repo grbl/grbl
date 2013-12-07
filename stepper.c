@@ -105,10 +105,9 @@ typedef struct {
 
   float step_per_mm;           // Current planner block step/millimeter conversion scalar
   float steps_remaining;
-  int32_t step_events_remaining; // Tracks step event count for the executing planner block
   
   uint8_t ramp_type;      // Current segment ramp state
-  float millimeters_remaining;
+  float mm_eob;
   float current_speed;    // Current speed at the end of the segment buffer (mm/min)
   float maximum_speed;    // Maximum speed of executing block. Not always nominal speed. (mm/min)
   float exit_speed;       // Exit speed of executing block (mm/min)
@@ -217,15 +216,14 @@ void st_go_idle()
    stepper pins appropriately. It is supported by The Stepper Port Reset Interrupt which it uses 
    to reset the stepper port after each pulse. The bresenham line tracer algorithm controls all 
    three stepper outputs simultaneously with these two interrupts.
+   
+   NOTE: This interrupt must be as efficient as possible and complete before the next ISR tick, 
+   which for Grbl is 33.3usec at a 30kHz ISR rate. Oscilloscope measured time in ISR is 5usec
+   typical and 25usec maximum, well below requirement.
 */
-/* TODO: 
-   - Measured time in ISR. Typical and worst-case. Roughly 5usec min to 25usec max. Good enough.
-     There are no major changes to the base operations of this ISR with the new segment buffer.
-   - Determine if placing the position counters elsewhere (or change them to 8-bit variables that
-     are added to the system position counters at the end of a segment) frees up cycles.
-   - Create NOTE: to describe that the total time in this ISR must be less than the ISR frequency
-     in its worst case scenario.
-*/
+// TODO: Replace direct updating of the int32 position counters in the ISR somehow. Perhaps use smaller
+// int8 variables and update position counters only when a segment completes. This can get complicated 
+// with probing and homing cycles that require true real-time positions.
 ISR(TIMER2_COMPA_vect)
 {
 // SPINDLE_ENABLE_PORT ^= 1<<SPINDLE_ENABLE_BIT; // Debug: Used to time ISR
@@ -424,7 +422,6 @@ void st_update_plan_block_parameters()
 { 
   if (pl_block != NULL) { // Ignore if at start of a new block.
     prep.flag_partial_block = true;
-    pl_block->millimeters = prep.millimeters_remaining;
     pl_block->entry_speed_sqr = prep.current_speed*prep.current_speed; // Update entry speed.
     pl_block = NULL; // Flag st_prep_segment() to load new velocity profile.
   }
@@ -456,32 +453,12 @@ void st_update_plan_block_parameters()
    accounted for. This allows the stepper algorithm to run at very high step rates without
    losing steps.
 */
-/* 
-   TODO: With feedrate overrides, increases to the override value will not significantly
-     change the planner and stepper current operation. When the value increases, we simply
-     need to recompute the block plan with new nominal speeds and maximum junction velocities.
-     However with a decreasing feedrate override, this gets a little tricky. The current block
-     plan is optimal, so if we try to reduce the feed rates, it may be impossible to create 
-     a feasible plan at its current operating speed and decelerate down to zero at the end of
-     the buffer. We first have to enforce a deceleration to meet and intersect with the reduced
-     feedrate override plan. For example, if the current block is cruising at a nominal rate
-     and the feedrate override is reduced, the new nominal rate will now be lower. The velocity
-     profile must first decelerate to the new nominal rate and then follow on the new plan. 
-        Another issue is whether or not a feedrate override reduction causes a deceleration
-     that acts over several planner blocks. For example, say that the plan is already heavily
-     decelerating throughout it, reducing the feedrate override will not do much to it. So,
-     how do we determine when to resume the new plan? One solution is to tie into the feed hold
-     handling code to enforce a deceleration, but check when the current speed is less than or
-     equal to the block maximum speed and is in an acceleration or cruising ramp. At this 
-     point, we know that we can recompute the block velocity profile to meet and continue onto
-     the new block plan.
-*/
 void st_prep_buffer()
 {
   while (segment_buffer_tail != segment_next_head) { // Check if we need to fill the buffer.
     if (sys.state == STATE_QUEUED) { return; } // Block until a motion state is issued
     
-    // Determine if we need to load a new planner block. If so, prepare step data.
+    // Determine if we need to load a new planner block or if the block remainder is replanned. 
     if (pl_block == NULL) {
       pl_block = plan_get_current_block(); // Query planner for a queued block
       if (pl_block == NULL) { return; } // No planner blocks. Exit.
@@ -504,10 +481,8 @@ void st_prep_buffer()
         st_prep_block->step_event_count = pl_block->step_event_count;
         
         // Initialize segment buffer data for generating the segments.
-        prep.step_events_remaining = st_prep_block->step_event_count;
         prep.steps_remaining = st_prep_block->step_event_count;
-        prep.millimeters_remaining = pl_block->millimeters;
-        prep.step_per_mm = prep.steps_remaining/prep.millimeters_remaining;
+        prep.step_per_mm = prep.steps_remaining/pl_block->millimeters;
 
         if (sys.state == STATE_HOLD) { 
           prep.current_speed = prep.exit_speed; 
@@ -516,28 +491,30 @@ void st_prep_buffer()
         else { prep.current_speed = sqrt(pl_block->entry_speed_sqr); }
       }
      
+      prep.mm_eob = 0.0;
+      
       float inv_2_accel = 0.5/pl_block->acceleration;
       if (sys.state == STATE_HOLD) {
-        // Compute velocity profile parameters for a feed hold in-progress.
+        // Compute velocity profile parameters for a feed hold in-progress. This profile overrides
+        // the planner block profile, enforcing a deceleration to zero speed.
         prep.ramp_type = RAMP_DECEL;
         float decel_dist = inv_2_accel*pl_block->entry_speed_sqr;
-        if (decel_dist < prep.millimeters_remaining) {
+        if (decel_dist < pl_block->millimeters) {
           prep.exit_speed = 0.0;
-          prep.steps_remaining = prep.step_per_mm*decel_dist;
-          prep.millimeters_remaining = decel_dist;
+          prep.mm_eob = pl_block->millimeters-decel_dist;
         } else {
-          prep.exit_speed = sqrt(pl_block->entry_speed_sqr-2*pl_block->acceleration*prep.millimeters_remaining);
+          prep.exit_speed = sqrt(pl_block->entry_speed_sqr-2*pl_block->acceleration*pl_block->millimeters);
         }
       } else {                
         // Compute velocity profile parameters of the prepped planner block.
         prep.ramp_type = RAMP_ACCEL; // Initialize as acceleration ramp.
-        prep.accelerate_until = prep.millimeters_remaining; 
+        prep.accelerate_until = pl_block->millimeters; 
         prep.exit_speed = plan_get_exec_block_exit_speed();   
         float exit_speed_sqr = prep.exit_speed*prep.exit_speed;
         float intersect_distance =
-                0.5*(prep.millimeters_remaining+inv_2_accel*(pl_block->entry_speed_sqr-exit_speed_sqr));
+                0.5*(pl_block->millimeters+inv_2_accel*(pl_block->entry_speed_sqr-exit_speed_sqr));
         if (intersect_distance > 0.0) {
-          if (intersect_distance < prep.millimeters_remaining) { // Either trapezoid or triangle types
+          if (intersect_distance < pl_block->millimeters) { // Either trapezoid or triangle types
             // NOTE: For acceleration-cruise and cruise-only types, following calculation will be 0.0.
             prep.decelerate_after = inv_2_accel*(pl_block->nominal_speed_sqr-exit_speed_sqr);
             if (prep.decelerate_after < intersect_distance) { // Trapezoid type
@@ -556,16 +533,15 @@ void st_prep_buffer()
             }          
           } else { // Deceleration-only type
             prep.ramp_type = RAMP_DECEL;
-            prep.decelerate_after = prep.millimeters_remaining;
+            // prep.decelerate_after = pl_block->millimeters;
             prep.maximum_speed = prep.current_speed;
           }
         } else { // Acceleration-only type
           prep.accelerate_until = 0.0;
-          prep.decelerate_after = 0.0;
+          // prep.decelerate_after = 0.0;
           prep.maximum_speed = prep.exit_speed;
         }
-      }
-      
+      }      
     }
 
     // Initialize new segment
@@ -584,18 +560,18 @@ void st_prep_buffer()
        considered completed despite having a truncated execution time less than DT_SEGMENT. 
     */   
     float dt = 0.0;
-    float mm_remaining = prep.millimeters_remaining;
+    float mm_remaining = pl_block->millimeters;
     float time_var = DT_SEGMENT; // Time worker variable
     float mm_var; // mm distance worker variable
     do {
       switch (prep.ramp_type) {
         case RAMP_ACCEL: 
-          // NOTE: Acceleration ramp always computes during first loop only.
+          // NOTE: Acceleration ramp only computes during first do-while loop.
           mm_remaining -= DT_SEGMENT*(prep.current_speed + pl_block->acceleration*(0.5*DT_SEGMENT));
           if (mm_remaining < prep.accelerate_until) { // End of acceleration ramp.
             // Acceleration-cruise, acceleration-deceleration ramp junction, or end of block.
             mm_remaining = prep.accelerate_until; // NOTE: 0.0 at EOB
-            time_var = 2.0*(prep.millimeters_remaining-mm_remaining)/(prep.current_speed+prep.maximum_speed);
+            time_var = 2.0*(pl_block->millimeters-mm_remaining)/(prep.current_speed+prep.maximum_speed);
             if (mm_remaining == prep.decelerate_after) { prep.ramp_type = RAMP_DECEL; }
             else { prep.ramp_type = RAMP_CRUISE; }
             prep.current_speed = prep.maximum_speed;
@@ -618,21 +594,21 @@ void st_prep_buffer()
         default: // case RAMP_DECEL:
           // NOTE: mm_var used to catch negative decelerate distance values near zero speed.
           mm_var = time_var*(prep.current_speed - 0.5*pl_block->acceleration*time_var);
-          if ((mm_var > 0.0) && (mm_var < mm_remaining)) { // Deceleration only.
+          if ((mm_var > prep.mm_eob) && (mm_var < mm_remaining)) { // Deceleration only.
             prep.current_speed -= pl_block->acceleration*time_var;
             // Check for near-zero speed and prevent divide by zero in rare scenarios.
             if (prep.current_speed > prep.exit_speed) { mm_remaining -= mm_var; }
-            else { mm_remaining = 0.0; } // NOTE: Force EOB for now. May or may not be needed.
+            else { mm_remaining = prep.mm_eob; } // NOTE: Force EOB for now. May or may not be needed.
           } else { // End of block.
-            time_var = 2.0*mm_remaining/(prep.current_speed+prep.exit_speed);
-            mm_remaining = 0.0;
+            time_var = 2.0*(mm_remaining-prep.mm_eob)/(prep.current_speed+prep.exit_speed);
+            mm_remaining = prep.mm_eob;
             // prep.current_speed = prep.exit_speed; // !! May be needed for feed hold reinitialization.
           }
       }
       dt += time_var; // Add computed ramp time to total segment time.
       if (dt < DT_SEGMENT) { time_var = DT_SEGMENT - dt; } // **Incomplete** At ramp junction.
       else { break; } // **Complete** Exit loop. Segment execution time maxed.      
-    } while ( mm_remaining > 0.0 ); // **Complete** Exit loop. End of planner block.
+    } while (mm_remaining > prep.mm_eob); // **Complete** Exit loop. End of planner block.
    
     /* -----------------------------------------------------------------------------------
        Compute segment step rate, steps to execute, and step phase correction parameters.
@@ -654,38 +630,37 @@ void st_prep_buffer()
       prep_segment->phase_dist = ceil(INV_TIME_MULTIPLIER*(ceil(steps_remaining)-steps_remaining));
       prep_segment->n_step = ceil(prep.steps_remaining)-ceil(steps_remaining);
 
-      // Update step execution variables
-      prep.step_events_remaining -= prep_segment->n_step;
-      prep.millimeters_remaining = mm_remaining;      
-      prep.steps_remaining = steps_remaining;                             
+      // Update step execution variables.
+      if (mm_remaining == prep.mm_eob) {
+        // NOTE: Currently only feed holds qualify for this scenario. May change with overrides.
+        prep.current_speed = 0.0;
+        prep.steps_remaining = ceil(steps_remaining);
+        pl_block->millimeters = prep.steps_remaining/prep.step_per_mm;
+        plan_cycle_reinitialize();
+        sys.state = STATE_QUEUED; // End cycle.
+      } else {
+        pl_block->millimeters = mm_remaining;      
+        prep.steps_remaining = steps_remaining;                             
+      }
       
     } else { // End of block.
       // Set to execute the remaining steps and no phase correction upon finishing the block. 
       prep_segment->dist_per_tick = ceil( prep.steps_remaining*time_var ); // (mult*step/isr_tic)
       prep_segment->phase_dist = 0;
       prep_segment->n_step = ceil(prep.steps_remaining);
+
+      // The planner block is complete. All steps are set to be executed in the segment buffer.
+      // TODO: Broken with feed holds. Need to recalculate the planner buffer at this time.
+      pl_block = NULL;
+      plan_discard_current_block();
       
-      prep.step_events_remaining -= prep_segment->n_step;
-      if (prep.step_events_remaining > 0) {
-        sys.state = STATE_QUEUED;
-        pl_block->entry_speed_sqr = 0.0;
-        prep.current_speed = 0.0;
-        prep.steps_remaining = prep.step_events_remaining;
-        pl_block->millimeters = prep.steps_remaining/prep.step_per_mm;
-        prep.millimeters_remaining = pl_block->millimeters;
-        pl_block = NULL;
-        prep.flag_partial_block  = true;
-        plan_cycle_reinitialize();
-      } else {
-        // The planner block is complete. All steps are set to be executed in the segment buffer.
-        // TODO: Ignore this for feed holds. Need to recalculate the planner buffer at this time.
-        pl_block = NULL;
-        plan_discard_current_block();
+      if (sys.state == STATE_HOLD) { 
+        if (prep.current_speed == 0.0) { 
+          plan_cycle_reinitialize();
+          sys.state = STATE_QUEUED; 
+        }
       }
-
     }
-
-
     
     // New step segment initialization completed. Increment segment buffer indices.
     segment_buffer_head = segment_next_head;
@@ -696,3 +671,24 @@ void st_prep_buffer()
 // printInteger(blength);
   } 
 }      
+
+/* 
+   TODO: With feedrate overrides, increases to the override value will not significantly
+     change the planner and stepper current operation. When the value increases, we simply
+     need to recompute the block plan with new nominal speeds and maximum junction velocities.
+     However with a decreasing feedrate override, this gets a little tricky. The current block
+     plan is optimal, so if we try to reduce the feed rates, it may be impossible to create 
+     a feasible plan at its current operating speed and decelerate down to zero at the end of
+     the buffer. We first have to enforce a deceleration to meet and intersect with the reduced
+     feedrate override plan. For example, if the current block is cruising at a nominal rate
+     and the feedrate override is reduced, the new nominal rate will now be lower. The velocity
+     profile must first decelerate to the new nominal rate and then follow on the new plan. 
+        Another issue is whether or not a feedrate override reduction causes a deceleration
+     that acts over several planner blocks. For example, say that the plan is already heavily
+     decelerating throughout it, reducing the feedrate override will not do much to it. So,
+     how do we determine when to resume the new plan? One solution is to tie into the feed hold
+     handling code to enforce a deceleration, but check when the current speed is less than or
+     equal to the block maximum speed and is in an acceleration or cruising ramp. At this 
+     point, we know that we can recompute the block velocity profile to meet and continue onto
+     the new block plan.
+*/

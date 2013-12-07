@@ -35,10 +35,17 @@
 
 #define MICROSECONDS_PER_ACCELERATION_TICK  (1000000/ACCELERATION_TICKS_PER_SECOND)
 
+
 void limits_init() 
 {
   LIMIT_DDR &= ~(LIMIT_MASK); // Set as input pins
-  LIMIT_PORT |= (LIMIT_MASK); // Enable internal pull-up resistors. Normal high operation.
+
+  #ifndef LIMIT_SWITCHES_ACTIVE_HIGH
+    LIMIT_PORT |= (LIMIT_MASK); // Enable internal pull-up resistors. Normal high operation.
+  #else // LIMIT_SWITCHES_ACTIVE_HIGH
+    LIMIT_PORT &= ~(LIMIT_MASK); // Normal low operation. Requires external pull-down.
+  #endif // !LIMIT_SWITCHES_ACTIVE_HIGH
+
   if (bit_istrue(settings.flags,BITFLAG_HARD_LIMIT_ENABLE)) {
     LIMIT_PCMSK |= LIMIT_MASK; // Enable specific pins of the Pin Change Interrupt
     PCICR |= (1 << LIMIT_INT); // Enable Pin Change Interrupt
@@ -47,6 +54,7 @@ void limits_init()
     PCICR &= ~(1 << LIMIT_INT); 
   }
 }
+
 
 // This is the Limit Pin Change Interrupt, which handles the hard limit feature. A bouncing 
 // limit switch can cause a lot of problems, like false readings and multiple interrupt calls.
@@ -94,7 +102,11 @@ static void homing_cycle(uint8_t cycle_mask, int8_t pos_dir, bool invert_pin, fl
      This will also fix the slow max feedrate of the homing 'lite' stepper algorithm.
      
      Need to check if setting the planner steps will require them to be volatile or not. */
-  
+
+  #ifdef LIMIT_SWITCHES_ACTIVE_HIGH
+    // When in an active-high switch configuration, invert_pin needs to be adjusted.
+    invert_pin = !invert_pin;
+  #endif  
   
   // Determine governing axes with finest step resolution per distance for the Bresenham
   // algorithm. This solves the issue when homing multiple axes that have different 

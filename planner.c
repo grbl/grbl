@@ -35,10 +35,10 @@
                                  // to be larger than any feasible (mm/min)^2 or mm/sec^2 value.
 
 static plan_block_t block_buffer[BLOCK_BUFFER_SIZE];  // A ring buffer for motion instructions
-static uint8_t block_buffer_tail;       // Index of the block to process now
-static uint8_t block_buffer_head;                // Index of the next block to be pushed
-static uint8_t next_buffer_head;                 // Index of the next buffer head
-static uint8_t block_buffer_planned;             // Index of the optimally planned block
+static uint8_t block_buffer_tail;     // Index of the block to process now
+static uint8_t block_buffer_head;     // Index of the next block to be pushed
+static uint8_t next_buffer_head;      // Index of the next buffer head
+static uint8_t block_buffer_planned;  // Index of the optimally planned block
 
 // Define planner variables
 typedef struct {
@@ -127,7 +127,7 @@ static uint8_t plan_prev_block_index(uint8_t block_index)
   decelerate to a complete stop at the end of the buffer, as stated by the guidelines. If this happens and
   becomes an annoyance, there are a few simple solutions: (1) Maximize the machine acceleration. The planner
   will be able to compute higher velocity profiles within the same combined distance. (2) Maximize line 
-  segment(s) distance per block to a desired tolerance. The more combined distance the planner has to use,
+  motion(s) distance per block to a desired tolerance. The more combined distance the planner has to use,
   the faster it can go. (3) Maximize the planner buffer size. This also will increase the combined distance
   for the planner to compute over. It also increases the number of computations the planner has to perform
   to compute an optimal plan, so select carefully. The Arduino 328p memory is already maxed out, but future
@@ -329,7 +329,7 @@ void plan_buffer_line(float *target, float feed_rate, uint8_t invert_feed_rate)
       inverse_unit_vec_value = abs(1.0/unit_vec[idx]); // Inverse to remove multiple float divides.
 
       // Check and limit feed rate against max individual axis velocities and accelerations
-      feed_rate = min(feed_rate,settings.max_velocity[idx]*inverse_unit_vec_value);
+      feed_rate = min(feed_rate,settings.max_rate[idx]*inverse_unit_vec_value);
       block->acceleration = min(block->acceleration,settings.acceleration[idx]*inverse_unit_vec_value);
 
       // Incrementally compute cosine of angle between previous and current path. Cos(theta) of the junction
@@ -417,7 +417,7 @@ void plan_sync_position()
 void plan_cycle_reinitialize()
 {
   // Re-plan from a complete stop. Reset planner entry speeds and buffer planned pointer.
-//   st_update_plan_block_parameters();
+  st_update_plan_block_parameters();
   block_buffer_planned = block_buffer_tail;
   planner_recalculate();  
 }

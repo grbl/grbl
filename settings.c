@@ -73,12 +73,12 @@ void settings_reset(bool reset_all) {
     settings.steps_per_mm[Z_AXIS] = DEFAULT_Z_STEPS_PER_MM;
     settings.pulse_microseconds = DEFAULT_STEP_PULSE_MICROSECONDS;
     settings.default_feed_rate = DEFAULT_FEEDRATE;
-    settings.max_velocity[X_AXIS] = DEFAULT_RAPID_FEEDRATE;
-    settings.max_velocity[Y_AXIS] = DEFAULT_RAPID_FEEDRATE;
-    settings.max_velocity[Z_AXIS] = DEFAULT_RAPID_FEEDRATE;
-    settings.acceleration[X_AXIS] = DEFAULT_ACCELERATION;
-    settings.acceleration[Y_AXIS] = DEFAULT_ACCELERATION;
-    settings.acceleration[Z_AXIS] = DEFAULT_ACCELERATION;
+    settings.max_rate[X_AXIS] = DEFAULT_X_MAX_RATE;
+    settings.max_rate[Y_AXIS] = DEFAULT_Y_MAX_RATE;
+    settings.max_rate[Z_AXIS] = DEFAULT_Z_MAX_RATE;
+    settings.acceleration[X_AXIS] = DEFAULT_X_ACCELERATION;
+    settings.acceleration[Y_AXIS] = DEFAULT_Y_ACCELERATION;
+    settings.acceleration[Z_AXIS] = DEFAULT_Z_ACCELERATION;
     settings.arc_tolerance = DEFAULT_ARC_TOLERANCE;
     settings.invert_mask = DEFAULT_STEPPING_INVERT_MASK;
     settings.junction_deviation = DEFAULT_JUNCTION_DEVIATION;
@@ -92,8 +92,8 @@ void settings_reset(bool reset_all) {
   if (DEFAULT_HARD_LIMIT_ENABLE) { settings.flags |= BITFLAG_HARD_LIMIT_ENABLE; }
   if (DEFAULT_HOMING_ENABLE) { settings.flags |= BITFLAG_HOMING_ENABLE; }
   settings.homing_dir_mask = DEFAULT_HOMING_DIR_MASK;
-  settings.homing_feed_rate = DEFAULT_HOMING_FEEDRATE;
-  settings.homing_seek_rate = DEFAULT_HOMING_RAPID_FEEDRATE;
+  settings.homing_feed_rate = DEFAULT_HOMING_FEED_RATE;
+  settings.homing_seek_rate = DEFAULT_HOMING_SEEK_RATE;
   settings.homing_debounce_delay = DEFAULT_HOMING_DEBOUNCE_DELAY;
   settings.homing_pulloff = DEFAULT_HOMING_PULLOFF;
   settings.stepper_idle_lock_time = DEFAULT_STEPPER_IDLE_LOCK_TIME;
@@ -163,9 +163,9 @@ uint8_t settings_store_global_setting(int parameter, float value) {
     case 0: case 1: case 2:
       if (value <= 0.0) { return(STATUS_SETTING_VALUE_NEG); } 
       settings.steps_per_mm[parameter] = value; break;
-    case 3: settings.max_velocity[X_AXIS] = value; break;
-    case 4: settings.max_velocity[Y_AXIS] = value; break;
-    case 5: settings.max_velocity[Z_AXIS] = value; break;
+    case 3: settings.max_rate[X_AXIS] = value; break;
+    case 4: settings.max_rate[Y_AXIS] = value; break;
+    case 5: settings.max_rate[Z_AXIS] = value; break;
     case 6: settings.acceleration[X_AXIS] = value*60*60; break; // Convert to mm/min^2 for grbl internal use.
     case 7: settings.acceleration[Y_AXIS] = value*60*60; break; // Convert to mm/min^2 for grbl internal use.
     case 8: settings.acceleration[Z_AXIS] = value*60*60; break; // Convert to mm/min^2 for grbl internal use.
