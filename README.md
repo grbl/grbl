@@ -3,7 +3,7 @@
 
 Grbl is a no-compromise, high performance, low cost alternative to parallel-port-based motion control for CNC milling. It will run on a vanilla Arduino (Duemillanove/Uno) as long as it sports an Atmega 328. 
 
-The controller is written in highly optimized C utilizing every clever feature of the AVR-chips to achieve precise timing and asynchronous operation. It is able to m	aintain more than 30kHz of stable, jitter free control pulses.
+The controller is written in highly optimized C utilizing every clever feature of the AVR-chips to achieve precise timing and asynchronous operation. It is able to maintain up to 30kHz of stable, jitter free control pulses.
 
 It accepts standards-compliant G-code and has been tested with the output of several CAM tools with no problems. Arcs, circles and helical motion are fully supported, as well as, other basic functional g-code commands. Functions and variables are not currently supported, but may be included in future releases in a form of a pre-processor.
 
@@ -11,12 +11,16 @@ Grbl includes full acceleration management with look ahead. That means the contr
 
 ##Downloads (Right-Click and Save-Link-As):
 _**Master Branch:**_
-* [Grbl v0.8c Atmega328p 16mhz 9600baud](http://bit.ly/SSdCJE) Last updated: 2013-04-05 (Line buffer increased and overflow feedback added.)
+* [Grbl v0.8c Atmega328p 16mhz 9600baud](http://bit.ly/SSdCJE) (Last updated: 2013-12-07)
+  - 2013-12-07: G18 and serial volatile fixes.
+  - 2013-04-05: Line buffer increased and overflow feedback added.
 
 _**Edge/Development Branch:**_
-* [Grbl v0.9a Build 2013-03-19](http://bit.ly/Y0tMHo) : Updated g-code G10.
-* [Grbl v0.9a Build 2012-12-21](http://bit.ly/VWe4VW) : For testing only. New experimental stepper algorithm. Smoother. Axes acceleration and maximum velocity limits. Automatic arc segment scaling by tolerance setting, leading to much faster feedrates about them. 30kHz step rate absolute max. CAUTION: Bugs still exist. Settings WILL be over-written. Please let us know of any lingering bugs (except with homing).
-
+* [Grbl v0.9a Build 2013-03-19](http://bit.ly/Y0tMHo) : Edge Branch
+  - New experimental stepper algorithm. Smoother. Axes acceleration and maximum velocity limits. Automatic arc segment scaling by tolerance setting, leading to much faster feedrates about them. Updated g-code G10. 30kHz step rate absolute max. CAUTION: Bugs still exist. Settings WILL be over-written. Please let us know of any lingering bugs (except with homing).
+* [Grbl v0.9b Build 2013-12-07](http://bit.ly/1jxQIFg) : Dev Branch (Baudrate: 115200) 
+  - Developmental branch build. Protected planner buffer and new step segment buffer allow performance increases over 4x in limited testing. No more racing conditions when jogging. Fearlessly drive at the maximum speeds of your machine. New soft limits feature that will safely prevent your machine exceed its travel limits and retain true positioning (only works with homing enabled). CAUTION: Bugs still exist and fixes will be pushed Settings WILL be over-written. Please let us know of any lingering bugs.
+  
 _**Archives:**_
 * [Grbl v0.8a Atmega328p 16mhz 9600baud](http://bit.ly/TVCTVv)
 * [Grbl v0.7d Atmega328p 16mhz 9600baud](http://bit.ly/ZhL15G)
