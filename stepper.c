@@ -107,7 +107,7 @@ typedef struct {
   float steps_remaining;
   
   uint8_t ramp_type;      // Current segment ramp state
-  float mm_eob;
+  float mm_complete;
   float current_speed;    // Current speed at the end of the segment buffer (mm/min)
   float maximum_speed;    // Maximum speed of executing block. Not always nominal speed. (mm/min)
   float exit_speed;       // Exit speed of executing block (mm/min)
@@ -491,8 +491,13 @@ void st_prep_buffer()
         else { prep.current_speed = sqrt(pl_block->entry_speed_sqr); }
       }
      
-      prep.mm_eob = 0.0;
-      
+      /* --------------------------------------------------------------------------------- 
+         Compute the velocity profile of a new planner block based on its entry and exit
+         speeds, or recompute the profile of a partially-completed planner block if the 
+         planner has updated it. For a commanded forced-deceleration, such as from a feed 
+         hold, override the planner velocities and decelerate to the target exit speed.
+      */
+      prep.mm_complete = 0.0;
       float inv_2_accel = 0.5/pl_block->acceleration;
       if (sys.state == STATE_HOLD) {
         // Compute velocity profile parameters for a feed hold in-progress. This profile overrides
@@ -501,12 +506,12 @@ void st_prep_buffer()
         float decel_dist = inv_2_accel*pl_block->entry_speed_sqr;
         if (decel_dist < pl_block->millimeters) {
           prep.exit_speed = 0.0;
-          prep.mm_eob = pl_block->millimeters-decel_dist;
+          prep.mm_complete = pl_block->millimeters-decel_dist;
         } else {
           prep.exit_speed = sqrt(pl_block->entry_speed_sqr-2*pl_block->acceleration*pl_block->millimeters);
         }
       } else {                
-        // Compute velocity profile parameters of the prepped planner block.
+        // Compute or recompute velocity profile parameters of the prepped planner block.
         prep.ramp_type = RAMP_ACCEL; // Initialize as acceleration ramp.
         prep.accelerate_until = pl_block->millimeters; 
         prep.exit_speed = plan_get_exec_block_exit_speed();   
@@ -550,24 +555,31 @@ void st_prep_buffer()
     // Set new segment to point to the current segment data block.
     prep_segment->st_block_index = prep.st_block_index;
 
-    /* -----------------------------------------------------------------------------------
-       Compute the average velocity of this new segment by determining the total distance
-       traveled over the segment time DT_SEGMENT. The following code first attempts to create 
-       a full segment based on the current ramp conditions. If the segment time is incomplete 
-       when terminating at a ramp state change, the code will continue to loop through the
-       progressing ramp states to fill the remaining segment execution time. However, if 
-       an incomplete segment terminates at the end of the planner block, the segment is 
-       considered completed despite having a truncated execution time less than DT_SEGMENT. 
+    /*------------------------------------------------------------------------------------
+        Compute the average velocity of this new segment by determining the total distance
+      traveled over the segment time DT_SEGMENT. The following code first attempts to create 
+      a full segment based on the current ramp conditions. If the segment time is incomplete 
+      when terminating at a ramp state change, the code will continue to loop through the
+      progressing ramp states to fill the remaining segment execution time. However, if 
+      an incomplete segment terminates at the end of the velocity profile, the segment is 
+      considered completed despite having a truncated execution time less than DT_SEGMENT.
+        The velocity profile is always assumed to progress through the ramp sequence:
+      acceleration ramp, cruising state, and deceleration ramp. Each ramp's travel distance
+      may range from zero to the length of the block. Velocity profiles can end either at 
+      the end of planner block (typical) or mid-block at the end of a forced deceleration, 
+      such as from a feed hold.
     */   
     float dt = 0.0;
     float mm_remaining = pl_block->millimeters;
     float time_var = DT_SEGMENT; // Time worker variable
-    float mm_var; // mm distance worker variable
+    float mm_var; // mm-Distance worker variable
+    float speed_var; // Speed work variable.
     do {
       switch (prep.ramp_type) {
         case RAMP_ACCEL: 
           // NOTE: Acceleration ramp only computes during first do-while loop.
-          mm_remaining -= DT_SEGMENT*(prep.current_speed + pl_block->acceleration*(0.5*DT_SEGMENT));
+          speed_var = pl_block->acceleration*DT_SEGMENT;
+          mm_remaining -= DT_SEGMENT*(prep.current_speed + 0.5*speed_var);
           if (mm_remaining < prep.accelerate_until) { // End of acceleration ramp.
             // Acceleration-cruise, acceleration-deceleration ramp junction, or end of block.
             mm_remaining = prep.accelerate_until; // NOTE: 0.0 at EOB
@@ -576,7 +588,7 @@ void st_prep_buffer()
             else { prep.ramp_type = RAMP_CRUISE; }
             prep.current_speed = prep.maximum_speed;
           } else { // Acceleration only. 
-            prep.current_speed += pl_block->acceleration*time_var;
+            prep.current_speed += speed_var;
           }
           break;
         case RAMP_CRUISE: 
@@ -592,23 +604,24 @@ void st_prep_buffer()
           } 
           break;
         default: // case RAMP_DECEL:
-          // NOTE: mm_var used to catch negative decelerate distance values near zero speed.
-          mm_var = time_var*(prep.current_speed - 0.5*pl_block->acceleration*time_var);
-          if ((mm_var > prep.mm_eob) && (mm_var < mm_remaining)) { // Deceleration only.
-            prep.current_speed -= pl_block->acceleration*time_var;
-            // Check for near-zero speed and prevent divide by zero in rare scenarios.
-            if (prep.current_speed > prep.exit_speed) { mm_remaining -= mm_var; }
-            else { mm_remaining = prep.mm_eob; } // NOTE: Force EOB for now. May or may not be needed.
-          } else { // End of block.
-            time_var = 2.0*(mm_remaining-prep.mm_eob)/(prep.current_speed+prep.exit_speed);
-            mm_remaining = prep.mm_eob;
-            // prep.current_speed = prep.exit_speed; // !! May be needed for feed hold reinitialization.
-          }
+          // NOTE: mm_var used as a misc worker variable to prevent errors when near zero speed.
+          speed_var = pl_block->acceleration*time_var; // Used as delta speed (mm/min)
+          if (prep.current_speed > speed_var) { // Check if at or below zero speed.
+            // Compute distance from end of segment to end of block.
+            mm_var = mm_remaining - time_var*(prep.current_speed - 0.5*speed_var); // (mm)
+            if (mm_var > prep.mm_complete) { // Deceleration only.
+              mm_remaining = mm_var;
+              prep.current_speed -= speed_var;
+              break; // Segment complete. Exit switch-case statement.
+            }
+          } // End of block or end of forced-deceleration.
+          time_var = 2.0*(mm_remaining-prep.mm_complete)/(prep.current_speed+prep.exit_speed);
+          mm_remaining = prep.mm_complete; 
       }
       dt += time_var; // Add computed ramp time to total segment time.
       if (dt < DT_SEGMENT) { time_var = DT_SEGMENT - dt; } // **Incomplete** At ramp junction.
       else { break; } // **Complete** Exit loop. Segment execution time maxed.      
-    } while (mm_remaining > prep.mm_eob); // **Complete** Exit loop. End of planner block.
+    } while (mm_remaining > prep.mm_complete); // **Complete** Exit loop. Profile complete.
    
     /* -----------------------------------------------------------------------------------
        Compute segment step rate, steps to execute, and step phase correction parameters.
@@ -622,7 +635,7 @@ void st_prep_buffer()
     */
     // Use time_var to pre-compute dt inversion with integer multiplier.
     time_var = (INV_TIME_MULTIPLIER/(60.0*ISR_TICKS_PER_SECOND))/dt; // (mult/isr_tic)
-    if (mm_remaining > 0.0) { 
+    if (mm_remaining > 0.0) { // Block still incomplete. Distance remaining to be executed.
       float steps_remaining = prep.step_per_mm*mm_remaining; 
       prep_segment->dist_per_tick = ceil( (prep.steps_remaining-steps_remaining)*time_var ); // (mult*step/isr_tic)
 
@@ -631,7 +644,7 @@ void st_prep_buffer()
       prep_segment->n_step = ceil(prep.steps_remaining)-ceil(steps_remaining);
 
       // Update step execution variables.
-      if (mm_remaining == prep.mm_eob) {
+      if (mm_remaining == prep.mm_complete) {
         // NOTE: Currently only feed holds qualify for this scenario. May change with overrides.
         prep.current_speed = 0.0;
         prep.steps_remaining = ceil(steps_remaining);
