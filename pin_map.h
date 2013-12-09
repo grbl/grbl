@@ -86,14 +86,25 @@
   #define PINOUT_DDR       DDRC
   #define PINOUT_PIN       PINC
   #define PINOUT_PORT      PORTC
-  #define PIN_RESET        0  // Uno Analog Pin 0
+//  #define PIN_RESET        0  // Uno Analog Pin 0
   #define PIN_FEED_HOLD    1  // Uno Analog Pin 1
   #define PIN_CYCLE_START  2  // Uno Analog Pin 2
   #define PINOUT_INT       PCIE1  // Pin change interrupt enable pin
   #define PINOUT_INT_vect  PCINT1_vect
   #define PINOUT_PCMSK     PCMSK1 // Pin change interrupt register
-  #define PINOUT_MASK ((1<<PIN_RESET)|(1<<PIN_FEED_HOLD)|(1<<PIN_CYCLE_START))
-  
+//  #define PINOUT_MASK ((1<<PIN_RESET)|(1<<PIN_FEED_HOLD)|(1<<PIN_CYCLE_START))
+  #define PINOUT_MASK ((1<<PIN_FEED_HOLD)|(1<<PIN_CYCLE_START))
+
+  // Probing
+  #define PROBE_DDR       DDRC
+  #define PROBE_PIN       PINC
+  #define PROBE_PORT      PORTC
+  #define PIN_PROBE  0  // Uno Analog Pin 0
+  #define PROBE_INT       PCIE1  // Pin change interrupt enable pin
+  #define PROBE_INT_vect  PCINT1_vect
+  #define PROBE_PCMSK     PCMSK1 // Pin change interrupt register
+  #define PROBE_MASK ((1<<PIN_PROBE))
+
 #endif
 
 

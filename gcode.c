@@ -113,6 +113,7 @@ uint8_t gc_execute_line(char *line)
   clear_vector(gc.arc_offset); // IJK Arc offsets are incremental. Value of zero indicates no change.
 
   gc.status_code = STATUS_OK;
+  gc.probing = PROBING_NONE;
   
   /* Pass 1: Commands and set all modes. Check for modal group violations.
      NOTE: Modal group numbers are defined in Table 4 of NIST RS274-NGC v3, pg.20 */
@@ -124,7 +125,7 @@ uint8_t gc_execute_line(char *line)
         // Set modal group values
         switch(int_value) {
           case 4: case 10: case 28: case 30: case 53: case 92: group_number = MODAL_GROUP_0; break;
-          case 0: case 1: case 2: case 3: case 80: group_number = MODAL_GROUP_1; break;
+          case 0: case 1: case 2: case 3: case 80: case 38: group_number = MODAL_GROUP_1; break;
           case 17: case 18: case 19: group_number = MODAL_GROUP_2; break;
           case 90: case 91: group_number = MODAL_GROUP_3; break;
           case 93: case 94: group_number = MODAL_GROUP_5; break;
@@ -151,6 +152,25 @@ uint8_t gc_execute_line(char *line)
               case 281: non_modal_action = NON_MODAL_SET_HOME_0; break;
               case 300: non_modal_action = NON_MODAL_GO_HOME_1; break;
               case 301: non_modal_action = NON_MODAL_SET_HOME_1; break;
+              default: FAIL(STATUS_UNSUPPORTED_STATEMENT);
+            }
+            break;
+          case 38:
+            gc.motion_mode = MOTION_MODE_PROBE;
+            int_value = trunc(10*value); // Multiply by 10 to pick up Gxx.1
+            switch(int_value) {
+              case 382:
+            	  gc.probing = PROBING | PROBING_TO | PROBING_ERR;
+            	  break;
+              case 383:
+            	  gc.probing = PROBING | PROBING_TO;
+              break;
+              case 384:
+            	  gc.probing = PROBING | PROBING_ERR;
+              break;
+              case 385:
+            	  gc.probing = PROBING;
+              break;
               default: FAIL(STATUS_UNSUPPORTED_STATEMENT);
             }
             break;
@@ -423,6 +443,10 @@ uint8_t gc_execute_line(char *line)
         if (!axis_words) { FAIL(STATUS_INVALID_STATEMENT);} 
         else { mc_line(target, (gc.inverse_feed_rate_mode) ? inverse_feed_rate : gc.feed_rate, gc.inverse_feed_rate_mode); }
         break;
+      case MOTION_MODE_PROBE:
+        if (!axis_words) { FAIL(STATUS_INVALID_STATEMENT);}
+        else { mc_line_probe(target, (gc.inverse_feed_rate_mode) ? inverse_feed_rate : gc.feed_rate, gc.inverse_feed_rate_mode, gc.probing); }
+        break;
       case MOTION_MODE_CW_ARC: case MOTION_MODE_CCW_ARC:
         // Check if at least one of the axes of the selected plane has been specified. If in center 
         // format arc mode, also check for at least one of the IJK axes of the selected plane was sent.
@@ -456,7 +480,9 @@ uint8_t gc_execute_line(char *line)
     // As far as the parser is concerned, the position is now == target. In reality the
     // motion control system might still be processing the action and the real tool position
     // in any intermediate location.
-    memcpy(gc.position, target, sizeof(target)); // gc.position[] = target[];
+    if(gc.motion_mode != MOTION_MODE_PROBE){// If probing, gc.position is already set.
+    	memcpy(gc.position, target, sizeof(target)); // gc.position[] = target[];
+    }
   }
   
   // M0,M1,M2,M30: Perform non-running program flow actions. During a program pause, the buffer may 

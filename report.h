@@ -41,6 +41,7 @@
 // Define Grbl alarm codes. Less than zero to distinguish alarm error from status error.
 #define ALARM_LIMIT_ERROR -1
 #define ALARM_ABORT_CYCLE -2
+#define PROBING_LIMIT_REACHED -3
 
 // Define Grbl feedback message codes.
 #define MESSAGE_CRITICAL_EVENT 1
@@ -78,5 +79,8 @@ void report_gcode_modes();
 
 // Prints startup line
 void report_startup_line(uint8_t n, char *line);
+
+// Prints the mashine position when probing
+void report_probe_position();
 
 #endif

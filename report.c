@@ -92,6 +92,8 @@ void report_alarm_message(int8_t alarm_code)
     printPgmString(PSTR("Hard/soft limit")); break;
     case ALARM_ABORT_CYCLE: 
     printPgmString(PSTR("Abort during cycle")); break;
+    case PROBING_LIMIT_REACHED:
+    printPgmString(PSTR("Probing limit reached")); break;
   }
   printPgmString(PSTR(". MPos?\r\n"));
   delay_ms(500); // Force delay to ensure message clears serial write buffer.
@@ -339,4 +341,37 @@ void report_realtime_status()
   }
     
   printPgmString(PSTR(">\r\n"));
+}
+
+void report_probe_position()
+{
+  uint8_t i;
+  int32_t current_position[N_AXIS]; // Copy current state of the system position variable
+  memcpy(current_position,sys.position,sizeof(sys.probe_position));
+  float print_position[N_AXIS];
+
+  printPgmString(PSTR("#Probe"));
+
+  // Report machine position
+  printPgmString(PSTR(",MPos:"));
+  for (i=0; i< N_AXIS; i++) {
+    print_position[i] = current_position[i]/settings.steps_per_mm[i];
+    if (bit_istrue(settings.flags,BITFLAG_REPORT_INCHES)) { print_position[i] *= INCH_PER_MM; }
+    printFloat(print_position[i]);
+    printPgmString(PSTR(","));
+  }
+
+  // Report work position
+  printPgmString(PSTR("WPos:"));
+  for (i=0; i< N_AXIS; i++) {
+    if (bit_istrue(settings.flags,BITFLAG_REPORT_INCHES)) {
+      print_position[i] -= (gc.coord_system[i]+gc.coord_offset[i])*INCH_PER_MM;
+    } else {
+      print_position[i] -= gc.coord_system[i]+gc.coord_offset[i];
+    }
+    printFloat(print_position[i]);
+    if (i < (N_AXIS-1)) { printPgmString(PSTR(",")); }
+  }
+
+  printPgmString(PSTR("#\r\n"));
 }

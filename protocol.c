@@ -31,6 +31,7 @@
 #include "stepper.h"
 #include "report.h"
 #include "motion_control.h"
+#include "probe.h"
 
 static char line[LINE_BUFFER_SIZE]; // Line to be executed. Zero-terminated.
 static uint8_t char_counter; // Last character counter in line variable.
@@ -81,14 +82,16 @@ ISR(PINOUT_INT_vect)
 {
   // Enter only if any pinout pin is actively low.
   if ((PINOUT_PIN & PINOUT_MASK) ^ PINOUT_MASK) { 
-    if (bit_isfalse(PINOUT_PIN,bit(PIN_RESET))) {
-      mc_reset();
-    } else if (bit_isfalse(PINOUT_PIN,bit(PIN_FEED_HOLD))) {
+//    if (bit_isfalse(PINOUT_PIN,bit(PIN_RESET))) {
+//      mc_reset();
+//    } else
+    if (bit_isfalse(PINOUT_PIN,bit(PIN_FEED_HOLD))) {
       sys.execute |= EXEC_FEED_HOLD; 
     } else if (bit_isfalse(PINOUT_PIN,bit(PIN_CYCLE_START))) {
       sys.execute |= EXEC_CYCLE_START;
     }
   }
+  probe_ISR();
 }
 
 // Executes run-time commands, when required. This is called from various check points in the main
@@ -172,6 +175,12 @@ void protocol_execute_runtime()
         sys.auto_start = true; // Re-enable auto start after feed hold.
       }
       bit_false(sys.execute,EXEC_CYCLE_START);
+    }
+
+    // Execute and serial print probe status
+    if (rt_exec & EXEC_PROBE_REPORT) {
+      report_probe_position();
+      bit_false(sys.execute,EXEC_PROBE_REPORT);
     }
   }
   

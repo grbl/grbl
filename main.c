@@ -35,6 +35,7 @@
 #include "gcode.h"
 #include "protocol.h"
 #include "limits.h"
+#include "probe.h"
 #include "report.h"
 #include "settings.h"
 #include "serial.h"
@@ -68,6 +69,7 @@ int main(void)
       spindle_init();
       coolant_init();
       limits_init();
+      probe_init();
       st_reset(); // Clear stepper subsystem variables.
 
       // Sync cleared gcode and planner positions to current system position, which is only

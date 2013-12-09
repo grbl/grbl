@@ -35,6 +35,11 @@
 #include "planner.h"
 #include "limits.h"
 #include "protocol.h"
+#include "report.h"
+
+
+static void line(float *target, float feed_rate, uint8_t invert_feed_rate, uint8_t probing);
+
 
 // Execute linear motion in absolute millimeter coordinates. Feed rate given in millimeters/second
 // unless invert_feed_rate is true. Then the feed_rate means that the motion should be completed in
@@ -44,6 +49,11 @@
 // mc_line and plan_buffer_line is done primarily to place non-planner-type functions from being
 // in the planner and to let backlash compensation or canned cycle integration simple and direct.
 void mc_line(float *target, float feed_rate, uint8_t invert_feed_rate)
+{
+	line(target, feed_rate,  invert_feed_rate, 0);
+}
+
+void line(float *target, float feed_rate, uint8_t invert_feed_rate, uint8_t probing)
 {
   // If enabled, check for soft limit violations. Placed here all line motions are picked up
   // from everywhere in Grbl.
@@ -72,13 +82,71 @@ void mc_line(float *target, float feed_rate, uint8_t invert_feed_rate)
     else { break; }
   } while (1);
 
-  plan_buffer_line(target, feed_rate, invert_feed_rate);
+  plan_buffer_line(target, feed_rate, invert_feed_rate, probing);
 
   // If idle, indicate to the system there is now a planned block in the buffer ready to cycle 
   // start. Otherwise ignore and continue on.
   if (!sys.state) { sys.state = STATE_QUEUED; }
 }
 
+void mc_line_probe(float *target, float feed_rate, uint8_t invert_feed_rate, uint8_t probing)
+{
+  plan_synchronize();
+  line(target, feed_rate, invert_feed_rate, probing);
+  st_cycle_start();
+
+  plan_block_t *block;
+//  while ((block = plan_get_current_block()) && !block->probing)
+//  {
+//    protocol_execute_runtime();
+//    if (sys.abort)
+//    {
+//      return;
+//    }
+//  }
+
+  while ((block = plan_get_current_block()) && block->probing && bit_isfalse(block->probing, PROBING_HANDELD))
+  {
+    protocol_execute_runtime();
+    if (sys.abort)
+    {
+      return;
+    }
+  }
+  plan_sync_position();
+  gc_sync_position(sys.position[X_AXIS], sys.position[Y_AXIS], sys.position[Z_AXIS]);
+
+  if (block && bit_istrue(block->probing, PROBING_TOUCH))
+  {
+
+    // Go back to probing position
+    float probe_pos[N_AXIS];
+    probe_pos[X_AXIS] = (sys.probe_position[X_AXIS]) / settings.steps_per_mm[X_AXIS];
+    probe_pos[Y_AXIS] = (sys.probe_position[Y_AXIS]) / settings.steps_per_mm[Y_AXIS];
+    probe_pos[Z_AXIS] = (sys.probe_position[Z_AXIS]) / settings.steps_per_mm[Z_AXIS];
+
+    st_reset();
+    plan_discard_current_block();
+
+    report_realtime_status();
+    line(probe_pos, feed_rate, invert_feed_rate, PROBING_REPOS);
+    st_cycle_start();
+    if (bit_istrue(settings.flags, BITFLAG_AUTO_START))
+    {
+      sys.auto_start = true; // Re-enable auto start after feed hold.
+    }
+    while ((block = plan_get_current_block()) && block->probing)
+    {
+      protocol_execute_runtime();
+      if (sys.abort)
+      {
+        return;
+      }
+    }
+    plan_sync_position();
+    gc_sync_position(sys.position[X_AXIS], sys.position[Y_AXIS], sys.position[Z_AXIS]);
+  }
+}
 
 // Execute an arc in offset mode format. position == current xyz, target == target xyz, 
 // offset == offset from current xyz, axis_XXX defines circle plane in tool space, axis_linear is
