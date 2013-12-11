@@ -20,7 +20,6 @@
 #ifndef report_h
 #define report_h
 
-
 // Define Grbl status codes.
 #define STATUS_OK 0
 #define STATUS_BAD_NUMBER_FORMAT 1

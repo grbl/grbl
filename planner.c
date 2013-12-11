@@ -326,7 +326,7 @@ void plan_buffer_line(float *target, float feed_rate, uint8_t invert_feed_rate)
   for (idx=0; idx<N_AXIS; idx++) {
     if (unit_vec[idx] != 0) {  // Avoid divide by zero.
       unit_vec[idx] *= inverse_millimeters;  // Complete unit vector calculation
-      inverse_unit_vec_value = abs(1.0/unit_vec[idx]); // Inverse to remove multiple float divides.
+      inverse_unit_vec_value = fabs(1.0/unit_vec[idx]); // Inverse to remove multiple float divides.
 
       // Check and limit feed rate against max individual axis velocities and accelerations
       feed_rate = min(feed_rate,settings.max_rate[idx]*inverse_unit_vec_value);
@@ -338,8 +338,7 @@ void plan_buffer_line(float *target, float feed_rate, uint8_t invert_feed_rate)
       junction_cos_theta -= pl.previous_unit_vec[idx] * unit_vec[idx];
     }
   }
-
-
+  
   // TODO: Need to check this method handling zero junction speeds when starting from rest.
   if (block_buffer_head == block_buffer_tail) {
   

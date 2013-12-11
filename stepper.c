@@ -26,11 +26,12 @@
 #include "planner.h"
 #include "nuts_bolts.h"
 
-
-// Some useful constants
+// Some useful constants.
 #define TICKS_PER_MICROSECOND (F_CPU/1000000)
 #define DT_SEGMENT (1.0/(ACCELERATION_TICKS_PER_SECOND*60.0)) // min/segment
-
+#define STEP_FTOL_MULTIPLIER 100000 // Multiplier converts floating point step rate to long 
+                                    // integer for stepper algorithm step-distance counter.
+                                    
 #define RAMP_ACCEL 0
 #define RAMP_CRUISE 1
 #define RAMP_DECEL 2
@@ -107,7 +108,7 @@ typedef struct {
   float steps_remaining;
   
   uint8_t ramp_type;      // Current segment ramp state
-  float mm_complete;
+  float mm_complete;      // End of velocity profile from end of current planner block in (mm).
   float current_speed;    // Current speed at the end of the segment buffer (mm/min)
   float maximum_speed;    // Maximum speed of executing block. Not always nominal speed. (mm/min)
   float exit_speed;       // Exit speed of executing block (mm/min)
@@ -165,7 +166,7 @@ void st_wake_up()
   } else { 
     STEPPERS_DISABLE_PORT &= ~(1<<STEPPERS_DISABLE_BIT);
   }
-  if (sys.state == STATE_CYCLE) {
+  if ((sys.state == STATE_CYCLE) || (sys.state == STATE_HOMING)){
     // Initialize stepper output bits
     st.out_bits = settings.invert_mask; 
     // Initialize step pulse timing from settings.
@@ -282,14 +283,14 @@ ISR(TIMER2_COMPA_vect)
   st.counter_dist += st.exec_segment->dist_per_tick; 
   
   // Execute Bresenham step event, when it's time to do so.
-  if (st.counter_dist > INV_TIME_MULTIPLIER) {
+  if (st.counter_dist > STEP_FTOL_MULTIPLIER) {
     if (st.step_count > 0) {  // Block phase correction from executing step. 
-      st.counter_dist -= INV_TIME_MULTIPLIER; // Reload inverse time counter
+      st.counter_dist -= STEP_FTOL_MULTIPLIER; // Reload inverse time counter
       st.step_count--; // Decrement step events count    
 
       // Execute step displacement profile by Bresenham line algorithm
       st.execute_step = true;
-      st.out_bits = st.exec_block->direction_bits; // Reset out_bits and reload direction bits      
+      st.out_bits = st.exec_block->direction_bits; // Reset out_bits and reload direction bits
       st.counter_x -= st.exec_block->steps[X_AXIS];
       if (st.counter_x < 0) {
         st.out_bits |= (1<<X_STEP_BIT);
@@ -311,6 +312,10 @@ ISR(TIMER2_COMPA_vect)
         if (st.out_bits & (1<<Z_DIRECTION_BIT)) { sys.position[Z_AXIS]--; }
         else { sys.position[Z_AXIS]++; }
       }  
+      
+      // Block any axis with limit switch active from moving.
+      if (sys.state == STATE_HOMING) { st.out_bits &= sys.homing_axis_lock; }
+      
       st.out_bits ^= settings.invert_mask;  // Apply step port invert mask    
     }
   }
@@ -455,8 +460,8 @@ void st_update_plan_block_parameters()
 */
 void st_prep_buffer()
 {
+  if (sys.state == STATE_QUEUED) { return; } // Block until a motion state is issued
   while (segment_buffer_tail != segment_next_head) { // Check if we need to fill the buffer.
-    if (sys.state == STATE_QUEUED) { return; } // Block until a motion state is issued
     
     // Determine if we need to load a new planner block or if the block remainder is replanned. 
     if (pl_block == NULL) {
@@ -484,7 +489,8 @@ void st_prep_buffer()
         prep.steps_remaining = st_prep_block->step_event_count;
         prep.step_per_mm = prep.steps_remaining/pl_block->millimeters;
 
-        if (sys.state == STATE_HOLD) { 
+        if (sys.state == STATE_HOLD) {
+          // Override planner block entry speed and enforce deceleration during feed hold.
           prep.current_speed = prep.exit_speed; 
           pl_block->entry_speed_sqr = prep.exit_speed*prep.exit_speed; 
         }
@@ -497,7 +503,7 @@ void st_prep_buffer()
          planner has updated it. For a commanded forced-deceleration, such as from a feed 
          hold, override the planner velocities and decelerate to the target exit speed.
       */
-      prep.mm_complete = 0.0;
+      prep.mm_complete = 0.0; // Default velocity profile complete at 0.0mm from end of block.
       float inv_2_accel = 0.5/pl_block->acceleration;
       if (sys.state == STATE_HOLD) {
         // Compute velocity profile parameters for a feed hold in-progress. This profile overrides
@@ -506,7 +512,7 @@ void st_prep_buffer()
         float decel_dist = inv_2_accel*pl_block->entry_speed_sqr;
         if (decel_dist < pl_block->millimeters) {
           prep.exit_speed = 0.0;
-          prep.mm_complete = pl_block->millimeters-decel_dist;
+          prep.mm_complete = pl_block->millimeters-decel_dist; // End of feed hold.
         } else {
           prep.exit_speed = sqrt(pl_block->entry_speed_sqr-2*pl_block->acceleration*pl_block->millimeters);
         }
@@ -634,13 +640,13 @@ void st_prep_buffer()
        supported by Grbl (i.e. exceeding 10 meters axis travel at 200 step/mm).
     */
     // Use time_var to pre-compute dt inversion with integer multiplier.
-    time_var = (INV_TIME_MULTIPLIER/(60.0*ISR_TICKS_PER_SECOND))/dt; // (mult/isr_tic)
+    time_var = (STEP_FTOL_MULTIPLIER/(60.0*ISR_TICKS_PER_SECOND))/dt; // (ftol_mult/isr_tic)
     if (mm_remaining > 0.0) { // Block still incomplete. Distance remaining to be executed.
       float steps_remaining = prep.step_per_mm*mm_remaining; 
-      prep_segment->dist_per_tick = ceil( (prep.steps_remaining-steps_remaining)*time_var ); // (mult*step/isr_tic)
+      prep_segment->dist_per_tick = ceil( (prep.steps_remaining-steps_remaining)*time_var ); // (ftol_mult*step/isr_tic)
 
       // Compute number of steps to execute and segment step phase correction. 
-      prep_segment->phase_dist = ceil(INV_TIME_MULTIPLIER*(ceil(steps_remaining)-steps_remaining));
+      prep_segment->phase_dist = ceil(STEP_FTOL_MULTIPLIER*(ceil(steps_remaining)-steps_remaining));
       prep_segment->n_step = ceil(prep.steps_remaining)-ceil(steps_remaining);
 
       // Update step execution variables.
@@ -648,7 +654,7 @@ void st_prep_buffer()
         // NOTE: Currently only feed holds qualify for this scenario. May change with overrides.
         prep.current_speed = 0.0;
         prep.steps_remaining = ceil(steps_remaining);
-        pl_block->millimeters = prep.steps_remaining/prep.step_per_mm;
+        pl_block->millimeters = prep.steps_remaining/prep.step_per_mm; // Update with full steps.
         plan_cycle_reinitialize();
         sys.state = STATE_QUEUED; // End cycle.
       } else {
@@ -682,12 +688,14 @@ void st_prep_buffer()
 // int32_t blength = segment_buffer_head - segment_buffer_tail;
 // if (blength < 0) { blength += SEGMENT_BUFFER_SIZE; } 
 // printInteger(blength);
+    
+    if ((sys.state == STATE_HOMING) || (sys.state == STATE_QUEUED)) { return; } // Force only one prepped segment.
   } 
 }      
 
 /* 
    TODO: With feedrate overrides, increases to the override value will not significantly
-     change the planner and stepper current operation. When the value increases, we simply
+     change the current planner and stepper operation. When the value increases, we simply
      need to recompute the block plan with new nominal speeds and maximum junction velocities.
      However with a decreasing feedrate override, this gets a little tricky. The current block
      plan is optimal, so if we try to reduce the feed rates, it may be impossible to create 
@@ -704,4 +712,10 @@ void st_prep_buffer()
      equal to the block maximum speed and is in an acceleration or cruising ramp. At this 
      point, we know that we can recompute the block velocity profile to meet and continue onto
      the new block plan.
+       One "easy" way to do this is to have the step segment buffer enforce a deceleration and
+     continually re-plan the planner buffer until the plan becomes feasible. This can work
+     and may be easy to implement, but it expends a lot of CPU cycles and may block out the
+     rest of the functions from operating at peak efficiency. Still the question is how do 
+     we know when the plan is feasible in the context of what's already in the code and not
+     require too much more code? 
 */
