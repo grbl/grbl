@@ -18,8 +18,8 @@ _**Master Branch:**_
 _**Edge/Development Branch:**_
 * [Grbl v0.9a Build 2013-03-19](http://bit.ly/Y0tMHo) : Edge Branch
   - New experimental stepper algorithm. Smoother. Axes acceleration and maximum velocity limits. Automatic arc segment scaling by tolerance setting, leading to much faster feedrates about them. Updated g-code G10. 30kHz step rate absolute max. CAUTION: Bugs still exist. Settings WILL be over-written. Please let us know of any lingering bugs (except with homing).
-* [Grbl v0.9b Build 2013-12-07](http://bit.ly/1jxQIFg) : Dev Branch (Baudrate: 115200) 
-  - Developmental branch build. Protected planner buffer and new step segment buffer allow performance increases over 4x in limited testing. No more racing conditions when jogging. Fearlessly drive at the maximum speeds of your machine. New soft limits feature that will safely prevent your machine exceed its travel limits and retain true positioning (only works with homing enabled). CAUTION: Bugs still exist and fixes will be pushed Settings WILL be over-written. Please let us know of any lingering bugs.
+* [Grbl v0.9b Build 2013-12-10](http://bit.ly/1bChskB) : Dev Branch (Baudrate: 115200) 
+  - Developmental branch build. Protected planner buffer and new step segment buffer allow performance increases over 4x in limited testing. No more racing conditions when jogging. Fearlessly drive at the maximum speeds of your machine. New soft limits feature that will safely prevent your machine exceed its travel limits and retain true positioning (only works with homing enabled). Homing cycle improvement. CAUTION: Bugs still exist and fixes will be pushed Settings WILL be over-written. Please let us know of any lingering bugs.
   
 _**Archives:**_
 * [Grbl v0.8a Atmega328p 16mhz 9600baud](http://bit.ly/TVCTVv)
