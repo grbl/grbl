@@ -74,7 +74,7 @@ typedef struct {
   float feed_rate;                 // Millimeters/min
   float position[N_AXIS];          // Where the interpreter considers the tool to be at this point in the code
   uint8_t tool;
-//  uint16_t spindle_speed;          // RPM/100
+  uint16_t spindle_speed;          // RPM
   uint8_t plane_axis_0, 
           plane_axis_1, 
           plane_axis_2;            // The axes of the selected plane  
