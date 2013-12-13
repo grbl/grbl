@@ -5,6 +5,7 @@
   Copyright (c) 2011-2013 Sungeun K. Jeon
   Copyright (c) 2009-2011 Simen Svale Skogsrud
   Copyright (c) 2011 Jens Geisler  
+  Copyright (c) 2013 Henrik Olsson
   
   Grbl is free software: you can redistribute it and/or modify
   it under the terms of the GNU General Public License as published by
@@ -280,6 +281,7 @@ void plan_buffer_line(float *target, float feed_rate, uint8_t invert_feed_rate, 
   block->millimeters = 0;
   block->direction_bits = 0;
   block->acceleration = SOME_LARGE_VALUE; // Scaled down to maximum acceleration later
+  block->probing = probing;
 
   // Compute and store initial move distance data.
   // TODO: After this for-loop, we don't touch the stepper algorithm data. Might be a good idea

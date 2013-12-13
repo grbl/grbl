@@ -127,6 +127,7 @@ void mc_line_probe(float *target, float feed_rate, uint8_t invert_feed_rate, uin
     probe_pos[Z_AXIS] = (sys.probe_position[Z_AXIS]) / settings.steps_per_mm[Z_AXIS];
 
     st_reset();
+    st_cycle_reinitialize();
     plan_discard_current_block();
 
     report_realtime_status();

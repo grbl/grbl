@@ -1,5 +1,5 @@
 /*
- probe.h - code pertaining to perform probing in Grbl
+ probe.c - code pertaining to perform probing in Grbl
 
  Copyright (c) 2013 Henrik Olsson
 
