@@ -32,8 +32,9 @@ void probe_init()
 
 void probe_ISR()
 {
+	PCICR ^= (1 << PROBE_INT);   // Disable Pin Change Interrupt
 	plan_block_t *block = plan_get_current_block();
-	if (block && block->probing && bit_isfalse(block->probing, PROBING_TOUCH) && bit_isfalse(block->probing, PROBING_REPOS))
+	if (block && block->probing && bit_isfalse(block->probing, PROBING_TOUCH))
 	{
 		if ((bit_isfalse(PROBE_PIN,bit(PIN_PROBE)) && bit_istrue(block->probing ,PROBING_TO))
 		  || (bit_istrue(PROBE_PIN,bit(PIN_PROBE)) && bit_isfalse(block->probing,PROBING_TO)))
@@ -45,5 +46,6 @@ void probe_ISR()
 			bit_true(sys.execute, EXEC_PROBE_REPORT);
 		}
 	}
+	PCICR |= (1 << PROBE_INT);   // Enable Pin Change Interrupt
 }
 

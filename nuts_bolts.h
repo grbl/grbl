@@ -92,7 +92,6 @@
 #define PROBING_ERR 4 //
 #define PROBING_HANDELD 8 //
 #define PROBING_TOUCH 16 //
-#define PROBING_REPOS 32 //
 
 
 // Define global system variables
