@@ -21,7 +21,7 @@
 #include "stepper.h"
 #include "planner.h"
 #include "pin_map.h"
-
+#ifdef PROBE_38
 void probe_init()
 {
 	PROBE_DDR &= ~(PROBE_MASK); // Set as input pins
@@ -48,4 +48,4 @@ void probe_ISR()
 	}
 	PCICR |= (1 << PROBE_INT);   // Enable Pin Change Interrupt
 }
-
+#endif

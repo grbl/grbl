@@ -37,6 +37,8 @@
 #include "protocol.h"
 #include "limits.h"
 #include "probe.h"
+#ifdef PROBE_38
+#endif
 #include "report.h"
 #include "settings.h"
 #include "serial.h"
@@ -70,7 +72,9 @@ int main(void)
       spindle_init();
       coolant_init();
       limits_init();
+#ifdef PROBE_38
       probe_init();
+#endif
       st_reset(); // Clear stepper subsystem variables.
 
       // Sync cleared gcode and planner positions to current system position, which is only

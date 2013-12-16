@@ -36,13 +36,10 @@
 #include "planner.h"
 #include "limits.h"
 #include "protocol.h"
-#include "report.h"
-#include <avr/pgmspace.h>
-#include "print.h"
 
-
+#ifdef PROBE_38
 static void line(float *target, float feed_rate, uint8_t invert_feed_rate, uint8_t probing);
-
+#endif
 
 // Execute linear motion in absolute millimeter coordinates. Feed rate given in millimeters/second
 // unless invert_feed_rate is true. Then the feed_rate means that the motion should be completed in
@@ -53,11 +50,13 @@ static void line(float *target, float feed_rate, uint8_t invert_feed_rate, uint8
 // in the planner and to let backlash compensation or canned cycle integration simple and direct.
 void mc_line(float *target, float feed_rate, uint8_t invert_feed_rate)
 {
-	line(target, feed_rate,  invert_feed_rate, 0);
+#ifdef PROBE_38
+  line(target, feed_rate,  invert_feed_rate, 0);
 }
 
 void line(float *target, float feed_rate, uint8_t invert_feed_rate, uint8_t probing)
 {
+#endif
   // If enabled, check for soft limit violations. Placed here all line motions are picked up
   // from everywhere in Grbl.
   if (bit_istrue(settings.flags,BITFLAG_SOFT_LIMIT_ENABLE)) { limits_soft_check(target); }    
@@ -85,13 +84,17 @@ void line(float *target, float feed_rate, uint8_t invert_feed_rate, uint8_t prob
     else { break; }
   } while (1);
 
-  plan_buffer_line(target, feed_rate, invert_feed_rate, probing);
+  plan_buffer_line(target, feed_rate, invert_feed_rate
+#ifdef PROBE_38
+      , probing
+#endif
+      );
 
   // If idle, indicate to the system there is now a planned block in the buffer ready to cycle 
   // start. Otherwise ignore and continue on.
   if (!sys.state) { sys.state = STATE_QUEUED; }
 }
-
+#ifdef PROBE_38
 void mc_line_probe(float *target, float feed_rate, uint8_t invert_feed_rate, uint8_t probing)
 {
   st_cycle_start();
@@ -138,7 +141,7 @@ void mc_line_probe(float *target, float feed_rate, uint8_t invert_feed_rate, uin
     gc_sync_position(sys.position[X_AXIS], sys.position[Y_AXIS], sys.position[Z_AXIS]);
   }
 }
-
+#endif
 // Execute an arc in offset mode format. position == current xyz, target == target xyz, 
 // offset == offset from current xyz, axis_XXX defines circle plane in tool space, axis_linear is
 // the direction of helical travel, radius == circle radius, isclockwise boolean. Used

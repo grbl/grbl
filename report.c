@@ -344,6 +344,7 @@ void report_realtime_status()
   printPgmString(PSTR(">\r\n"));
 }
 
+#ifdef PROBE_38
 void report_probe_position()
 {
   uint8_t i;
@@ -351,7 +352,7 @@ void report_probe_position()
   memcpy(current_position,sys.position,sizeof(sys.probe_position));
   float print_position[N_AXIS];
 
-  printPgmString(PSTR("#Probe"));
+  printPgmString(PSTR("<Probe"));
 
   // Report machine position
   printPgmString(PSTR(",MPos:"));
@@ -374,5 +375,6 @@ void report_probe_position()
     if (i < (N_AXIS-1)) { printPgmString(PSTR(",")); }
   }
 
-  printPgmString(PSTR("#\r\n"));
+  printPgmString(PSTR(">\r\n"));
 }
+#endif

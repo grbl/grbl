@@ -19,10 +19,11 @@
 
 #ifndef probe_h
 #define probe_h
-
+#ifdef PROBE_38
 // Initialize the probe module
 void probe_init();
 
 void probe_ISR();
 
+#endif
 #endif

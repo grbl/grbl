@@ -70,7 +70,9 @@
 #define EXEC_RESET          bit(4) // bitmask 00010000
 #define EXEC_ALARM          bit(5) // bitmask 00100000
 #define EXEC_CRIT_EVENT     bit(6) // bitmask 01000000
+#ifdef PROBE_38
 #define EXEC_PROBE_REPORT	bit(7) // bitmask 10000000
+#endif
 
 // Define system state bit map. The state variable primarily tracks the individual functions
 // of Grbl to manage each without overlapping. It is also used as a messaging flag for
@@ -85,6 +87,7 @@
 #define STATE_CHECK_MODE 7 // G-code check mode. Locks out planner and motion only.
 // #define STATE_JOG     8 // Jogging mode is unique like homing.
 
+#ifdef PROBE_38
 // Probing states
 #define PROBING_NONE 0 //
 #define PROBING 1 //
@@ -92,7 +95,7 @@
 #define PROBING_ERR 4 //
 #define PROBING_HANDELD 8 //
 #define PROBING_TOUCH 16 //
-
+#endif
 
 // Define global system variables
 typedef struct {
@@ -101,7 +104,9 @@ typedef struct {
   volatile uint8_t execute;      // Global system runtime executor bitflag variable. See EXEC bitmasks.
   int32_t position[N_AXIS];      // Real-time machine (aka home) position vector in steps. 
                                  // NOTE: This may need to be a volatile variable, if problems arise.   
+#ifdef PROBE_38
   int32_t probe_position[N_AXIS];
+#endif
   uint8_t auto_start;            // Planner auto-start flag. Toggled off during feed hold. Defaulted by settings.
 } system_t;
 extern system_t sys;

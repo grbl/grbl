@@ -48,7 +48,9 @@
 #define MOTION_MODE_CW_ARC 2  // G2
 #define MOTION_MODE_CCW_ARC 3  // G3
 #define MOTION_MODE_CANCEL 4 // G80
+#ifdef PROBE_38
 #define MOTION_MODE_PROBE 5// G38.x
+#endif
 
 #define PROGRAM_FLOW_RUNNING 0
 #define PROGRAM_FLOW_PAUSED 1 // M0, M1
@@ -89,7 +91,9 @@ typedef struct {
   float arc_radius; 
   float arc_offset[N_AXIS];
                                          
+#ifdef PROBE_38
   uint8_t probing;
+#endif
 } parser_state_t;
 extern parser_state_t gc;
 

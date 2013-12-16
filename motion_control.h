@@ -31,8 +31,9 @@
 // (1 minute)/feed_rate time.
 void mc_line(float *target, float feed_rate, uint8_t invert_feed_rate);
 
+#ifdef PROBE_38
 void mc_line_probe(float *target, float feed_rate, uint8_t invert_feed_rate, uint8_t probing);
-
+#endif
 // Execute an arc in offset mode format. position == current xyz, target == target xyz, 
 // offset == offset from current xyz, axis_XXX defines circle plane in tool space, axis_linear is
 // the direction of helical travel, radius == circle radius, isclockwise boolean. Used

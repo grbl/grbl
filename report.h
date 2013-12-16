@@ -81,7 +81,8 @@ void report_gcode_modes();
 // Prints startup line
 void report_startup_line(uint8_t n, char *line);
 
+#ifdef PROBE_38
 // Prints the mashine position when probing
 void report_probe_position();
-
+#endif
 #endif

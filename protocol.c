@@ -32,7 +32,9 @@
 #include "stepper.h"
 #include "report.h"
 #include "motion_control.h"
+#ifdef PROBE_38
 #include "probe.h"
+#endif
 
 static char line[LINE_BUFFER_SIZE]; // Line to be executed. Zero-terminated.
 static uint8_t char_counter; // Last character counter in line variable.
@@ -83,16 +85,17 @@ ISR(PINOUT_INT_vect)
 {
   // Enter only if any pinout pin is actively low.
   if ((PINOUT_PIN & PINOUT_MASK) ^ PINOUT_MASK) { 
-//    if (bit_isfalse(PINOUT_PIN,bit(PIN_RESET))) {
-//      mc_reset();
-//    } else
-    if (bit_isfalse(PINOUT_PIN,bit(PIN_FEED_HOLD))) {
+    if (bit_isfalse(PINOUT_PIN,bit(PIN_RESET))) {
+      mc_reset();
+    } else if (bit_isfalse(PINOUT_PIN,bit(PIN_FEED_HOLD))) {
       sys.execute |= EXEC_FEED_HOLD; 
     } else if (bit_isfalse(PINOUT_PIN,bit(PIN_CYCLE_START))) {
       sys.execute |= EXEC_CYCLE_START;
     }
   }
+#ifdef PROBE_38
   probe_ISR();
+#endif
 }
 
 // Executes run-time commands, when required. This is called from various check points in the main
@@ -178,11 +181,13 @@ void protocol_execute_runtime()
       bit_false(sys.execute,EXEC_CYCLE_START);
     }
 
+#ifdef PROBE_38
     // Execute and serial print probe status
     if (rt_exec & EXEC_PROBE_REPORT) {
       report_probe_position();
       bit_false(sys.execute,EXEC_PROBE_REPORT);
     }
+#endif
   }
   
   // Overrides flag byte (sys.override) and execution should be installed here, since they 
