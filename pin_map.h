@@ -105,11 +105,7 @@
   #define PINOUT_INT       PCIE1  // Pin change interrupt enable pin
   #define PINOUT_INT_vect  PCINT1_vect
   #define PINOUT_PCMSK     PCMSK1 // Pin change interrupt register
-//  #ifdef PROBE_38
-//  #define PINOUT_MASK ((1<<PIN_RESET)|(1<<PIN_FEED_HOLD)|(1<<PIN_CYCLE_START)|((1<<PIN_PROBE)))
-//  #else
   #define PINOUT_MASK ((1<<PIN_RESET)|(1<<PIN_FEED_HOLD)|(1<<PIN_CYCLE_START))
-//  #endif
 
 #endif
 

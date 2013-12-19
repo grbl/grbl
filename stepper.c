@@ -680,6 +680,7 @@ void st_prep_buffer()
         prep.flag_partial_block  = true;
         plan_cycle_reinitialize();
       } else {
+#ifdef PROBE_38
 		if (pl_block->probing) {
 			if (bit_istrue(pl_block->probing ,PROBING_ERR) && bit_isfalse(pl_block->probing ,PROBING_HANDELD)) {
 			  report_alarm_message(PROBING_LIMIT_REACHED);
@@ -688,7 +689,7 @@ void st_prep_buffer()
 			  bit_true(pl_block->probing, PROBING_HANDELD);
 			}
 		  }
-
+#endif
         // The planner block is complete. All steps are set to be executed in the segment buffer.
         // TODO: Ignore this for feed holds. Need to recalculate the planner buffer at this time.
         pl_block = NULL;
