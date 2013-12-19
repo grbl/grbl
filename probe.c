@@ -21,31 +21,30 @@
 #include "stepper.h"
 #include "planner.h"
 #include "pin_map.h"
+
 #ifdef PROBE_38
 void probe_init()
 {
-	PROBE_DDR &= ~(PROBE_MASK); // Set as input pins
-	PROBE_PORT |= PROBE_MASK; // Enable internal pull-up resistors. Normal high operation.
-	PROBE_PCMSK |= PROBE_MASK; // Enable specific pins of the Pin Change Interrupt
-	PCICR |= (1 << PROBE_INT);   // Enable Pin Change Interrupt
+  PROBE_DDR &= ~(PROBE_MASK); // Set as input pins
+  PROBE_PORT |= PROBE_MASK; // Enable internal pull-up resistors. Normal high operation.
+  PROBE_PCMSK |= PROBE_MASK; // Enable specific pins of the Pin Change Interrupt
+  PCICR |= (1 << PROBE_INT);   // Enable Pin Change Interrupt
 }
 
 void probe_ISR()
 {
-	PCICR ^= (1 << PROBE_INT);   // Disable Pin Change Interrupt
-	plan_block_t *block = plan_get_current_block();
-	if (block && block->probing && bit_isfalse(block->probing, PROBING_TOUCH))
-	{
-		if ((bit_isfalse(PROBE_PIN,bit(PIN_PROBE)) && bit_istrue(block->probing ,PROBING_TO))
-		  || (bit_istrue(PROBE_PIN,bit(PIN_PROBE)) && bit_isfalse(block->probing,PROBING_TO)))
-		{
-			bit_true(block->probing, PROBING_TOUCH);
-			bit_true(block->probing, PROBING_HANDELD);
-			st_feed_hold();
-		    memcpy(sys.probe_position,sys.position,sizeof(sys.position));
-			bit_true(sys.execute, EXEC_PROBE_REPORT);
-		}
-	}
-	PCICR |= (1 << PROBE_INT);   // Enable Pin Change Interrupt
+  plan_block_t *block = plan_get_current_block();
+  if (block && block->probing && bit_isfalse(block->probing, PROBING_TOUCH))
+  {
+    if ((bit_isfalse(PROBE_PIN,bit(PIN_PROBE)) && bit_istrue(block->probing ,PROBING_TO))
+    || (bit_istrue(PROBE_PIN,bit(PIN_PROBE)) && bit_isfalse(block->probing,PROBING_TO)))
+    {
+      bit_true(block->probing, PROBING_TOUCH);
+      bit_true(block->probing, PROBING_HANDELD);
+      st_feed_hold();
+      memcpy(sys.probe_position,sys.position,sizeof(sys.position));
+      bit_true(sys.execute, EXEC_PROBE_REPORT);
+    }
+  }
 }
 #endif
