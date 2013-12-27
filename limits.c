@@ -87,7 +87,7 @@ ISR(LIMIT_INT_vect)
 // algorithm is written here. This also lets users hack and tune this code freely for
 // their own particular needs without affecting the rest of Grbl.
 // NOTE: Only the abort runtime command can interrupt this process.
-static void homing_cycle(uint8_t cycle_mask, bool pos_dir, bool invert_pin, float homing_rate) 
+static void homing_cycle(uint8_t cycle_mask, bool approach, bool invert_pin, float homing_rate) 
 {
   if (sys.execute & EXEC_RESET) { return; }
   uint8_t limit_state;
@@ -101,9 +101,31 @@ static void homing_cycle(uint8_t cycle_mask, bool pos_dir, bool invert_pin, floa
   if (target[X_AXIS] < settings.max_travel[Y_AXIS]) { target[X_AXIS] = settings.max_travel[Y_AXIS]; }
   if (target[X_AXIS] < settings.max_travel[Z_AXIS]) { target[X_AXIS] = settings.max_travel[Z_AXIS]; }
   target[X_AXIS] *= 2.0;
-  if (pos_dir) { target[X_AXIS] = -target[X_AXIS]; }
-  target[Y_AXIS] = target[X_AXIS];
-  target[Z_AXIS] = target[X_AXIS];
+  uint8_t pos_dir = settings.homing_dir_mask;
+  if (pos_dir >= 128) {
+    pos_dir = pos_dir - 128;
+    target[Z_AXIS] = target[X_AXIS]; 
+  }
+  else { target[Z_AXIS] = -target[X_AXIS]; }
+  if (!approach) { target[Z_AXIS] = target[Z_AXIS] * -1; }
+
+  if (pos_dir >= 64) {
+    pos_dir = pos_dir - 64;
+    target[Y_AXIS] = target[X_AXIS];
+  }
+  else { target[Y_AXIS] = -target[X_AXIS]; }
+  if (!approach) { target[Y_AXIS] = target[Y_AXIS] * -1; }
+
+if (pos_dir >= 32) {
+    pos_dir = pos_dir -32;
+    target[X_AXIS] = target[X_AXIS];
+  }
+  else { target[X_AXIS] = -target[X_AXIS]; }
+  if (!approach) { target[X_AXIS] = target[X_AXIS] * -1; }
+
+  //if (pos_dir) { target[X_AXIS] = -target[X_AXIS]; }
+  //target[Y_AXIS] = target[X_AXIS];
+  //target[Z_AXIS] = target[X_AXIS];
   homing_rate *= 1.7320; // [sqrt(N_AXIS)] Adjust so individual axes all move at homing rate.
 
   // Setup homing axis locks based on cycle mask.
