@@ -53,7 +53,7 @@
 // are reached. You will need to ensure that you have appropriate pull-down resistors on the
 // limit switch input pins, or that your hardware drives the pins low when they are open (non-
 // triggered).
-// #define LIMIT_SWITCHES_ACTIVE_HIGH
+#define LIMIT_SWITCHES_ACTIVE_HIGH
 
 // If homing is enabled, homing init lock sets Grbl into an alarm state upon power up. This forces
 // the user to perform the homing cycle (or override the locks) before doing anything else. This is
