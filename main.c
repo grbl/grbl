@@ -79,6 +79,7 @@ int main(void)
       sys.abort = false;
       sys.execute = 0;
       if (bit_istrue(settings.flags,BITFLAG_AUTO_START)) { sys.auto_start = true; }
+	else { sys.auto_start = false; }
       
       // Check for power-up and set system alarm if homing is enabled to force homing cycle
       // by setting Grbl's alarm state. Alarm locks out all g-code commands, including the
