@@ -41,7 +41,7 @@ void mc_arc(float *position, float *target, float *offset, uint8_t axis_0, uint8
 void mc_dwell(float seconds);
 
 // Perform homing cycle to locate machine zero. Requires limit switches.
-void mc_go_home();
+void mc_homing_cycle();
 
 // Performs system reset. If in motion state, kills all motion and sets system alarm.
 void mc_reset();

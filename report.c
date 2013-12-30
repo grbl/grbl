@@ -125,7 +125,7 @@ void report_feedback_message(uint8_t message_code)
 // Welcome message
 void report_init_message()
 {
-  printPgmString(PSTR("\r\nGrbl " GRBL_VERSION " ['$' for help]\r\n"));
+  printPgmString(PSTR("\r\nGrbl " GRBL_VERSION " ("GRBL_VERSION_BUILD ") ['$' for help]\r\n"));
 }
 
 // Grbl help message
@@ -308,7 +308,6 @@ void report_realtime_status()
   // Report current machine state
   switch (sys.state) {
     case STATE_IDLE: printPgmString(PSTR("<Idle")); break;
-//    case STATE_INIT: printPgmString(PSTR("<Init")); break; // Never observed
     case STATE_QUEUED: printPgmString(PSTR("<Queue")); break;
     case STATE_CYCLE: printPgmString(PSTR("<Run")); break;
     case STATE_HOLD: printPgmString(PSTR("<Hold")); break;

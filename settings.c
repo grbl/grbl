@@ -98,9 +98,9 @@ void settings_reset(bool reset_all) {
   settings.homing_pulloff = DEFAULT_HOMING_PULLOFF;
   settings.stepper_idle_lock_time = DEFAULT_STEPPER_IDLE_LOCK_TIME;
   settings.decimal_places = DEFAULT_DECIMAL_PLACES;
-  settings.max_travel[X_AXIS] = DEFAULT_X_MAX_TRAVEL;
-  settings.max_travel[Y_AXIS] = DEFAULT_Y_MAX_TRAVEL;
-  settings.max_travel[Z_AXIS] = DEFAULT_Z_MAX_TRAVEL;    
+  settings.max_travel[X_AXIS] = (-DEFAULT_X_MAX_TRAVEL);
+  settings.max_travel[Y_AXIS] = (-DEFAULT_Y_MAX_TRAVEL);
+  settings.max_travel[Z_AXIS] = (-DEFAULT_Z_MAX_TRAVEL);    
   write_global_settings();
 }
 

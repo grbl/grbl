@@ -235,8 +235,8 @@ uint8_t protocol_execute_line(char *line)
       case 'H' : // Perform homing cycle
         if (bit_istrue(settings.flags,BITFLAG_HOMING_ENABLE)) { 
           // Only perform homing if Grbl is idle or lost.
-          if ( sys.state==STATE_IDLE || sys.state==STATE_ALARM ) { 
-            mc_go_home(); 
+          if ( sys.state == STATE_IDLE || sys.state == STATE_ALARM ) { 
+            mc_homing_cycle(); 
             if (!sys.abort) { protocol_execute_startup(); } // Execute startup scripts after successful homing.
           } else { return(STATUS_IDLE_ERROR); }
         } else { return(STATUS_SETTING_DISABLED); }

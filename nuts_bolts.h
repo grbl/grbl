@@ -74,21 +74,21 @@
 // Define system state bit map. The state variable primarily tracks the individual functions
 // of Grbl to manage each without overlapping. It is also used as a messaging flag for
 // critical events.
-#define STATE_IDLE       0 // Must be zero.
-#define STATE_INIT       1 // Initial power up state.
-#define STATE_QUEUED     2 // Indicates buffered blocks, awaiting cycle start.
-#define STATE_CYCLE      3 // Cycle is running
-#define STATE_HOLD       4 // Executing feed hold
-#define STATE_HOMING     5 // Performing homing cycle
-#define STATE_ALARM      6 // In alarm state. Locks out all g-code processes. Allows settings access.
-#define STATE_CHECK_MODE 7 // G-code check mode. Locks out planner and motion only.
-// #define STATE_JOG     8 // Jogging mode is unique like homing.
+#define STATE_IDLE       0      // Must be zero. No flags.
+#define STATE_QUEUED     bit(0) // Indicates buffered blocks, awaiting cycle start.
+#define STATE_CYCLE      bit(1) // Cycle is running
+#define STATE_HOLD       bit(2) // Executing feed hold
+#define STATE_HOMING     bit(3) // Performing homing cycle
+#define STATE_ALARM      bit(4) // In alarm state. Locks out all g-code processes. Allows settings access.
+#define STATE_CHECK_MODE bit(5) // G-code check mode. Locks out planner and motion only.
+// #define STATE_JOG     bit(6) // Jogging mode is unique like homing.
 
 // Define global system variables
 typedef struct {
   uint8_t abort;                 // System abort flag. Forces exit back to main loop for reset.
   uint8_t state;                 // Tracks the current state of Grbl.
   volatile uint8_t execute;      // Global system runtime executor bitflag variable. See EXEC bitmasks.
+  uint8_t homing_axis_lock;
   int32_t position[N_AXIS];      // Real-time machine (aka home) position vector in steps. 
                                  // NOTE: This may need to be a volatile variable, if problems arise.   
   uint8_t auto_start;            // Planner auto-start flag. Toggled off during feed hold. Defaulted by settings.

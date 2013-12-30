@@ -29,7 +29,7 @@
 #define config_h
 
 // Default settings. Used when resetting EEPROM. Change to desired name in defaults.h
-#define DEFAULTS_ZEN_TOOLWORKS_7x7
+#define DEFAULTS_SHERLINE_5400
 
 // Serial baud rate
 #define BAUD_RATE 115200
@@ -47,77 +47,18 @@
 #define CMD_STATUS_REPORT '?'
 #define CMD_FEED_HOLD '!'
 #define CMD_CYCLE_START '~'
-#define CMD_RESET 0x18 // ctrl-x
+#define CMD_RESET 0x18 // ctrl-x.
 
-// The "Stepper Driver Interrupt" employs an inverse time algorithm to manage the Bresenham line 
-// stepping algorithm. The value ISR_TICKS_PER_SECOND is the frequency(Hz) at which the inverse time
-// algorithm ticks at. Recommended step frequencies are limited by the inverse time frequency by
-// approximately 0.75-0.9 * ISR_TICK_PER_SECOND. Meaning for 30kHz, the max step frequency is roughly
-// 22.5-27kHz, but 30kHz is still possible, just not optimal. An Arduino can safely complete a single
-// interrupt of the current stepper driver algorithm theoretically up to a frequency of 35-40kHz, but 
-// CPU overhead increases exponentially as this frequency goes up. So there will be little left for 
-// other processes like arcs.  
-#define ISR_TICKS_PER_SECOND 30000L  // Integer (Hz)
-
-// The temporal resolution of the acceleration management subsystem. Higher number give smoother
-// acceleration but may impact performance. If you run at very high feedrates (>15kHz or so) and 
-// very high accelerations, this will reduce the error between how the planner plans the velocity
-// profiles and how the stepper program actually performs them. The correct value for this parameter
-// is machine dependent, so it's advised to set this only as high as needed. Approximate successful
-// values can widely range from 50 to 200 or more. Cannot be greater than ISR_TICKS_PER_SECOND/2.
-// NOTE: Ramp count variable type in stepper module may need to be updated if changed.
-#define ACCELERATION_TICKS_PER_SECOND 120L 
-
-// NOTE: Make sure this value is less than 256, when adjusting both dependent parameters.
-#define ISR_TICKS_PER_ACCELERATION_TICK (ISR_TICKS_PER_SECOND/ACCELERATION_TICKS_PER_SECOND)
-
-// The inverse time algorithm can use either floating point or long integers for its counters (usually
-// very small values ~10^-6), but with integers, the counter values must be scaled to be greater than
-// one. This multiplier value scales the floating point counter values for use in a long integer, which 
-// are significantly faster to compute with a slightly higher precision ceiling than floats. Long 
-// integers are finite so select the multiplier value high enough to avoid any numerical round-off 
-// issues and still have enough range to account for all motion types. However, in most all imaginable 
-// CNC applications, the following multiplier value will work more than well enough. If you do have
-// happened to weird stepper motion issues, try modifying this value by adding or subtracting a 
-// zero and report it to the Grbl administrators. 
-#define INV_TIME_MULTIPLIER 100000
-
-// Minimum stepper rate for the "Stepper Driver Interrupt". Sets the absolute minimum stepper rate 
-// in the stepper program and never runs slower than this value. If the INVE_TIME_MULTIPLIER value
-// changes, it will affect how this value works. So, if a zero is add/subtracted from the
-// INV_TIME_MULTIPLIER value, do the same to this value if you want to same response. 
-// NOTE: Compute by (desired_step_rate/60) * INV_TIME_MULTIPLIER/ISR_TICKS_PER_SECOND. (mm/min)
-// #define MINIMUM_STEP_RATE 1000L // Integer (mult*mm/isr_tic)
-
-// Minimum stepper rate. Only used by homing at this point. May be removed in later releases.
-#define MINIMUM_STEPS_PER_MINUTE 800 // (steps/min) - Integer value only
-
-// Minimum planner junction speed. Sets the default minimum junction speed the planner plans to at
-// every buffer block junction, except for starting from rest and end of the buffer, which are always
-// zero. This value controls how fast the machine moves through junctions with no regard for acceleration
-// limits or angle between neighboring block line move directions. This is useful for machines that can't
-// tolerate the tool dwelling for a split second, i.e. 3d printers or laser cutters. If used, this value
-// should not be much greater than zero or to the minimum value necessary for the machine to work.
-#define MINIMUM_JUNCTION_SPEED 0.0 // (mm/min)
-
-// Time delay increments performed during a dwell. The default value is set at 50ms, which provides
-// a maximum time delay of roughly 55 minutes, more than enough for most any application. Increasing
-// this delay will increase the maximum dwell time linearly, but also reduces the responsiveness of 
-// run-time command executions, like status reports, since these are performed between each dwell 
-// time step. Also, keep in mind that the Arduino delay timer is not very accurate for long delays.
-#define DWELL_TIME_STEP 50 // Integer (1-255) (milliseconds)
+// Uncomment the following define if you are using hardware that drives high when your limits
+// are reached. You will need to ensure that you have appropriate pull-down resistors on the
+// limit switch input pins, or that your hardware drives the pins low when they are open (non-
+// triggered).
+// #define LIMIT_SWITCHES_ACTIVE_HIGH // Uncomment to enable
 
 // If homing is enabled, homing init lock sets Grbl into an alarm state upon power up. This forces
 // the user to perform the homing cycle (or override the locks) before doing anything else. This is
 // mainly a safety feature to remind the user to home, since position is unknown to Grbl.
 #define HOMING_INIT_LOCK // Comment to disable
-
-// The homing cycle seek and feed rates will adjust so all axes independently move at the homing
-// seek and feed rates regardless of how many axes are in motion simultaneously. If disabled, rates
-// are point-to-point rates, as done in normal operation. For example in an XY diagonal motion, the
-// diagonal motion moves at the intended rate, but the individual axes move at 70% speed. This option
-// just moves them all at 100% speed.
-#define HOMING_RATE_ADJUST // Comment to disable
 
 // Define the homing cycle search patterns with bitmasks. The homing cycle first performs a search
 // to engage the limit switches. HOMING_SEARCH_CYCLE_x are executed in order starting with suffix 0 
@@ -144,6 +85,34 @@
 // parser state depending on user preferences.
 #define N_STARTUP_LINE 2 // Integer (1-5)
 
+// ---------------------------------------------------------------------------------------
+// ADVANCED CONFIGURATION OPTIONS:
+
+// The temporal resolution of the acceleration management subsystem. A higher number gives smoother
+// acceleration, particularly noticeable on machines that run at very high feedrates, but may negatively
+// impact performance. The correct value for this parameter is machine dependent, so it's advised to
+// set this only as high as needed. Approximate successful values can widely range from 50 to 200 or more.
+#define ACCELERATION_TICKS_PER_SECOND 100 
+
+// Creates a delay between the direction pin setting and corresponding step pulse by creating
+// another interrupt (Timer2 compare) to manage it. The main Grbl interrupt (Timer1 compare) 
+// sets the direction pins, and does not immediately set the stepper pins, as it would in 
+// normal operation. The Timer2 compare fires next to set the stepper pins after the step 
+// pulse delay time, and Timer2 overflow will complete the step pulse, except now delayed 
+// by the step pulse time plus the step pulse delay. (Thanks langwadt for the idea!)
+// NOTE: Uncomment to enable. The recommended delay must be > 3us, and, when added with the
+// user-supplied step pulse time, the total time must not exceed 127us. Reported successful
+// values for certain setups have ranged from 5 to 20us.
+// #define STEP_PULSE_DELAY 10 // Step pulse delay in microseconds. Default disabled.
+
+// Minimum planner junction speed. Sets the default minimum junction speed the planner plans to at
+// every buffer block junction, except for starting from rest and end of the buffer, which are always
+// zero. This value controls how fast the machine moves through junctions with no regard for acceleration
+// limits or angle between neighboring block line move directions. This is useful for machines that can't
+// tolerate the tool dwelling for a split second, i.e. 3d printers or laser cutters. If used, this value
+// should not be much greater than zero or to the minimum value necessary for the machine to work.
+#define MINIMUM_JUNCTION_SPEED 0.0 // (mm/min)
+
 // Number of arc generation iterations by small angle approximation before exact arc trajectory 
 // correction. This parameter maybe decreased if there are issues with the accuracy of the arc
 // generations. In general, the default value is more than enough for the intended CNC applications
@@ -151,8 +120,12 @@
 // computational efficiency of generating arcs.
 #define N_ARC_CORRECTION 20 // Integer (1-255)
 
-// ---------------------------------------------------------------------------------------
-// FOR ADVANCED USERS ONLY: 
+// Time delay increments performed during a dwell. The default value is set at 50ms, which provides
+// a maximum time delay of roughly 55 minutes, more than enough for most any application. Increasing
+// this delay will increase the maximum dwell time linearly, but also reduces the responsiveness of 
+// run-time command executions, like status reports, since these are performed between each dwell 
+// time step. Also, keep in mind that the Arduino delay timer is not very accurate for long delays.
+#define DWELL_TIME_STEP 50 // Integer (1-255) (milliseconds)
 
 // The number of linear motions in the planner buffer to be planned at any give time. The vast
 // majority of RAM that Grbl uses is based on this buffer size. Only increase if there is extra 
@@ -167,7 +140,7 @@
 // block velocity profile is traced exactly. The size of this buffer governs how much step 
 // execution lead time there is for other Grbl processes have to compute and do their thing 
 // before having to come back and refill this buffer, currently at ~50msec of step moves.
-// #define SEGMENT_BUFFER_SIZE 7 // Uncomment to override default in stepper.h.
+// #define SEGMENT_BUFFER_SIZE 6 // Uncomment to override default in stepper.h.
 
 // Line buffer size from the serial input stream to be executed. Also, governs the size of 
 // each of the startup blocks, as they are each stored as a string of this size. Make sure
@@ -198,11 +171,7 @@
 // case, please report any successes to grbl administrators!
 // #define ENABLE_XONXOFF // Default disabled. Uncomment to enable.
 
-// Uncomment the following define if you are using hardware that drives high when your limits
-// are reached. You will need to ensure that you have appropriate pull-down resistors on the
-// limit switch input pins, or that your hardware drives the pins low when they are open (non-
-// triggered).
-// #define LIMIT_SWITCHES_ACTIVE_HIGH
+#define ENABLE_SOFTWARE_DEBOUNCE
 
 // ---------------------------------------------------------------------------------------
 
@@ -211,9 +180,9 @@
 // ---------------------------------------------------------------------------------------
 // COMPILE-TIME ERROR CHECKING OF DEFINE VALUES:
 
-#if (ISR_TICKS_PER_ACCELERATION_TICK > 255)
-#error Parameters ACCELERATION_TICKS / ISR_TICKS must be < 256 to prevent integer overflow.
-#endif
+// #if (ISR_TICKS_PER_ACCELERATION_TICK > 255)
+// #error Parameters ACCELERATION_TICKS / ISR_TICKS must be < 256 to prevent integer overflow.
+// #endif
 
 // ---------------------------------------------------------------------------------------
 #endif
