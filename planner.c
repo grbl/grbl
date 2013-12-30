@@ -207,7 +207,7 @@ static void planner_recalculate()
 }
 
 
-void plan_init() 
+void plan_reset() 
 {
   memset(&pl, 0, sizeof(pl)); // Clear planner struct
   block_buffer_tail = 0;
@@ -255,7 +255,7 @@ uint8_t plan_check_full_buffer()
 // during a synchronize call, if it should happen. Also, waits for clean cycle end.
 void plan_synchronize()
 {
-  while (plan_get_current_block() || sys.state == STATE_CYCLE) { 
+  while (plan_get_current_block() || (sys.state == STATE_CYCLE)) { 
     protocol_execute_runtime();   // Check and execute run-time commands
     if (sys.abort) { return; } // Check for system abort
   }    

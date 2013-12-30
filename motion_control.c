@@ -213,12 +213,38 @@ void mc_dwell(float seconds)
 // Perform homing cycle to locate and set machine zero. Only '$H' executes this command.
 // NOTE: There should be no motions in the buffer and Grbl must be in an idle state before
 // executing the homing cycle. This prevents incorrect buffered plans after homing.
-void mc_go_home()
+void mc_homing_cycle()
 {
   sys.state = STATE_HOMING; // Set system state variable
-  LIMIT_PCMSK &= ~LIMIT_MASK; // Disable hard limits pin change register for cycle duration
+  limits_disable(); // Disable hard limits pin change register for cycle duration
+  plan_reset(); // Reset planner buffer before beginning homing routine.
+  st_reset(); // Reset step segment buffer before beginning homing routine.
+    
+  // -------------------------------------------------------------------------------------
+  // Perform homing routine. NOTE: Special motion case. Only system reset works.
   
-  limits_go_home(); // Perform homing routine.
+  // Search to engage all axes limit switches at faster homing seek rate.
+  limits_go_home(HOMING_SEARCH_CYCLE_0, true, false, settings.homing_seek_rate);  // Search cycle 0
+  #ifdef HOMING_SEARCH_CYCLE_1
+    limits_go_home(HOMING_SEARCH_CYCLE_1, true, false, settings.homing_seek_rate);  // Search cycle 1
+  #endif
+  #ifdef HOMING_SEARCH_CYCLE_2
+    limits_go_home(HOMING_SEARCH_CYCLE_2, true, false, settings.homing_seek_rate);  // Search cycle 2
+  #endif
+    
+  // Now in proximity of all limits. Carefully leave and approach switches in multiple cycles
+  // to precisely hone in on the machine zero location. Moves at slower homing feed rate.
+  int8_t n_cycle = N_HOMING_LOCATE_CYCLE;
+  while (n_cycle--) {
+    // Leave all switches to release them. After cycles complete, this is machine zero.
+    limits_go_home(HOMING_LOCATE_CYCLE, false, true, settings.homing_feed_rate);
+
+    if (n_cycle > 0) {
+      // Re-approach all switches to re-engage them.
+      limits_go_home(HOMING_LOCATE_CYCLE, true, false, settings.homing_feed_rate);
+    }
+  }
+  // -------------------------------------------------------------------------------------
   
   protocol_execute_runtime(); // Check for reset and set system abort.
   if (sys.abort) { return; } // Did not complete. Alarm state set by mc_alarm.
@@ -254,12 +280,13 @@ void mc_go_home()
   mc_line(pulloff_target, settings.homing_seek_rate, false);
   st_cycle_start(); // Move it. Nothing should be in the buffer except this motion. 
   plan_synchronize(); // Make sure the motion completes.
+                      // NOTE: Stepper idle lock resumes normal functionality after cycle.
   
   // The gcode parser position circumvented by the pull-off maneuver, so sync position now.
   gc_sync_position();
 
   // If hard limits feature enabled, re-enable hard limits pin change register after homing cycle.
-  if (bit_istrue(settings.flags,BITFLAG_HARD_LIMIT_ENABLE)) { LIMIT_PCMSK |= LIMIT_MASK; }
+  limits_init();
   // Finished! 
 }
 
@@ -294,10 +321,9 @@ void mc_reset()
     // NOTE: If steppers are kept enabled via the step idle delay setting, this also keeps
     // the steppers enabled by avoiding the go_idle call altogether, unless the motion state is
     // violated, by which, all bets are off.
-    switch (sys.state) {
-      case STATE_CYCLE: case STATE_HOLD: case STATE_HOMING: // case STATE_JOG:
-        sys.execute |= EXEC_ALARM; // Execute alarm state.
-        st_go_idle(); // Execute alarm force kills steppers. Position likely lost.
+    if (sys.state & (STATE_CYCLE | STATE_HOLD | STATE_HOMING)) {
+      sys.execute |= EXEC_ALARM; // Execute alarm state.
+      st_go_idle(); // Execute alarm force kills steppers. Position likely lost.
     }
   }
 }

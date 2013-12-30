@@ -22,10 +22,8 @@
 #ifndef stepper_h
 #define stepper_h 
 
-#include <avr/io.h>
-
 #ifndef SEGMENT_BUFFER_SIZE
-  #define SEGMENT_BUFFER_SIZE 7
+  #define SEGMENT_BUFFER_SIZE 6
 #endif
 
 // Initialize and setup the stepper motor subsystem

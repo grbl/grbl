@@ -47,13 +47,13 @@
 #define CMD_STATUS_REPORT '?'
 #define CMD_FEED_HOLD '!'
 #define CMD_CYCLE_START '~'
-#define CMD_RESET 0x18 // ctrl-x
+#define CMD_RESET 0x18 // ctrl-x.
 
 // Uncomment the following define if you are using hardware that drives high when your limits
 // are reached. You will need to ensure that you have appropriate pull-down resistors on the
 // limit switch input pins, or that your hardware drives the pins low when they are open (non-
 // triggered).
-// #define LIMIT_SWITCHES_ACTIVE_HIGH
+// #define LIMIT_SWITCHES_ACTIVE_HIGH // Uncomment to enable
 
 // If homing is enabled, homing init lock sets Grbl into an alarm state upon power up. This forces
 // the user to perform the homing cycle (or override the locks) before doing anything else. This is
@@ -88,27 +88,22 @@
 // ---------------------------------------------------------------------------------------
 // ADVANCED CONFIGURATION OPTIONS:
 
-// The "Stepper Driver Interrupt" employs an inverse time algorithm to manage the Bresenham line 
-// stepping algorithm. The value ISR_TICKS_PER_SECOND is the frequency(Hz) at which the inverse time
-// algorithm ticks at. Recommended step frequencies are limited by the inverse time frequency by
-// approximately 0.75-0.9 * ISR_TICK_PER_SECOND. Meaning for 30kHz, the max step frequency is roughly
-// 22.5-27kHz, but 30kHz is still possible, just not optimal. An Arduino can safely complete a single
-// interrupt of the current stepper driver algorithm theoretically up to a frequency of 35-40kHz, but 
-// CPU overhead increases exponentially as this frequency goes up. So there will be little left for 
-// other processes like arcs.  
-#define ISR_TICKS_PER_SECOND 30000L  // Integer (Hz)
+// The temporal resolution of the acceleration management subsystem. A higher number gives smoother
+// acceleration, particularly noticeable on machines that run at very high feedrates, but may negatively
+// impact performance. The correct value for this parameter is machine dependent, so it's advised to
+// set this only as high as needed. Approximate successful values can widely range from 50 to 200 or more.
+#define ACCELERATION_TICKS_PER_SECOND 100 
 
-// The temporal resolution of the acceleration management subsystem. Higher number give smoother
-// acceleration but may impact performance. If you run at very high feedrates (>15kHz or so) and 
-// very high accelerations, this will reduce the error between how the planner plans the velocity
-// profiles and how the stepper program actually performs them. The correct value for this parameter
-// is machine dependent, so it's advised to set this only as high as needed. Approximate successful
-// values can widely range from 50 to 200 or more. Cannot be greater than ISR_TICKS_PER_SECOND/2.
-// NOTE: Ramp count variable type in stepper module may need to be updated if changed.
-#define ACCELERATION_TICKS_PER_SECOND 120L 
-
-// NOTE: Make sure this value is less than 256, when adjusting both dependent parameters.
-#define ISR_TICKS_PER_ACCELERATION_TICK (ISR_TICKS_PER_SECOND/ACCELERATION_TICKS_PER_SECOND)
+// Creates a delay between the direction pin setting and corresponding step pulse by creating
+// another interrupt (Timer2 compare) to manage it. The main Grbl interrupt (Timer1 compare) 
+// sets the direction pins, and does not immediately set the stepper pins, as it would in 
+// normal operation. The Timer2 compare fires next to set the stepper pins after the step 
+// pulse delay time, and Timer2 overflow will complete the step pulse, except now delayed 
+// by the step pulse time plus the step pulse delay. (Thanks langwadt for the idea!)
+// NOTE: Uncomment to enable. The recommended delay must be > 3us, and, when added with the
+// user-supplied step pulse time, the total time must not exceed 127us. Reported successful
+// values for certain setups have ranged from 5 to 20us.
+// #define STEP_PULSE_DELAY 10 // Step pulse delay in microseconds. Default disabled.
 
 // Minimum planner junction speed. Sets the default minimum junction speed the planner plans to at
 // every buffer block junction, except for starting from rest and end of the buffer, which are always
@@ -145,7 +140,7 @@
 // block velocity profile is traced exactly. The size of this buffer governs how much step 
 // execution lead time there is for other Grbl processes have to compute and do their thing 
 // before having to come back and refill this buffer, currently at ~50msec of step moves.
-// #define SEGMENT_BUFFER_SIZE 7 // Uncomment to override default in stepper.h.
+// #define SEGMENT_BUFFER_SIZE 6 // Uncomment to override default in stepper.h.
 
 // Line buffer size from the serial input stream to be executed. Also, governs the size of 
 // each of the startup blocks, as they are each stored as a string of this size. Make sure
@@ -176,6 +171,7 @@
 // case, please report any successes to grbl administrators!
 // #define ENABLE_XONXOFF // Default disabled. Uncomment to enable.
 
+#define ENABLE_SOFTWARE_DEBOUNCE
 
 // ---------------------------------------------------------------------------------------
 
@@ -184,9 +180,9 @@
 // ---------------------------------------------------------------------------------------
 // COMPILE-TIME ERROR CHECKING OF DEFINE VALUES:
 
-#if (ISR_TICKS_PER_ACCELERATION_TICK > 255)
-#error Parameters ACCELERATION_TICKS / ISR_TICKS must be < 256 to prevent integer overflow.
-#endif
+// #if (ISR_TICKS_PER_ACCELERATION_TICK > 255)
+// #error Parameters ACCELERATION_TICKS / ISR_TICKS must be < 256 to prevent integer overflow.
+// #endif
 
 // ---------------------------------------------------------------------------------------
 #endif
