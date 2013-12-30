@@ -105,7 +105,6 @@ typedef struct {
 
   float step_per_mm;           // Current planner block step/millimeter conversion scalar
   float steps_remaining;
-  float dt_remainder;
 
   float mm_per_step;
   float minimum_mm;
@@ -528,8 +527,6 @@ void st_prep_buffer()
           pl_block->entry_speed_sqr = prep.exit_speed*prep.exit_speed; 
         }
         else { prep.current_speed = sqrt(pl_block->entry_speed_sqr); }
-        
-        prep.dt_remainder = 0.0;
       }
      
       /* --------------------------------------------------------------------------------- 
