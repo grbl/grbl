@@ -25,7 +25,6 @@
 #include "planner.h"
 
 #define MAX_INT_DIGITS 8 // Maximum number of digits in int32 (and float)
-extern float __floatunsisf (unsigned long);
 
 // Extracts a floating point value from a string. The following code is based loosely on
 // the avr-libc strtod() function by Michael Stumpf and Dmitry Xmelkov and many freely
@@ -79,7 +78,7 @@ int read_float(char *line, uint8_t *char_counter, float *float_ptr)
   
   // Convert integer into floating point.
   float fval;
-  fval = __floatunsisf(intval);
+  fval = (float)intval;
   
   // Apply decimal. Should perform no more than two floating point multiplications for the
   // expected range of E0 to E-4.
