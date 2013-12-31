@@ -1,5 +1,5 @@
 /*
-  pin_map.h - Pin mapping configuration file
+  cpu_map.h - CPU and pin mapping configuration file
   Part of Grbl
 
   Copyright (c) 2013 Sungeun K. Jeon
@@ -18,14 +18,17 @@
   along with Grbl.  If not, see <http://www.gnu.org/licenses/>.
 */
 
-/* The pin_map.h file serves as a central pin mapping settings file for different processor
+/* The cpu_map.h file serves as a central pin mapping settings file for different processor
    types, i.e. AVR 328p or AVR Mega 2560. Grbl officially supports the Arduino Uno, but the 
    other supplied pin mappings are supplied by users, so your results may vary. */
 
-#ifndef pin_map_h
-#define pin_map_h
+// NOTE: This is still a work in progress. We are still centralizing the configurations to
+// this file, so your success may vary for other CPUs.
 
-#ifdef PIN_MAP_ARDUINO_UNO // AVR 328p, Officially supported by Grbl.
+#ifndef cpu_map_h
+#define cpu_map_h
+
+#ifdef CPU_MAP_ATMEGA328P // (Arduino Uno) Officially supported by Grbl.
 
   // Serial port pins
   #define SERIAL_RX     USART_RX_vect
@@ -37,12 +40,14 @@
   #define X_STEP_BIT         2  // Uno Digital Pin 2
   #define Y_STEP_BIT         3  // Uno Digital Pin 3
   #define Z_STEP_BIT         4  // Uno Digital Pin 4
+  #define STEP_MASK ((1<<X_STEP_BIT)|(1<<Y_STEP_BIT)|(1<<Z_STEP_BIT)) // All step bits
+
+  #define DIRECTION_DDR       DDRD
+  #define DIRECTION_PORT      PORTD
   #define X_DIRECTION_BIT    5  // Uno Digital Pin 5
   #define Y_DIRECTION_BIT    6  // Uno Digital Pin 6
   #define Z_DIRECTION_BIT    7  // Uno Digital Pin 7
-  #define STEP_MASK ((1<<X_STEP_BIT)|(1<<Y_STEP_BIT)|(1<<Z_STEP_BIT)) // All step bits
   #define DIRECTION_MASK ((1<<X_DIRECTION_BIT)|(1<<Y_DIRECTION_BIT)|(1<<Z_DIRECTION_BIT)) // All direction bits
-  #define STEPPING_MASK (STEP_MASK | DIRECTION_MASK) // All stepping-related bits (step/direction)
 
   #define STEPPERS_DISABLE_DDR    DDRB
   #define STEPPERS_DISABLE_PORT   PORTB
@@ -82,7 +87,7 @@
     #define COOLANT_MIST_BIT   4 // Uno Analog Pin 4
   #endif  
 
-  // NOTE: All pinouts pins must be on the same port
+  // NOTE: All pinouts pins must be on the same port, but cannot be on same port as limit pins.
   #define PINOUT_DDR       DDRC
   #define PINOUT_PIN       PINC
   #define PINOUT_PORT      PORTC
@@ -97,7 +102,7 @@
 #endif
 
 
-#ifdef PIN_MAP_ARDUINO_MEGA_2560 // Working @EliteEng
+#ifdef CPU_MAP_ATMEGA2560 // (Arduino Mega 2560) Working @EliteEng
 
   // Serial port pins
   #define SERIAL_RX USART0_RX_vect
@@ -109,19 +114,23 @@
   #define BLOCK_BUFFER_SIZE 36
   #define LINE_BUFFER_SIZE 100
 
-  // NOTE: All step bit and direction pins must be on the same port.
+  // NOTE: All step pins must be on the same port.
   #define STEPPING_DDR      DDRA
   #define STEPPING_PORT     PORTA
   #define STEPPING_PIN      PINA
   #define X_STEP_BIT        2 // MEGA2560 Digital Pin 24
   #define Y_STEP_BIT        3 // MEGA2560 Digital Pin 25
   #define Z_STEP_BIT        4 // MEGA2560 Digital Pin 26
+  #define STEPPING_MASK ((1<<X_STEP_BIT)|(1<<Y_STEP_BIT)|(1<<Z_STEP_BIT)) // All step bits
+
+  // NOTE: All direction pins must be on the same port.
+  #define DIRECTION_DDR      DDRA
+  #define DIRECTION_PORT     PORTA
+  #define DIRECTION_PIN      PINA
   #define X_DIRECTION_BIT   5 // MEGA2560 Digital Pin 27
   #define Y_DIRECTION_BIT   6 // MEGA2560 Digital Pin 28
   #define Z_DIRECTION_BIT   7 // MEGA2560 Digital Pin 29
-  #define STEP_MASK ((1<<X_STEP_BIT)|(1<<Y_STEP_BIT)|(1<<Z_STEP_BIT)) // All step bits
   #define DIRECTION_MASK ((1<<X_DIRECTION_BIT)|(1<<Y_DIRECTION_BIT)|(1<<Z_DIRECTION_BIT)) // All direction bits
-  #define STEPPING_MASK (STEP_MASK | DIRECTION_MASK) // All stepping-related bits (step/direction)
 
   #define STEPPERS_DISABLE_DDR   DDRB
   #define STEPPERS_DISABLE_PORT  PORTB
@@ -159,7 +168,7 @@
     #define COOLANT_MIST_BIT   3 // MEGA2560 Digital Pin 34
   #endif  
 
-  // NOTE: All pinouts pins must be on the same port
+  // NOTE: All pinouts pins must be on the same port and cannot be on same port as limit pins.
   #define PINOUT_DDR       DDRK
   #define PINOUT_PIN       PINK
   #define PINOUT_PORT      PORTK
@@ -174,8 +183,8 @@
 #endif
 
 /* 
-#ifdef PIN_MAP_CUSTOM_PROC
-  // For a custom pin map or different processor, copy and paste one of the default pin map
+#ifdef CPU_MAP_CUSTOM_PROC
+  // For a custom pin map or different processor, copy and paste one of the default cpu map
   // settings above and modify it to your needs. Then, make sure the defined name is also
   // changed in the config.h file.
 #endif

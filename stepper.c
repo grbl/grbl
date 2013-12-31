@@ -35,6 +35,12 @@
 #define RAMP_DECEL 2
 
 
+#define MAX_AMASS_LEVEL 3
+#define AMASS_LEVEL1 (F_CPU/10000)
+#define AMASS_LEVEL2 (F_CPU/5000)
+#define AMASS_LEVEL3 (F_CPU/2500)
+
+
 // Stores the planner block Bresenham algorithm execution data for the segments in the segment 
 // buffer. Normally, this buffer is partially in-use, but, for the worst case scenario, it will
 // never exceed the number of accessible stepper buffer segments (SEGMENT_BUFFER_SIZE-1).
@@ -57,7 +63,7 @@ typedef struct {
   uint16_t n_step;         // Number of step events to be executed for this segment
   uint8_t st_block_index; // Stepper block data index. Uses this information to execute this segment.
   uint16_t cycles_per_tick;  // Step distance traveled per ISR tick, aka step rate.
-  uint8_t prescaler;
+  uint8_t amass_level;
 } segment_t;
 static segment_t segment_buffer[SEGMENT_BUFFER_SIZE];
 
@@ -65,17 +71,19 @@ static segment_t segment_buffer[SEGMENT_BUFFER_SIZE];
 typedef struct {
   // Used by the bresenham line algorithm
   uint32_t counter_x,        // Counter variables for the bresenham line tracer
-          counter_y, 
-          counter_z;
+           counter_y, 
+           counter_z;
 
-  #if STEP_PULSE_DELAY > 0
+  #ifdef STEP_PULSE_DELAY
     uint8_t step_bits;  // Stores out_bits output to complete the step pulse delay
   #endif
   
   // Used by the stepper driver interrupt
   uint8_t execute_step;     // Flags step execution for each interrupt.
   uint8_t step_pulse_time;  // Step pulse reset time after step rise
-  uint8_t out_bits;         // The next stepping-bits to be output
+  uint8_t step_outbits;         // The next stepping-bits to be output
+  uint8_t dir_outbits;
+  uint32_t steps[N_AXIS];
 
   uint16_t step_count;       // Steps remaining in line segment motion  
   uint8_t exec_block_index; // Tracks the current st_block index. Change indicates new block.
@@ -120,6 +128,8 @@ typedef struct {
 static st_prep_t prep;
 
 
+static void st_config_step_timer(uint32_t cycles);
+
 /*    BLOCK VELOCITY PROFILE DEFINITION 
           __________________________
          /|                        |\     _________________         ^
@@ -158,6 +168,7 @@ static st_prep_t prep;
   are shown and defined in the above illustration.
 */
 
+
 // Stepper state initialization. Cycle should only start if the st.cycle_start flag is
 // enabled. Startup init and limits call this function but shouldn't start the cycle.
 void st_wake_up() 
@@ -170,20 +181,22 @@ void st_wake_up()
   }
   if (sys.state & (STATE_CYCLE | STATE_HOMING)){
     // Initialize stepper output bits
-    st.out_bits = settings.invert_mask; 
-        
+    st.dir_outbits = settings.dir_invert_mask; 
+    st.step_outbits = settings.step_invert_mask;
+    
     // Initialize step pulse timing from settings. Here to ensure updating after re-writing.
     #ifdef STEP_PULSE_DELAY
       // Set total step pulse time after direction pin set. Ad hoc computation from oscilloscope.
       st.step_pulse_time = -(((settings.pulse_microseconds+STEP_PULSE_DELAY-2)*TICKS_PER_MICROSECOND) >> 3);
       // Set delay between direction pin write and step command.
-      OCR2A = -(((settings.pulse_microseconds)*TICKS_PER_MICROSECOND) >> 3);
+      OCR0A = -(((settings.pulse_microseconds)*TICKS_PER_MICROSECOND) >> 3);
     #else // Normal operation
       // Set step pulse time. Ad hoc computation from oscilloscope. Uses two's complement.
       st.step_pulse_time = -(((settings.pulse_microseconds-2)*TICKS_PER_MICROSECOND) >> 3);
     #endif
 
-    // Enable stepper driver interrupt
+    // Enable Stepper Driver Interrupt
+    TCCR1B = (TCCR1B & ~(0x07<<CS10)) | (1<<CS10); // Set prescaler
     TIMSK1 |= (1<<OCIE1A);
   }
 }
@@ -192,10 +205,8 @@ void st_wake_up()
 // Stepper shutdown
 void st_go_idle() 
 {
-  // Disable stepper driver interrupt. Allow Timer0 to finish. It will disable itself.
+  // Disable Timer1 Stepper Driver Interrupt. Allow Timer0 to finish. It will disable itself.
   TIMSK1 &= ~(1<<OCIE1A); 
-// TIMSK2 &= ~(1<<OCIE2A); // Disable Timer2 interrupt
-// TCCR2B = 0; // Disable Timer2
   busy = false;
 
   // Disable steppers only upon system alarm activated or by user setting to not be kept enabled.
@@ -242,19 +253,20 @@ ISR(TIMER1_COMPA_vect)
   if (busy) { return; } // The busy-flag is used to avoid reentering this interrupt
   
   // Set the direction pins a couple of nanoseconds before we step the steppers
-  STEPPING_PORT = (STEPPING_PORT & ~DIRECTION_MASK) | (st.out_bits & DIRECTION_MASK);
+  DIRECTION_PORT = (DIRECTION_PORT & ~DIRECTION_MASK) | (st.dir_outbits & DIRECTION_MASK);
+
   // Then pulse the stepping pins
   #ifdef STEP_PULSE_DELAY
-    st.step_bits = (STEPPING_PORT & ~STEP_MASK) | st.out_bits; // Store out_bits to prevent overwriting.
+    st.step_bits = (STEPPING_PORT & ~STEP_MASK) | st.step_outbits; // Store out_bits to prevent overwriting.
   #else  // Normal operation
-    STEPPING_PORT = (STEPPING_PORT & ~STEP_MASK) | st.out_bits;
+    STEPPING_PORT = (STEPPING_PORT & ~STEP_MASK) | st.step_outbits;
   #endif  
 
   // Enable step pulse reset timer so that The Stepper Port Reset Interrupt can reset the signal after
   // exactly settings.pulse_microseconds microseconds, independent of the main Timer1 prescaler.
-  TCNT2 = st.step_pulse_time; // Reload timer counter
-  TCCR2B = (1<<CS21); // Begin timer2. Full speed, 1/8 prescaler
-  
+  TCNT0 = st.step_pulse_time; // Reload Timer0 counter
+  TCCR0B = (1<<CS21); // Begin Timer0. Full speed, 1/8 prescaler
+
   busy = true;
   sei(); // Re-enable interrupts to allow Stepper Port Reset Interrupt to fire on-time. 
          // NOTE: The remaining code in this ISR will finish before returning to main program.
@@ -266,7 +278,7 @@ ISR(TIMER1_COMPA_vect)
       // Initialize new step segment and load number of steps to execute
       st.exec_segment = &segment_buffer[segment_buffer_tail];
       // Initialize step segment timing per step and load number of steps to execute.
-      TCCR1B = (TCCR1B & ~(0x07<<CS10)) | (st.exec_segment->prescaler<<CS10);
+      // TCCR1B = (TCCR1B & ~(0x07<<CS10)) | (st.exec_segment->prescaler<<CS10);
       OCR1A = st.exec_segment->cycles_per_tick;
       st.step_count = st.exec_segment->n_step; // NOTE: Can sometimes be zero when moving slow.
       // If the new segment starts a new planner block, initialize stepper variables and counters.
@@ -274,11 +286,15 @@ ISR(TIMER1_COMPA_vect)
       if ( st.exec_block_index != st.exec_segment->st_block_index ) {
         st.exec_block_index = st.exec_segment->st_block_index;
         st.exec_block = &st_block_buffer[st.exec_block_index];
+        st.dir_outbits = st.exec_block->direction_bits ^ settings.dir_invert_mask; 
         // Initialize Bresenham line and distance counters
         st.counter_x = (st.exec_block->step_event_count >> 1);
         st.counter_y = st.counter_x;
-        st.counter_z = st.counter_x;
+        st.counter_z = st.counter_x;        
       }
+      st.steps[X_AXIS] = st.exec_block->steps[X_AXIS] >> st.exec_segment->amass_level;
+      st.steps[Y_AXIS] = st.exec_block->steps[Y_AXIS] >> st.exec_segment->amass_level;
+      st.steps[Z_AXIS] = st.exec_block->steps[Z_AXIS] >> st.exec_segment->amass_level;
     } else {
       // Segment buffer empty. Shutdown.
       st_go_idle();
@@ -287,46 +303,43 @@ ISR(TIMER1_COMPA_vect)
     }  
   }
    
-  // Reset out_bits and reload direction bits
-  st.out_bits = st.exec_block->direction_bits; 
+  // Reset step out bits.
+  st.step_outbits = 0; 
 
   // Execute step displacement profile by Bresenham line algorithm
-  if (st.step_count > 0) {
-    st.step_count--; // Decrement step events count 
+  st.counter_x += st.steps[X_AXIS];
+  if (st.counter_x > st.exec_block->step_event_count) {
+    st.step_outbits |= (1<<X_STEP_BIT);
+    st.counter_x -= st.exec_block->step_event_count;
+    if (st.exec_block->direction_bits & (1<<X_DIRECTION_BIT)) { sys.position[X_AXIS]--; }
+    else { sys.position[X_AXIS]++; }
+  }
+  st.counter_y += st.steps[Y_AXIS];
+  if (st.counter_y > st.exec_block->step_event_count) {
+    st.step_outbits |= (1<<Y_STEP_BIT);
+    st.counter_y -= st.exec_block->step_event_count;
+    if (st.exec_block->direction_bits & (1<<Y_DIRECTION_BIT)) { sys.position[Y_AXIS]--; }
+    else { sys.position[Y_AXIS]++; }
+  }
+  st.counter_z += st.steps[Z_AXIS];
+  if (st.counter_z > st.exec_block->step_event_count) {
+    st.step_outbits |= (1<<Z_STEP_BIT);
+    st.counter_z -= st.exec_block->step_event_count;
+    if (st.exec_block->direction_bits & (1<<Z_DIRECTION_BIT)) { sys.position[Z_AXIS]--; }
+    else { sys.position[Z_AXIS]++; }
+  }  
 
-    st.counter_x += st.exec_block->steps[X_AXIS];
-    if (st.counter_x > st.exec_block->step_event_count) {
-      st.out_bits |= (1<<X_STEP_BIT);
-      st.counter_x -= st.exec_block->step_event_count;
-      if (st.out_bits & (1<<X_DIRECTION_BIT)) { sys.position[X_AXIS]--; }
-      else { sys.position[X_AXIS]++; }
-    }
-    st.counter_y += st.exec_block->steps[Y_AXIS];
-    if (st.counter_y > st.exec_block->step_event_count) {
-      st.out_bits |= (1<<Y_STEP_BIT);
-      st.counter_y -= st.exec_block->step_event_count;
-      if (st.out_bits & (1<<Y_DIRECTION_BIT)) { sys.position[Y_AXIS]--; }
-      else { sys.position[Y_AXIS]++; }
-    }
-    st.counter_z += st.exec_block->steps[Z_AXIS];
-    if (st.counter_z > st.exec_block->step_event_count) {
-      st.out_bits |= (1<<Z_STEP_BIT);
-      st.counter_z -= st.exec_block->step_event_count;
-      if (st.out_bits & (1<<Z_DIRECTION_BIT)) { sys.position[Z_AXIS]--; }
-      else { sys.position[Z_AXIS]++; }
-    }  
+  // During a homing cycle, lock out and prevent desired axes from moving.
+  if (sys.state == STATE_HOMING) { st.step_outbits &= sys.homing_axis_lock; }   
 
-    // During a homing cycle, lock out and prevent desired axes from moving.
-    if (sys.state == STATE_HOMING) { st.out_bits &= sys.homing_axis_lock; }   
-  }      
-
+  st.step_count--; // Decrement step events count 
   if (st.step_count == 0) {
     // Segment is complete. Discard current segment and advance segment indexing.
     st.exec_segment = NULL;
     if ( ++segment_buffer_tail == SEGMENT_BUFFER_SIZE) { segment_buffer_tail = 0; }
   }
 
-  st.out_bits ^= settings.invert_mask;  // Apply step port invert mask    
+  st.step_outbits ^= settings.step_invert_mask;  // Apply step port invert mask    
   busy = false;
 // SPINDLE_ENABLE_PORT ^= 1<<SPINDLE_ENABLE_BIT;  
 }
@@ -335,12 +348,6 @@ ISR(TIMER1_COMPA_vect)
 /* The Stepper Port Reset Interrupt: Timer0 OVF interrupt handles the falling edge of the step
    pulse. This should always trigger before the next Timer2 COMPA interrupt and independently
    finish, if Timer2 is disabled after completing a move. */
-// ISR(TIMER0_OVF_vect)
-// {
-//   STEPPING_PORT = (STEPPING_PORT & ~STEP_MASK) | (settings.invert_mask & STEP_MASK); 
-//   TCCR0B = 0; // Disable timer until needed.
-// }
-
 
 // This interrupt is set up by ISR_TIMER1_COMPAREA when it sets the motor port bits. It resets
 // the motor port after a short period (settings.pulse_microseconds) completing one step cycle.
@@ -348,11 +355,11 @@ ISR(TIMER1_COMPA_vect)
 // a few microseconds, if they execute right before one another. Not a big deal, but can
 // cause issues at high step rates if another high frequency asynchronous interrupt is 
 // added to Grbl.
-ISR(TIMER2_OVF_vect)
+ISR(TIMER0_OVF_vect)
 {
   // Reset stepping pins (leave the direction pins)
-  STEPPING_PORT = (STEPPING_PORT & ~STEP_MASK) | (settings.invert_mask & STEP_MASK); 
-  TCCR2B = 0; // Disable Timer2 to prevent re-entering this interrupt when it's not needed. 
+  STEPPING_PORT = (STEPPING_PORT & ~STEP_MASK) | (settings.step_invert_mask & STEP_MASK); 
+  TCCR0B = 0; // Disable Timer0 to prevent re-entering this interrupt when it's not needed. 
 }
 
 
@@ -362,7 +369,7 @@ ISR(TIMER2_OVF_vect)
   // will then trigger after the appropriate settings.pulse_microseconds, as in normal operation.
   // The new timing between direction, step pulse, and step complete events are setup in the
   // st_wake_up() routine.
-  ISR(TIMER2_COMPA_vect) 
+  ISR(TIMER0_COMPA_vect) 
   { 
     STEPPING_PORT = st.step_bits; // Begin step pulse.
   }
@@ -387,12 +394,14 @@ void st_reset()
 // Initialize and start the stepper motor subsystem
 void st_init()
 {
-  // Configure directions of interface pins
-  STEPPING_DDR |= STEPPING_MASK;
-  STEPPING_PORT = (STEPPING_PORT & ~STEPPING_MASK) | settings.invert_mask;
+  // Configure step and direction interface pins
+  STEPPING_DDR |= STEP_MASK;
+  STEPPING_PORT = (STEPPING_PORT & ~STEP_MASK) | settings.step_invert_mask;
   STEPPERS_DISABLE_DDR |= 1<<STEPPERS_DISABLE_BIT;
+  DIRECTION_DDR |= DIRECTION_MASK;
+  DIRECTION_PORT = (DIRECTION_PORT & ~DIRECTION_MASK) | settings.dir_invert_mask;
 
-  // Configure Timer 1
+  // Configure Timer 1: Stepper Driver Interrupt
   TCCR1B &= ~(1<<WGM13); // waveform generation = 0100 = CTC
   TCCR1B |=  (1<<WGM12);
   TCCR1A &= ~(1<<WGM11); 
@@ -401,12 +410,13 @@ void st_init()
   TCCR1A &= ~(3<<COM1B0); 
   TCCR1B = (TCCR1B & ~(0x07<<CS10)) | (1<<CS10);
 
-  // Configure Timer 2
-  TCCR2A = 0; // Normal operation
-  TCCR2B = 0; // Disable timer until needed.
-  TIMSK2 |= (1<<TOIE2); // Enable Timer2 Overflow interrupt     
+  // Configure Timer 0: Stepper Port Reset Interrupt
+  TIMSK0 &= ~(1<<TOIE0);
+  TCCR0A = 0; // Normal operation
+  TCCR0B = 0; // Disable Timer0 until needed
+  TIMSK0 |= (1<<TOIE0); // Enable Timer0 overflow interrupt
   #ifdef STEP_PULSE_DELAY
-    TIMSK2 |= (1<<OCIE2A); // Enable Timer2 Compare Match A interrupt
+    TIMSK0 |= (1<<OCIE0A); // Enable Timer0 Compare Match A interrupt
   #endif
 
   // Start in the idle state, but first wake up to check for keep steppers enabled option.
@@ -510,10 +520,17 @@ void st_prep_buffer()
         // when the segment buffer completes the planner block, it may be discarded immediately.
         st_prep_block = &st_block_buffer[prep.st_block_index];
         st_prep_block->direction_bits = pl_block->direction_bits;
-        st_prep_block->steps[X_AXIS] = pl_block->steps[X_AXIS];
-        st_prep_block->steps[Y_AXIS] = pl_block->steps[Y_AXIS];
-        st_prep_block->steps[Z_AXIS] = pl_block->steps[Z_AXIS];
-        st_prep_block->step_event_count = pl_block->step_event_count;
+        #ifdef ACTIVE_MULTI_AXIS_STEP_SMOOTHING
+          st_prep_block->steps[X_AXIS] = pl_block->steps[X_AXIS] << MAX_AMASS_LEVEL;
+          st_prep_block->steps[Y_AXIS] = pl_block->steps[Y_AXIS] << MAX_AMASS_LEVEL;
+          st_prep_block->steps[Z_AXIS] = pl_block->steps[Z_AXIS] << MAX_AMASS_LEVEL;
+          st_prep_block->step_event_count = pl_block->step_event_count << MAX_AMASS_LEVEL;
+        #else
+          st_prep_block->steps[X_AXIS] = pl_block->steps[X_AXIS];
+          st_prep_block->steps[Y_AXIS] = pl_block->steps[Y_AXIS];
+          st_prep_block->steps[Z_AXIS] = pl_block->steps[Z_AXIS];
+          st_prep_block->step_event_count = pl_block->step_event_count;
+        #endif
         
         // Initialize segment buffer data for generating the segments.
         prep.steps_remaining = pl_block->step_event_count;
@@ -678,11 +695,26 @@ void st_prep_buffer()
     uint32_t cycles;
     float steps_remaining = prep.step_per_mm*mm_remaining; 
 
-    float inv_rate = dt/(prep.steps_remaining-steps_remaining);
-    cycles = ceil( (TICKS_PER_MICROSECOND*1000000*60)*inv_rate ); // (ftol_mult*step/isr_tic)
-
     // Compute number of steps to execute and segment step phase correction. 
-    prep_segment->n_step = ceil(prep.steps_remaining)-ceil(steps_remaining);
+    prep_segment->n_step = ceil(prep.steps_remaining)-ceil(steps_remaining);  
+
+    float inv_rate = dt/(prep.steps_remaining-steps_remaining);
+    cycles = ceil( (TICKS_PER_MICROSECOND*1000000*60)*inv_rate ); // (cycles/step)
+    
+    #ifdef ACTIVE_MULTI_AXIS_STEP_SMOOTHING        
+      // Compute step timing and multi-axis smoothing level. 
+      // NOTE: Only one prescalar is required with AMASS enabled.
+      if (cycles > AMASS_LEVEL1) { 
+        if (cycles > AMASS_LEVEL2) { 
+          if (cycles > AMASS_LEVEL3) { prep_segment->amass_level = 3; }
+          else { prep_segment->amass_level = 2; }    
+        } else { prep_segment->amass_level = 1; }
+        cycles >>= prep_segment->amass_level; 
+        prep_segment->n_step <<= prep_segment->amass_level;
+      } else { prep_segment->amass_level = 0; }
+      if (cycles < (1UL << 16)) { prep_segment->cycles_per_tick = cycles; }
+      else { prep_segment->cycles_per_tick = 0xffff; } // Just set the slowest speed possible. (4.1ms @ 16MHz)
+    #endif
 
     // Determine end of segment conditions. Setup initial conditions for next segment.
     if (mm_remaining > prep.mm_complete) { 
@@ -712,29 +744,6 @@ void st_prep_buffer()
             sys.state = STATE_QUEUED; 
           }
         }
-      }
-    }
-
-// TODO: Compile-time checks to what prescalers need to be compiled in.
-    if (cycles < (1UL << 16)) { // < 65536  (4.1ms @ 16MHz)
-      prep_segment->prescaler = 1; // prescaler: 0
-      prep_segment->cycles_per_tick = cycles;
-    } else {
-      prep_segment->prescaler = 2; // prescaler: 8
-      if (cycles < (1UL << 19)) { // < 524288 (32.8ms@16MHz)
-        prep_segment->cycles_per_tick = cycles >> 3;
-//     } else if (cycles < (1UL << 22)) { // < 4194304 (262ms@16MHz)
-//       prep_segment->prescaler = 3; // prescaler: 64
-//       prep_segment->cycles_per_tick =  cycles >> 6;
-//     } else if (cycles < (1UL << 24)) { // < 16777216 (1.05sec@16MHz)
-//       prep_segment->prescaler = 4; // prescaler: 256
-//       prep_segment->cycles_per_tick =  (cycles >> 8);
-//     } else {
-//       prep_segment->prescaler = 5; // prescaler: 1024
-//       if (cycles < (1UL << 26)) { // < 67108864 (4.19sec@16MHz)
-//         prep_segment->cycles_per_tick = (cycles >> 10);
-      } else { // Just set the slowest speed possible.
-        prep_segment->cycles_per_tick = 0xffff;
       }
     }
 
@@ -776,3 +785,31 @@ void st_prep_buffer()
      we know when the plan is feasible in the context of what's already in the code and not
      require too much more code? 
 */
+
+// static void st_config_step_timer(uint32_t cycles) 
+// {
+//   if (cycles < (1UL << 16)) { // < 65536  (4.1ms @ 16MHz)
+//     prep_segment->prescaler = 1; // prescaler: 0
+//     prep_segment->cycles_per_tick = cycles;
+//   } else {
+//     prep_segment->prescaler = 2; // prescaler: 8
+//     if (cycles < (1UL << 19)) { // < 524288 (32.8ms@16MHz)
+//       prep_segment->cycles_per_tick = cycles >> 3;
+// 
+// //   } else if (cycles < (1UL << 22)) { // < 4194304 (262ms@16MHz)
+// //     prep_segment->prescaler = 3; // prescaler: 64
+// //     prep_segment->cycles_per_tick =  cycles >> 6;
+// //   } else if (cycles < (1UL << 24)) { // < 16777216 (1.05sec@16MHz)
+// //     prep_segment->prescaler = 4; // prescaler: 256
+// //     prep_segment->cycles_per_tick =  (cycles >> 8);
+// //   } else {
+// //     prep_segment->prescaler = 5; // prescaler: 1024
+// //     if (cycles < (1UL << 26)) { // < 67108864 (4.19sec@16MHz)
+// //       prep_segment->cycles_per_tick = (cycles >> 10);
+// 
+//     } else { // Just set the slowest speed possible.
+//       prep_segment->cycles_per_tick = 0xffff;
+//     }
+//     printString("X");
+//   }
+// }

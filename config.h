@@ -34,9 +34,9 @@
 // Serial baud rate
 #define BAUD_RATE 115200
 
-// Default pin mappings. Grbl officially supports the Arduino Uno only. Other processor types
-// may exist from user-supplied templates or directly user-defined in pin_map.h
-#define PIN_MAP_ARDUINO_UNO
+// Default cpu mappings. Grbl officially supports the Arduino Uno only. Other processor types
+// may exist from user-supplied templates or directly user-defined in cpu_map.h
+#define CPU_MAP_ATMEGA328P // Arduino Uno CPU
 
 // Define runtime command special characters. These characters are 'picked-off' directly from the
 // serial read data stream and are not passed to the grbl line execution parser. Select characters
@@ -48,12 +48,6 @@
 #define CMD_FEED_HOLD '!'
 #define CMD_CYCLE_START '~'
 #define CMD_RESET 0x18 // ctrl-x.
-
-// Uncomment the following define if you are using hardware that drives high when your limits
-// are reached. You will need to ensure that you have appropriate pull-down resistors on the
-// limit switch input pins, or that your hardware drives the pins low when they are open (non-
-// triggered).
-// #define LIMIT_SWITCHES_ACTIVE_HIGH // Uncomment to enable
 
 // If homing is enabled, homing init lock sets Grbl into an alarm state upon power up. This forces
 // the user to perform the homing cycle (or override the locks) before doing anything else. This is
@@ -94,16 +88,8 @@
 // set this only as high as needed. Approximate successful values can widely range from 50 to 200 or more.
 #define ACCELERATION_TICKS_PER_SECOND 100 
 
-// Creates a delay between the direction pin setting and corresponding step pulse by creating
-// another interrupt (Timer2 compare) to manage it. The main Grbl interrupt (Timer1 compare) 
-// sets the direction pins, and does not immediately set the stepper pins, as it would in 
-// normal operation. The Timer2 compare fires next to set the stepper pins after the step 
-// pulse delay time, and Timer2 overflow will complete the step pulse, except now delayed 
-// by the step pulse time plus the step pulse delay. (Thanks langwadt for the idea!)
-// NOTE: Uncomment to enable. The recommended delay must be > 3us, and, when added with the
-// user-supplied step pulse time, the total time must not exceed 127us. Reported successful
-// values for certain setups have ranged from 5 to 20us.
-// #define STEP_PULSE_DELAY 10 // Step pulse delay in microseconds. Default disabled.
+#define ACTIVE_MULTI_AXIS_STEP_SMOOTHING 
+#define ENABLE_SOFTWARE_DEBOUNCE
 
 // Minimum planner junction speed. Sets the default minimum junction speed the planner plans to at
 // every buffer block junction, except for starting from rest and end of the buffer, which are always
@@ -126,6 +112,17 @@
 // run-time command executions, like status reports, since these are performed between each dwell 
 // time step. Also, keep in mind that the Arduino delay timer is not very accurate for long delays.
 #define DWELL_TIME_STEP 50 // Integer (1-255) (milliseconds)
+
+// Creates a delay between the direction pin setting and corresponding step pulse by creating
+// another interrupt (Timer2 compare) to manage it. The main Grbl interrupt (Timer1 compare) 
+// sets the direction pins, and does not immediately set the stepper pins, as it would in 
+// normal operation. The Timer2 compare fires next to set the stepper pins after the step 
+// pulse delay time, and Timer2 overflow will complete the step pulse, except now delayed 
+// by the step pulse time plus the step pulse delay. (Thanks langwadt for the idea!)
+// NOTE: Uncomment to enable. The recommended delay must be > 3us, and, when added with the
+// user-supplied step pulse time, the total time must not exceed 127us. Reported successful
+// values for certain setups have ranged from 5 to 20us.
+// #define STEP_PULSE_DELAY 10 // Step pulse delay in microseconds. Default disabled.
 
 // The number of linear motions in the planner buffer to be planned at any give time. The vast
 // majority of RAM that Grbl uses is based on this buffer size. Only increase if there is extra 
@@ -170,8 +167,6 @@
 // terminal programs since their firmware correctly manage these XON/XOFF characters. In any
 // case, please report any successes to grbl administrators!
 // #define ENABLE_XONXOFF // Default disabled. Uncomment to enable.
-
-#define ENABLE_SOFTWARE_DEBOUNCE
 
 // ---------------------------------------------------------------------------------------
 

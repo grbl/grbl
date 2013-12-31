@@ -39,11 +39,11 @@ void limits_init()
 {
   LIMIT_DDR &= ~(LIMIT_MASK); // Set as input pins
 
-  #ifndef LIMIT_SWITCHES_ACTIVE_HIGH
-    LIMIT_PORT |= (LIMIT_MASK); // Enable internal pull-up resistors. Normal high operation.
-  #else
+  if (bit_istrue(settings.flags,BITFLAG_INVERT_LIMIT_PINS)) {
     LIMIT_PORT &= ~(LIMIT_MASK); // Normal low operation. Requires external pull-down.
-  #endif
+  } else {
+    LIMIT_PORT |= (LIMIT_MASK); // Enable internal pull-up resistors. Normal high operation.
+  }
 
   if (bit_istrue(settings.flags,BITFLAG_HARD_LIMIT_ENABLE)) {
     LIMIT_PCMSK |= LIMIT_MASK; // Enable specific pins of the Pin Change Interrupt
@@ -123,13 +123,14 @@ void limits_disable()
 // asynchronous stops are handled by a system level axis lock mask, which prevents the stepper
 // algorithm from executing step pulses.
 // NOTE: Only the abort runtime command can interrupt this process.
-void limits_go_home(uint8_t cycle_mask, bool approach, bool invert_pin, float homing_rate) 
+void limits_go_home(uint8_t cycle_mask, bool approach, float homing_rate) 
 {
   if (sys.execute & EXEC_RESET) { return; }
-  uint8_t limit_state;
-  #ifndef LIMIT_SWITCHES_ACTIVE_HIGH
-    invert_pin = !invert_pin;
-  #endif
+
+  uint8_t invert_pin;
+  if (bit_isfalse(settings.flags,BITFLAG_INVERT_LIMIT_PINS)) { invert_pin = approach; }
+  else { invert_pin = !approach; }
+  
   // Determine travel distance to the furthest homing switch based on user max travel settings.
   float max_travel = settings.max_travel[X_AXIS];
   if (max_travel < settings.max_travel[Y_AXIS]) { max_travel = settings.max_travel[Y_AXIS]; }
@@ -155,13 +156,14 @@ void limits_go_home(uint8_t cycle_mask, bool approach, bool invert_pin, float ho
   homing_rate *= sqrt(n_active_axis); // [sqrt(N_AXIS)] Adjust so individual axes all move at homing rate.
 
   // Setup homing axis locks based on cycle mask.
-  uint8_t axislock = (STEPPING_MASK & ~STEP_MASK);
+  uint8_t axislock = 0;
   if (bit_istrue(cycle_mask,bit(X_AXIS))) { axislock |= (1<<X_STEP_BIT); }
   if (bit_istrue(cycle_mask,bit(Y_AXIS))) { axislock |= (1<<Y_STEP_BIT); }
   if (bit_istrue(cycle_mask,bit(Z_AXIS))) { axislock |= (1<<Z_STEP_BIT); }
   sys.homing_axis_lock = axislock;
   
   // Perform homing cycle. Planner buffer should be empty, as required to initiate the homing cycle.
+  uint8_t limit_state;
   plan_buffer_line(target, homing_rate, false); // Bypass mc_line(). Directly plan homing motion.
   st_prep_buffer(); // Prep first segment from newly planned block.
   st_wake_up(); // Initiate motion

@@ -255,6 +255,7 @@ uint8_t plan_check_full_buffer()
 // during a synchronize call, if it should happen. Also, waits for clean cycle end.
 void plan_synchronize()
 {
+  sys.auto_start = true; // Set auto start to resume cycle after synchronize and caller completes.
   while (plan_get_current_block() || (sys.state == STATE_CYCLE)) { 
     protocol_execute_runtime();   // Check and execute run-time commands
     if (sys.abort) { return; } // Check for system abort

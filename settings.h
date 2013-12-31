@@ -30,7 +30,7 @@
 
 // Version of the EEPROM data. Will be used to migrate existing data from older versions of Grbl
 // when firmware is upgraded. Always stored in byte 0 of eeprom
-#define SETTINGS_VERSION 56
+#define SETTINGS_VERSION 57
 
 // Define bit flag masks for the boolean settings in settings.flag.
 #define BITFLAG_REPORT_INCHES      bit(0)
@@ -39,6 +39,7 @@
 #define BITFLAG_HARD_LIMIT_ENABLE  bit(3)
 #define BITFLAG_HOMING_ENABLE      bit(4)
 #define BITFLAG_SOFT_LIMIT_ENABLE  bit(5)
+#define BITFLAG_INVERT_LIMIT_PINS  bit(6)
 
 // Define EEPROM memory address location values for Grbl settings and parameters
 // NOTE: The Atmega328p has 1KB EEPROM. The upper half is reserved for parameters and
@@ -64,7 +65,8 @@ typedef struct {
   float max_travel[N_AXIS];
   uint8_t pulse_microseconds;
   float default_feed_rate;
-  uint8_t invert_mask;
+  uint8_t step_invert_mask;
+  uint8_t dir_invert_mask;
   uint8_t stepper_idle_lock_time; // If max value 255, steppers do not disable.
   float junction_deviation;
   float arc_tolerance;

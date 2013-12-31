@@ -80,7 +80,8 @@ void settings_reset(bool reset_all) {
     settings.acceleration[Y_AXIS] = DEFAULT_Y_ACCELERATION;
     settings.acceleration[Z_AXIS] = DEFAULT_Z_ACCELERATION;
     settings.arc_tolerance = DEFAULT_ARC_TOLERANCE;
-    settings.invert_mask = DEFAULT_STEPPING_INVERT_MASK;
+    settings.step_invert_mask = DEFAULT_STEPPING_INVERT_MASK;
+    settings.dir_invert_mask = DEFAULT_DIRECTION_INVERT_MASK;
     settings.junction_deviation = DEFAULT_JUNCTION_DEVIATION;
   }
   // New settings since last version
@@ -88,6 +89,7 @@ void settings_reset(bool reset_all) {
   if (DEFAULT_REPORT_INCHES) { settings.flags |= BITFLAG_REPORT_INCHES; }
   if (DEFAULT_AUTO_START) { settings.flags |= BITFLAG_AUTO_START; }
   if (DEFAULT_INVERT_ST_ENABLE) { settings.flags |= BITFLAG_INVERT_ST_ENABLE; }
+  if (DEFAULT_INVERT_LIMIT_PINS) { settings.flags |= BITFLAG_INVERT_LIMIT_PINS; }
   if (DEFAULT_SOFT_LIMIT_ENABLE) { settings.flags |= BITFLAG_SOFT_LIMIT_ENABLE; }
   if (DEFAULT_HARD_LIMIT_ENABLE) { settings.flags |= BITFLAG_HARD_LIMIT_ENABLE; }
   if (DEFAULT_HOMING_ENABLE) { settings.flags |= BITFLAG_HOMING_ENABLE; }
@@ -176,46 +178,51 @@ uint8_t settings_store_global_setting(int parameter, float value) {
       if (value < 3) { return(STATUS_SETTING_STEP_PULSE_MIN); }
       settings.pulse_microseconds = round(value); break;
     case 13: settings.default_feed_rate = value; break;
-    case 14: settings.invert_mask = trunc(value); break;
-    case 15: settings.stepper_idle_lock_time = round(value); break;
-    case 16: settings.junction_deviation = fabs(value); break;
-    case 17: settings.arc_tolerance = value; break;
-    case 18: settings.decimal_places = round(value); break;
-    case 19:
+    case 14: settings.step_invert_mask = trunc(value); break;
+    case 15: settings.dir_invert_mask = trunc(value); break;
+    case 16: settings.stepper_idle_lock_time = round(value); break;
+    case 17: settings.junction_deviation = fabs(value); break;
+    case 18: settings.arc_tolerance = value; break;
+    case 19: settings.decimal_places = round(value); break;
+    case 20:
       if (value) { settings.flags |= BITFLAG_REPORT_INCHES; }
       else { settings.flags &= ~BITFLAG_REPORT_INCHES; }
       break;
-    case 20: // Reset to ensure change. Immediate re-init may cause problems.
+    case 21: // Reset to ensure change. Immediate re-init may cause problems.
       if (value) { settings.flags |= BITFLAG_AUTO_START; }
       else { settings.flags &= ~BITFLAG_AUTO_START; }
       break;
-    case 21: // Reset to ensure change. Immediate re-init may cause problems.
+    case 22: // Reset to ensure change. Immediate re-init may cause problems.
       if (value) { settings.flags |= BITFLAG_INVERT_ST_ENABLE; }
       else { settings.flags &= ~BITFLAG_INVERT_ST_ENABLE; }
       break;
-    case 22:
+    case 23: // Reset to ensure change. Immediate re-init may cause problems.
+      if (value) { settings.flags |= BITFLAG_INVERT_LIMIT_PINS; }
+      else { settings.flags &= ~BITFLAG_INVERT_LIMIT_PINS; }
+      break;
+    case 24:
       if (value) { 
         if (bit_isfalse(settings.flags, BITFLAG_HOMING_ENABLE)) { return(STATUS_SOFT_LIMIT_ERROR); }
         settings.flags |= BITFLAG_SOFT_LIMIT_ENABLE; 
       } else { settings.flags &= ~BITFLAG_SOFT_LIMIT_ENABLE; }
       break;
-    case 23:
+    case 25:
       if (value) { settings.flags |= BITFLAG_HARD_LIMIT_ENABLE; }
       else { settings.flags &= ~BITFLAG_HARD_LIMIT_ENABLE; }
       limits_init(); // Re-init to immediately change. NOTE: Nice to have but could be problematic later.
       break;
-    case 24:
+    case 26:
       if (value) { settings.flags |= BITFLAG_HOMING_ENABLE; }
       else { 
         settings.flags &= ~BITFLAG_HOMING_ENABLE; 
-        settings.flags &= ~BITFLAG_SOFT_LIMIT_ENABLE; 
+        settings.flags &= ~BITFLAG_SOFT_LIMIT_ENABLE; // Force disable soft-limits.
       }
       break;
-    case 25: settings.homing_dir_mask = trunc(value); break;
-    case 26: settings.homing_feed_rate = value; break;
-    case 27: settings.homing_seek_rate = value; break;
-    case 28: settings.homing_debounce_delay = round(value); break;
-    case 29: settings.homing_pulloff = value; break;
+    case 27: settings.homing_dir_mask = trunc(value); break;
+    case 28: settings.homing_feed_rate = value; break;
+    case 29: settings.homing_seek_rate = value; break;
+    case 30: settings.homing_debounce_delay = round(value); break;
+    case 31: settings.homing_pulloff = value; break;
     default: 
       return(STATUS_INVALID_STATEMENT);
   }

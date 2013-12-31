@@ -224,12 +224,12 @@ void mc_homing_cycle()
   // Perform homing routine. NOTE: Special motion case. Only system reset works.
   
   // Search to engage all axes limit switches at faster homing seek rate.
-  limits_go_home(HOMING_SEARCH_CYCLE_0, true, false, settings.homing_seek_rate);  // Search cycle 0
+  limits_go_home(HOMING_SEARCH_CYCLE_0, true, settings.homing_seek_rate);  // Search cycle 0
   #ifdef HOMING_SEARCH_CYCLE_1
-    limits_go_home(HOMING_SEARCH_CYCLE_1, true, false, settings.homing_seek_rate);  // Search cycle 1
+    limits_go_home(HOMING_SEARCH_CYCLE_1, true, settings.homing_seek_rate);  // Search cycle 1
   #endif
   #ifdef HOMING_SEARCH_CYCLE_2
-    limits_go_home(HOMING_SEARCH_CYCLE_2, true, false, settings.homing_seek_rate);  // Search cycle 2
+    limits_go_home(HOMING_SEARCH_CYCLE_2, true, settings.homing_seek_rate);  // Search cycle 2
   #endif
     
   // Now in proximity of all limits. Carefully leave and approach switches in multiple cycles
@@ -237,11 +237,11 @@ void mc_homing_cycle()
   int8_t n_cycle = N_HOMING_LOCATE_CYCLE;
   while (n_cycle--) {
     // Leave all switches to release them. After cycles complete, this is machine zero.
-    limits_go_home(HOMING_LOCATE_CYCLE, false, true, settings.homing_feed_rate);
+    limits_go_home(HOMING_LOCATE_CYCLE, false, settings.homing_feed_rate);
 
     if (n_cycle > 0) {
       // Re-approach all switches to re-engage them.
-      limits_go_home(HOMING_LOCATE_CYCLE, true, false, settings.homing_feed_rate);
+      limits_go_home(HOMING_LOCATE_CYCLE, true, settings.homing_feed_rate);
     }
   }
   // -------------------------------------------------------------------------------------
@@ -291,15 +291,23 @@ void mc_homing_cycle()
 }
 
 
-// Auto-cycle start is a user setting that automatically begins the cycle when a user enters
-// a valid motion command either manually or by a streaming tool. This is intended as a beginners
-// feature to help new users to understand g-code. It can be disabled. Otherwise, the normal
-// operation of cycle start is manually issuing a cycle start command whenever the user is
-// ready and there is a valid motion command in the planner queue.
+// Auto-cycle start has two purposes: 1. Resumes a plan_synchronize() call from a function that
+// requires the planner buffer to empty (spindle enable, dwell, etc.) 2. As a user setting that 
+// automatically begins the cycle when a user enters a valid motion command manually. This is 
+// intended as a beginners feature to help new users to understand g-code. It can be disabled
+// as a beginner tool, but (1.) still operates. If disabled, the operation of cycle start is
+// manually issuing a cycle start command whenever the user is ready and there is a valid motion 
+// command in the planner queue.
 // NOTE: This function is called from the main loop and mc_line() only and executes when one of
 // two conditions exist respectively: There are no more blocks sent (i.e. streaming is finished, 
 // single commands), or the planner buffer is full and ready to go.
-void mc_auto_cycle_start() { if (sys.auto_start) { st_cycle_start(); } }
+void mc_auto_cycle_start() 
+{ 
+  if (sys.auto_start) { 
+    st_cycle_start(); 
+    if (bit_isfalse(settings.flags,BITFLAG_AUTO_START)) { sys.auto_start = false; } // Reset auto start per settings.
+  }
+}
 
 
 // Method to ready the system to reset by setting the runtime reset command and killing any

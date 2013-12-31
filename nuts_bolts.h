@@ -27,7 +27,7 @@
 #include <stdbool.h>
 #include "config.h"
 #include "defaults.h"
-#include "pin_map.h"
+#include "cpu_map.h"
 
 #define false 0
 #define true 1

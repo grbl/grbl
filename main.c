@@ -88,6 +88,7 @@ int main(void)
       sys.abort = false;
       sys.execute = 0;
       if (bit_istrue(settings.flags,BITFLAG_AUTO_START)) { sys.auto_start = true; }
+      else { sys.auto_start = false; }
             
       // Check for and report alarm state after a reset, error, or an initial power up.
       if (sys.state == STATE_ALARM) {

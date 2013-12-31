@@ -28,7 +28,7 @@ void limits_init();
 void limits_disable();
 
 // Perform one portion of the homing cycle based on the input settings.
-void limits_go_home(uint8_t cycle_mask, bool approach, bool invert_pin, float homing_rate);
+void limits_go_home(uint8_t cycle_mask, bool approach, float homing_rate);
 
 // Check for soft limit violations
 void limits_soft_check(float *target);

@@ -71,7 +71,7 @@ void report_status_message(uint8_t status_code)
       case STATUS_SETTING_READ_FAIL:
       printPgmString(PSTR("EEPROM read fail. Using defaults")); break;
       case STATUS_IDLE_ERROR:
-      printPgmString(PSTR("Busy or queued")); break;
+      printPgmString(PSTR("Not idle")); break;
       case STATUS_ALARM_LOCK:
       printPgmString(PSTR("Alarm lock")); break;
       case STATUS_SOFT_LIMIT_ERROR:
@@ -162,24 +162,27 @@ void report_grbl_settings() {
   printPgmString(PSTR(" (y max travel, mm)\r\n$11=")); printFloat(-settings.max_travel[Z_AXIS]); // Grbl internally store this as negative.
   printPgmString(PSTR(" (z max travel, mm)\r\n$12=")); printInteger(settings.pulse_microseconds);
   printPgmString(PSTR(" (step pulse, usec)\r\n$13=")); printFloat(settings.default_feed_rate);
-  printPgmString(PSTR(" (default feed, mm/min)\r\n$14=")); printInteger(settings.invert_mask); 
-  printPgmString(PSTR(" (step port invert mask, int:")); print_uint8_base2(settings.invert_mask);  
-  printPgmString(PSTR(")\r\n$15=")); printInteger(settings.stepper_idle_lock_time);
-  printPgmString(PSTR(" (step idle delay, msec)\r\n$16=")); printFloat(settings.junction_deviation);
-  printPgmString(PSTR(" (junction deviation, mm)\r\n$17=")); printFloat(settings.arc_tolerance);
-  printPgmString(PSTR(" (arc tolerance, mm)\r\n$18=")); printInteger(settings.decimal_places);
-  printPgmString(PSTR(" (n-decimals, int)\r\n$19=")); printInteger(bit_istrue(settings.flags,BITFLAG_REPORT_INCHES));
-  printPgmString(PSTR(" (report inches, bool)\r\n$20=")); printInteger(bit_istrue(settings.flags,BITFLAG_AUTO_START));
-  printPgmString(PSTR(" (auto start, bool)\r\n$21=")); printInteger(bit_istrue(settings.flags,BITFLAG_INVERT_ST_ENABLE));
-  printPgmString(PSTR(" (invert step enable, bool)\r\n$22=")); printInteger(bit_istrue(settings.flags,BITFLAG_SOFT_LIMIT_ENABLE));
-  printPgmString(PSTR(" (soft limits, bool)\r\n$23=")); printInteger(bit_istrue(settings.flags,BITFLAG_HARD_LIMIT_ENABLE));
-  printPgmString(PSTR(" (hard limits, bool)\r\n$24=")); printInteger(bit_istrue(settings.flags,BITFLAG_HOMING_ENABLE));
-  printPgmString(PSTR(" (homing cycle, bool)\r\n$25=")); printInteger(settings.homing_dir_mask);
+  printPgmString(PSTR(" (default feed, mm/min)\r\n$14=")); printInteger(settings.step_invert_mask); 
+  printPgmString(PSTR(" (step port invert mask, int:")); print_uint8_base2(settings.step_invert_mask);  
+  printPgmString(PSTR(")\r\n$15=")); printInteger(settings.dir_invert_mask); 
+  printPgmString(PSTR(" (dir port invert mask, int:")); print_uint8_base2(settings.dir_invert_mask);  
+  printPgmString(PSTR(")\r\n$16=")); printInteger(settings.stepper_idle_lock_time);
+  printPgmString(PSTR(" (step idle delay, msec)\r\n$17=")); printFloat(settings.junction_deviation);
+  printPgmString(PSTR(" (junction deviation, mm)\r\n$18=")); printFloat(settings.arc_tolerance);
+  printPgmString(PSTR(" (arc tolerance, mm)\r\n$19=")); printInteger(settings.decimal_places);
+  printPgmString(PSTR(" (n-decimals, int)\r\n$20=")); printInteger(bit_istrue(settings.flags,BITFLAG_REPORT_INCHES));
+  printPgmString(PSTR(" (report inches, bool)\r\n$21=")); printInteger(bit_istrue(settings.flags,BITFLAG_AUTO_START));
+  printPgmString(PSTR(" (auto start, bool)\r\n$22=")); printInteger(bit_istrue(settings.flags,BITFLAG_INVERT_ST_ENABLE));
+  printPgmString(PSTR(" (invert step enable, bool)\r\n$23=")); printInteger(bit_istrue(settings.flags,BITFLAG_INVERT_LIMIT_PINS));
+  printPgmString(PSTR(" (invert limit pins, bool)\r\n$24=")); printInteger(bit_istrue(settings.flags,BITFLAG_SOFT_LIMIT_ENABLE));
+  printPgmString(PSTR(" (soft limits, bool)\r\n$25=")); printInteger(bit_istrue(settings.flags,BITFLAG_HARD_LIMIT_ENABLE));
+  printPgmString(PSTR(" (hard limits, bool)\r\n$26=")); printInteger(bit_istrue(settings.flags,BITFLAG_HOMING_ENABLE));
+  printPgmString(PSTR(" (homing cycle, bool)\r\n$27=")); printInteger(settings.homing_dir_mask);
   printPgmString(PSTR(" (homing dir invert mask, int:")); print_uint8_base2(settings.homing_dir_mask);  
-  printPgmString(PSTR(")\r\n$26=")); printFloat(settings.homing_feed_rate);
-  printPgmString(PSTR(" (homing feed, mm/min)\r\n$27=")); printFloat(settings.homing_seek_rate);
-  printPgmString(PSTR(" (homing seek, mm/min)\r\n$28=")); printInteger(settings.homing_debounce_delay);
-  printPgmString(PSTR(" (homing debounce, msec)\r\n$29=")); printFloat(settings.homing_pulloff);
+  printPgmString(PSTR(")\r\n$28=")); printFloat(settings.homing_feed_rate);
+  printPgmString(PSTR(" (homing feed, mm/min)\r\n$29=")); printFloat(settings.homing_seek_rate);
+  printPgmString(PSTR(" (homing seek, mm/min)\r\n$30=")); printInteger(settings.homing_debounce_delay);
+  printPgmString(PSTR(" (homing debounce, msec)\r\n$31=")); printFloat(settings.homing_pulloff);
   printPgmString(PSTR(" (homing pull-off, mm)\r\n")); 
 }
 
