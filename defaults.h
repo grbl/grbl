@@ -2,7 +2,7 @@
   defaults.h - defaults settings configuration file
   Part of Grbl
 
-  Copyright (c) 2012-2013 Sungeun K. Jeon
+  Copyright (c) 2012-2014 Sungeun K. Jeon
 
   Grbl is free software: you can redistribute it and/or modify
   it under the terms of the GNU General Public License as published by

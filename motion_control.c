@@ -2,8 +2,8 @@
   motion_control.c - high level interface for issuing motion commands
   Part of Grbl
 
+  Copyright (c) 2011-2014 Sungeun K. Jeon
   Copyright (c) 2009-2011 Simen Svale Skogsrud
-  Copyright (c) 2011-2013 Sungeun K. Jeon
   Copyright (c) 2011 Jens Geisler
   
   Grbl is free software: you can redistribute it and/or modify
@@ -301,13 +301,7 @@ void mc_homing_cycle()
 // NOTE: This function is called from the main loop and mc_line() only and executes when one of
 // two conditions exist respectively: There are no more blocks sent (i.e. streaming is finished, 
 // single commands), or the planner buffer is full and ready to go.
-void mc_auto_cycle_start() 
-{ 
-  if (sys.auto_start) { 
-    st_cycle_start(); 
-    if (bit_isfalse(settings.flags,BITFLAG_AUTO_START)) { sys.auto_start = false; } // Reset auto start per settings.
-  }
-}
+void mc_auto_cycle_start() { if (sys.auto_start) { st_cycle_start(); } }
 
 
 // Method to ready the system to reset by setting the runtime reset command and killing any

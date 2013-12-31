@@ -2,8 +2,8 @@
   limits.c - code pertaining to limit-switches and performing the homing cycle
   Part of Grbl
 
+  Copyright (c) 2012-2014 Sungeun K. Jeon
   Copyright (c) 2009-2011 Simen Svale Skogsrud
-  Copyright (c) 2012-2013 Sungeun K. Jeon
 
   Grbl is free software: you can redistribute it and/or modify
   it under the terms of the GNU General Public License as published by
@@ -132,12 +132,13 @@ void limits_go_home(uint8_t cycle_mask, bool approach, float homing_rate)
   else { invert_pin = !approach; }
   
   // Determine travel distance to the furthest homing switch based on user max travel settings.
+  // NOTE: settings.max_travel[] is stored as a negative value.
   float max_travel = settings.max_travel[X_AXIS];
-  if (max_travel < settings.max_travel[Y_AXIS]) { max_travel = settings.max_travel[Y_AXIS]; }
-  if (max_travel < settings.max_travel[Z_AXIS]) { max_travel = settings.max_travel[Z_AXIS]; }
-  max_travel *= 1.25; // Ensure homing switches engaged by over-estimating max travel.
-  if (approach) { max_travel = -max_travel; }
-  
+  if (max_travel > settings.max_travel[Y_AXIS]) { max_travel = settings.max_travel[Y_AXIS]; }
+  if (max_travel > settings.max_travel[Z_AXIS]) { max_travel = settings.max_travel[Z_AXIS]; }
+  max_travel *= -1.25; // Ensure homing switches engaged by over-estimating max travel.
+  if (!approach) { max_travel = -max_travel; }
+
   // Set target location and rate for active axes.
   float target[N_AXIS];
   uint8_t n_active_axis = 0;

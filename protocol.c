@@ -2,8 +2,8 @@
   protocol.c - the serial protocol master control unit
   Part of Grbl
 
+  Copyright (c) 2011-2014 Sungeun K. Jeon  
   Copyright (c) 2009-2011 Simen Svale Skogsrud
-  Copyright (c) 2011-2013 Sungeun K. Jeon  
 
   Grbl is free software: you can redistribute it and/or modify
   it under the terms of the GNU General Public License as published by

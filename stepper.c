@@ -2,7 +2,7 @@
   stepper.c - stepper motor driver: executes motion plans using stepper motors
   Part of Grbl
 
-  Copyright (c) 2011-2013 Sungeun K. Jeon
+  Copyright (c) 2011-2014 Sungeun K. Jeon
   Copyright (c) 2009-2011 Simen Svale Skogsrud
   
   Grbl is free software: you can redistribute it and/or modify
@@ -63,7 +63,11 @@ typedef struct {
   uint16_t n_step;         // Number of step events to be executed for this segment
   uint8_t st_block_index; // Stepper block data index. Uses this information to execute this segment.
   uint16_t cycles_per_tick;  // Step distance traveled per ISR tick, aka step rate.
-  uint8_t amass_level;
+  #ifdef ADAPTIVE_MULTI_AXIS_STEP_SMOOTHING
+    uint8_t amass_level;
+  #else
+    uint8_t prescaler;
+  #endif
 } segment_t;
 static segment_t segment_buffer[SEGMENT_BUFFER_SIZE];
 
@@ -83,7 +87,9 @@ typedef struct {
   uint8_t step_pulse_time;  // Step pulse reset time after step rise
   uint8_t step_outbits;         // The next stepping-bits to be output
   uint8_t dir_outbits;
-  uint32_t steps[N_AXIS];
+  #ifdef ADAPTIVE_MULTI_AXIS_STEP_SMOOTHING
+    uint32_t steps[N_AXIS];
+  #endif
 
   uint16_t step_count;       // Steps remaining in line segment motion  
   uint8_t exec_block_index; // Tracks the current st_block index. Change indicates new block.
@@ -278,7 +284,9 @@ ISR(TIMER1_COMPA_vect)
       // Initialize new step segment and load number of steps to execute
       st.exec_segment = &segment_buffer[segment_buffer_tail];
       // Initialize step segment timing per step and load number of steps to execute.
-      // TCCR1B = (TCCR1B & ~(0x07<<CS10)) | (st.exec_segment->prescaler<<CS10);
+      #ifndef ADAPTIVE_MULTI_AXIS_STEP_SMOOTHING
+        TCCR1B = (TCCR1B & ~(0x07<<CS10)) | (st.exec_segment->prescaler<<CS10);
+      #endif
       OCR1A = st.exec_segment->cycles_per_tick;
       st.step_count = st.exec_segment->n_step; // NOTE: Can sometimes be zero when moving slow.
       // If the new segment starts a new planner block, initialize stepper variables and counters.
@@ -292,9 +300,11 @@ ISR(TIMER1_COMPA_vect)
         st.counter_y = st.counter_x;
         st.counter_z = st.counter_x;        
       }
-      st.steps[X_AXIS] = st.exec_block->steps[X_AXIS] >> st.exec_segment->amass_level;
-      st.steps[Y_AXIS] = st.exec_block->steps[Y_AXIS] >> st.exec_segment->amass_level;
-      st.steps[Z_AXIS] = st.exec_block->steps[Z_AXIS] >> st.exec_segment->amass_level;
+      #ifdef ADAPTIVE_MULTI_AXIS_STEP_SMOOTHING
+        st.steps[X_AXIS] = st.exec_block->steps[X_AXIS] >> st.exec_segment->amass_level;
+        st.steps[Y_AXIS] = st.exec_block->steps[Y_AXIS] >> st.exec_segment->amass_level;
+        st.steps[Z_AXIS] = st.exec_block->steps[Z_AXIS] >> st.exec_segment->amass_level;
+      #endif
     } else {
       // Segment buffer empty. Shutdown.
       st_go_idle();
@@ -307,21 +317,33 @@ ISR(TIMER1_COMPA_vect)
   st.step_outbits = 0; 
 
   // Execute step displacement profile by Bresenham line algorithm
-  st.counter_x += st.steps[X_AXIS];
+  #ifdef ADAPTIVE_MULTI_AXIS_STEP_SMOOTHING
+    st.counter_x += st.steps[X_AXIS];
+  #else
+    st.counter_x += st.exec_block->steps[X_AXIS];
+  #endif  
   if (st.counter_x > st.exec_block->step_event_count) {
     st.step_outbits |= (1<<X_STEP_BIT);
     st.counter_x -= st.exec_block->step_event_count;
     if (st.exec_block->direction_bits & (1<<X_DIRECTION_BIT)) { sys.position[X_AXIS]--; }
     else { sys.position[X_AXIS]++; }
   }
-  st.counter_y += st.steps[Y_AXIS];
+  #ifdef ADAPTIVE_MULTI_AXIS_STEP_SMOOTHING
+    st.counter_y += st.steps[Y_AXIS];
+  #else
+    st.counter_y += st.exec_block->steps[Y_AXIS];
+  #endif    
   if (st.counter_y > st.exec_block->step_event_count) {
     st.step_outbits |= (1<<Y_STEP_BIT);
     st.counter_y -= st.exec_block->step_event_count;
     if (st.exec_block->direction_bits & (1<<Y_DIRECTION_BIT)) { sys.position[Y_AXIS]--; }
     else { sys.position[Y_AXIS]++; }
   }
-  st.counter_z += st.steps[Z_AXIS];
+  #ifdef ADAPTIVE_MULTI_AXIS_STEP_SMOOTHING
+    st.counter_z += st.steps[Z_AXIS];
+  #else
+    st.counter_z += st.exec_block->steps[Z_AXIS];
+  #endif  
   if (st.counter_z > st.exec_block->step_event_count) {
     st.step_outbits |= (1<<Z_STEP_BIT);
     st.counter_z -= st.exec_block->step_event_count;
@@ -433,6 +455,7 @@ void st_cycle_start()
     sys.state = STATE_CYCLE;
     st_prep_buffer(); // Initialize step segment buffer before beginning cycle.
     st_wake_up();
+    if (bit_isfalse(settings.flags,BITFLAG_AUTO_START)) { sys.auto_start = false; } // Reset auto start per settings.
   }
 }
 
@@ -500,9 +523,9 @@ void st_update_plan_block_parameters()
 */
 void st_prep_buffer()
 {
-  if (sys.state == STATE_QUEUED) { return; } // Block until a motion state is issued
   while (segment_buffer_tail != segment_next_head) { // Check if we need to fill the buffer.
-    
+    if (sys.state == STATE_QUEUED) { return; } // Block until a motion state is issued    
+
     // Determine if we need to load a new planner block or if the block remainder is replanned. 
     if (pl_block == NULL) {
       pl_block = plan_get_current_block(); // Query planner for a queued block
@@ -520,16 +543,16 @@ void st_prep_buffer()
         // when the segment buffer completes the planner block, it may be discarded immediately.
         st_prep_block = &st_block_buffer[prep.st_block_index];
         st_prep_block->direction_bits = pl_block->direction_bits;
-        #ifdef ACTIVE_MULTI_AXIS_STEP_SMOOTHING
-          st_prep_block->steps[X_AXIS] = pl_block->steps[X_AXIS] << MAX_AMASS_LEVEL;
-          st_prep_block->steps[Y_AXIS] = pl_block->steps[Y_AXIS] << MAX_AMASS_LEVEL;
-          st_prep_block->steps[Z_AXIS] = pl_block->steps[Z_AXIS] << MAX_AMASS_LEVEL;
-          st_prep_block->step_event_count = pl_block->step_event_count << MAX_AMASS_LEVEL;
-        #else
+        #ifndef ADAPTIVE_MULTI_AXIS_STEP_SMOOTHING
           st_prep_block->steps[X_AXIS] = pl_block->steps[X_AXIS];
           st_prep_block->steps[Y_AXIS] = pl_block->steps[Y_AXIS];
           st_prep_block->steps[Z_AXIS] = pl_block->steps[Z_AXIS];
           st_prep_block->step_event_count = pl_block->step_event_count;
+        #else
+          st_prep_block->steps[X_AXIS] = pl_block->steps[X_AXIS] << MAX_AMASS_LEVEL;
+          st_prep_block->steps[Y_AXIS] = pl_block->steps[Y_AXIS] << MAX_AMASS_LEVEL;
+          st_prep_block->steps[Z_AXIS] = pl_block->steps[Z_AXIS] << MAX_AMASS_LEVEL;
+          st_prep_block->step_event_count = pl_block->step_event_count << MAX_AMASS_LEVEL;
         #endif
         
         // Initialize segment buffer data for generating the segments.
@@ -701,8 +724,8 @@ void st_prep_buffer()
     float inv_rate = dt/(prep.steps_remaining-steps_remaining);
     cycles = ceil( (TICKS_PER_MICROSECOND*1000000*60)*inv_rate ); // (cycles/step)
     
-    #ifdef ACTIVE_MULTI_AXIS_STEP_SMOOTHING        
-      // Compute step timing and multi-axis smoothing level. 
+    #ifdef ADAPTIVE_MULTI_AXIS_STEP_SMOOTHING        
+      // Compute step timing and multi-axis smoothing level.
       // NOTE: Only one prescalar is required with AMASS enabled.
       if (cycles > AMASS_LEVEL1) { 
         if (cycles > AMASS_LEVEL2) { 
@@ -712,8 +735,24 @@ void st_prep_buffer()
         cycles >>= prep_segment->amass_level; 
         prep_segment->n_step <<= prep_segment->amass_level;
       } else { prep_segment->amass_level = 0; }
-      if (cycles < (1UL << 16)) { prep_segment->cycles_per_tick = cycles; }
-      else { prep_segment->cycles_per_tick = 0xffff; } // Just set the slowest speed possible. (4.1ms @ 16MHz)
+      if (cycles < (1UL << 16)) { prep_segment->cycles_per_tick = cycles; } // < 65536 (4.1ms @ 16MHz)
+      else { prep_segment->cycles_per_tick = 0xffff; } // Just set the slowest speed possible.
+    #else 
+      // Compute step timing and timer prescalar for normal step generation.
+      if (cycles < (1UL << 16)) { // < 65536  (4.1ms @ 16MHz)
+        prep_segment->prescaler = 1; // prescaler: 0
+        prep_segment->cycles_per_tick = cycles;
+      } else if (cycles < (1UL << 19)) { // < 524288 (32.8ms@16MHz)
+        prep_segment->prescaler = 2; // prescaler: 8
+        prep_segment->cycles_per_tick = cycles >> 3;
+      } else { 
+        prep_segment->prescaler = 3; // prescaler: 64
+        if (cycles < (1UL << 22)) { // < 4194304 (262ms@16MHz)
+          prep_segment->cycles_per_tick =  cycles >> 6;
+        } else { // Just set the slowest speed possible.
+          prep_segment->cycles_per_tick = 0xffff;
+        }
+      }
     #endif
 
     // Determine end of segment conditions. Setup initial conditions for next segment.
@@ -754,8 +793,6 @@ void st_prep_buffer()
 // int32_t blength = segment_buffer_head - segment_buffer_tail;
 // if (blength < 0) { blength += SEGMENT_BUFFER_SIZE; } 
 // printInteger(blength);
-    
-    if (sys.state & (STATE_QUEUED | STATE_HOMING)) { return; } // Force exit or one prepped segment.
   } 
 }      
 
@@ -785,31 +822,3 @@ void st_prep_buffer()
      we know when the plan is feasible in the context of what's already in the code and not
      require too much more code? 
 */
-
-// static void st_config_step_timer(uint32_t cycles) 
-// {
-//   if (cycles < (1UL << 16)) { // < 65536  (4.1ms @ 16MHz)
-//     prep_segment->prescaler = 1; // prescaler: 0
-//     prep_segment->cycles_per_tick = cycles;
-//   } else {
-//     prep_segment->prescaler = 2; // prescaler: 8
-//     if (cycles < (1UL << 19)) { // < 524288 (32.8ms@16MHz)
-//       prep_segment->cycles_per_tick = cycles >> 3;
-// 
-// //   } else if (cycles < (1UL << 22)) { // < 4194304 (262ms@16MHz)
-// //     prep_segment->prescaler = 3; // prescaler: 64
-// //     prep_segment->cycles_per_tick =  cycles >> 6;
-// //   } else if (cycles < (1UL << 24)) { // < 16777216 (1.05sec@16MHz)
-// //     prep_segment->prescaler = 4; // prescaler: 256
-// //     prep_segment->cycles_per_tick =  (cycles >> 8);
-// //   } else {
-// //     prep_segment->prescaler = 5; // prescaler: 1024
-// //     if (cycles < (1UL << 26)) { // < 67108864 (4.19sec@16MHz)
-// //       prep_segment->cycles_per_tick = (cycles >> 10);
-// 
-//     } else { // Just set the slowest speed possible.
-//       prep_segment->cycles_per_tick = 0xffff;
-//     }
-//     printString("X");
-//   }
-// }

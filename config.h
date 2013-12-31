@@ -2,7 +2,7 @@
   config.h - compile time configuration
   Part of Grbl
 
-  Copyright (c) 2011-2013 Sungeun K. Jeon
+  Copyright (c) 2011-2014 Sungeun K. Jeon
   Copyright (c) 2009-2011 Simen Svale Skogsrud
 
   Grbl is free software: you can redistribute it and/or modify
@@ -88,7 +88,7 @@
 // set this only as high as needed. Approximate successful values can widely range from 50 to 200 or more.
 #define ACCELERATION_TICKS_PER_SECOND 100 
 
-#define ACTIVE_MULTI_AXIS_STEP_SMOOTHING 
+#define ADAPTIVE_MULTI_AXIS_STEP_SMOOTHING 
 #define ENABLE_SOFTWARE_DEBOUNCE
 
 // Minimum planner junction speed. Sets the default minimum junction speed the planner plans to at

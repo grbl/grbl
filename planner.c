@@ -2,7 +2,7 @@
   planner.c - buffers movement commands and manages the acceleration profile plan
   Part of Grbl
 
-  Copyright (c) 2011-2013 Sungeun K. Jeon
+  Copyright (c) 2011-2014 Sungeun K. Jeon
   Copyright (c) 2009-2011 Simen Svale Skogsrud
   Copyright (c) 2011 Jens Geisler  
   
@@ -255,7 +255,8 @@ uint8_t plan_check_full_buffer()
 // during a synchronize call, if it should happen. Also, waits for clean cycle end.
 void plan_synchronize()
 {
-  sys.auto_start = true; // Set auto start to resume cycle after synchronize and caller completes.
+  // Check and set auto start to resume cycle after synchronize and caller completes.
+  if (sys.state == STATE_CYCLE) { sys.auto_start = true; }
   while (plan_get_current_block() || (sys.state == STATE_CYCLE)) { 
     protocol_execute_runtime();   // Check and execute run-time commands
     if (sys.abort) { return; } // Check for system abort
