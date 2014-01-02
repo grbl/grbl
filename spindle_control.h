@@ -25,7 +25,9 @@
 #include <avr/io.h>
 
 void spindle_init();
-void spindle_run(int8_t direction); //, uint16_t rpm);
+void spindle_run(int8_t direction, uint16_t rpm);
 void spindle_stop();
+uint8_t spindle_pwm();
+void spindle_pwm_update(uint8_t pwm);
 
 #endif

@@ -24,34 +24,74 @@
 #include "planner.h"
 
 static uint8_t current_direction;
+static uint16_t current_rpm;
+static uint8_t current_pwm;
 
 void spindle_init()
 {
   current_direction = 0;
   SPINDLE_ENABLE_DDR |= (1<<SPINDLE_ENABLE_BIT);
-  SPINDLE_DIRECTION_DDR |= (1<<SPINDLE_DIRECTION_BIT);  
+  SPINDLE_DIRECTION_DDR |= (1<<SPINDLE_DIRECTION_BIT);
+  
+#ifdef VARIABLE_SPINDLE
+        SPINDLE_PWM_DDR |= (1<<SPINDLE_PWM_BIT);
+#endif 
+  
   spindle_stop();
 }
 
 void spindle_stop()
 {
-  SPINDLE_ENABLE_PORT &= ~(1<<SPINDLE_ENABLE_BIT);
+#ifdef INVERT_SPINDLE
+        SPINDLE_ENABLE_PORT |= (1<<SPINDLE_ENABLE_BIT);
+#else
+        SPINDLE_ENABLE_PORT &= ~(1<<SPINDLE_ENABLE_BIT);
+#endif
+#ifdef VARIABLE_SPINDLE
+        TCCRA_REGISTER &= ~(1<<COMB_BIT);
+#endif
 }
 
-void spindle_run(int8_t direction) //, uint16_t rpm) 
+void spindle_run(int8_t direction, uint16_t rpm) {
+	if ((direction != current_direction) || (rpm != current_rpm)) {
+		plan_synchronize();
+	if (direction) {
+		if (direction > 0) {
+			SPINDLE_DIRECTION_PORT &= ~(1<<SPINDLE_DIRECTION_BIT);
+		} else {
+			SPINDLE_DIRECTION_PORT |= (1<<SPINDLE_DIRECTION_BIT);
+		}
+
+#ifdef VARIABLE_SPINDLE
+#ifdef SPINDLE_IS_PWM
+
+	TCCRA_REGISTER = (1<<COMB_BIT) | (1<<WAVE1_REGISTER) | (1<<WAVE0_REGISTER);
+	TCCRB_REGISTER = (TCCRB_REGISTER & 0b11111000) | 0x02; // set to 1/8 Prescaler
+	current_pwm = floor((((float) rpm / (float) SPINDLE_MAX_RPM ) * 255.0) + 0.5);
+	OCR_REGISTER = current_pwm;
+	
+#endif
+#endif
+#ifdef INVERT_SPINDLE
+        SPINDLE_ENABLE_PORT &= ~(1<<SPINDLE_ENABLE_BIT);
+#else
+        SPINDLE_ENABLE_PORT |= (1<<SPINDLE_ENABLE_BIT);
+#endif
+
+	} else {
+		spindle_stop();
+	}
+                current_direction = direction;
+                current_rpm = rpm;
+	}
+}
+
+uint8_t spindle_pwm()
 {
-  if (direction != current_direction) {
-    plan_synchronize();
-    if (direction) {
-      if(direction > 0) {
-        SPINDLE_DIRECTION_PORT &= ~(1<<SPINDLE_DIRECTION_BIT);
-      } else {
-        SPINDLE_DIRECTION_PORT |= 1<<SPINDLE_DIRECTION_BIT;
-      }
-      SPINDLE_ENABLE_PORT |= 1<<SPINDLE_ENABLE_BIT;
-    } else {
-      spindle_stop();     
-    }
-    current_direction = direction;
-  }
+	return current_pwm;
+}
+
+void spindle_pwm_update(uint8_t pwm)
+{
+	OCRA_REGISTER = pwm;
 }
