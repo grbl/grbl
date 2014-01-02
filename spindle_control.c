@@ -93,5 +93,5 @@ uint8_t spindle_pwm()
 
 void spindle_pwm_update(uint8_t pwm)
 {
-	OCRA_REGISTER = pwm;
+	OCR_REGISTER = pwm;
 }
