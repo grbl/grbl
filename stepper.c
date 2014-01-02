@@ -34,11 +34,13 @@
 #define RAMP_CRUISE 1
 #define RAMP_DECEL 2
 
-
+// Can't have a high of a cutoff frequency. The 16-bit timer isn't as accurate as it seems.
+// There is a trade between the accuracy of the timer and the smoothness of multi-axis steps.
+// 
 #define MAX_AMASS_LEVEL 3
-#define AMASS_LEVEL1 (F_CPU/10000)
-#define AMASS_LEVEL2 (F_CPU/5000)
-#define AMASS_LEVEL3 (F_CPU/2500)
+#define AMASS_LEVEL1 (F_CPU/8000) 
+#define AMASS_LEVEL2 (F_CPU/4000)
+#define AMASS_LEVEL3 (F_CPU/2000)
 
 
 // Stores the planner block Bresenham algorithm execution data for the segments in the segment 
@@ -133,8 +135,6 @@ typedef struct {
 } st_prep_t;
 static st_prep_t prep;
 
-
-static void st_config_step_timer(uint32_t cycles);
 
 /*    BLOCK VELOCITY PROFILE DEFINITION 
           __________________________
@@ -727,14 +727,14 @@ void st_prep_buffer()
     #ifdef ADAPTIVE_MULTI_AXIS_STEP_SMOOTHING        
       // Compute step timing and multi-axis smoothing level.
       // NOTE: Only one prescalar is required with AMASS enabled.
-      if (cycles > AMASS_LEVEL1) { 
-        if (cycles > AMASS_LEVEL2) { 
-          if (cycles > AMASS_LEVEL3) { prep_segment->amass_level = 3; }
-          else { prep_segment->amass_level = 2; }    
-        } else { prep_segment->amass_level = 1; }
+      if (cycles < AMASS_LEVEL1) { prep_segment->amass_level = 0; }
+      else {
+        if (cycles < AMASS_LEVEL2) { prep_segment->amass_level = 1; }
+        else if (cycles < AMASS_LEVEL3) { prep_segment->amass_level = 2; }
+        else { prep_segment->amass_level = 3; }    
         cycles >>= prep_segment->amass_level; 
         prep_segment->n_step <<= prep_segment->amass_level;
-      } else { prep_segment->amass_level = 0; }
+      }
       if (cycles < (1UL << 16)) { prep_segment->cycles_per_tick = cycles; } // < 65536 (4.1ms @ 16MHz)
       else { prep_segment->cycles_per_tick = 0xffff; } // Just set the slowest speed possible.
     #else 
@@ -749,7 +749,7 @@ void st_prep_buffer()
         prep_segment->prescaler = 3; // prescaler: 64
         if (cycles < (1UL << 22)) { // < 4194304 (262ms@16MHz)
           prep_segment->cycles_per_tick =  cycles >> 6;
-        } else { // Just set the slowest speed possible.
+        } else { // Just set the slowest speed possible. (Around 4 step/sec.)
           prep_segment->cycles_per_tick = 0xffff;
         }
       }
@@ -778,7 +778,7 @@ void st_prep_buffer()
       
         if (sys.state == STATE_HOLD) { 
           if (prep.current_speed == 0.0) { 
-  // TODO: Check if the segment buffer gets initialized correctly.
+// TODO: Check if the segment buffer gets initialized correctly.
             plan_cycle_reinitialize();
             sys.state = STATE_QUEUED; 
           }

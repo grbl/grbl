@@ -179,6 +179,7 @@ uint8_t gc_execute_line(char *line)
         switch(int_value) {
           case 0: case 1: case 2: case 30: group_number = MODAL_GROUP_4; break;
           case 3: case 4: case 5: group_number = MODAL_GROUP_7; break;
+          case 7: case 8: case 9: group_number = MODAL_GROUP_8; break;
         }        
         // Set 'M' commands
         switch(int_value) {

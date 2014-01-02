@@ -38,7 +38,8 @@
 #define MODAL_GROUP_5 6 // [G93,G94] Feed rate mode
 #define MODAL_GROUP_6 7 // [G20,G21] Units
 #define MODAL_GROUP_7 8 // [M3,M4,M5] Spindle turning
-#define MODAL_GROUP_12 9 // [G54,G55,G56,G57,G58,G59] Coordinate system selection
+#define MODAL_GROUP_8 9 // [M7,M8,M9] Coolant control
+#define MODAL_GROUP_12 10 // [G54,G55,G56,G57,G58,G59] Coordinate system selection
 
 // Define command actions for within execution-type modal groups (motion, stopping, non-modal). Used
 // internally by the parser to know which command to execute.
