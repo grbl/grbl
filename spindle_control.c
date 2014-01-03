@@ -25,7 +25,10 @@
 
 static uint8_t current_direction;
 static uint16_t current_rpm;
-static uint8_t current_pwm;
+
+#ifdef VARIABLE_SPINDLE
+static uint8_t current_pwm; // Stores the PWM set by the S value
+#endif 
 
 void spindle_init()
 {
@@ -86,12 +89,17 @@ void spindle_run(int8_t direction, uint16_t rpm) {
 	}
 }
 
+#ifdef VARIABLE_SPINDLE
 uint8_t spindle_pwm()
 {
+	// This function can be used by the st_prep_buffer() to calculate what the spindle speed vs travel speed
 	return current_pwm;
 }
 
 void spindle_pwm_update(uint8_t pwm)
 {
+	// This function can be used by the stepper interrupt to set the spindle speed
 	OCR_REGISTER = pwm;
+
 }
+#endif
