@@ -86,10 +86,24 @@
 // acceleration, particularly noticeable on machines that run at very high feedrates, but may negatively
 // impact performance. The correct value for this parameter is machine dependent, so it's advised to
 // set this only as high as needed. Approximate successful values can widely range from 50 to 200 or more.
+// NOTE: Changing this value also changes the execution time of a segment in the step segment buffer. 
+// When increasing this value, this stores less overall time in the segment buffer and vice versa. Make
+// certain the step segment buffer is increased/decreased to account for these changes.
 #define ACCELERATION_TICKS_PER_SECOND 100 
 
-#define ADAPTIVE_MULTI_AXIS_STEP_SMOOTHING 
-#define ENABLE_SOFTWARE_DEBOUNCE
+// Adaptive Multi-Axis Step Smoothing (AMASS) is an advanced feature that does what its name implies, 
+// smoothing the stepping of multi-axis motions. This feature smooths motion particularly at low step
+// frequencies below 10kHz, where the aliasing between axes of multi-axis motions can cause audible 
+// noise and shake your machine. At even lower step frequencies, AMASS adapts and provides even better
+// step smoothing. See stepper.c for more details on the AMASS system works.
+#define ADAPTIVE_MULTI_AXIS_STEP_SMOOTHING  // Default enabled. Comment to disable.
+
+// Enables variable spindle output voltage for different RPM values. On the Arduino Uno, the spindle
+// enable pin will output 5V for maximum RPM with 256 intermediate levels and 0V when disabled.
+// NOTE: IMPORTANT for Arduino Unos! When enabled, the Z-limit pin D11 and spindle enable pin D12 switch!
+// The hardware PWM output on pin D11 is required for variable spindle output voltages.
+// #define VARIABLE_SPINDLE // Default disabled. Uncomment to enable.
+// #define SPINDLE_MAX_RPM 1000 // Max spindle RPM. This value is equal to 100% Duty Cycle on the PWM.
 
 // Minimum planner junction speed. Sets the default minimum junction speed the planner plans to at
 // every buffer block junction, except for starting from rest and end of the buffer, which are always
@@ -167,6 +181,14 @@
 // terminal programs since their firmware correctly manage these XON/XOFF characters. In any
 // case, please report any successes to grbl administrators!
 // #define ENABLE_XONXOFF // Default disabled. Uncomment to enable.
+
+// A simple software debouncing feature for hard limit switches. When enabled, the interrupt monitoring
+// the hard limit switch pins will enable the Arduino's watchdog timer to re-check the limit pin state
+// after a delay of about 32msec. This can help with CNC machines with problematic false triggering of 
+// their hard limit switches, but it WILL NOT fix issues with electrical interference on the signal 
+// cables from external sources. It's recommended to first use shielded signal cables that are grounded
+// (old USB/computer cables work well) and wire in a low-pass circuit into each limit pin.
+// #define ENABLE_SOFTWARE_DEBOUNCE // Default disabled. Uncomment to enable.
 
 // ---------------------------------------------------------------------------------------
 

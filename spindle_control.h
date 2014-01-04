@@ -24,10 +24,13 @@
 
 #include <avr/io.h>
 
+// Initializes spindle pins and hardware PWM, if enabled.
 void spindle_init();
+
+// Sets spindle direction and spindle rpm via PWM, if enabled.
 void spindle_run(int8_t direction, uint16_t rpm);
+
+// Kills spindle.
 void spindle_stop();
-uint8_t spindle_pwm();
-void spindle_pwm_update(uint8_t pwm);
 
 #endif
