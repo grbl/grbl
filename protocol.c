@@ -254,6 +254,22 @@ uint8_t protocol_execute_line(char *line)
               if (!sys.abort) { protocol_execute_startup(); } // Execute startup scripts after successful homing.
             } else { return(STATUS_SETTING_DISABLED); }
             break;
+          case 'I' : // Print or store build info.
+            if ( line[++char_counter] == 0 ) { 
+              if (!(settings_read_build_info(line))) {
+                report_status_message(STATUS_SETTING_READ_FAIL);
+              } else {
+                report_build_info(line);
+              }
+            } else { // Store startup line
+              if(line[char_counter++] != '=') { return(STATUS_UNSUPPORTED_STATEMENT); }
+              helper_var = char_counter; // Set helper variable as counter to start of user info line.
+              do {
+                line[char_counter-helper_var] = line[char_counter];
+              } while (line[char_counter++] != 0);
+              settings_store_build_info(line);
+            }
+            break;               
           case 'N' : // Startup lines. 
             if ( line[++char_counter] == 0 ) { // Print startup lines
               for (helper_var=0; helper_var < N_STARTUP_LINE; helper_var++) {

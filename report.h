@@ -78,4 +78,7 @@ void report_gcode_modes();
 // Prints startup line
 void report_startup_line(uint8_t n, char *line);
 
+// Prints build info and user info
+void report_build_info(char *line);
+
 #endif

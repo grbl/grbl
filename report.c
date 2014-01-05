@@ -125,7 +125,7 @@ void report_feedback_message(uint8_t message_code)
 // Welcome message
 void report_init_message()
 {
-  printPgmString(PSTR("\r\nGrbl " GRBL_VERSION " ("GRBL_VERSION_BUILD ") ['$' for help]\r\n"));
+  printPgmString(PSTR("\r\nGrbl " GRBL_VERSION " ['$' for help]\r\n"));
 }
 
 // Grbl help message
@@ -291,6 +291,16 @@ void report_startup_line(uint8_t n, char *line)
   printPgmString(PSTR("=")); printString(line);
   printPgmString(PSTR("\r\n"));
 }
+
+
+// Prints build info line
+void report_build_info(char *line)
+{
+  printPgmString(PSTR("[" GRBL_VERSION "." GRBL_VERSION_BUILD ":"));
+  printString(line);
+  printPgmString(PSTR("]\r\n"));
+}
+
 
  // Prints real-time data. This function grabs a real-time snapshot of the stepper subprogram 
  // and the actual location of the CNC machine. Users may change the following function to their

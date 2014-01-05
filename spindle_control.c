@@ -92,5 +92,3 @@ void spindle_run(int8_t direction, uint16_t rpm)
     current_rpm = rpm;
   }
 }
-
-#endif

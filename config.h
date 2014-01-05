@@ -74,10 +74,10 @@
 #define N_HOMING_LOCATE_CYCLE 2 // Integer (1-128)
 
 // Number of blocks Grbl executes upon startup. These blocks are stored in EEPROM, where the size
-// and addresses are defined in settings.h. With the current settings, up to 5 startup blocks may
+// and addresses are defined in settings.h. With the current settings, up to 3 startup blocks may
 // be stored and executed in order. These startup blocks would typically be used to set the g-code
 // parser state depending on user preferences.
-#define N_STARTUP_LINE 2 // Integer (1-5)
+#define N_STARTUP_LINE 2 // Integer (1-3)
 
 // ---------------------------------------------------------------------------------------
 // ADVANCED CONFIGURATION OPTIONS:

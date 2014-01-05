@@ -48,6 +48,7 @@
 #define EEPROM_ADDR_GLOBAL 1
 #define EEPROM_ADDR_PARAMETERS 512
 #define EEPROM_ADDR_STARTUP_BLOCK 768
+#define EEPROM_ADDR_BUILD_INFO 992
 
 // Define EEPROM address indexing for coordinate parameters
 #define N_COORDINATE_SYSTEM 6  // Number of supported work coordinate systems (from index 1)
@@ -92,6 +93,10 @@ void settings_store_startup_line(uint8_t n, char *line);
 
 // Reads an EEPROM startup line to the protocol line variable
 uint8_t settings_read_startup_line(uint8_t n, char *line);
+
+void settings_store_build_info(char *line);
+
+uint8_t settings_read_build_info(char *line);
 
 // Writes selected coordinate data to EEPROM
 void settings_write_coord_data(uint8_t coord_select, float *coord_data);
