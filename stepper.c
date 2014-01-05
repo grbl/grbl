@@ -28,63 +28,66 @@
 
 
 // Some useful constants.
-#define DT_SEGMENT (1.0/(ACCELERATION_TICKS_PER_SECOND*60.0)) // min/segment
-                                    
+#define DT_SEGMENT (1.0/(ACCELERATION_TICKS_PER_SECOND*60.0)) // min/segment                                    
 #define RAMP_ACCEL 0
 #define RAMP_CRUISE 1
 #define RAMP_DECEL 2
 
-// Can't have a high of a cutoff frequency. The 16-bit timer isn't as accurate as it seems.
-// There is a trade between the accuracy of the timer and the smoothness of multi-axis steps.
-// 
+// Define AMASS levels and cutoff frequencies. The highest level frequency bin starts at 0Hz and
+// ends at its cutoff frequency. The next lower level frequency bin starts at the next higher cutoff
+// frequency, and so on. The cutoff frequencies for each level must be considered carefully against
+// how much it over-drives the stepper ISR, the accuracy of the 16-bit timer, and the CPU overhead.
+// Level 0 (no AMASS, normal operation) frequency bin starts at the Level 1 cutoff frequency and 
+// up to as fast as the CPU allows (over 30kHz in limited testing).
+// NOTE: AMASS uutoff frequency multiplied by ISR overdrive factor must not exceed maximum step frequency.
+// NOTE: Current settings are set to overdrive the ISR to no more than 16kHz, balancing CPU overhead
+// and timer accuracy.  Do not alter these settings unless you know what you are doing.
 #define MAX_AMASS_LEVEL 3
-#define AMASS_LEVEL1 (F_CPU/8000) 
-#define AMASS_LEVEL2 (F_CPU/4000)
-#define AMASS_LEVEL3 (F_CPU/2000)
+// AMASS_LEVEL0: Normal operation. No AMASS. No upper cutoff frequency.
+#define AMASS_LEVEL1 (F_CPU/8000) // Over-drives ISR (x2). Defined as F_CPU/(Cutoff frequency in Hz)
+#define AMASS_LEVEL2 (F_CPU/4000) // Over-drives ISR (x4)
+#define AMASS_LEVEL3 (F_CPU/2000) // Over-drives ISR (x8)
 
 
 // Stores the planner block Bresenham algorithm execution data for the segments in the segment 
 // buffer. Normally, this buffer is partially in-use, but, for the worst case scenario, it will
 // never exceed the number of accessible stepper buffer segments (SEGMENT_BUFFER_SIZE-1).
 // NOTE: This data is copied from the prepped planner blocks so that the planner blocks may be
-// discarded when entirely consumed and completed by the segment buffer.
+// discarded when entirely consumed and completed by the segment buffer. Also, AMASS alters this
+// data for its own use. 
 typedef struct {  
   uint8_t direction_bits;
   uint32_t steps[N_AXIS];
   uint32_t step_event_count;
 } st_block_t;
 static st_block_t st_block_buffer[SEGMENT_BUFFER_SIZE-1];
-// TODO: Directly adjust this parameters to stop motion of individual axes for the homing cycle.
-// But this may require this to be volatile if it is controlled by an interrupt.
 
 // Primary stepper segment ring buffer. Contains small, short line segments for the stepper 
 // algorithm to execute, which are "checked-out" incrementally from the first block in the
 // planner buffer. Once "checked-out", the steps in the segments buffer cannot be modified by 
 // the planner, where the remaining planner block steps still can.
 typedef struct {
-  uint16_t n_step;         // Number of step events to be executed for this segment
-  uint8_t st_block_index; // Stepper block data index. Uses this information to execute this segment.
-  uint16_t cycles_per_tick;  // Step distance traveled per ISR tick, aka step rate.
+  uint16_t n_step;          // Number of step events to be executed for this segment
+  uint8_t st_block_index;   // Stepper block data index. Uses this information to execute this segment.
+  uint16_t cycles_per_tick; // Step distance traveled per ISR tick, aka step rate.
   #ifdef ADAPTIVE_MULTI_AXIS_STEP_SMOOTHING
-    uint8_t amass_level;
+    uint8_t amass_level;    // Indicates AMASS level for the ISR to execute this segment
   #else
-    uint8_t prescaler;
+    uint8_t prescaler;      // Without AMASS, a prescaler is required to adjust for slow timing.
   #endif
 } segment_t;
 static segment_t segment_buffer[SEGMENT_BUFFER_SIZE];
 
-// Stepper state variable. Contains running data and trapezoid variables.
+// Stepper ISR data struct. Contains the running data for the main stepper ISR.
 typedef struct {
   // Used by the bresenham line algorithm
   uint32_t counter_x,        // Counter variables for the bresenham line tracer
            counter_y, 
            counter_z;
-
   #ifdef STEP_PULSE_DELAY
     uint8_t step_bits;  // Stores out_bits output to complete the step pulse delay
   #endif
   
-  // Used by the stepper driver interrupt
   uint8_t execute_step;     // Flags step execution for each interrupt.
   uint8_t step_pulse_time;  // Step pulse reset time after step rise
   uint8_t step_outbits;         // The next stepping-bits to be output
@@ -235,9 +238,25 @@ void st_go_idle()
    round-off errors and only requires fast integer counters, meaning low computational overhead
    and maximizing the Arduino's capabilities. However, the downside of the Bresenham algorithm
    is, for certain multi-axis motions, the non-dominant axes may suffer from un-smooth step 
-   pulse trains, which can lead to strange audible noises or shaking. This is particularly 
-   noticeable or may cause motion issues at low step frequencies (<1kHz), but usually not at 
-   higher frequencies.
+   pulse trains, or aliasing, which can lead to strange audible noises or shaking. This is 
+   particularly noticeable or may cause motion issues at low step frequencies (0-5kHz), but 
+   is usually not a physical problem at higher frequencies, although audible.
+     To improve Bresenham multi-axis performance, Grbl uses what we call an Adaptive Multi-Axis
+   Step Smoothing (AMASS) algorithm, which does what the name implies. At lower step frequencies,
+   AMASS artificially increases the Bresenham resolution without effecting the algorithm's 
+   innate exactness. AMASS adapts its resolution levels automatically depending on the step
+   frequency to be executed, meaning that for even lower step frequencies the step smoothing 
+   level increases. Algorithmically, AMASS is acheived by a simple bit-shifting of the Bresenham
+   step count for each AMASS level. For example, for a Level 1 step smoothing, we bit shift 
+   the Bresenham step event count, effectively multiplying it by 2, while the axis step counts 
+   remain the same, and then double the stepper ISR frequency. In effect, we are allowing the
+   non-dominant Bresenham axes step in the intermediate ISR tick, while the dominant axis is 
+   stepping every two ISR ticks, rather than every ISR tick in the traditional sense. At AMASS
+   Level 2, we simply bit-shift again, so the non-dominant Bresenham axes can step within any 
+   of the four ISR ticks, and the dominant axis steps every four ISR ticks. And so on. This, 
+   in effect, removes the vast majority of the multi-axis aliasing issues with the Bresenham
+   algorithm and does not significantly alter Grbl's performance, but in fact, more efficiently 
+   utilizes unused CPU cycles overall throughout all configurations.
      This interrupt is simple and dumb by design. All the computational heavy-lifting, as in
    determining accelerations, is performed elsewhere. This interrupt pops pre-computed segments,
    defined as constant velocity over n number of steps, from the step segment buffer and then 
