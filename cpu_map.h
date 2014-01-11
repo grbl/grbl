@@ -36,9 +36,6 @@
   #define SERIAL_RX     USART_RX_vect
   #define SERIAL_UDRE   USART_UDRE_vect
 
-  // Start of PWM & Stepper Enabled Spindle
-  // #define VARIABLE_SPINDLE // comment this out to disable PWM & Stepper on the spindle
-
   // Define step pulse output pins. NOTE: All step bit pins must be on the same port.
   #define STEPPING_DDR    DDRD
   #define STEPPING_PORT   PORTD

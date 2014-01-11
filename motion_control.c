@@ -20,21 +20,17 @@
   along with Grbl.  If not, see <http://www.gnu.org/licenses/>.
 */
 
-#include <avr/io.h>
-#include <util/delay.h>
-#include <math.h>
-#include <stdlib.h>
+#include "system.h"
 #include "settings.h"
-#include "config.h"
+#include "protocol.h"
 #include "gcode.h"
+#include "planner.h"
+#include "stepper.h"
 #include "motion_control.h"
 #include "spindle_control.h"
 #include "coolant_control.h"
-#include "nuts_bolts.h"
-#include "stepper.h"
-#include "planner.h"
 #include "limits.h"
-#include "protocol.h"
+
 
 // Execute linear motion in absolute millimeter coordinates. Feed rate given in millimeters/second
 // unless invert_feed_rate is true. Then the feed_rate means that the motion should be completed in
@@ -112,8 +108,8 @@ void mc_arc(float *position, float *target, float *offset, uint8_t axis_0, uint8
   // Computes: mm_per_arc_segment = sqrt(4*arc_tolerance*(2*radius-arc_tolerance)),
   //           segments = millimeters_of_travel/mm_per_arc_segment
   float millimeters_of_travel = hypot(angular_travel*radius, fabs(linear_travel));
-  uint16_t segments = floor(millimeters_of_travel/
-                          sqrt(4*settings.arc_tolerance*(2*radius - settings.arc_tolerance)) );
+  uint16_t segments = floor(0.5*millimeters_of_travel/
+                          sqrt(settings.arc_tolerance*(2*radius - settings.arc_tolerance)) );
   
   if (segments) { 
     // Multiply inverse feed_rate to compensate for the fact that this movement is approximated
@@ -123,7 +119,7 @@ void mc_arc(float *position, float *target, float *offset, uint8_t axis_0, uint8
    
     float theta_per_segment = angular_travel/segments;
     float linear_per_segment = linear_travel/segments;
-    
+
     /* Vector rotation by transformation matrix: r is the original vector, r_T is the rotated vector,
        and phi is the angle of rotation. Solution approach by Jens Geisler.
            r_T = [cos(phi) -sin(phi);

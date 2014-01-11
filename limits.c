@@ -19,18 +19,12 @@
   along with Grbl.  If not, see <http://www.gnu.org/licenses/>.
 */
   
-#include <util/delay.h>
-#include <avr/io.h>
-#include <avr/interrupt.h>
-#include <avr/wdt.h>
-#include "stepper.h"
+#include "system.h"
 #include "settings.h"
-#include "nuts_bolts.h"
-#include "config.h"
-#include "spindle_control.h"
-#include "motion_control.h"
-#include "planner.h"
 #include "protocol.h"
+#include "planner.h"
+#include "stepper.h"
+#include "motion_control.h"
 #include "limits.h"
 #include "report.h"
 
@@ -42,7 +36,7 @@ void limits_init()
   if (bit_istrue(settings.flags,BITFLAG_INVERT_LIMIT_PINS)) {
     LIMIT_PORT &= ~(LIMIT_MASK); // Normal low operation. Requires external pull-down.
   } else {
-    LIMIT_PORT |= (LIMIT_MASK); // Enable internal pull-up resistors. Normal high operation.
+    LIMIT_PORT |= (LIMIT_MASK);  // Enable internal pull-up resistors. Normal high operation.
   }
 
   if (bit_istrue(settings.flags,BITFLAG_HARD_LIMIT_ENABLE)) {
@@ -88,11 +82,9 @@ void limits_disable()
     // limit setting if their limits are constantly triggering after a reset and move their axes.
     if (sys.state != STATE_ALARM) { 
       if (bit_isfalse(sys.execute,EXEC_ALARM)) {
-        #ifndef LIMIT_SWITCHES_ACTIVE_HIGH
-          if ((LIMIT_PIN & LIMIT_MASK) ^ LIMIT_MASK) {
-        #else
-          if (LIMIT_PIN & LIMIT_MASK) {
-        #endif
+        uint8_t bits = LIMIT_PIN;
+        if (bit_istrue(settings.flags,BITFLAG_INVERT_LIMIT_PINS)) { bits ^= LIMIT_MASK; }
+        if (bits & LIMIT_MASK) {
           mc_reset(); // Initiate system kill.
           sys.execute |= EXEC_CRIT_EVENT; // Indicate hard limit critical event
         }
@@ -151,9 +143,9 @@ void limits_go_home(uint8_t cycle_mask, bool approach, float homing_rate)
       target[i] = 0.0;
     }
   }      
-  if (bit_istrue(settings.homing_dir_mask,(1<<X_LIMIT_BIT))) { target[X_AXIS] = -target[X_AXIS]; }
-  if (bit_istrue(settings.homing_dir_mask,(1<<Y_LIMIT_BIT))) { target[Y_AXIS] = -target[Y_AXIS]; }
-  if (bit_istrue(settings.homing_dir_mask,(1<<Z_LIMIT_BIT))) { target[Z_AXIS] = -target[Z_AXIS]; }
+  if (bit_istrue(settings.homing_dir_mask,(1<<X_DIRECTION_BIT))) { target[X_AXIS] = -target[X_AXIS]; }
+  if (bit_istrue(settings.homing_dir_mask,(1<<Y_DIRECTION_BIT))) { target[Y_AXIS] = -target[Y_AXIS]; }
+  if (bit_istrue(settings.homing_dir_mask,(1<<Z_DIRECTION_BIT))) { target[Z_AXIS] = -target[Z_AXIS]; }
   homing_rate *= sqrt(n_active_axis); // [sqrt(N_AXIS)] Adjust so individual axes all move at homing rate.
 
   // Setup homing axis locks based on cycle mask.
@@ -172,15 +164,15 @@ void limits_go_home(uint8_t cycle_mask, bool approach, float homing_rate)
     // Check limit state. Lock out cycle axes when they change.
     limit_state = LIMIT_PIN;
     if (invert_pin) { limit_state ^= LIMIT_MASK; }
-//     if (axislock & (1<<X_STEP_BIT)) {
+    if (axislock & (1<<X_STEP_BIT)) {
       if (limit_state & (1<<X_LIMIT_BIT)) { axislock &= ~(1<<X_STEP_BIT); }
-//     }
-//     if (axislock & (1<<Y_STEP_BIT)) {
+    }
+    if (axislock & (1<<Y_STEP_BIT)) {
       if (limit_state & (1<<Y_LIMIT_BIT)) { axislock &= ~(1<<Y_STEP_BIT); }
-//     }
-//     if (axislock & (1<<Z_STEP_BIT)) {
+    }
+    if (axislock & (1<<Z_STEP_BIT)) {
       if (limit_state & (1<<Z_LIMIT_BIT)) { axislock &= ~(1<<Z_STEP_BIT); }
-//     }
+    }
     sys.homing_axis_lock = axislock;
     st_prep_buffer(); // Check and prep one segment. NOTE: Should take no longer than 200us.
     if (sys.execute & EXEC_RESET) { return; }

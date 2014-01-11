@@ -19,35 +19,32 @@
   along with Grbl.  If not, see <http://www.gnu.org/licenses/>.
 */
 
-/* A big thanks to Alden Hart of Synthetos, supplier of grblshield and TinyG, who has
-   been integral throughout the development of the higher level details of Grbl, as well
-   as being a consistent sounding board for the future of accessible and free CNC. */
-
-#include <avr/interrupt.h>
-#include "config.h"
+#include "system.h"
+#include "serial.h"
+#include "settings.h"
+#include "protocol.h"
+#include "gcode.h"
 #include "planner.h"
-#include "nuts_bolts.h"
 #include "stepper.h"
 #include "spindle_control.h"
 #include "coolant_control.h"
 #include "motion_control.h"
-#include "gcode.h"
-#include "protocol.h"
 #include "limits.h"
 #include "report.h"
-#include "settings.h"
-#include "serial.h"
+
 
 // Declare system global variable structure
 system_t sys; 
 
+
 int main(void)
 {
-  // Initialize system
-  serial_init(); // Setup serial baud rate and interrupts
+  // Initialize system upon power-up.
+  serial_init();   // Setup serial baud rate and interrupts
   settings_init(); // Load grbl settings from EEPROM
-  st_init(); // Setup stepper pins and interrupt timers
-  sei(); // Enable interrupts
+  stepper_init();  // Configure stepper pins and interrupt timers
+  system_init();   // Configure pinout pins and pin-change interrupt
+  sei();
   
   memset(&sys, 0, sizeof(sys));  // Clear all system variables
   sys.abort = true;   // Set abort to complete initialization
@@ -65,49 +62,29 @@ int main(void)
   
   for(;;) {
   
-    // Execute system reset upon a system abort, where the main program will return to this loop.
-    // Once here, it is safe to re-initialize the system. At startup, the system will automatically
-    // reset to finish the initialization process.
-    if (sys.abort) {
-      // Reset system.
-      serial_reset_read_buffer(); // Clear serial read buffer
-      gc_init(); // Set g-code parser to default state
-      protocol_init(); // Clear incoming line data and execute startup lines
-      spindle_init();
-      coolant_init();
-      limits_init();
-      plan_reset(); // Clear block buffer and planner variables
-      st_reset(); // Clear stepper subsystem variables.
+    // Reset the system primary functionality.
+    serial_reset_read_buffer(); // Clear serial read buffer
+    gc_init(); // Set g-code parser to default state
+    spindle_init();
+    coolant_init();
+    limits_init(); 
+    plan_reset(); // Clear block buffer and planner variables
+    st_reset(); // Clear stepper subsystem variables.
 
-      // Sync cleared gcode and planner positions to current system position, which is only
-      // cleared upon startup, not a reset/abort. 
-      plan_sync_position();
-      gc_sync_position();
+    // Sync cleared gcode and planner positions to current system position.
+    plan_sync_position();
+    gc_sync_position();
 
-      // Reset system variables.
-      sys.abort = false;
-      sys.execute = 0;
-      if (bit_istrue(settings.flags,BITFLAG_AUTO_START)) { sys.auto_start = true; }
-      else { sys.auto_start = false; }
-            
-      // Check for and report alarm state after a reset, error, or an initial power up.
-      if (sys.state == STATE_ALARM) {
-        report_feedback_message(MESSAGE_ALARM_LOCK); 
-      } else {
-        // All systems go. Set system to ready and execute startup script.
-        sys.state = STATE_IDLE; // Clear all state flags.
-        protocol_execute_startup(); 
-      }
-    }
-    
-    protocol_execute_runtime();
-    
-    // When the serial protocol returns, there are no more characters in the serial read buffer to
-    // be processed and executed. This indicates that individual commands are being issued or 
-    // streaming is finished. In either case, auto-cycle start, if enabled, any queued moves.
-    mc_auto_cycle_start();
-    protocol_process(); // ... process the serial protocol
+    // Reset system variables.
+    sys.abort = false;
+    sys.execute = 0;
+    if (bit_istrue(settings.flags,BITFLAG_AUTO_START)) { sys.auto_start = true; }
+    else { sys.auto_start = false; }
+          
+    // Start main loop. Processes inputs and executes them.
+    // NOTE: Upon a system abort, the main loop returns and re-initializes the system.      
+    protocol_process(); 
     
   }
-  return 0;   /* never reached */
+  return 0;   /* Never reached */
 }

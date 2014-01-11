@@ -21,7 +21,8 @@
 
 #ifndef planner_h
 #define planner_h
-#include "nuts_bolts.h"
+
+#include "system.h"
 
 // The number of linear motions that can be in the plan at any give time
 #ifndef BLOCK_BUFFER_SIZE

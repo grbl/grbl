@@ -23,10 +23,11 @@
    used to be a part of the Arduino project. */ 
 
 #include <avr/interrupt.h>
+#include "system.h"
 #include "serial.h"
-#include "config.h"
 #include "motion_control.h"
 #include "protocol.h"
+
 
 uint8_t rx_buffer[RX_BUFFER_SIZE];
 uint8_t rx_buffer_head = 0;
@@ -35,6 +36,7 @@ volatile uint8_t rx_buffer_tail = 0;
 uint8_t tx_buffer[TX_BUFFER_SIZE];
 uint8_t tx_buffer_head = 0;
 volatile uint8_t tx_buffer_tail = 0;
+
 
 #ifdef ENABLE_XONXOFF
   volatile uint8_t flow_ctrl = XON_SENT; // Flow control state variable
@@ -48,6 +50,7 @@ volatile uint8_t tx_buffer_tail = 0;
     return (RX_BUFFER_SIZE - (rx_buffer_head-rx_buffer_tail));
   }
 #endif
+
 
 void serial_init()
 {
@@ -72,6 +75,7 @@ void serial_init()
   // defaults to 8-bit, no parity, 1 stop bit
 }
 
+
 void serial_write(uint8_t data) {
   // Calculate next head
   uint8_t next_head = tx_buffer_head + 1;
@@ -89,6 +93,7 @@ void serial_write(uint8_t data) {
   // Enable Data Register Empty Interrupt to make sure tx-streaming is running
   UCSR0B |=  (1 << UDRIE0); 
 }
+
 
 // Data Register Empty Interrupt handler
 ISR(SERIAL_UDRE)
@@ -119,6 +124,7 @@ ISR(SERIAL_UDRE)
   if (tail == tx_buffer_head) { UCSR0B &= ~(1 << UDRIE0); }
 }
 
+
 uint8_t serial_read()
 {
   uint8_t tail = rx_buffer_tail; // Temporary rx_buffer_tail (to optimize for volatile)
@@ -141,6 +147,7 @@ uint8_t serial_read()
     return data;
   }
 }
+
 
 ISR(SERIAL_RX)
 {
@@ -173,6 +180,7 @@ ISR(SERIAL_RX)
       }
   }
 }
+
 
 void serial_reset_read_buffer() 
 {

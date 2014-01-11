@@ -22,15 +22,15 @@
 #ifndef settings_h
 #define settings_h
 
-#include <math.h>
-#include "nuts_bolts.h"
+#include "system.h"
+
 
 #define GRBL_VERSION "0.9c"
-#define GRBL_VERSION_BUILD "20131231"
+#define GRBL_VERSION_BUILD "20140110"
 
 // Version of the EEPROM data. Will be used to migrate existing data from older versions of Grbl
 // when firmware is upgraded. Always stored in byte 0 of eeprom
-#define SETTINGS_VERSION 57
+#define SETTINGS_VERSION 6
 
 // Define bit flag masks for the boolean settings in settings.flag.
 #define BITFLAG_REPORT_INCHES      bit(0)

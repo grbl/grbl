@@ -22,11 +22,10 @@
 /* This code was initially inspired by the wiring_serial module by David A. Mellis which
    used to be a part of the Arduino project. */ 
 
-
-#include <avr/pgmspace.h>
-#include "config.h"
+#include "system.h"
 #include "serial.h"
 #include "settings.h"
+
 
 void printString(const char *s)
 {

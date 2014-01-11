@@ -19,10 +19,8 @@
   along with Grbl.  If not, see <http://www.gnu.org/licenses/>.
 */
 
-#include <util/delay.h>
-#include "nuts_bolts.h"
-#include "gcode.h"
-#include "planner.h"
+#include "system.h"
+
 
 #define MAX_INT_DIGITS 8 // Maximum number of digits in int32 (and float)
 

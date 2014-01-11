@@ -18,19 +18,13 @@
   along with Grbl.  If not, see <http://www.gnu.org/licenses/>.
 */
 
+#include "system.h"
 #include "coolant_control.h"
-#include "settings.h"
-#include "config.h"
 #include "planner.h"
-
-#include <avr/io.h>
-
-static uint8_t current_coolant_mode;
 
 
 void coolant_init()
 {
-  current_coolant_mode = COOLANT_DISABLE;
   COOLANT_FLOOD_DDR |= (1 << COOLANT_FLOOD_BIT);
   #ifdef ENABLE_M7
     COOLANT_MIST_DDR |= (1 << COOLANT_MIST_BIT);
@@ -50,20 +44,16 @@ void coolant_stop()
 
 void coolant_run(uint8_t mode)
 {
-  if (mode != current_coolant_mode)
-  { 
-    plan_synchronize(); // Ensure coolant turns on when specified in program.
-    if (mode == COOLANT_FLOOD_ENABLE) {
-      COOLANT_FLOOD_PORT |= (1 << COOLANT_FLOOD_BIT);
-  
+  plan_synchronize(); // Ensure coolant turns on when specified in program.
+  if (mode == COOLANT_FLOOD_ENABLE) {
+    COOLANT_FLOOD_PORT |= (1 << COOLANT_FLOOD_BIT);
+
   #ifdef ENABLE_M7  
     } else if (mode == COOLANT_MIST_ENABLE) {
       COOLANT_MIST_PORT |= (1 << COOLANT_MIST_BIT);
   #endif
 
-    } else {
-      coolant_stop();
-    }
-    current_coolant_mode = mode;
+  } else {
+    coolant_stop();
   }
 }

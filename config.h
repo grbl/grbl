@@ -79,6 +79,11 @@
 // parser state depending on user preferences.
 #define N_STARTUP_LINE 2 // Integer (1-3)
 
+// Enables a second coolant control pin via the mist coolant g-code command M7 on the Arduino Uno
+// analog pin 5. Only use this option if you require a second control pin.
+// NOTE: The M8 flood coolant control pin on analog pin 4 will still be functional regardless.
+// #define ENABLE_M7 // Mist coolant disabled by default. See config.h to enable/disable.
+
 // ---------------------------------------------------------------------------------------
 // ADVANCED CONFIGURATION OPTIONS:
 
@@ -103,7 +108,14 @@
 // NOTE: IMPORTANT for Arduino Unos! When enabled, the Z-limit pin D11 and spindle enable pin D12 switch!
 // The hardware PWM output on pin D11 is required for variable spindle output voltages.
 // #define VARIABLE_SPINDLE // Default disabled. Uncomment to enable.
-// #define SPINDLE_MAX_RPM 1000 // Max spindle RPM. This value is equal to 100% Duty Cycle on the PWM.
+
+// Use by the variable spindle output only. These parameters set the maximum and minimum spindle speed
+// "S" g-code values to correspond to the maximum and minimum pin voltages. There are 256 discrete and 
+// equally divided voltage bins between the maximum and minimum spindle speeds. So for a 5V pin, 1000
+// max rpm, and 250 min rpm, the spindle output voltage would be set for the following "S" commands: 
+// "S1000" @ 5V, "S250" @ 0.02V, and "S625" @ 2.5V (mid-range). The pin outputs 0V when disabled.
+#define SPINDLE_MAX_RPM 1000.0 // Max spindle RPM. This value is equal to 100% duty cycle on the PWM.
+#define SPINDLE_MIN_RPM 0.0    // Min spindle RPM. This value is equal to (1/256) duty cycle on the PWM.
 
 // Minimum planner junction speed. Sets the default minimum junction speed the planner plans to at
 // every buffer block junction, except for starting from rest and end of the buffer, which are always
@@ -182,12 +194,13 @@
 // case, please report any successes to grbl administrators!
 // #define ENABLE_XONXOFF // Default disabled. Uncomment to enable.
 
-// A simple software debouncing feature for hard limit switches. When enabled, the interrupt monitoring
-// the hard limit switch pins will enable the Arduino's watchdog timer to re-check the limit pin state
-// after a delay of about 32msec. This can help with CNC machines with problematic false triggering of 
-// their hard limit switches, but it WILL NOT fix issues with electrical interference on the signal 
-// cables from external sources. It's recommended to first use shielded signal cables that are grounded
-// (old USB/computer cables work well) and wire in a low-pass circuit into each limit pin.
+// A simple software debouncing feature for hard limit switches. When enabled, the interrupt 
+// monitoring the hard limit switch pins will enable the Arduino's watchdog timer to re-check 
+// the limit pin state after a delay of about 32msec. This can help with CNC machines with 
+// problematic false triggering of their hard limit switches, but it WILL NOT fix issues with 
+// electrical interference on the signal cables from external sources. It's recommended to first
+// use shielded signal cables with their shielding connected to ground (old USB/computer cables 
+// work well and are cheap to find) and wire in a low-pass circuit into each limit pin.
 // #define ENABLE_SOFTWARE_DEBOUNCE // Default disabled. Uncomment to enable.
 
 // ---------------------------------------------------------------------------------------

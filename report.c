@@ -26,11 +26,10 @@
   methods to accomodate their needs.
 */
 
-#include <avr/pgmspace.h>
+#include "system.h"
 #include "report.h"
 #include "print.h"
 #include "settings.h"
-#include "nuts_bolts.h"
 #include "gcode.h"
 #include "coolant_control.h"
 
@@ -163,9 +162,9 @@ void report_grbl_settings() {
   printPgmString(PSTR(" (z max travel, mm)\r\n$12=")); printInteger(settings.pulse_microseconds);
   printPgmString(PSTR(" (step pulse, usec)\r\n$13=")); printFloat(settings.default_feed_rate);
   printPgmString(PSTR(" (default feed, mm/min)\r\n$14=")); printInteger(settings.step_invert_mask); 
-  printPgmString(PSTR(" (step port invert mask, int:")); print_uint8_base2(settings.step_invert_mask);  
+  printPgmString(PSTR(" (step port invert mask:")); print_uint8_base2(settings.step_invert_mask);  
   printPgmString(PSTR(")\r\n$15=")); printInteger(settings.dir_invert_mask); 
-  printPgmString(PSTR(" (dir port invert mask, int:")); print_uint8_base2(settings.dir_invert_mask);  
+  printPgmString(PSTR(" (dir port invert mask:")); print_uint8_base2(settings.dir_invert_mask);  
   printPgmString(PSTR(")\r\n$16=")); printInteger(settings.stepper_idle_lock_time);
   printPgmString(PSTR(" (step idle delay, msec)\r\n$17=")); printFloat(settings.junction_deviation);
   printPgmString(PSTR(" (junction deviation, mm)\r\n$18=")); printFloat(settings.arc_tolerance);
@@ -178,7 +177,7 @@ void report_grbl_settings() {
   printPgmString(PSTR(" (soft limits, bool)\r\n$25=")); printInteger(bit_istrue(settings.flags,BITFLAG_HARD_LIMIT_ENABLE));
   printPgmString(PSTR(" (hard limits, bool)\r\n$26=")); printInteger(bit_istrue(settings.flags,BITFLAG_HOMING_ENABLE));
   printPgmString(PSTR(" (homing cycle, bool)\r\n$27=")); printInteger(settings.homing_dir_mask);
-  printPgmString(PSTR(" (homing dir invert mask, int:")); print_uint8_base2(settings.homing_dir_mask);  
+  printPgmString(PSTR(" (homing dir invert mask:")); print_uint8_base2(settings.homing_dir_mask);  
   printPgmString(PSTR(")\r\n$28=")); printFloat(settings.homing_feed_rate);
   printPgmString(PSTR(" (homing feed, mm/min)\r\n$29=")); printFloat(settings.homing_seek_rate);
   printPgmString(PSTR(" (homing seek, mm/min)\r\n$30=")); printInteger(settings.homing_debounce_delay);

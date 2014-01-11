@@ -21,8 +21,8 @@
 
 #ifndef gcode_h
 #define gcode_h
-#include <avr/io.h>
-#include "nuts_bolts.h"
+
+#include "system.h"
 
 // Define modal group internal numbers for checking multiple command violations and tracking the 
 // type of command that is called in the block. A modal group is a group of g-code commands that are
@@ -70,12 +70,12 @@ typedef struct {
   uint8_t inches_mode;             // 0 = millimeter mode, 1 = inches mode {G20, G21}
   uint8_t absolute_mode;           // 0 = relative motion, 1 = absolute motion {G90, G91}
   uint8_t program_flow;            // {M0, M1, M2, M30}
-  int8_t spindle_direction;        // 1 = CW, -1 = CCW, 0 = Stop {M3, M4, M5}
-  uint8_t coolant_mode;            // 0 = Disable, 1 = Flood Enable {M8, M9}
+  uint8_t coolant_mode;            // 0 = Disable, 1 = Flood Enable, 2 = Mist Enable {M8, M9}
+  int8_t spindle_direction;        // 1 = CW, 2 = CCW, 0 = Stop {M3, M4, M5}
+  float spindle_speed;             // RPM
   float feed_rate;                 // Millimeters/min
   float position[N_AXIS];          // Where the interpreter considers the tool to be at this point in the code
   uint8_t tool;
-  uint16_t spindle_speed;          // RPM
   uint8_t plane_axis_0, 
           plane_axis_1, 
           plane_axis_2;            // The axes of the selected plane  

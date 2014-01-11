@@ -22,16 +22,13 @@
 /* This code is inspired by the Arduino GCode Interpreter by Mike Ellery and the NIST RS274/NGC Interpreter
    by Kramer, Proctor and Messina. */
 
-#include "gcode.h"
-#include <string.h>
-#include "nuts_bolts.h"
-#include <math.h>
+#include "system.h"
 #include "settings.h"
+#include "gcode.h"
+#include "planner.h"
 #include "motion_control.h"
 #include "spindle_control.h"
 #include "coolant_control.h"
-#include "errno.h"
-#include "protocol.h"
 #include "report.h"
 
 // Declare gc extern struct
@@ -186,9 +183,9 @@ uint8_t gc_execute_line(char *line)
           case 0: gc.program_flow = PROGRAM_FLOW_PAUSED; break; // Program pause
           case 1: break; // Optional stop not supported. Ignore.
           case 2: case 30: gc.program_flow = PROGRAM_FLOW_COMPLETED; break; // Program end and reset 
-          case 3: gc.spindle_direction = 1; break;
-          case 4: gc.spindle_direction = -1; break;
-          case 5: gc.spindle_direction = 0; break;
+          case 3: gc.spindle_direction = SPINDLE_ENABLE_CW; break;
+          case 4: gc.spindle_direction = SPINDLE_ENABLE_CCW; break;
+          case 5: gc.spindle_direction = SPINDLE_DISABLE; break;
           #ifdef ENABLE_M7
             case 7: gc.coolant_mode = COOLANT_MIST_ENABLE; break;
           #endif
@@ -238,7 +235,7 @@ uint8_t gc_execute_line(char *line)
       case 'R': gc.arc_radius = to_millimeters(value); break;
       case 'S': 
         if (value < 0) { FAIL(STATUS_INVALID_STATEMENT); } // Cannot be negative
-           gc.spindle_speed = value;
+        gc.spindle_speed = value;
         break;
       case 'T': 
         if (value < 0) { FAIL(STATUS_INVALID_STATEMENT); } // Cannot be negative

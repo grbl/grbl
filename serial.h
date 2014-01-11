@@ -25,7 +25,6 @@
 #ifndef serial_h
 #define serial_h
 
-#include "nuts_bolts.h"
 
 #ifndef RX_BUFFER_SIZE
   #define RX_BUFFER_SIZE 128

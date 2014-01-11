@@ -19,12 +19,11 @@
   along with Grbl.  If not, see <http://www.gnu.org/licenses/>.
 */
 
-#include <avr/interrupt.h>
+#include "system.h"
+#include "nuts_bolts.h"
 #include "stepper.h"
-#include "config.h"
 #include "settings.h"
 #include "planner.h"
-#include "nuts_bolts.h"
 
 
 // Some useful constants.
@@ -43,7 +42,7 @@
 // NOTE: Current settings are set to overdrive the ISR to no more than 16kHz, balancing CPU overhead
 // and timer accuracy.  Do not alter these settings unless you know what you are doing.
 #define MAX_AMASS_LEVEL 3
-// AMASS_LEVEL0: Normal operation. No AMASS. No upper cutoff frequency.
+// AMASS_LEVEL0: Normal operation. No AMASS. No upper cutoff frequency. Starts at LEVEL1 cutoff frequency.
 #define AMASS_LEVEL1 (F_CPU/8000) // Over-drives ISR (x2). Defined as F_CPU/(Cutoff frequency in Hz)
 #define AMASS_LEVEL2 (F_CPU/4000) // Over-drives ISR (x4)
 #define AMASS_LEVEL3 (F_CPU/2000) // Over-drives ISR (x8)
@@ -182,12 +181,10 @@ static st_prep_t prep;
 // enabled. Startup init and limits call this function but shouldn't start the cycle.
 void st_wake_up() 
 {
-  // Enable steppers by resetting the stepper disable port
-  if (bit_istrue(settings.flags,BITFLAG_INVERT_ST_ENABLE)) { 
-    STEPPERS_DISABLE_PORT |= (1<<STEPPERS_DISABLE_BIT); 
-  } else { 
-    STEPPERS_DISABLE_PORT &= ~(1<<STEPPERS_DISABLE_BIT);
-  }
+  // Enable stepper drivers.
+  if (bit_istrue(settings.flags,BITFLAG_INVERT_ST_ENABLE)) { STEPPERS_DISABLE_PORT |= (1<<STEPPERS_DISABLE_BIT); }
+  else { STEPPERS_DISABLE_PORT &= ~(1<<STEPPERS_DISABLE_BIT); }
+
   if (sys.state & (STATE_CYCLE | STATE_HOMING)){
     // Initialize stepper output bits
     st.dir_outbits = settings.dir_invert_mask; 
@@ -217,18 +214,18 @@ void st_go_idle()
   // Disable Timer1 Stepper Driver Interrupt. Allow Timer0 to finish. It will disable itself.
   TIMSK1 &= ~(1<<OCIE1A); 
   busy = false;
-
-  // Disable steppers only upon system alarm activated or by user setting to not be kept enabled.
+  
+  // Set stepper driver idle state, disabled or enabled, depending on settings and circumstances.
+  bool pin_state = false;
   if (((settings.stepper_idle_lock_time != 0xff) || bit_istrue(sys.execute,EXEC_ALARM)) && sys.state != STATE_HOMING) {
     // Force stepper dwell to lock axes for a defined amount of time to ensure the axes come to a complete
     // stop and not drift from residual inertial forces at the end of the last movement.
     delay_ms(settings.stepper_idle_lock_time);
-    if (bit_istrue(settings.flags,BITFLAG_INVERT_ST_ENABLE)) { 
-      STEPPERS_DISABLE_PORT &= ~(1<<STEPPERS_DISABLE_BIT); 
-    } else { 
-      STEPPERS_DISABLE_PORT |= (1<<STEPPERS_DISABLE_BIT); 
-    }   
+    pin_state = true;
   }
+  if (bit_istrue(settings.flags,BITFLAG_INVERT_ST_ENABLE)) { pin_state = !pin_state; }
+  if (pin_state) { STEPPERS_DISABLE_PORT |= (1<<STEPPERS_DISABLE_BIT); }
+  else { STEPPERS_DISABLE_PORT &= ~(1<<STEPPERS_DISABLE_BIT); }
 }
 
 
@@ -429,11 +426,14 @@ void st_reset()
   segment_buffer_head = 0; // empty = tail
   segment_next_head = 1;
   busy = false;
+  
+  // Initialize stepper driver idle state.
+  st_go_idle();
 }
 
 
 // Initialize and start the stepper motor subsystem
-void st_init()
+void stepper_init()
 {
   // Configure step and direction interface pins
   STEPPING_DDR |= STEP_MASK;
@@ -450,7 +450,8 @@ void st_init()
   TCCR1A &= ~(3<<COM1A0); // output mode = 00 (disconnected)
   TCCR1A &= ~(3<<COM1B0); 
   TCCR1B = (TCCR1B & ~(0x07<<CS10)) | (1<<CS10);
-
+  // TIMSK1 &= ~(1<<OCIE1A);  // Timer 1 disabled in st_go_idle().
+  
   // Configure Timer 0: Stepper Port Reset Interrupt
   TIMSK0 &= ~(1<<TOIE0);
   TCCR0A = 0; // Normal operation
@@ -459,12 +460,8 @@ void st_init()
   #ifdef STEP_PULSE_DELAY
     TIMSK0 |= (1<<OCIE0A); // Enable Timer0 Compare Match A interrupt
   #endif
-
-  // Start in the idle state, but first wake up to check for keep steppers enabled option.
-  st_wake_up();
-  st_go_idle();
 }
-
+  
 
 // Planner external interface to start stepper interrupt and execute the blocks in queue. Called
 // by the main program functions: planner auto-start and run-time command execution.
@@ -666,8 +663,8 @@ void st_prep_buffer()
       the end of planner block (typical) or mid-block at the end of a forced deceleration, 
       such as from a feed hold.
     */
-    float dt_max = DT_SEGMENT;
-    float dt = 0.0;
+    float dt_max = DT_SEGMENT; // Set maximum segment time
+    float dt = 0.0; // Initialize segment time
     float mm_remaining = pl_block->millimeters;
     float time_var = dt_max; // Time worker variable
     float mm_var; // mm-Distance worker variable
@@ -676,8 +673,8 @@ void st_prep_buffer()
       switch (prep.ramp_type) {
         case RAMP_ACCEL: 
           // NOTE: Acceleration ramp only computes during first do-while loop.
-          speed_var = pl_block->acceleration*dt_max;
-          mm_remaining -= dt_max*(prep.current_speed + 0.5*speed_var);
+          speed_var = pl_block->acceleration*time_var;
+          mm_remaining -= time_var*(prep.current_speed + 0.5*speed_var);
           if (mm_remaining < prep.accelerate_until) { // End of acceleration ramp.
             // Acceleration-cruise, acceleration-deceleration ramp junction, or end of block.
             mm_remaining = prep.accelerate_until; // NOTE: 0.0 at EOB
@@ -718,10 +715,14 @@ void st_prep_buffer()
       }
       dt += time_var; // Add computed ramp time to total segment time.
       if (dt < dt_max) { time_var = dt_max - dt; } // **Incomplete** At ramp junction.
-      else if (mm_remaining > prep.minimum_mm) { // Check for slow segments with zero steps.
-        dt_max += DT_SEGMENT; // Increase segment time to ensure at least one step in segment.
-        time_var = dt_max - dt;
-      } else { break; } // **Complete** Exit loop. Segment execution time maxed.
+      else {
+        if (mm_remaining > prep.minimum_mm) { // Check for slow segments with zero steps.
+          dt_max += DT_SEGMENT; // Increase segment time to ensure at least one step in segment.
+          time_var = dt_max - dt;
+        } else { 
+          break; // **Complete** Exit loop. Segment execution time maxed.
+        }
+      }
     } while (mm_remaining > prep.mm_complete); // **Complete** Exit loop. Profile complete.
    
     /* -----------------------------------------------------------------------------------
@@ -745,7 +746,7 @@ void st_prep_buffer()
     
     #ifdef ADAPTIVE_MULTI_AXIS_STEP_SMOOTHING        
       // Compute step timing and multi-axis smoothing level.
-      // NOTE: Only one prescalar is required with AMASS enabled.
+      // NOTE: AMASS overdrives the timer with each level, so only one prescalar is required.
       if (cycles < AMASS_LEVEL1) { prep_segment->amass_level = 0; }
       else {
         if (cycles < AMASS_LEVEL2) { prep_segment->amass_level = 1; }

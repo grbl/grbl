@@ -27,7 +27,7 @@
 #endif
 
 // Initialize and setup the stepper motor subsystem
-void st_init();
+void stepper_init();
 
 // Enable steppers, but cycle does not start unless called by motion control or runtime command.
 void st_wake_up();
@@ -47,7 +47,7 @@ void st_cycle_reinitialize();
 // Initiates a feed hold of the running program
 void st_feed_hold();
 
-// Reloads step segment buffer. Called continuously by runtime execution protocol.
+// Reloads step segment buffer. Called continuously by runtime execution system.
 void st_prep_buffer();
 
 // Called by planner_recalculate() when the executing block is updated by the new plan.

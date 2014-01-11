@@ -22,14 +22,12 @@
 
 /* The ring buffer implementation gleaned from the wiring_serial library by David A. Mellis. */
 
-#include <inttypes.h>    
-#include <stdlib.h>
+#include "system.h"
 #include "planner.h"
-#include "nuts_bolts.h"
+#include "protocol.h"
 #include "stepper.h"
 #include "settings.h"
-#include "config.h"
-#include "protocol.h"
+
 
 #define SOME_LARGE_VALUE 1.0E+38 // Used by rapids and acceleration maximization calculations. Just needs
                                  // to be larger than any feasible (mm/min)^2 or mm/sec^2 value.
