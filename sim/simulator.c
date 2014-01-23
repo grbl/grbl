@@ -85,12 +85,13 @@ void sim_stepper() {
   // to let it handle sys.cycle_start etc.
   if(current_block==NULL) {
 	  interrupt_TIMER2_COMPA_vect();
+      sim_time+= get_step_time();
 	  return;
   }
 
   while(current_block==plan_get_current_block()) {
-    sim_time+= get_step_time();
     interrupt_TIMER2_COMPA_vect();
+    sim_time+= get_step_time();
 
     // Check to see if we should print some info
     if(step_time>0.0) {
@@ -170,10 +171,17 @@ void printBlock() {
 // Only when plan_synchronize() wait for the whole buffer to clear, the stepper interrupt
 // to finish all pending moves.
 void handle_buffer() {
+  if (plan_check_full_buffer() && sys.state != STATE_CYCLE) {
+    // Autostart the cycle, and call st_wake_up()
+    sys.state = STATE_CYCLE;
+    st_wake_up();
+  }
+
   // runtime_second_call is reset by serial_write() after every command.
   // Only when execute_runtime() is called repeatedly by plan_synchronize()
   // runtime_second_call will be incremented above 2
   //printf("handle_buffer()\n");
+
   if(plan_check_full_buffer() || runtime_second_call>2) {
     sim_stepper(step_out_file);
   } else {
