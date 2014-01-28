@@ -51,10 +51,4 @@ void handle_buffer();
 // Print information about the most recently inserted block
 void printBlock();
 
-// Calculate the time between stepper interrupt calls from TCCR1B and OCR1A AVR registers
-// which are set in config_step_timer in stepper.c
-// This reconstructs the stepper-internal value of variable st.cycles_per_step_event
-// The reconstruction is done to truely decouple the simulator from the actual grbl code
-double get_step_time();
-
 #endif
