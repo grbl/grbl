@@ -29,6 +29,11 @@
 #include "../nuts_bolts.h"
 #include "simulator.h"
 
+// Derived from OCR2A set during stepper init. Not simplified because
+// OCR2A formula results in an unsigned int, which results in a slightly
+// different value than simplifying to 1 / ISR_TICKS_PER_SECOND.
+#define ISR_INTERVAL ((F_CPU/ISR_TICKS_PER_SECOND)/8) * 8.0 / F_CPU
+
 // This variable is needed to determine if execute_runtime() is called in a loop
 // waiting for the buffer to empty, as in plan_synchronize()
 // it is reset in serial_write() because this is certainly called at the end of
@@ -85,12 +90,15 @@ void sim_stepper() {
   // to let it handle sys.cycle_start etc.
   if(current_block==NULL) {
 	  interrupt_TIMER2_COMPA_vect();
+      sim_time+= ISR_INTERVAL;
 	  return;
   }
 
+  sys.state = STATE_CYCLE;
+
   while(current_block==plan_get_current_block()) {
-    sim_time+= get_step_time();
     interrupt_TIMER2_COMPA_vect();
+    sim_time+= ISR_INTERVAL;
 
     // Check to see if we should print some info
     if(step_time>0.0) {
@@ -107,6 +115,7 @@ void sim_stepper() {
     }
 
   }
+
   // always print stepper values at the end of a block
   if(step_time>0.0) {
 	fprintf(step_out_file, "%20.15f, %d, %d, %d\n", sim_time, sys.position[X_AXIS], sys.position[Y_AXIS], sys.position[Z_AXIS]);
@@ -174,6 +183,7 @@ void handle_buffer() {
   // Only when execute_runtime() is called repeatedly by plan_synchronize()
   // runtime_second_call will be incremented above 2
   //printf("handle_buffer()\n");
+
   if(plan_check_full_buffer() || runtime_second_call>2) {
     sim_stepper(step_out_file);
   } else {
@@ -181,37 +191,3 @@ void handle_buffer() {
   }
 }
 
-double get_step_time() {
-/* code for the old stepper algorithm
-  uint16_t ceiling;
-  uint16_t prescaler;
-  uint32_t actual_cycles;
-  uint8_t invalid_prescaler= 0;
-
-  prescaler= ((TCCR1B>>CS10) & 0x07) - 1;
-  ceiling= OCR1A;
-
-  switch(prescaler) {
-    case 0:
-      actual_cycles= ceiling;
-	  break;
-    case 1:
-      actual_cycles= ceiling * 8L;
-	  break;
-    case 2:
-      actual_cycles = ceiling * 64L;
-	  break;
-    case 3:
-      actual_cycles = ceiling * 256L;
-	  break;
-    case 4:
-      actual_cycles = ceiling * 1024L;
-	  break;
-    default:
-    	invalid_prescaler= 1;
-  }
-
-  if(invalid_prescaler) return 12345.0;
-  else return (double)actual_cycles/F_CPU;*/
-  return (double)((ocr2a+1)*8)/(double)(F_CPU);
-}
