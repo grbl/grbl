@@ -32,6 +32,7 @@
 #include "settings.h"
 #include "gcode.h"
 #include "coolant_control.h"
+#include "planner.h"
 
 
 // Handles the primary confirmation protocol response for streaming interfaces and human-feedback.
@@ -348,6 +349,17 @@ void report_realtime_status()
     printFloat(print_position[i]);
     if (i < (N_AXIS-1)) { printPgmString(PSTR(",")); }
   }
+
+  // Report current line number
+  printPgmString(PSTR(","));
+  printPgmString(PSTR("Ln:")); 
+  uint32_t ln=0;
+  plan_block_t * pb = plan_get_current_block();
+  if(pb != NULL) {
+    ln = pb->line_number;
+  } 
+  printInteger(ln);
+
     
   printPgmString(PSTR(">\r\n"));
 }

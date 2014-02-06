@@ -39,7 +39,7 @@
 // segments, must pass through this routine before being passed to the planner. The seperation of
 // mc_line and plan_buffer_line is done primarily to place non-planner-type functions from being
 // in the planner and to let backlash compensation or canned cycle integration simple and direct.
-void mc_line(float *target, float feed_rate, uint8_t invert_feed_rate)
+void mc_line(float *target, float feed_rate, uint8_t invert_feed_rate, uint32_t line_number)
 {
   // If enabled, check for soft limit violations. Placed here all line motions are picked up
   // from everywhere in Grbl.
@@ -68,7 +68,7 @@ void mc_line(float *target, float feed_rate, uint8_t invert_feed_rate)
     else { break; }
   } while (1);
 
-  plan_buffer_line(target, feed_rate, invert_feed_rate);
+  plan_buffer_line(target, feed_rate, invert_feed_rate, line_number);
 
   // If idle, indicate to the system there is now a planned block in the buffer ready to cycle 
   // start. Otherwise ignore and continue on.
@@ -84,7 +84,7 @@ void mc_line(float *target, float feed_rate, uint8_t invert_feed_rate)
 // of each segment is configured in settings.arc_tolerance, which is defined to be the maximum normal
 // distance from segment to the circle when the end points both lie on the circle.
 void mc_arc(float *position, float *target, float *offset, uint8_t axis_0, uint8_t axis_1, 
-  uint8_t axis_linear, float feed_rate, uint8_t invert_feed_rate, float radius, uint8_t isclockwise)
+  uint8_t axis_linear, float feed_rate, uint8_t invert_feed_rate, float radius, uint8_t isclockwise, uint32_t line_number)
 {      
   float center_axis0 = position[axis_0] + offset[axis_0];
   float center_axis1 = position[axis_1] + offset[axis_1];
@@ -180,14 +180,14 @@ void mc_arc(float *position, float *target, float *offset, uint8_t axis_0, uint8
       arc_target[axis_0] = center_axis0 + r_axis0;
       arc_target[axis_1] = center_axis1 + r_axis1;
       arc_target[axis_linear] += linear_per_segment;
-      mc_line(arc_target, feed_rate, invert_feed_rate);
+      mc_line(arc_target, feed_rate, invert_feed_rate, line_number);
       
       // Bail mid-circle on system abort. Runtime command check already performed by mc_line.
       if (sys.abort) { return; }
     }
   }
   // Ensure last segment arrives at target location.
-  mc_line(target, feed_rate, invert_feed_rate);
+  mc_line(target, feed_rate, invert_feed_rate, line_number);
 }
 
 
@@ -273,7 +273,7 @@ void mc_homing_cycle()
 
   sys.state = STATE_IDLE; // Set system state to IDLE to complete motion and indicate homed.
 
-  mc_line(pulloff_target, settings.homing_seek_rate, false);
+  mc_line(pulloff_target, settings.homing_seek_rate, false, HOMING_CYCLE_LINE_NUMBER); 
   st_cycle_start(); // Move it. Nothing should be in the buffer except this motion. 
   plan_synchronize(); // Make sure the motion completes.
                       // NOTE: Stepper idle lock resumes normal functionality after cycle.

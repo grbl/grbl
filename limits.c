@@ -157,7 +157,7 @@ void limits_go_home(uint8_t cycle_mask, bool approach, float homing_rate)
   
   // Perform homing cycle. Planner buffer should be empty, as required to initiate the homing cycle.
   uint8_t limit_state;
-  plan_buffer_line(target, homing_rate, false); // Bypass mc_line(). Directly plan homing motion.
+  plan_buffer_line(target, homing_rate, false, HOMING_CYCLE_LINE_NUMBER); // Bypass mc_line(). Directly plan homing motion.
   st_prep_buffer(); // Prep first segment from newly planned block.
   st_wake_up(); // Initiate motion
   do {

@@ -272,7 +272,7 @@ void plan_synchronize()
    is used in three ways: as a normal feed rate if invert_feed_rate is false, as inverse time if
    invert_feed_rate is true, or as seek/rapids rate if the feed_rate value is negative (and
    invert_feed_rate always false). */
-void plan_buffer_line(float *target, float feed_rate, uint8_t invert_feed_rate) 
+void plan_buffer_line(float *target, float feed_rate, uint8_t invert_feed_rate, uint32_t line_number) 
 {
   // Prepare and initialize new block
   plan_block_t *block = &block_buffer[block_buffer_head];
@@ -280,6 +280,7 @@ void plan_buffer_line(float *target, float feed_rate, uint8_t invert_feed_rate)
   block->millimeters = 0;
   block->direction_bits = 0;
   block->acceleration = SOME_LARGE_VALUE; // Scaled down to maximum acceleration later
+  block->line_number = line_number;
 
   // Compute and store initial move distance data.
   // TODO: After this for-loop, we don't touch the stepper algorithm data. Might be a good idea
