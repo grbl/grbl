@@ -28,6 +28,10 @@
 #ifndef config_h
 #define config_h
 
+// Allows GRBL to tranck and report gcode line numbers.  Enabling this means that the planning buffer
+// goes from 18 or 16 to make room for the additional line number data in the plan_block_t struct
+#define USE_LINE_NUMBERS
+
 // Default settings. Used when resetting EEPROM. Change to desired name in defaults.h
 #define DEFAULTS_SHERLINE_5400
 

@@ -350,6 +350,7 @@ void report_realtime_status()
     if (i < (N_AXIS-1)) { printPgmString(PSTR(",")); }
   }
 
+#ifdef USE_LINE_NUMBERS
   // Report current line number
   printPgmString(PSTR(","));
   printPgmString(PSTR("Ln:")); 
@@ -359,7 +360,7 @@ void report_realtime_status()
     ln = pb->line_number;
   } 
   printInteger(ln);
-
+#endif
     
   printPgmString(PSTR(">\r\n"));
 }
