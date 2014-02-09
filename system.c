@@ -28,7 +28,7 @@
 
 void system_init() 
 {
-  PINOUT_DDR &= ~(PINOUT_MASK); // Set as input pins
+  PINOUT_DDR &= ~(PINOUT_MASK); // Configure as input pins
   PINOUT_PORT |= PINOUT_MASK;   // Enable internal pull-up resistors. Normal high operation.
   PINOUT_PCMSK |= PINOUT_MASK;  // Enable specific pins of the Pin Change Interrupt
   PCICR |= (1 << PINOUT_INT);   // Enable Pin Change Interrupt
@@ -85,6 +85,7 @@ uint8_t system_execute_line(char *line)
   uint8_t helper_var = 0; // Helper variable
   float parameter, value;
   switch( line[char_counter] ) {
+    case 0 : report_grbl_help(); break;
     case '#' : // Print gcode parameters
       if ( line[++char_counter] != 0 ) { return(STATUS_UNSUPPORTED_STATEMENT); }
       else { report_gcode_parameters(); }
@@ -93,7 +94,29 @@ uint8_t system_execute_line(char *line)
       if ( line[++char_counter] != 0 ) { return(STATUS_UNSUPPORTED_STATEMENT); }
       else { report_gcode_modes(); }
       break;
-//    case 'J' : break;  // Jogging methods
+    case 'C' : // Set check g-code mode [IDLE/CHECK]
+      if ( line[++char_counter] != 0 ) { return(STATUS_UNSUPPORTED_STATEMENT); }
+      // Perform reset when toggling off. Check g-code mode should only work if Grbl
+      // is idle and ready, regardless of alarm locks. This is mainly to keep things
+      // simple and consistent.
+      if ( sys.state == STATE_CHECK_MODE ) { 
+        mc_reset(); 
+        report_feedback_message(MESSAGE_DISABLED);
+      } else {
+        if (sys.state) { return(STATUS_IDLE_ERROR); } // Requires no alarm mode.
+        sys.state = STATE_CHECK_MODE;
+        report_feedback_message(MESSAGE_ENABLED);
+      }
+      break; 
+    case 'X' : // Disable alarm lock [ALARM]
+      if ( line[++char_counter] != 0 ) { return(STATUS_UNSUPPORTED_STATEMENT); }
+      if (sys.state == STATE_ALARM) { 
+        report_feedback_message(MESSAGE_ALARM_UNLOCK);
+        sys.state = STATE_IDLE;
+        // Don't run startup script. Prevents stored moves in startup from causing accidents.
+      } // Otherwise, no effect.
+      break;               
+//  case 'J' : break;  // Jogging methods
     // TODO: Here jogging can be placed for execution as a seperate subprogram. It does not need to be 
     // susceptible to other runtime commands except for e-stop. The jogging function is intended to
     // be a basic toggle on/off with controlled acceleration and deceleration to prevent skipped 
@@ -109,41 +132,18 @@ uint8_t system_execute_line(char *line)
       // Block any system command that requires the state as IDLE/ALARM. (i.e. EEPROM, homing)
       if ( !(sys.state == STATE_IDLE || sys.state == STATE_ALARM) ) { return(STATUS_IDLE_ERROR); }
       switch( line[char_counter] ) {
-        case 0 : report_grbl_help(); break;
-        case '$' : // Prints Grbl settings
+        case '$' : // Prints Grbl settings [IDLE/ALARM]
           if ( line[++char_counter] != 0 ) { return(STATUS_UNSUPPORTED_STATEMENT); }
           else { report_grbl_settings(); }
           break;
-        case 'C' : // Set check g-code mode
-          if ( line[++char_counter] != 0 ) { return(STATUS_UNSUPPORTED_STATEMENT); }
-          // Perform reset when toggling off. Check g-code mode should only work if Grbl
-          // is idle and ready, regardless of alarm locks. This is mainly to keep things
-          // simple and consistent.
-          if ( sys.state == STATE_CHECK_MODE ) { 
-            mc_reset(); 
-            report_feedback_message(MESSAGE_DISABLED);
-          } else {
-            if (sys.state) { return(STATUS_IDLE_ERROR); }
-            sys.state = STATE_CHECK_MODE;
-            report_feedback_message(MESSAGE_ENABLED);
-          }
-          break; 
-        case 'X' : // Disable alarm lock
-          if ( line[++char_counter] != 0 ) { return(STATUS_UNSUPPORTED_STATEMENT); }
-          if (sys.state == STATE_ALARM) { 
-            report_feedback_message(MESSAGE_ALARM_UNLOCK);
-            sys.state = STATE_IDLE;
-            // Don't run startup script. Prevents stored moves in startup from causing accidents.
-          }
-          break;               
-        case 'H' : // Perform homing cycle
+        case 'H' : // Perform homing cycle [IDLE/ALARM]
           if (bit_istrue(settings.flags,BITFLAG_HOMING_ENABLE)) { 
             // Only perform homing if Grbl is idle or lost.
             mc_homing_cycle(); 
             if (!sys.abort) { system_execute_startup(line); } // Execute startup scripts after successful homing.
           } else { return(STATUS_SETTING_DISABLED); }
           break;
-        case 'I' : // Print or store build info.
+        case 'I' : // Print or store build info. [IDLE/ALARM]
           if ( line[++char_counter] == 0 ) { 
             if (!(settings_read_build_info(line))) {
               report_status_message(STATUS_SETTING_READ_FAIL);
@@ -159,7 +159,7 @@ uint8_t system_execute_line(char *line)
             settings_store_build_info(line);
           }
           break;                 
-        case 'N' : // Startup lines. 
+        case 'N' : // Startup lines. [IDLE/ALARM]
           if ( line[++char_counter] == 0 ) { // Print startup lines
             for (helper_var=0; helper_var < N_STARTUP_LINE; helper_var++) {
               if (!(settings_read_startup_line(helper_var, line))) {
@@ -170,10 +170,11 @@ uint8_t system_execute_line(char *line)
             }
             break;
           } else { // Store startup line
+            if (sys.state != STATE_IDLE) { return(STATUS_IDLE_ERROR); } // Store only when idle.
             helper_var = true;  // Set helper_var to flag storing method. 
             // No break. Continues into default: to read remaining command characters.
           }
-        default :  // Storing setting methods
+        default :  // Storing setting methods [IDLE/ALARM]
           if(!read_float(line, &char_counter, &parameter)) { return(STATUS_BAD_NUMBER_FORMAT); }
           if(line[char_counter++] != '=') { return(STATUS_UNSUPPORTED_STATEMENT); }
           if (helper_var) { // Store startup line

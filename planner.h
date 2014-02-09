@@ -80,7 +80,4 @@ void plan_cycle_reinitialize();
 // Returns the status of the block ring buffer. True, if buffer is full.
 uint8_t plan_check_full_buffer();
 
-// Block until all buffered steps are executed
-void plan_synchronize();
-
 #endif

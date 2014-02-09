@@ -44,10 +44,10 @@ int main(void)
   settings_init(); // Load grbl settings from EEPROM
   stepper_init();  // Configure stepper pins and interrupt timers
   system_init();   // Configure pinout pins and pin-change interrupt
-  sei();
   
   memset(&sys, 0, sizeof(sys));  // Clear all system variables
   sys.abort = true;   // Set abort to complete initialization
+  sei(); // Enable interrupts
 
   // Check for power-up and set system alarm if homing is enabled to force homing cycle
   // by setting Grbl's alarm state. Alarm locks out all g-code commands, including the
@@ -60,9 +60,14 @@ int main(void)
     if (bit_istrue(settings.flags,BITFLAG_HOMING_ENABLE)) { sys.state = STATE_ALARM; }
   #endif
   
+  // Grbl initialization loop upon power-up or a system abort. For the latter, all processes
+  // will return to this loop to be cleanly re-initialized.
   for(;;) {
+
+    // TODO: Separate configure task that require interrupts to be disabled, especially upon
+    // a system abort and ensuring any active interrupts are cleanly reset.
   
-    // Reset the system primary functionality.
+    // Reset Grbl primary systems.
     serial_reset_read_buffer(); // Clear serial read buffer
     gc_init(); // Set g-code parser to default state
     spindle_init();
@@ -81,9 +86,8 @@ int main(void)
     if (bit_istrue(settings.flags,BITFLAG_AUTO_START)) { sys.auto_start = true; }
     else { sys.auto_start = false; }
           
-    // Start main loop. Processes inputs and executes them.
-    // NOTE: Upon a system abort, the main loop returns and re-initializes the system.      
-    protocol_process(); 
+    // Start Grbl main loop. Processes program inputs and executes them.
+    protocol_main_loop();
     
   }
   return 0;   /* Never reached */

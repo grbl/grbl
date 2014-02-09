@@ -1,5 +1,5 @@
 /*
-  protocol.c - controls Grbl execution procedures
+  protocol.c - controls Grbl execution protocol and procedures
   Part of Grbl
 
   Copyright (c) 2011-2014 Sungeun K. Jeon  
@@ -24,101 +24,13 @@
 #include "settings.h"
 #include "protocol.h"
 #include "gcode.h"
+#include "planner.h"
 #include "stepper.h"
 #include "motion_control.h"
 #include "report.h"
 
 
 static char line[LINE_BUFFER_SIZE]; // Line to be executed. Zero-terminated.
-
-
-// Executes run-time commands, when required. This is called from various check points in the main
-// program, primarily where there may be a while loop waiting for a buffer to clear space or any
-// point where the execution time from the last check point may be more than a fraction of a second.
-// This is a way to execute runtime commands asynchronously (aka multitasking) with grbl's g-code
-// parsing and planning functions. This function also serves as an interface for the interrupts to 
-// set the system runtime flags, where only the main program handles them, removing the need to
-// define more computationally-expensive volatile variables. This also provides a controlled way to 
-// execute certain tasks without having two or more instances of the same task, such as the planner
-// recalculating the buffer upon a feedhold or override.
-// NOTE: The sys.execute variable flags are set by any process, step or serial interrupts, pinouts,
-// limit switches, or the main program.
-void protocol_execute_runtime()
-{
-  // Reload step segment buffer
-  st_prep_buffer();
-  
-  if (sys.execute) { // Enter only if any bit flag is true
-    uint8_t rt_exec = sys.execute; // Avoid calling volatile multiple times
-    
-    // System alarm. Everything has shutdown by something that has gone severely wrong. Report
-    // the source of the error to the user. If critical, Grbl disables by entering an infinite
-    // loop until system reset/abort.
-    if (rt_exec & (EXEC_ALARM | EXEC_CRIT_EVENT)) {      
-      sys.state = STATE_ALARM; // Set system alarm state
-
-      // Critical event. Only hard/soft limit errors currently qualify.
-      if (rt_exec & EXEC_CRIT_EVENT) {
-        report_alarm_message(ALARM_LIMIT_ERROR); 
-        report_feedback_message(MESSAGE_CRITICAL_EVENT);
-        bit_false(sys.execute,EXEC_RESET); // Disable any existing reset
-        do { 
-          // Nothing. Block EVERYTHING until user issues reset or power cycles. Hard limits
-          // typically occur while unattended or not paying attention. Gives the user time
-          // to do what is needed before resetting, like killing the incoming stream. The 
-          // same could be said about soft limits. While the position is not lost, the incoming
-          // stream could be still engaged and cause a serious crash if it continues afterwards.
-        } while (bit_isfalse(sys.execute,EXEC_RESET));
-
-      // Standard alarm event. Only abort during motion qualifies.
-      } else {
-        // Runtime abort command issued during a cycle, feed hold, or homing cycle. Message the
-        // user that position may have been lost and set alarm state to enable the alarm lockout
-        // to indicate the possible severity of the problem.
-        report_alarm_message(ALARM_ABORT_CYCLE);
-      }
-      bit_false(sys.execute,(EXEC_ALARM | EXEC_CRIT_EVENT));
-    } 
-  
-    // Execute system abort. 
-    if (rt_exec & EXEC_RESET) {
-      sys.abort = true;  // Only place this is set true.
-      return; // Nothing else to do but exit.
-    }
-    
-    // Execute and serial print status
-    if (rt_exec & EXEC_STATUS_REPORT) { 
-      report_realtime_status();
-      bit_false(sys.execute,EXEC_STATUS_REPORT);
-    }
-    
-    // Initiate stepper feed hold
-    if (rt_exec & EXEC_FEED_HOLD) {
-      // !!! During a cycle, the segment buffer has just been reloaded and full. So the math involved
-      // with the feed hold should be fine for most, if not all, operational scenarios.
-      st_feed_hold(); // Initiate feed hold.
-      bit_false(sys.execute,EXEC_FEED_HOLD);
-    }
-    
-    // Reinitializes the stepper module running state and, if a feed hold, re-plans the buffer.
-    // NOTE: EXEC_CYCLE_STOP is set by the stepper subsystem when a cycle or feed hold completes.
-    if (rt_exec & EXEC_CYCLE_STOP) {
-      st_cycle_reinitialize();
-      bit_false(sys.execute,EXEC_CYCLE_STOP);
-    }
-    
-    if (rt_exec & EXEC_CYCLE_START) { 
-      st_cycle_start(); // Issue cycle start command to stepper subsystem
-      if (bit_istrue(settings.flags,BITFLAG_AUTO_START)) {
-        sys.auto_start = true; // Re-enable auto start after feed hold.
-      }
-      bit_false(sys.execute,EXEC_CYCLE_START);
-    }
-  }
-  
-  // Overrides flag byte (sys.override) and execution should be installed here, since they 
-  // are runtime and require a direct and controlled interface to the main stepper program.
-}  
 
 
 // Directs and executes one line of formatted input from protocol_process. While mostly
@@ -141,20 +53,27 @@ static void protocol_execute_line(char *line)
     status = system_execute_line(line);
     
   } else {
-    // Everything else is gcode. Send to g-code parser!
+    // Everything else is gcode. Send to g-code parser! Block if in alarm mode.
+    if (sys.state == STATE_ALARM) { status = STATUS_ALARM_LOCK; }
+    else { status = gc_execute_line(line); }
+    
     // TODO: Separate the parsing from the g-code execution. Need to re-write the parser
     // completely to do this. First parse the line completely, checking for modal group 
     // errors and storing all of the g-code words. Then, send the stored g-code words to
     // a separate g-code executor. This will be more in-line with actual g-code protocol.
-    status = gc_execute_line(line);
-  
+    
+    // TODO: Clean up the multi-tasking workflow with the execution of commands. It's a 
+    // bit complicated and patch-worked. Could be made simplier to understand.
   }
   
   report_status_message(status);
 }
 
 
-void protocol_process()
+/* 
+  GRBL MAIN LOOP:
+*/
+void protocol_main_loop()
 {
   // ------------------------------------------------------------
   // Complete initialization procedures upon a power-up or reset.
@@ -218,15 +137,149 @@ void protocol_process()
       }
     }
     
-    protocol_execute_runtime();  // Runtime command check point.
-    if (sys.abort) { return; } // Bail to main() program loop to reset system.
-          
     // If there are no more characters in the serial read buffer to be processed and executed,
     // this indicates that g-code streaming has either filled the planner buffer or has 
     // completed. In either case, auto-cycle start, if enabled, any queued moves.
-    mc_auto_cycle_start();
-    
+    protocol_auto_cycle_start();
+
+    protocol_execute_runtime();  // Runtime command check point.
+    if (sys.abort) { return; } // Bail to main() program loop to reset system.
+              
   }
   
   return; /* Never reached */
 }
+
+
+// Executes run-time commands, when required. This is called from various check points in the main
+// program, primarily where there may be a while loop waiting for a buffer to clear space or any
+// point where the execution time from the last check point may be more than a fraction of a second.
+// This is a way to execute runtime commands asynchronously (aka multitasking) with grbl's g-code
+// parsing and planning functions. This function also serves as an interface for the interrupts to 
+// set the system runtime flags, where only the main program handles them, removing the need to
+// define more computationally-expensive volatile variables. This also provides a controlled way to 
+// execute certain tasks without having two or more instances of the same task, such as the planner
+// recalculating the buffer upon a feedhold or override.
+// NOTE: The sys.execute variable flags are set by any process, step or serial interrupts, pinouts,
+// limit switches, or the main program.
+void protocol_execute_runtime()
+{
+  uint8_t rt_exec = sys.execute; // Copy to avoid calling volatile multiple times
+  if (rt_exec) { // Enter only if any bit flag is true
+    
+    // System alarm. Everything has shutdown by something that has gone severely wrong. Report
+    // the source of the error to the user. If critical, Grbl disables by entering an infinite
+    // loop until system reset/abort.
+    if (rt_exec & (EXEC_ALARM | EXEC_CRIT_EVENT)) {      
+      sys.state = STATE_ALARM; // Set system alarm state
+
+      // Critical event. Only hard/soft limit errors currently qualify.
+      if (rt_exec & EXEC_CRIT_EVENT) {
+        report_alarm_message(ALARM_LIMIT_ERROR); 
+        report_feedback_message(MESSAGE_CRITICAL_EVENT);
+        bit_false(sys.execute,EXEC_RESET); // Disable any existing reset
+        do { 
+          // Nothing. Block EVERYTHING until user issues reset or power cycles. Hard limits
+          // typically occur while unattended or not paying attention. Gives the user time
+          // to do what is needed before resetting, like killing the incoming stream. The 
+          // same could be said about soft limits. While the position is not lost, the incoming
+          // stream could be still engaged and cause a serious crash if it continues afterwards.
+        } while (bit_isfalse(sys.execute,EXEC_RESET));
+
+      // Standard alarm event. Only abort during motion qualifies.
+      } else {
+        // Runtime abort command issued during a cycle, feed hold, or homing cycle. Message the
+        // user that position may have been lost and set alarm state to enable the alarm lockout
+        // to indicate the possible severity of the problem.
+        report_alarm_message(ALARM_ABORT_CYCLE);
+      }
+      bit_false(sys.execute,(EXEC_ALARM | EXEC_CRIT_EVENT));
+    } 
+  
+    // Execute system abort. 
+    if (rt_exec & EXEC_RESET) {
+      sys.abort = true;  // Only place this is set true.
+      return; // Nothing else to do but exit.
+    }
+    
+    // Execute and serial print status
+    if (rt_exec & EXEC_STATUS_REPORT) { 
+      report_realtime_status();
+      bit_false(sys.execute,EXEC_STATUS_REPORT);
+    }
+    
+    // Execute a feed hold with deceleration, only during cycle.
+    if (rt_exec & EXEC_FEED_HOLD) {
+      // !!! During a cycle, the segment buffer has just been reloaded and full. So the math involved
+      // with the feed hold should be fine for most, if not all, operational scenarios.
+      if (sys.state == STATE_CYCLE) {
+        sys.state = STATE_HOLD;
+        st_update_plan_block_parameters();
+        st_prep_buffer();
+        sys.auto_start = false; // Disable planner auto start upon feed hold.
+      }
+      bit_false(sys.execute,EXEC_FEED_HOLD);
+    }
+        
+    // Execute a cycle start by starting the stepper interrupt begin executing the blocks in queue.
+    if (rt_exec & EXEC_CYCLE_START) { 
+      if (sys.state == STATE_QUEUED) {
+        sys.state = STATE_CYCLE;
+        st_prep_buffer(); // Initialize step segment buffer before beginning cycle.
+        st_wake_up();
+        if (bit_istrue(settings.flags,BITFLAG_AUTO_START)) {
+          sys.auto_start = true; // Re-enable auto start after feed hold.
+        } else {
+          sys.auto_start = false; // Reset auto start per settings.
+        }
+      }    
+      bit_false(sys.execute,EXEC_CYCLE_START);
+    }
+    
+    // Reinitializes the cycle plan and stepper system after a feed hold for a resume. Called by 
+    // runtime command execution in the main program, ensuring that the planner re-plans safely.
+    // NOTE: Bresenham algorithm variables are still maintained through both the planner and stepper
+    // cycle reinitializations. The stepper path should continue exactly as if nothing has happened.   
+    // NOTE: EXEC_CYCLE_STOP is set by the stepper subsystem when a cycle or feed hold completes.
+    if (rt_exec & EXEC_CYCLE_STOP) {
+      if (sys.state != STATE_QUEUED) {    
+        sys.state = STATE_IDLE;
+      }
+      bit_false(sys.execute,EXEC_CYCLE_STOP);
+    }
+
+  }
+  
+  // Overrides flag byte (sys.override) and execution should be installed here, since they 
+  // are runtime and require a direct and controlled interface to the main stepper program.
+
+  // Reload step segment buffer
+  if (sys.state & (STATE_CYCLE | STATE_HOLD | STATE_HOMING)) { st_prep_buffer(); }  
+  
+}  
+
+
+// Block until all buffered steps are executed or in a cycle state. Works with feed hold
+// during a synchronize call, if it should happen. Also, waits for clean cycle end.
+void protocol_buffer_synchronize()
+{
+  // Check and set auto start to resume cycle after synchronize and caller completes.
+  if (sys.state == STATE_CYCLE) { sys.auto_start = true; }
+  while (plan_get_current_block() || (sys.state == STATE_CYCLE)) { 
+    protocol_execute_runtime();   // Check and execute run-time commands
+    if (sys.abort) { return; } // Check for system abort
+  }    
+}
+
+
+// Auto-cycle start has two purposes: 1. Resumes a plan_synchronize() call from a function that
+// requires the planner buffer to empty (spindle enable, dwell, etc.) 2. As a user setting that 
+// automatically begins the cycle when a user enters a valid motion command manually. This is 
+// intended as a beginners feature to help new users to understand g-code. It can be disabled
+// as a beginner tool, but (1.) still operates. If disabled, the operation of cycle start is
+// manually issuing a cycle start command whenever the user is ready and there is a valid motion 
+// command in the planner queue.
+// NOTE: This function is called from the main loop and mc_line() only and executes when one of
+// two conditions exist respectively: There are no more blocks sent (i.e. streaming is finished, 
+// single commands), or the planner buffer is full and ready to go.
+void protocol_auto_cycle_start() { if (sys.auto_start) { sys.execute |= EXEC_CYCLE_START; } } 

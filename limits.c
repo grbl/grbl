@@ -29,6 +29,9 @@
 #include "report.h"
 
 
+#define HOMING_AXIS_SEARCH_SCALAR  1.5  // Axis search distance multiplier. Must be > 1.
+
+
 void limits_init() 
 {
   LIMIT_DDR &= ~(LIMIT_MASK); // Set as input pins
@@ -65,24 +68,38 @@ void limits_disable()
 // limit switch can cause a lot of problems, like false readings and multiple interrupt calls.
 // If a switch is triggered at all, something bad has happened and treat it as such, regardless
 // if a limit switch is being disengaged. It's impossible to reliably tell the state of a 
-// bouncing pin without a debouncing method.
+// bouncing pin without a debouncing method. A simple software debouncing feature may be enabled 
+// through the config.h file, where an extra timer delays the limit pin read by several milli-
+// seconds to help with, not fix, bouncing switches.
 // NOTE: Do not attach an e-stop to the limit pins, because this interrupt is disabled during
 // homing cycles and will not respond correctly. Upon user request or need, there may be a
 // special pinout for an e-stop, but it is generally recommended to just directly connect
 // your e-stop switch to the Arduino reset pin, since it is the most correct way to do this.
-#ifdef ENABLE_SOFTWARE_DEBOUNCE
-  ISR(LIMIT_INT_vect) { if (!(WDTCSR & (1<<WDIE))) { WDTCSR |= (1<<WDIE); } }
-  ISR(WDT_vect) 
+#ifndef ENABLE_SOFTWARE_DEBOUNCE
+  ISR(LIMIT_INT_vect) // DEFAULT: Limit pin change interrupt process. 
   {
-    WDTCSR &= ~(1<<WDIE); 
     // Ignore limit switches if already in an alarm state or in-process of executing an alarm.
     // When in the alarm state, Grbl should have been reset or will force a reset, so any pending 
     // moves in the planner and serial buffers are all cleared and newly sent blocks will be 
     // locked out until a homing cycle or a kill lock command. Allows the user to disable the hard
     // limit setting if their limits are constantly triggering after a reset and move their axes.
-    if (sys.state != STATE_ALARM) { 
+    if (sys.state != STATE_ALARM) {
+      if (bit_isfalse(sys.execute,EXEC_ALARM)) {
+        mc_reset(); // Initiate system kill.
+        sys.execute |= EXEC_CRIT_EVENT; // Indicate hard limit critical event
+      }
+    }  
+  }
+#else // OPTIONAL: Software debounce limit pin routine.
+  // Upon limit pin change, enable watchdog timer to create a short delay. 
+  ISR(LIMIT_INT_vect) { if (!(WDTCSR & (1<<WDIE))) { WDTCSR |= (1<<WDIE); } }
+  ISR(WDT_vect) // Watchdog timer ISR
+  {
+    WDTCSR &= ~(1<<WDIE); // Disable watchdog timer. 
+    if (sys.state != STATE_ALARM) {  // Ignore if already in alarm state. 
       if (bit_isfalse(sys.execute,EXEC_ALARM)) {
         uint8_t bits = LIMIT_PIN;
+        // Check limit pin state. 
         if (bit_istrue(settings.flags,BITFLAG_INVERT_LIMIT_PINS)) { bits ^= LIMIT_MASK; }
         if (bits & LIMIT_MASK) {
           mc_reset(); // Initiate system kill.
@@ -91,101 +108,140 @@ void limits_disable()
       }
     }  
   }
-#else
-  ISR(LIMIT_INT_vect)
-  {
-    // Ignore limit switches if already in an alarm state or in-process of executing an alarm.
-    // When in the alarm state, Grbl should have been reset or will force a reset, so any pending 
-    // moves in the planner and serial buffers are all cleared and newly sent blocks will be 
-    // locked out until a homing cycle or a kill lock command. Allows the user to disable the hard
-    // limit setting if their limits are constantly triggering after a reset and move their axes.
-    if (sys.state != STATE_ALARM) { 
-      if (bit_isfalse(sys.execute,EXEC_ALARM)) {
-        mc_reset(); // Initiate system kill.
-        sys.execute |= EXEC_CRIT_EVENT; // Indicate hard limit critical event
-      }
-    }  
-  }
 #endif
 
 
-// Moves specified cycle axes all at homing rate, either approaching or disengaging the limit
-// switches. Homing is a special motion case, where there is only an acceleration followed
-// by abrupt asynchronous stops by each axes reaching their limit switch independently. The 
-// asynchronous stops are handled by a system level axis lock mask, which prevents the stepper
-// algorithm from executing step pulses.
+// Homes the specified cycle axes, sets the machine position, and performs a pull-off motion after
+// completing. Homing is a special motion case, which involves rapid uncontrolled stops to locate
+// the trigger point of the limit switches. The rapid stops are handled by a system level axis lock 
+// mask, which prevents the stepper algorithm from executing step pulses. Homing motions typically 
+// circumvent the processes for executing motions in normal operation.
 // NOTE: Only the abort runtime command can interrupt this process.
-void limits_go_home(uint8_t cycle_mask, bool approach, float homing_rate) 
+void limits_go_home(uint8_t cycle_mask) 
 {
-  if (sys.execute & EXEC_RESET) { return; }
-
-  uint8_t invert_pin;
-  if (bit_isfalse(settings.flags,BITFLAG_INVERT_LIMIT_PINS)) { invert_pin = approach; }
-  else { invert_pin = !approach; }
+  if (sys.abort) { return; } // Block if system reset has been issued.
   
+  // Initialize homing in search mode to quickly engage the specified cycle_mask limit switches.
+  bool approach = true;
+  float homing_rate = settings.homing_seek_rate;
+  uint8_t invert_pin, idx;
+  uint8_t n_cycle = (2*N_HOMING_LOCATE_CYCLE+1);
+  float target[N_AXIS];
+
   // Determine travel distance to the furthest homing switch based on user max travel settings.
   // NOTE: settings.max_travel[] is stored as a negative value.
   float max_travel = settings.max_travel[X_AXIS];
   if (max_travel > settings.max_travel[Y_AXIS]) { max_travel = settings.max_travel[Y_AXIS]; }
   if (max_travel > settings.max_travel[Z_AXIS]) { max_travel = settings.max_travel[Z_AXIS]; }
-  max_travel *= -1.25; // Ensure homing switches engaged by over-estimating max travel.
-  if (!approach) { max_travel = -max_travel; }
-
-  // Set target location and rate for active axes.
-  float target[N_AXIS];
-  uint8_t n_active_axis = 0;
-  uint8_t i;
-  for (i=0; i<N_AXIS; i++) {
-    if (bit_istrue(cycle_mask,bit(i))) { 
-      n_active_axis++;
-      target[i] = max_travel; 
-     } else {
-      target[i] = 0.0;
-    }
-  }      
-  if (bit_istrue(settings.homing_dir_mask,(1<<X_DIRECTION_BIT))) { target[X_AXIS] = -target[X_AXIS]; }
-  if (bit_istrue(settings.homing_dir_mask,(1<<Y_DIRECTION_BIT))) { target[Y_AXIS] = -target[Y_AXIS]; }
-  if (bit_istrue(settings.homing_dir_mask,(1<<Z_DIRECTION_BIT))) { target[Z_AXIS] = -target[Z_AXIS]; }
-  homing_rate *= sqrt(n_active_axis); // [sqrt(N_AXIS)] Adjust so individual axes all move at homing rate.
-
-  // Setup homing axis locks based on cycle mask.
-  uint8_t axislock = 0;
-  if (bit_istrue(cycle_mask,bit(X_AXIS))) { axislock |= (1<<X_STEP_BIT); }
-  if (bit_istrue(cycle_mask,bit(Y_AXIS))) { axislock |= (1<<Y_STEP_BIT); }
-  if (bit_istrue(cycle_mask,bit(Z_AXIS))) { axislock |= (1<<Z_STEP_BIT); }
-  sys.homing_axis_lock = axislock;
+  max_travel *= -HOMING_AXIS_SEARCH_SCALAR; // Ensure homing switches engaged by over-estimating max travel.
+   
+  plan_reset(); // Reset planner buffer to zero planner current position and to clear previous motions.
   
-  // Perform homing cycle. Planner buffer should be empty, as required to initiate the homing cycle.
-  uint8_t limit_state;
-  plan_buffer_line(target, homing_rate, false); // Bypass mc_line(). Directly plan homing motion.
-  st_prep_buffer(); // Prep first segment from newly planned block.
-  st_wake_up(); // Initiate motion
   do {
-    // Check limit state. Lock out cycle axes when they change.
-    limit_state = LIMIT_PIN;
-    if (invert_pin) { limit_state ^= LIMIT_MASK; }
-    if (axislock & (1<<X_STEP_BIT)) {
-      if (limit_state & (1<<X_LIMIT_BIT)) { axislock &= ~(1<<X_STEP_BIT); }
-    }
-    if (axislock & (1<<Y_STEP_BIT)) {
-      if (limit_state & (1<<Y_LIMIT_BIT)) { axislock &= ~(1<<Y_STEP_BIT); }
-    }
-    if (axislock & (1<<Z_STEP_BIT)) {
-      if (limit_state & (1<<Z_LIMIT_BIT)) { axislock &= ~(1<<Z_STEP_BIT); }
-    }
+    // Initialize invert_pin boolean based on approach and invert pin user setting.
+    if (bit_isfalse(settings.flags,BITFLAG_INVERT_LIMIT_PINS)) { invert_pin = approach; }
+    else { invert_pin = !approach; }
+
+    // Set target location and rate for active axes.
+    uint8_t n_active_axis = 0;
+    for (idx=0; idx<N_AXIS; idx++) {
+      if (bit_istrue(cycle_mask,bit(idx))) { 
+        n_active_axis++;
+        if (!approach) { target[idx] = -max_travel; }
+        else { target[idx] = max_travel; }
+       } else {
+        target[idx] = 0.0;
+      }
+    }      
+    if (bit_istrue(settings.homing_dir_mask,(1<<X_DIRECTION_BIT))) { target[X_AXIS] = -target[X_AXIS]; }
+    if (bit_istrue(settings.homing_dir_mask,(1<<Y_DIRECTION_BIT))) { target[Y_AXIS] = -target[Y_AXIS]; }
+    if (bit_istrue(settings.homing_dir_mask,(1<<Z_DIRECTION_BIT))) { target[Z_AXIS] = -target[Z_AXIS]; }
+  
+    homing_rate *= sqrt(n_active_axis); // [sqrt(N_AXIS)] Adjust so individual axes all move at homing rate.
+
+    // Reset homing axis locks based on cycle mask. 
+    uint8_t axislock = 0;
+    if (bit_istrue(cycle_mask,bit(X_AXIS))) { axislock |= (1<<X_STEP_BIT); }
+    if (bit_istrue(cycle_mask,bit(Y_AXIS))) { axislock |= (1<<Y_STEP_BIT); }
+    if (bit_istrue(cycle_mask,bit(Z_AXIS))) { axislock |= (1<<Z_STEP_BIT); }
     sys.homing_axis_lock = axislock;
-    st_prep_buffer(); // Check and prep one segment. NOTE: Should take no longer than 200us.
-    if (sys.execute & EXEC_RESET) { return; }
-  } while (STEP_MASK & axislock);
-  st_go_idle(); // Disable steppers. Axes motion should already be locked.
-  plan_reset(); // Reset planner buffer. Ensure homing motion is cleared.
-  st_reset(); // Reset step segment buffer. Ensure homing motion is cleared.
-  delay_ms(settings.homing_debounce_delay); // Delay to allow transient dynamics to dissipate.
+  
+    // Perform homing cycle. Planner buffer should be empty, as required to initiate the homing cycle.
+    uint8_t limit_state;
+    plan_buffer_line(target, homing_rate, false); // Bypass mc_line(). Directly plan homing motion.
+    st_prep_buffer(); // Prep and fill segment buffer from newly planned block.
+    st_wake_up(); // Initiate motion
+    do {
+      // Check limit state. Lock out cycle axes when they change.
+      limit_state = LIMIT_PIN;
+      if (invert_pin) { limit_state ^= LIMIT_MASK; }
+      if (axislock & (1<<X_STEP_BIT)) {
+        if (limit_state & (1<<X_LIMIT_BIT)) { axislock &= ~(1<<X_STEP_BIT); }
+      }
+      if (axislock & (1<<Y_STEP_BIT)) {
+        if (limit_state & (1<<Y_LIMIT_BIT)) { axislock &= ~(1<<Y_STEP_BIT); }
+      }
+      if (axislock & (1<<Z_STEP_BIT)) {
+        if (limit_state & (1<<Z_LIMIT_BIT)) { axislock &= ~(1<<Z_STEP_BIT); }
+      }
+      sys.homing_axis_lock = axislock;
+      st_prep_buffer(); // Check and prep segment buffer. NOTE: Should take no longer than 200us.
+      // Check only for user reset. No time to run protocol_execute_runtime() in this loop.
+      if (sys.execute & EXEC_RESET) { protocol_execute_runtime(); return; }
+    } while (STEP_MASK & axislock);
+
+    delay_ms(settings.homing_debounce_delay); // Delay to allow transient dynamics to dissipate.  
+    
+    // Reverse direction and reset homing rate for locate cycle(s).
+    homing_rate = settings.homing_feed_rate;
+    approach = !approach;
+    
+    st_reset(); // Force disable steppers and reset step segment buffer. Ensure homing motion is cleared.
+    plan_reset(); // Reset planner buffer. Zero planner positions. Ensure homing motion is cleared.
+
+  } while (n_cycle-- > 0);
+    
+  // The active cycle axes should now be homed and machine limits have been located. By 
+  // default, grbl defines machine space as all negative, as do most CNCs. Since limit switches
+  // can be on either side of an axes, check and set axes machine zero appropriately. Also,
+  // set up pull-off maneuver from axes limit switches that have been homed. This provides
+  // some initial clearance off the switches and should also help prevent them from falsely
+  // triggering when hard limits are enabled or when more than one axes shares a limit pin.
+  for (idx=0; idx<N_AXIS; idx++) {
+    // Set up pull off targets and machine positions for limit switches homed in the negative
+    // direction, rather than the traditional positive. Leave non-homed positions as zero and
+    // do not move them.
+    // NOTE: settings.max_travel[] is stored as a negative value.
+    if (cycle_mask & bit(idx)) {
+      if ( settings.homing_dir_mask & get_direction_mask(idx) ) {
+        target[idx] = settings.homing_pulloff+settings.max_travel[idx];
+        sys.position[idx] = lround(settings.max_travel[idx]*settings.steps_per_mm[idx]);
+      } else {
+        target[idx] = -settings.homing_pulloff;
+        sys.position[idx] = 0;
+      }
+    } else { // Non-active cycle axis. Set target to not move during pull-off. 
+      target[idx] = (float)sys.position[idx]/settings.steps_per_mm[idx];
+    }
+  }
+  plan_sync_position(); // Sync planner position to current machine position for pull-off move.
+  plan_buffer_line(target, settings.homing_seek_rate, false); // Bypass mc_line(). Directly plan motion.
+
+  // Initiate pull-off using main motion control routines. 
+  // TODO : Clean up state routines so that this motion still shows homing state.
+  sys.state = STATE_QUEUED;
+//   protocol_cycle_start();   
+  sys.execute |= EXEC_CYCLE_START;
+  protocol_execute_runtime();
+  protocol_buffer_synchronize(); // Complete pull-off motion.
+  
+  // Set system state to homing before returning. 
+  sys.state = STATE_HOMING; 
 }
 
 
 // Performs a soft limit check. Called from mc_line() only. Assumes the machine has been homed,
-// and the workspace volume is in all negative space.
+// the workspace volume is in all negative space, and the system is in normal operation.
 void limits_soft_check(float *target)
 {
   uint8_t idx;
@@ -196,11 +252,11 @@ void limits_soft_check(float *target)
       // workspace volume so just come to a controlled stop so position is not lost. When complete
       // enter alarm mode.
       if (sys.state == STATE_CYCLE) {
-        st_feed_hold();
-        while (sys.state == STATE_HOLD) {
+        sys.execute |= EXEC_FEED_HOLD;
+        do {
           protocol_execute_runtime();
           if (sys.abort) { return; }
-        }
+        } while (sys.state == STATE_HOLD);
       }
       
       mc_reset(); // Issue system reset and ensure spindle and coolant are shutdown.

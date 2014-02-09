@@ -38,15 +38,6 @@ void st_go_idle();
 // Reset the stepper subsystem variables       
 void st_reset();
              
-// Notify the stepper subsystem to start executing the g-code program in buffer.
-void st_cycle_start();
-
-// Reinitializes the buffer after a feed hold for a resume.
-void st_cycle_reinitialize(); 
-
-// Initiates a feed hold of the running program
-void st_feed_hold();
-
 // Reloads step segment buffer. Called continuously by runtime execution system.
 void st_prep_buffer();
 

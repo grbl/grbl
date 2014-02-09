@@ -44,7 +44,4 @@ void mc_homing_cycle();
 // Performs system reset. If in motion state, kills all motion and sets system alarm.
 void mc_reset();
 
-// Executes the auto cycle feature, if enabled.
-void mc_auto_cycle_start();
-
 #endif

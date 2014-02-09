@@ -37,8 +37,8 @@
   #define SERIAL_UDRE   USART_UDRE_vect
 
   // Define step pulse output pins. NOTE: All step bit pins must be on the same port.
-  #define STEPPING_DDR    DDRD
-  #define STEPPING_PORT   PORTD
+  #define STEP_DDR        DDRD
+  #define STEP_PORT       PORTD
   #define X_STEP_BIT      2  // Uno Digital Pin 2
   #define Y_STEP_BIT      3  // Uno Digital Pin 3
   #define Z_STEP_BIT      4  // Uno Digital Pin 4
@@ -147,9 +147,9 @@
   //#define LINE_BUFFER_SIZE	100
 
   // Define step pulse output pins. NOTE: All step bit pins must be on the same port.
-  #define STEPPING_DDR      DDRA
-  #define STEPPING_PORT     PORTA
-  #define STEPPING_PIN      PINA
+  #define STEP_DDR      DDRA
+  #define STEP_PORT     PORTA
+  #define STEP_PIN      PINA
   #define X_STEP_BIT        2 // MEGA2560 Digital Pin 24
   #define Y_STEP_BIT        3 // MEGA2560 Digital Pin 25
   #define Z_STEP_BIT        4 // MEGA2560 Digital Pin 26

@@ -249,19 +249,6 @@ uint8_t plan_check_full_buffer()
 }
 
 
-// Block until all buffered steps are executed or in a cycle state. Works with feed hold
-// during a synchronize call, if it should happen. Also, waits for clean cycle end.
-void plan_synchronize()
-{
-  // Check and set auto start to resume cycle after synchronize and caller completes.
-  if (sys.state == STATE_CYCLE) { sys.auto_start = true; }
-  while (plan_get_current_block() || (sys.state == STATE_CYCLE)) { 
-    protocol_execute_runtime();   // Check and execute run-time commands
-    if (sys.abort) { return; } // Check for system abort
-  }    
-}
-
-
 /* Add a new linear movement to the buffer. target[N_AXIS] is the signed, absolute target position
    in millimeters. Feed rate specifies the speed of the motion. If feed rate is inverted, the feed
    rate is taken to mean "frequency" and would complete the operation in 1/feed_rate minutes.
@@ -373,7 +360,8 @@ void plan_buffer_line(float *target, float feed_rate, uint8_t invert_feed_rate)
     // NOTE: Computed without any expensive trig, sin() or acos(), by trig half angle identity of cos(theta).
     float sin_theta_d2 = sqrt(0.5*(1.0-junction_cos_theta)); // Trig half angle identity. Always positive.
 
-    // TODO: Acceleration used in calculation needs to be limited by the minimum of the two junctions. 
+    // TODO: Technically, the acceleration used in calculation needs to be limited by the minimum of the
+    // two junctions. However, this shouldn't be a significant problem except in extreme circumstances.
     block->max_junction_speed_sqr = max( MINIMUM_JUNCTION_SPEED*MINIMUM_JUNCTION_SPEED,
                                  (block->acceleration * settings.junction_deviation * sin_theta_d2)/(1.0-sin_theta_d2) );
   }

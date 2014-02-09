@@ -27,18 +27,19 @@
 
 
 // Some useful constants.
-#define DT_SEGMENT (1.0/(ACCELERATION_TICKS_PER_SECOND*60.0)) // min/segment                                    
+#define DT_SEGMENT (1.0/(ACCELERATION_TICKS_PER_SECOND*60.0)) // min/segment 
+#define REQ_MM_INCREMENT_SCALAR 1.25                                   
 #define RAMP_ACCEL 0
 #define RAMP_CRUISE 1
 #define RAMP_DECEL 2
 
-// Define AMASS levels and cutoff frequencies. The highest level frequency bin starts at 0Hz and
-// ends at its cutoff frequency. The next lower level frequency bin starts at the next higher cutoff
-// frequency, and so on. The cutoff frequencies for each level must be considered carefully against
-// how much it over-drives the stepper ISR, the accuracy of the 16-bit timer, and the CPU overhead.
-// Level 0 (no AMASS, normal operation) frequency bin starts at the Level 1 cutoff frequency and 
-// up to as fast as the CPU allows (over 30kHz in limited testing).
-// NOTE: AMASS uutoff frequency multiplied by ISR overdrive factor must not exceed maximum step frequency.
+// Define Adaptive Multi-Axis Step-Smoothing(AMASS) levels and cutoff frequencies. The highest level
+// frequency bin starts at 0Hz and ends at its cutoff frequency. The next lower level frequency bin
+// starts at the next higher cutoff frequency, and so on. The cutoff frequencies for each level must
+// be considered carefully against how much it over-drives the stepper ISR, the accuracy of the 16-bit
+// timer, and the CPU overhead. Level 0 (no AMASS, normal operation) frequency bin starts at the 
+// Level 1 cutoff frequency and up to as fast as the CPU allows (over 30kHz in limited testing).
+// NOTE: AMASS cutoff frequency multiplied by ISR overdrive factor must not exceed maximum step frequency.
 // NOTE: Current settings are set to overdrive the ISR to no more than 16kHz, balancing CPU overhead
 // and timer accuracy.  Do not alter these settings unless you know what you are doing.
 #define MAX_AMASS_LEVEL 3
@@ -121,14 +122,14 @@ typedef struct {
   uint8_t st_block_index;  // Index of stepper common data block being prepped
   uint8_t flag_partial_block;  // Flag indicating the last block completed. Time to load a new one.
 
-  float step_per_mm;           // Current planner block step/millimeter conversion scalar
   float steps_remaining;
-
-  float mm_per_step;
-  float minimum_mm;
+  float step_per_mm;           // Current planner block step/millimeter conversion scalar
+  float req_mm_increment;
+  float dt_remainder;
   
   uint8_t ramp_type;      // Current segment ramp state
   float mm_complete;      // End of velocity profile from end of current planner block in (mm).
+                          // NOTE: This value must coincide with a step(no mantissa) when converted.
   float current_speed;    // Current speed at the end of the segment buffer (mm/min)
   float maximum_speed;    // Maximum speed of executing block. Not always nominal speed. (mm/min)
   float exit_speed;       // Exit speed of executing block (mm/min)
@@ -202,7 +203,6 @@ void st_wake_up()
     #endif
 
     // Enable Stepper Driver Interrupt
-    TCCR1B = (TCCR1B & ~(0x07<<CS10)) | (1<<CS10); // Set prescaler
     TIMSK1 |= (1<<OCIE1A);
   }
 }
@@ -211,19 +211,20 @@ void st_wake_up()
 // Stepper shutdown
 void st_go_idle() 
 {
-  // Disable Timer1 Stepper Driver Interrupt. Allow Timer0 to finish. It will disable itself.
-  TIMSK1 &= ~(1<<OCIE1A); 
+  // Disable Stepper Driver Interrupt. Allow Stepper Port Reset Interrupt to finish, if active.
+  TIMSK1 &= ~(1<<OCIE1A); // Disable Timer1 interrupt
+  TCCR1B = (TCCR1B & ~((1<<CS12) | (1<<CS11))) | (1<<CS10); // Reset clock to no prescaling.
   busy = false;
   
   // Set stepper driver idle state, disabled or enabled, depending on settings and circumstances.
-  bool pin_state = false;
+  bool pin_state = false; // Keep enabled.
   if (((settings.stepper_idle_lock_time != 0xff) || bit_istrue(sys.execute,EXEC_ALARM)) && sys.state != STATE_HOMING) {
     // Force stepper dwell to lock axes for a defined amount of time to ensure the axes come to a complete
     // stop and not drift from residual inertial forces at the end of the last movement.
     delay_ms(settings.stepper_idle_lock_time);
-    pin_state = true;
+    pin_state = true; // Override. Disable steppers.
   }
-  if (bit_istrue(settings.flags,BITFLAG_INVERT_ST_ENABLE)) { pin_state = !pin_state; }
+  if (bit_istrue(settings.flags,BITFLAG_INVERT_ST_ENABLE)) { pin_state = !pin_state; } // Apply pin invert.
   if (pin_state) { STEPPERS_DISABLE_PORT |= (1<<STEPPERS_DISABLE_BIT); }
   else { STEPPERS_DISABLE_PORT &= ~(1<<STEPPERS_DISABLE_BIT); }
 }
@@ -250,10 +251,17 @@ void st_go_idle()
    non-dominant Bresenham axes step in the intermediate ISR tick, while the dominant axis is 
    stepping every two ISR ticks, rather than every ISR tick in the traditional sense. At AMASS
    Level 2, we simply bit-shift again, so the non-dominant Bresenham axes can step within any 
-   of the four ISR ticks, and the dominant axis steps every four ISR ticks. And so on. This, 
-   in effect, removes the vast majority of the multi-axis aliasing issues with the Bresenham
-   algorithm and does not significantly alter Grbl's performance, but in fact, more efficiently 
-   utilizes unused CPU cycles overall throughout all configurations.
+   of the four ISR ticks, the dominant axis steps every four ISR ticks, and quadruple the 
+   stepper ISR frequency. And so on. This, in effect, virtually eliminates multi-axis aliasing 
+   issues with the Bresenham algorithm and does not significantly alter Grbl's performance, but 
+   in fact, more efficiently utilizes unused CPU cycles overall throughout all configurations.
+     AMASS retains the Bresenham algorithm exactness by requiring that it always executes a full
+   Bresenham step, regardless of AMASS Level. Meaning that for an AMASS Level 2, all four 
+   intermediate steps must be completed such that baseline Bresenham (Level 0) count is always 
+   retained. Similarly, AMASS Level 3 means all eight intermediate steps must be executed. 
+   Although the AMASS Levels are in reality arbitrary, where the baseline Bresenham counts can
+   be multiplied by any integer value, multiplication by powers of two are simply used to ease 
+   CPU overhead with bitshift integer operations. 
      This interrupt is simple and dumb by design. All the computational heavy-lifting, as in
    determining accelerations, is performed elsewhere. This interrupt pops pre-computed segments,
    defined as constant velocity over n number of steps, from the step segment buffer and then 
@@ -265,6 +273,7 @@ void st_go_idle()
    NOTE: This interrupt must be as efficient as possible and complete before the next ISR tick, 
    which for Grbl must be less than 33.3usec (@30kHz ISR rate). Oscilloscope measured time in 
    ISR is 5usec typical and 25usec maximum, well below requirement.
+   NOTE: This ISR expects at least one step to be executed per segment.
 */
 // TODO: Replace direct updating of the int32 position counters in the ISR somehow. Perhaps use smaller
 // int8 variables and update position counters only when a segment completes. This can get complicated 
@@ -279,15 +288,15 @@ ISR(TIMER1_COMPA_vect)
 
   // Then pulse the stepping pins
   #ifdef STEP_PULSE_DELAY
-    st.step_bits = (STEPPING_PORT & ~STEP_MASK) | st.step_outbits; // Store out_bits to prevent overwriting.
+    st.step_bits = (STEP_PORT & ~STEP_MASK) | st.step_outbits; // Store out_bits to prevent overwriting.
   #else  // Normal operation
-    STEPPING_PORT = (STEPPING_PORT & ~STEP_MASK) | st.step_outbits;
+    STEP_PORT = (STEP_PORT & ~STEP_MASK) | st.step_outbits;
   #endif  
 
   // Enable step pulse reset timer so that The Stepper Port Reset Interrupt can reset the signal after
   // exactly settings.pulse_microseconds microseconds, independent of the main Timer1 prescaler.
   TCNT0 = st.step_pulse_time; // Reload Timer0 counter
-  TCCR0B = (1<<CS21); // Begin Timer0. Full speed, 1/8 prescaler
+  TCCR0B = (1<<CS01); // Begin Timer0. Full speed, 1/8 prescaler
 
   busy = true;
   sei(); // Re-enable interrupts to allow Stepper Port Reset Interrupt to fire on-time. 
@@ -299,10 +308,13 @@ ISR(TIMER1_COMPA_vect)
     if (segment_buffer_head != segment_buffer_tail) {
       // Initialize new step segment and load number of steps to execute
       st.exec_segment = &segment_buffer[segment_buffer_tail];
-      // Initialize step segment timing per step and load number of steps to execute.
+
       #ifndef ADAPTIVE_MULTI_AXIS_STEP_SMOOTHING
+        // With AMASS is disabled, set timer prescaler for segments with slow step frequencies (< 250Hz).
         TCCR1B = (TCCR1B & ~(0x07<<CS10)) | (st.exec_segment->prescaler<<CS10);
       #endif
+
+      // Initialize step segment timing per step and load number of steps to execute.
       OCR1A = st.exec_segment->cycles_per_tick;
       st.step_count = st.exec_segment->n_step; // NOTE: Can sometimes be zero when moving slow.
       // If the new segment starts a new planner block, initialize stepper variables and counters.
@@ -310,17 +322,22 @@ ISR(TIMER1_COMPA_vect)
       if ( st.exec_block_index != st.exec_segment->st_block_index ) {
         st.exec_block_index = st.exec_segment->st_block_index;
         st.exec_block = &st_block_buffer[st.exec_block_index];
-        st.dir_outbits = st.exec_block->direction_bits ^ settings.dir_invert_mask; 
+        
         // Initialize Bresenham line and distance counters
         st.counter_x = (st.exec_block->step_event_count >> 1);
         st.counter_y = st.counter_x;
         st.counter_z = st.counter_x;        
       }
+
+      st.dir_outbits = st.exec_block->direction_bits ^ settings.dir_invert_mask; 
+
       #ifdef ADAPTIVE_MULTI_AXIS_STEP_SMOOTHING
+        // With AMASS enabled, adjust Bresenham axis increment counters according to AMASS level.
         st.steps[X_AXIS] = st.exec_block->steps[X_AXIS] >> st.exec_segment->amass_level;
         st.steps[Y_AXIS] = st.exec_block->steps[Y_AXIS] >> st.exec_segment->amass_level;
         st.steps[Z_AXIS] = st.exec_block->steps[Z_AXIS] >> st.exec_segment->amass_level;
       #endif
+      
     } else {
       // Segment buffer empty. Shutdown.
       st_go_idle();
@@ -379,28 +396,27 @@ ISR(TIMER1_COMPA_vect)
 
   st.step_outbits ^= settings.step_invert_mask;  // Apply step port invert mask    
   busy = false;
-// SPINDLE_ENABLE_PORT ^= 1<<SPINDLE_ENABLE_BIT;  
+// SPINDLE_ENABLE_PORT ^= 1<<SPINDLE_ENABLE_BIT; // Debug: Used to time ISR
 }
 
 
 /* The Stepper Port Reset Interrupt: Timer0 OVF interrupt handles the falling edge of the step
-   pulse. This should always trigger before the next Timer2 COMPA interrupt and independently
-   finish, if Timer2 is disabled after completing a move. */
-
-// This interrupt is set up by ISR_TIMER1_COMPAREA when it sets the motor port bits. It resets
-// the motor port after a short period (settings.pulse_microseconds) completing one step cycle.
-// NOTE: Interrupt collisions between the serial and stepper interrupts can cause delays by
-// a few microseconds, if they execute right before one another. Not a big deal, but can
-// cause issues at high step rates if another high frequency asynchronous interrupt is 
-// added to Grbl.
+   pulse. This should always trigger before the next Timer1 COMPA interrupt and independently
+   finish, if Timer1 is disabled after completing a move.
+   NOTE: Interrupt collisions between the serial and stepper interrupts can cause delays by
+   a few microseconds, if they execute right before one another. Not a big deal, but can
+   cause issues at high step rates if another high frequency asynchronous interrupt is 
+   added to Grbl.
+*/
+// This interrupt is enabled by ISR_TIMER1_COMPAREA when it sets the motor port bits to execute
+// a step. This ISR resets the motor port after a short period (settings.pulse_microseconds) 
+// completing one step cycle.
 ISR(TIMER0_OVF_vect)
 {
   // Reset stepping pins (leave the direction pins)
-  STEPPING_PORT = (STEPPING_PORT & ~STEP_MASK) | (settings.step_invert_mask & STEP_MASK); 
+  STEP_PORT = (STEP_PORT & ~STEP_MASK) | (settings.step_invert_mask & STEP_MASK); 
   TCCR0B = 0; // Disable Timer0 to prevent re-entering this interrupt when it's not needed. 
 }
-
-
 #ifdef STEP_PULSE_DELAY
   // This interrupt is used only when STEP_PULSE_DELAY is enabled. Here, the step pulse is
   // initiated after the STEP_PULSE_DELAY time period has elapsed. The ISR TIMER2_OVF interrupt
@@ -409,7 +425,7 @@ ISR(TIMER0_OVF_vect)
   // st_wake_up() routine.
   ISR(TIMER0_COMPA_vect) 
   { 
-    STEPPING_PORT = st.step_bits; // Begin step pulse.
+    STEP_PORT = st.step_bits; // Begin step pulse.
   }
 #endif
 
@@ -417,6 +433,9 @@ ISR(TIMER0_OVF_vect)
 // Reset and clear stepper subsystem variables
 void st_reset()
 {
+  // Initialize stepper driver idle state.
+  st_go_idle();
+  
   memset(&prep, 0, sizeof(prep));
   memset(&st, 0, sizeof(st));
   st.exec_segment = NULL;
@@ -426,9 +445,6 @@ void st_reset()
   segment_buffer_head = 0; // empty = tail
   segment_next_head = 1;
   busy = false;
-  
-  // Initialize stepper driver idle state.
-  st_go_idle();
 }
 
 
@@ -436,8 +452,8 @@ void st_reset()
 void stepper_init()
 {
   // Configure step and direction interface pins
-  STEPPING_DDR |= STEP_MASK;
-  STEPPING_PORT = (STEPPING_PORT & ~STEP_MASK) | settings.step_invert_mask;
+  STEP_DDR |= STEP_MASK;
+  STEP_PORT = (STEP_PORT & ~STEP_MASK) | settings.step_invert_mask;
   STEPPERS_DISABLE_DDR |= 1<<STEPPERS_DISABLE_BIT;
   DIRECTION_DDR |= DIRECTION_MASK;
   DIRECTION_PORT = (DIRECTION_PORT & ~DIRECTION_MASK) | settings.dir_invert_mask;
@@ -445,15 +461,13 @@ void stepper_init()
   // Configure Timer 1: Stepper Driver Interrupt
   TCCR1B &= ~(1<<WGM13); // waveform generation = 0100 = CTC
   TCCR1B |=  (1<<WGM12);
-  TCCR1A &= ~(1<<WGM11); 
-  TCCR1A &= ~(1<<WGM10);
-  TCCR1A &= ~(3<<COM1A0); // output mode = 00 (disconnected)
-  TCCR1A &= ~(3<<COM1B0); 
-  TCCR1B = (TCCR1B & ~(0x07<<CS10)) | (1<<CS10);
-  // TIMSK1 &= ~(1<<OCIE1A);  // Timer 1 disabled in st_go_idle().
+  TCCR1A &= ~((1<<WGM11) | (1<<WGM10)); 
+  TCCR1A &= ~((1<<COM1A1) | (1<<COM1A0) | (1<<COM1B1) | (1<<COM1B0)); // Disconnect OC1 output
+  // TCCR1B = (TCCR1B & ~((1<<CS12) | (1<<CS11))) | (1<<CS10); // Set in st_go_idle().
+  // TIMSK1 &= ~(1<<OCIE1A);  // Set in st_go_idle().
   
   // Configure Timer 0: Stepper Port Reset Interrupt
-  TIMSK0 &= ~(1<<TOIE0);
+  TIMSK0 &= ~((1<<OCIE0B) | (1<<OCIE0A) | (1<<TOIE0)); // Disconnect OC0 outputs and OVF interrupt.
   TCCR0A = 0; // Normal operation
   TCCR0B = 0; // Disable Timer0 until needed
   TIMSK0 |= (1<<TOIE0); // Enable Timer0 overflow interrupt
@@ -462,44 +476,6 @@ void stepper_init()
   #endif
 }
   
-
-// Planner external interface to start stepper interrupt and execute the blocks in queue. Called
-// by the main program functions: planner auto-start and run-time command execution.
-void st_cycle_start() 
-{
-  if (sys.state == STATE_QUEUED) {
-    sys.state = STATE_CYCLE;
-    st_prep_buffer(); // Initialize step segment buffer before beginning cycle.
-    st_wake_up();
-    if (bit_isfalse(settings.flags,BITFLAG_AUTO_START)) { sys.auto_start = false; } // Reset auto start per settings.
-  }
-}
-
-
-// Execute a feed hold with deceleration, only during cycle. Called by main program.
-void st_feed_hold() 
-{
-  if (sys.state == STATE_CYCLE) {
-    sys.state = STATE_HOLD;
-    st_update_plan_block_parameters();
-    st_prep_buffer();
-    sys.auto_start = false; // Disable planner auto start upon feed hold.
-  }
-}
-
-
-// Reinitializes the cycle plan and stepper system after a feed hold for a resume. Called by 
-// runtime command execution in the main program, ensuring that the planner re-plans safely.
-// NOTE: Bresenham algorithm variables are still maintained through both the planner and stepper
-// cycle reinitializations. The stepper path should continue exactly as if nothing has happened.
-// Only the planner de/ac-celerations profiles and stepper rates have been updated.
-void st_cycle_reinitialize()
-{
-  if (sys.state != STATE_QUEUED) {    
-    sys.state = STATE_IDLE;
-  }
-}
-
 
 // Called by planner_recalculate() when the executing block is updated by the new plan.
 void st_update_plan_block_parameters()
@@ -522,41 +498,29 @@ void st_update_plan_block_parameters()
    The number of steps "checked-out" from the planner buffer and the number of segments in
    the segment buffer is sized and computed such that no operation in the main program takes
    longer than the time it takes the stepper algorithm to empty it before refilling it. 
-   Currently, the segment buffer conservatively holds roughly up to 40-50 msec of steps. 
-
-   NOTE: The segment buffer executes a computed number of steps over a configured segment 
-   execution time period, except at an end of a planner block where the segment execution
-   gets truncated by the lack of travel distance. Since steps are integer values and to keep
-   the distance traveled over the segment exact, a fractional step remaining after the last
-   executed step in a segment is handled by allowing the stepper algorithm distance counters
-   to tick to this fractional value without triggering a full step. So, when the next segment
-   is loaded for execution, its first full step will already have the distance counters primed
-   with the previous segment fractional step and will execute exactly on time according to 
-   the planner block velocity profile. This ensures the step phasing between segments are kept
-   in sync and prevents artificially created accelerations between segments if they are not
-   accounted for. This allows the stepper algorithm to run at very high step rates without
-   losing steps.
+   Currently, the segment buffer conservatively holds roughly up to 40-50 msec of steps.
+   NOTE: Computation units are in steps, millimeters, and minutes.
 */
 void st_prep_buffer()
 {
   while (segment_buffer_tail != segment_next_head) { // Check if we need to fill the buffer.
-    if (sys.state == STATE_QUEUED) { return; } // Block until a motion state is issued    
 
-    // Determine if we need to load a new planner block or if the block remainder is replanned. 
+    // Determine if we need to load a new planner block or if the block has been replanned. 
     if (pl_block == NULL) {
       pl_block = plan_get_current_block(); // Query planner for a queued block
       if (pl_block == NULL) { return; } // No planner blocks. Exit.
                       
       // Check if the segment buffer completed the last planner block. If so, load the Bresenham
-      // data for the block. If not, we are still mid-block and the velocity profile has changed.
+      // data for the block. If not, we are still mid-block and the velocity profile was updated. 
       if (prep.flag_partial_block) {
         prep.flag_partial_block = false; // Reset flag
       } else {
-        // Increment stepper common data index 
+        // Increment stepper common data index to store new planner block data. 
         if ( ++prep.st_block_index == (SEGMENT_BUFFER_SIZE-1) ) { prep.st_block_index = 0; }
         
         // Prepare and copy Bresenham algorithm segment data from the new planner block, so that
-        // when the segment buffer completes the planner block, it may be discarded immediately.
+        // when the segment buffer completes the planner block, it may be discarded when the 
+        // segment buffer finishes the prepped block, but the stepper ISR is still executing it. 
         st_prep_block = &st_block_buffer[prep.st_block_index];
         st_prep_block->direction_bits = pl_block->direction_bits;
         #ifndef ADAPTIVE_MULTI_AXIS_STEP_SMOOTHING
@@ -565,6 +529,9 @@ void st_prep_buffer()
           st_prep_block->steps[Z_AXIS] = pl_block->steps[Z_AXIS];
           st_prep_block->step_event_count = pl_block->step_event_count;
         #else
+          // With AMASS enabled, simply bit-shift multiply all Bresenham data by the max AMASS 
+          // level, such that we never divide beyond the original data anywhere in the algorithm.
+          // If the original data is divided, we can lose a step from integer roundoff.
           st_prep_block->steps[X_AXIS] = pl_block->steps[X_AXIS] << MAX_AMASS_LEVEL;
           st_prep_block->steps[Y_AXIS] = pl_block->steps[Y_AXIS] << MAX_AMASS_LEVEL;
           st_prep_block->steps[Z_AXIS] = pl_block->steps[Z_AXIS] << MAX_AMASS_LEVEL;
@@ -574,8 +541,9 @@ void st_prep_buffer()
         // Initialize segment buffer data for generating the segments.
         prep.steps_remaining = pl_block->step_event_count;
         prep.step_per_mm = prep.steps_remaining/pl_block->millimeters;
-        prep.mm_per_step = pl_block->millimeters/prep.steps_remaining;
-        prep.minimum_mm = pl_block->millimeters-prep.mm_per_step;
+        prep.req_mm_increment = REQ_MM_INCREMENT_SCALAR*pl_block->millimeters/prep.steps_remaining;
+        
+        prep.dt_remainder = 0.0; // Reset for new planner block
 
         if (sys.state == STATE_HOLD) {
           // Override planner block entry speed and enforce deceleration during feed hold.
@@ -593,18 +561,20 @@ void st_prep_buffer()
       */
       prep.mm_complete = 0.0; // Default velocity profile complete at 0.0mm from end of block.
       float inv_2_accel = 0.5/pl_block->acceleration;
-      if (sys.state == STATE_HOLD) {
+      if (sys.state == STATE_HOLD) { // [Forced Deceleration to Zero Velocity]
         // Compute velocity profile parameters for a feed hold in-progress. This profile overrides
         // the planner block profile, enforcing a deceleration to zero speed.
         prep.ramp_type = RAMP_DECEL;
-        float decel_dist = inv_2_accel*pl_block->entry_speed_sqr;
-        if (decel_dist < pl_block->millimeters) {
-          prep.exit_speed = 0.0;
-          prep.mm_complete = pl_block->millimeters-decel_dist; // End of feed hold.
-        } else {
+        // Compute decelerate distance relative to end of block.
+        float decel_dist = pl_block->millimeters - inv_2_accel*pl_block->entry_speed_sqr;
+        if (decel_dist < 0.0) {
+          // Deceleration through entire planner block. End of feed hold is not in this block.
           prep.exit_speed = sqrt(pl_block->entry_speed_sqr-2*pl_block->acceleration*pl_block->millimeters);
+        } else {
+          prep.mm_complete = decel_dist; // End of feed hold.
+          prep.exit_speed = 0.0;
         }
-      } else {                
+      } else { // [Normal Operation]
         // Compute or recompute velocity profile parameters of the prepped planner block.
         prep.ramp_type = RAMP_ACCEL; // Initialize as acceleration ramp.
         prep.accelerate_until = pl_block->millimeters; 
@@ -640,7 +610,8 @@ void st_prep_buffer()
           // prep.decelerate_after = 0.0;
           prep.maximum_speed = prep.exit_speed;
         }
-      }      
+      }  
+          
     }
 
     // Initialize new segment
@@ -648,6 +619,24 @@ void st_prep_buffer()
 
     // Set new segment to point to the current segment data block.
     prep_segment->st_block_index = prep.st_block_index;
+
+
+    float mm_remaining = pl_block->millimeters;    
+    float minimum_mm = pl_block->millimeters-prep.req_mm_increment;
+    if (minimum_mm < 0.0) { minimum_mm = 0.0; }
+    if (sys.state == STATE_HOLD) {
+      if (minimum_mm < prep.mm_complete) { // NOTE: Exit condition
+        // Less than one step to decelerate to zero speed, but already very close. AMASS 
+        // requires full steps to execute. So, just bail.
+        prep.current_speed = 0.0;
+        prep.dt_remainder = 0.0;
+        prep.steps_remaining = ceil(pl_block->millimeters * prep.step_per_mm);
+        pl_block->millimeters = prep.steps_remaining/prep.step_per_mm; // Update with full steps.
+        plan_cycle_reinitialize();         
+        sys.state = STATE_QUEUED; 
+        return; // Segment not generated, but current step data still retained.
+      }
+    }
 
     /*------------------------------------------------------------------------------------
         Compute the average velocity of this new segment by determining the total distance
@@ -663,12 +652,11 @@ void st_prep_buffer()
       the end of planner block (typical) or mid-block at the end of a forced deceleration, 
       such as from a feed hold.
     */
-    float dt_max = DT_SEGMENT; // Set maximum segment time
+    float dt_max = DT_SEGMENT; // Maximum segment time
     float dt = 0.0; // Initialize segment time
-    float mm_remaining = pl_block->millimeters;
     float time_var = dt_max; // Time worker variable
     float mm_var; // mm-Distance worker variable
-    float speed_var; // Speed worker variable.
+    float speed_var; // Speed worker variable    
     do {
       switch (prep.ramp_type) {
         case RAMP_ACCEL: 
@@ -716,7 +704,7 @@ void st_prep_buffer()
       dt += time_var; // Add computed ramp time to total segment time.
       if (dt < dt_max) { time_var = dt_max - dt; } // **Incomplete** At ramp junction.
       else {
-        if (mm_remaining > prep.minimum_mm) { // Check for slow segments with zero steps.
+        if (mm_remaining > minimum_mm) { // Check for very slow segments with zero steps.
           dt_max += DT_SEGMENT; // Increase segment time to ensure at least one step in segment.
           time_var = dt_max - dt;
         } else { 
@@ -724,9 +712,10 @@ void st_prep_buffer()
         }
       }
     } while (mm_remaining > prep.mm_complete); // **Complete** Exit loop. Profile complete.
+
    
     /* -----------------------------------------------------------------------------------
-       Compute segment step rate, steps to execute, and step phase correction parameters.
+       Compute segment step rate, steps to execute, and apply necessary rate corrections.
        NOTE: Steps are computed by direct scalar conversion of the millimeter distance 
        remaining in the block, rather than incrementally tallying the steps executed per
        segment. This helps in removing floating point round-off issues of several additions. 
@@ -735,15 +724,26 @@ void st_prep_buffer()
        Fortunately, this scenario is highly unlikely and unrealistic in CNC machines
        supported by Grbl (i.e. exceeding 10 meters axis travel at 200 step/mm).
     */
-    uint32_t cycles;
-    float steps_remaining = prep.step_per_mm*mm_remaining; 
+    float steps_remaining = prep.step_per_mm*mm_remaining; // Convert mm_remaining to steps
+    float n_steps_remaining = ceil(steps_remaining); // Round-up current steps remaining
+    float last_n_steps_remaining = ceil(prep.steps_remaining); // Round-up last steps remaining
+    prep_segment->n_step = last_n_steps_remaining-n_steps_remaining; // Compute number of steps to execute.
 
-    // Compute number of steps to execute and segment step phase correction. 
-    prep_segment->n_step = ceil(prep.steps_remaining)-ceil(steps_remaining);  
+    // Compute segment step rate. Since steps are integers and mm distances traveled are not,
+    // the end of every segment can have a partial step of varying magnitudes that are not 
+    // executed, because the stepper ISR requires whole steps due to the AMASS algorithm. To
+    // compensate, we track the time to execute the previous segment's partial step and simply
+    // apply it with the partial step distance to the current segment, so that it minutely
+    // adjusts the whole segment rate to keep step output exact. These rate adjustments are 
+    // typically very small and do not adversely effect performance, but ensures that Grbl
+    // outputs the exact acceleration and velocity profiles as computed by the planner.
+    dt += prep.dt_remainder; // Apply previous segment partial step execute time
+    float inv_rate = dt/(last_n_steps_remaining - steps_remaining); // Compute adjusted step rate inverse
+    prep.dt_remainder = (n_steps_remaining - steps_remaining)*inv_rate; // Update segment partial step time
 
-    float inv_rate = dt/(prep.steps_remaining-steps_remaining);
-    cycles = ceil( (TICKS_PER_MICROSECOND*1000000*60)*inv_rate ); // (cycles/step)
-    
+    // Compute CPU cycles per step for the prepped segment.
+    uint32_t cycles = ceil( (TICKS_PER_MICROSECOND*1000000*60)*inv_rate ); // (cycles/step)    
+
     #ifdef ADAPTIVE_MULTI_AXIS_STEP_SMOOTHING        
       // Compute step timing and multi-axis smoothing level.
       // NOTE: AMASS overdrives the timer with each level, so only one prescalar is required.
@@ -777,38 +777,35 @@ void st_prep_buffer()
 
     // Determine end of segment conditions. Setup initial conditions for next segment.
     if (mm_remaining > prep.mm_complete) { 
-      // Normal operation. Block incomplete. Distance remaining to be executed.
-      prep.minimum_mm = prep.mm_per_step*floor(steps_remaining);
+      // Normal operation. Block incomplete. Distance remaining in block to be executed.
       pl_block->millimeters = mm_remaining;      
       prep.steps_remaining = steps_remaining;  
     } else { 
       // End of planner block or forced-termination. No more distance to be executed.
       if (mm_remaining > 0.0) { // At end of forced-termination.
-        // NOTE: Currently only feed holds qualify for this scenario. May change with overrides.
+        // Reset prep parameters for resuming and then bail.
+        // NOTE: Currently only feed holds qualify for this scenario. May change with overrides.       
         prep.current_speed = 0.0;
+        prep.dt_remainder = 0.0;
         prep.steps_remaining = ceil(steps_remaining);
-        prep.minimum_mm = prep.steps_remaining-prep.mm_per_step;
-        pl_block->millimeters = prep.steps_remaining*prep.mm_per_step; // Update with full steps.
-        plan_cycle_reinitialize();
-        sys.state = STATE_QUEUED; // End cycle.
+        pl_block->millimeters = prep.steps_remaining/prep.step_per_mm; // Update with full steps.
+        plan_cycle_reinitialize(); 
+        sys.state = STATE_QUEUED; // End cycle.        
+
+// TODO: Try to move QUEUED setting into cycle re-initialize.
+
       } else { // End of planner block
         // The planner block is complete. All steps are set to be executed in the segment buffer.
         pl_block = NULL;
         plan_discard_current_block();
-      
-        if (sys.state == STATE_HOLD) { 
-          if (prep.current_speed == 0.0) { 
-// TODO: Check if the segment buffer gets initialized correctly.
-            plan_cycle_reinitialize();
-            sys.state = STATE_QUEUED; 
-          }
-        }
       }
     }
 
     // New step segment initialization completed. Increment segment buffer indices.
     segment_buffer_head = segment_next_head;
     if ( ++segment_next_head == SEGMENT_BUFFER_SIZE ) { segment_next_head = 0; }
+
+    if (sys.state == STATE_QUEUED) { return; } // Bail if hold completes    
 
 // int32_t blength = segment_buffer_head - segment_buffer_tail;
 // if (blength < 0) { blength += SEGMENT_BUFFER_SIZE; } 

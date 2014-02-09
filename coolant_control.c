@@ -20,7 +20,7 @@
 
 #include "system.h"
 #include "coolant_control.h"
-#include "planner.h"
+#include "protocol.h"
 
 
 void coolant_init()
@@ -44,7 +44,7 @@ void coolant_stop()
 
 void coolant_run(uint8_t mode)
 {
-  plan_synchronize(); // Ensure coolant turns on when specified in program.
+  protocol_buffer_synchronize(); // Ensure coolant turns on when specified in program.
   if (mode == COOLANT_FLOOD_ENABLE) {
     COOLANT_FLOOD_PORT |= (1 << COOLANT_FLOOD_BIT);
 

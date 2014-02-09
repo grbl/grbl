@@ -64,7 +64,7 @@ void mc_line(float *target, float feed_rate, uint8_t invert_feed_rate)
   do {
     protocol_execute_runtime(); // Check for any run-time commands
     if (sys.abort) { return; } // Bail, if system abort.
-    if ( plan_check_full_buffer() ) { mc_auto_cycle_start(); } // Auto-cycle start when buffer is full.
+    if ( plan_check_full_buffer() ) { protocol_auto_cycle_start(); } // Auto-cycle start when buffer is full.
     else { break; }
   } while (1);
 
@@ -195,8 +195,8 @@ void mc_arc(float *position, float *target, float *offset, uint8_t axis_0, uint8
 void mc_dwell(float seconds) 
 {
    uint16_t i = floor(1000/DWELL_TIME_STEP*seconds);
-   plan_synchronize();
-   delay_ms(floor(1000*seconds-i*DWELL_TIME_STEP)); // Delay millisecond remainder
+   protocol_buffer_synchronize();
+   delay_ms(floor(1000*seconds-i*DWELL_TIME_STEP)); // Delay millisecond remainder.
    while (i-- > 0) {
      // NOTE: Check and execute runtime commands during dwell every <= DWELL_TIME_STEP milliseconds.
      protocol_execute_runtime();
@@ -213,91 +213,35 @@ void mc_homing_cycle()
 {
   sys.state = STATE_HOMING; // Set system state variable
   limits_disable(); // Disable hard limits pin change register for cycle duration
-  plan_reset(); // Reset planner buffer before beginning homing routine.
-  st_reset(); // Reset step segment buffer before beginning homing routine.
     
   // -------------------------------------------------------------------------------------
   // Perform homing routine. NOTE: Special motion case. Only system reset works.
   
   // Search to engage all axes limit switches at faster homing seek rate.
-  limits_go_home(HOMING_SEARCH_CYCLE_0, true, settings.homing_seek_rate);  // Search cycle 0
-  #ifdef HOMING_SEARCH_CYCLE_1
-    limits_go_home(HOMING_SEARCH_CYCLE_1, true, settings.homing_seek_rate);  // Search cycle 1
+  limits_go_home(HOMING_CYCLE_0);  // Homing cycle 0
+  #ifdef HOMING_CYCLE_1
+    limits_go_home(HOMING_CYCLE_1);  // Homing cycle 1
   #endif
-  #ifdef HOMING_SEARCH_CYCLE_2
-    limits_go_home(HOMING_SEARCH_CYCLE_2, true, settings.homing_seek_rate);  // Search cycle 2
+  #ifdef HOMING_CYCLE_2
+    limits_go_home(HOMING_CYCLE_2);  // Homing cycle 2
   #endif
-    
-  // Now in proximity of all limits. Carefully leave and approach switches in multiple cycles
-  // to precisely hone in on the machine zero location. Moves at slower homing feed rate.
-  int8_t n_cycle = N_HOMING_LOCATE_CYCLE;
-  while (n_cycle--) {
-    // Leave all switches to release them. After cycles complete, this is machine zero.
-    limits_go_home(HOMING_LOCATE_CYCLE, false, settings.homing_feed_rate);
-
-    if (n_cycle > 0) {
-      // Re-approach all switches to re-engage them.
-      limits_go_home(HOMING_LOCATE_CYCLE, true, settings.homing_feed_rate);
-    }
-  }
-  // -------------------------------------------------------------------------------------
   
   protocol_execute_runtime(); // Check for reset and set system abort.
   if (sys.abort) { return; } // Did not complete. Alarm state set by mc_alarm.
 
-  // The machine should now be homed and machine limits have been located. By default, 
-  // grbl defines machine space as all negative, as do most CNCs. Since limit switches
-  // can be on either side of an axes, check and set machine zero appropriately.
-  // At the same time, set up pull-off maneuver from axes limit switches that have been homed.
-  // This provides some initial clearance off the switches and should also help prevent them 
-  // from falsely tripping when hard limits are enabled.
-  float pulloff_target[N_AXIS];
-  clear_vector_float(pulloff_target); // Zero pulloff target.
-  clear_vector_long(sys.position); // Zero current position for now.
-  uint8_t idx;
-  for (idx=0; idx<N_AXIS; idx++) {
-    // Set up pull off targets and machine positions for limit switches homed in the negative
-    // direction, rather than the traditional positive. Leave non-homed positions as zero and
-    // do not move them.
-    // NOTE: settings.max_travel[] is stored as a negative value.
-    if (HOMING_LOCATE_CYCLE & bit(idx)) {
-      if ( settings.homing_dir_mask & get_direction_mask(idx) ) {
-        pulloff_target[idx] = settings.homing_pulloff+settings.max_travel[idx];
-        sys.position[idx] = lround(settings.max_travel[idx]*settings.steps_per_mm[idx]);
-      } else {
-        pulloff_target[idx] = -settings.homing_pulloff;
-      }
-    }
-  }
-  plan_sync_position(); // Sync planner position to home for pull-off move.
-
-  sys.state = STATE_IDLE; // Set system state to IDLE to complete motion and indicate homed.
-
-  mc_line(pulloff_target, settings.homing_seek_rate, false);
-  st_cycle_start(); // Move it. Nothing should be in the buffer except this motion. 
-  plan_synchronize(); // Make sure the motion completes.
-                      // NOTE: Stepper idle lock resumes normal functionality after cycle.
+  // Homing cycle complete! Setup system for normal operation.
+  // -------------------------------------------------------------------------------------
   
-  // The gcode parser position circumvented by the pull-off maneuver, so sync position now.
+  // Gcode parser position was circumvented by the limits_go_home() routine, so sync position now.
   gc_sync_position();
+    
+  // Set idle state after homing completes and before returning to main program.  
+  sys.state = STATE_IDLE;
+  st_go_idle(); // Set idle state after homing completes
 
   // If hard limits feature enabled, re-enable hard limits pin change register after homing cycle.
   limits_init();
-  // Finished! 
 }
-
-
-// Auto-cycle start has two purposes: 1. Resumes a plan_synchronize() call from a function that
-// requires the planner buffer to empty (spindle enable, dwell, etc.) 2. As a user setting that 
-// automatically begins the cycle when a user enters a valid motion command manually. This is 
-// intended as a beginners feature to help new users to understand g-code. It can be disabled
-// as a beginner tool, but (1.) still operates. If disabled, the operation of cycle start is
-// manually issuing a cycle start command whenever the user is ready and there is a valid motion 
-// command in the planner queue.
-// NOTE: This function is called from the main loop and mc_line() only and executes when one of
-// two conditions exist respectively: There are no more blocks sent (i.e. streaming is finished, 
-// single commands), or the planner buffer is full and ready to go.
-void mc_auto_cycle_start() { if (sys.auto_start) { st_cycle_start(); } }
 
 
 // Method to ready the system to reset by setting the runtime reset command and killing any
@@ -320,8 +264,8 @@ void mc_reset()
     // the steppers enabled by avoiding the go_idle call altogether, unless the motion state is
     // violated, by which, all bets are off.
     if (sys.state & (STATE_CYCLE | STATE_HOLD | STATE_HOMING)) {
-      sys.execute |= EXEC_ALARM; // Execute alarm state.
-      st_go_idle(); // Execute alarm force kills steppers. Position likely lost.
+      sys.execute |= EXEC_ALARM; // Flag main program to execute alarm state.
+      st_go_idle(); // Force kill steppers. Position has likely been lost.
     }
   }
 }
