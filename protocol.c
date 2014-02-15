@@ -242,9 +242,8 @@ void protocol_execute_runtime()
     // cycle reinitializations. The stepper path should continue exactly as if nothing has happened.   
     // NOTE: EXEC_CYCLE_STOP is set by the stepper subsystem when a cycle or feed hold completes.
     if (rt_exec & EXEC_CYCLE_STOP) {
-      if (sys.state != STATE_QUEUED) {    
-        sys.state = STATE_IDLE;
-      }
+      if ( plan_get_current_block() ) { sys.state = STATE_QUEUED; }
+      else { sys.state = STATE_IDLE; }
       bit_false(sys.execute,EXEC_CYCLE_STOP);
     }
 

@@ -189,16 +189,16 @@ void limits_go_home(uint8_t cycle_mask)
       // Check only for user reset. No time to run protocol_execute_runtime() in this loop.
       if (sys.execute & EXEC_RESET) { protocol_execute_runtime(); return; }
     } while (STEP_MASK & axislock);
-
-    delay_ms(settings.homing_debounce_delay); // Delay to allow transient dynamics to dissipate.  
-    
-    // Reverse direction and reset homing rate for locate cycle(s).
-    homing_rate = settings.homing_feed_rate;
-    approach = !approach;
     
     st_reset(); // Force disable steppers and reset step segment buffer. Ensure homing motion is cleared.
     plan_reset(); // Reset planner buffer. Zero planner positions. Ensure homing motion is cleared.
 
+    delay_ms(settings.homing_debounce_delay); // Delay to allow transient dynamics to dissipate.  
+
+    // Reverse direction and reset homing rate for locate cycle(s).
+    homing_rate = settings.homing_feed_rate;
+    approach = !approach;
+    
   } while (n_cycle-- > 0);
     
   // The active cycle axes should now be homed and machine limits have been located. By 
@@ -230,7 +230,6 @@ void limits_go_home(uint8_t cycle_mask)
   // Initiate pull-off using main motion control routines. 
   // TODO : Clean up state routines so that this motion still shows homing state.
   sys.state = STATE_QUEUED;
-//   protocol_cycle_start();   
   sys.execute |= EXEC_CYCLE_START;
   protocol_execute_runtime();
   protocol_buffer_synchronize(); // Complete pull-off motion.

@@ -61,11 +61,11 @@ void spindle_run(uint8_t direction, float rpm)
 
   // Halt or set spindle direction and rpm. 
   if (direction == SPINDLE_DISABLE) {
-  
+
     spindle_stop();
-  
+
   } else {
- 
+
     if (direction == SPINDLE_ENABLE_CW) {
       SPINDLE_DIRECTION_PORT &= ~(1<<SPINDLE_DIRECTION_BIT);
     } else {
@@ -80,7 +80,7 @@ void spindle_run(uint8_t direction, float rpm)
       if ( rpm > SPINDLE_RPM_RANGE ) { rpm = SPINDLE_RPM_RANGE; } // Prevent uint8 overflow
       uint8_t current_pwm = floor( rpm*(255.0/SPINDLE_RPM_RANGE) + 0.5);
       OCR_REGISTER = current_pwm;
-      
+    
       #ifndef CPU_MAP_ATMEGA328P // On the Uno, spindle enable and PWM are shared.
         SPINDLE_ENABLE_PORT |= (1<<SPINDLE_ENABLE_BIT);
       #endif
