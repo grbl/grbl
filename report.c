@@ -262,9 +262,9 @@ void report_gcode_modes()
   }
 
   switch (gc.spindle_direction) {
-    case 1 : printPgmString(PSTR(" M3")); break;
-    case -1 : printPgmString(PSTR(" M4")); break;
-    case 0 : printPgmString(PSTR(" M5")); break;
+    case SPINDLE_ENABLE_CW : printPgmString(PSTR(" M3")); break;
+    case SPINDLE_ENABLE_CCW : printPgmString(PSTR(" M4")); break;
+    case SPINDLE_DISABLE : printPgmString(PSTR(" M5")); break;
   }
   
   switch (gc.coolant_mode) {
@@ -353,9 +353,8 @@ void report_realtime_status()
     
 #ifdef USE_LINE_NUMBERS
   // Report current line number
-  printPgmString(PSTR(","));
-  printPgmString(PSTR("Ln:")); 
-  uint32_t ln=0;
+  printPgmString(PSTR(",Ln:")); 
+  int32_t ln=0;
   plan_block_t * pb = plan_get_current_block();
   if(pb != NULL) {
     ln = pb->line_number;

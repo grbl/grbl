@@ -28,10 +28,6 @@
 #ifndef config_h
 #define config_h
 
-// Allows GRBL to tranck and report gcode line numbers.  Enabling this means that the planning buffer
-// goes from 18 or 16 to make room for the additional line number data in the plan_block_t struct
-#define USE_LINE_NUMBERS
-
 // Default settings. Used when resetting EEPROM. Change to desired name in defaults.h
 #define DEFAULTS_SHERLINE_5400
 
@@ -87,6 +83,10 @@
 // be stored and executed in order. These startup blocks would typically be used to set the g-code
 // parser state depending on user preferences.
 #define N_STARTUP_LINE 2 // Integer (1-3)
+
+// Allows GRBL to tranck and report gcode line numbers.  Enabling this means that the planning buffer
+// goes from 18 or 16 to make room for the additional line number data in the plan_block_t struct
+// #define USE_LINE_NUMBERS
 
 // Enables a second coolant control pin via the mist coolant g-code command M7 on the Arduino Uno
 // analog pin 5. Only use this option if you require a second coolant control pin.

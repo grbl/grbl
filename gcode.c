@@ -101,7 +101,7 @@ uint8_t gc_execute_line(char *line)
   float target[N_AXIS];
   clear_vector(target); // XYZ(ABC) axes parameters.
 
-  uint32_t line_number = 0;
+  int32_t line_number = 0;
   gc.arc_radius = 0;
   clear_vector(gc.arc_offset); // IJK Arc offsets are incremental. Value of zero indicates no change.
 

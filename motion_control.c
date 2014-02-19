@@ -39,7 +39,7 @@
 // segments, must pass through this routine before being passed to the planner. The seperation of
 // mc_line and plan_buffer_line is done primarily to place non-planner-type functions from being
 // in the planner and to let backlash compensation or canned cycle integration simple and direct.
-void mc_line(float *target, float feed_rate, uint8_t invert_feed_rate, uint32_t line_number)
+void mc_line(float *target, float feed_rate, uint8_t invert_feed_rate, int32_t line_number)
 {
   // If enabled, check for soft limit violations. Placed here all line motions are picked up
   // from everywhere in Grbl.
@@ -87,7 +87,7 @@ void mc_line(float *target, float feed_rate, uint8_t invert_feed_rate, uint32_t 
 // of each segment is configured in settings.arc_tolerance, which is defined to be the maximum normal
 // distance from segment to the circle when the end points both lie on the circle.
 void mc_arc(float *position, float *target, float *offset, uint8_t axis_0, uint8_t axis_1, 
-  uint8_t axis_linear, float feed_rate, uint8_t invert_feed_rate, float radius, uint8_t isclockwise, uint32_t line_number)
+  uint8_t axis_linear, float feed_rate, uint8_t invert_feed_rate, float radius, uint8_t isclockwise, int32_t line_number)
 {      
   float center_axis0 = position[axis_0] + offset[axis_0];
   float center_axis1 = position[axis_1] + offset[axis_1];
