@@ -190,7 +190,7 @@ void limits_go_home(uint8_t cycle_mask)
       if (sys.execute & EXEC_RESET) { protocol_execute_runtime(); return; }
     } while (STEP_MASK & axislock);
     
-    st_reset(); // Force disable steppers and reset step segment buffer. Ensure homing motion is cleared.
+    st_reset(); // Immediately force kill steppers and reset step segment buffer.
     plan_reset(); // Reset planner buffer. Zero planner positions. Ensure homing motion is cleared.
 
     delay_ms(settings.homing_debounce_delay); // Delay to allow transient dynamics to dissipate.  
@@ -255,7 +255,7 @@ void limits_soft_check(float *target)
         do {
           protocol_execute_runtime();
           if (sys.abort) { return; }
-        } while (sys.state == STATE_HOLD);
+        } while ( sys.state != STATE_IDLE || sys.state != STATE_QUEUED);
       }
       
       mc_reset(); // Issue system reset and ensure spindle and coolant are shutdown.

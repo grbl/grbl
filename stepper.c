@@ -541,7 +541,7 @@ void st_prep_buffer()
         // Initialize segment buffer data for generating the segments.
         prep.steps_remaining = pl_block->step_event_count;
         prep.step_per_mm = prep.steps_remaining/pl_block->millimeters;
-        prep.req_mm_increment = REQ_MM_INCREMENT_SCALAR*pl_block->millimeters/prep.steps_remaining;
+        prep.req_mm_increment = REQ_MM_INCREMENT_SCALAR/prep.step_per_mm;
         
         prep.dt_remainder = 0.0; // Reset for new planner block
 
@@ -639,8 +639,8 @@ void st_prep_buffer()
     float time_var = dt_max; // Time worker variable
     float mm_var; // mm-Distance worker variable
     float speed_var; // Speed worker variable   
-    float mm_remaining = pl_block->millimeters;    
-    float minimum_mm = pl_block->millimeters-prep.req_mm_increment;
+    float mm_remaining = pl_block->millimeters; // New segment distance from end of block.
+    float minimum_mm = mm_remaining-prep.req_mm_increment; // Guarantee at least one step.
     if (minimum_mm < 0.0) { minimum_mm = 0.0; }
 
     do {
@@ -691,7 +691,9 @@ void st_prep_buffer()
       if (dt < dt_max) { time_var = dt_max - dt; } // **Incomplete** At ramp junction.
       else {
         if (mm_remaining > minimum_mm) { // Check for very slow segments with zero steps.
-          dt_max += DT_SEGMENT; // Increase segment time to ensure at least one step in segment.
+          // Increase segment time to ensure at least one step in segment. Override and loop
+          // through distance calculations until minimum_mm or mm_complete.
+          dt_max += DT_SEGMENT;
           time_var = dt_max - dt;
         } else { 
           break; // **Complete** Exit loop. Segment execution time maxed.
@@ -716,8 +718,9 @@ void st_prep_buffer()
     prep_segment->n_step = last_n_steps_remaining-n_steps_remaining; // Compute number of steps to execute.
     
     // Bail if we are at the end of a feed hold and don't have a step to execute.
-    if (sys.state == STATE_HOLD) {
-      if (prep_segment->n_step == 0) {
+    if (prep_segment->n_step == 0) {
+      if (sys.state == STATE_HOLD) {
+
         // Less than one step to decelerate to zero speed, but already very close. AMASS 
         // requires full steps to execute. So, just bail.
         prep.current_speed = 0.0;
@@ -776,7 +779,11 @@ void st_prep_buffer()
       }
     #endif
 
-    // Determine end of segment conditions. Setup initial conditions for next segment.
+    // Segment complete! Increment segment buffer indices.
+    segment_buffer_head = segment_next_head;
+    if ( ++segment_next_head == SEGMENT_BUFFER_SIZE ) { segment_next_head = 0; }
+
+    // Setup initial conditions for next segment.
     if (mm_remaining > prep.mm_complete) { 
       // Normal operation. Block incomplete. Distance remaining in block to be executed.
       pl_block->millimeters = mm_remaining;      
@@ -793,6 +800,7 @@ void st_prep_buffer()
         plan_cycle_reinitialize(); 
         sys.state = STATE_QUEUED; // End cycle.        
 
+        return; // Bail!
 // TODO: Try to move QUEUED setting into cycle re-initialize.
 
       } else { // End of planner block
@@ -801,12 +809,6 @@ void st_prep_buffer()
         plan_discard_current_block();
       }
     }
-
-    // New step segment initialization completed. Increment segment buffer indices.
-    segment_buffer_head = segment_next_head;
-    if ( ++segment_next_head == SEGMENT_BUFFER_SIZE ) { segment_next_head = 0; }
-
-    if (sys.state == STATE_QUEUED) { return; } // Bail if hold completes    
 
 // int32_t blength = segment_buffer_head - segment_buffer_tail;
 // if (blength < 0) { blength += SEGMENT_BUFFER_SIZE; } 

@@ -150,7 +150,7 @@ uint8_t system_execute_line(char *line)
             } else {
               report_build_info(line);
             }
-          } else { // Store startup line
+          } else { // Store startup line [IDLE/ALARM]
             if(line[char_counter++] != '=') { return(STATUS_UNSUPPORTED_STATEMENT); }
             helper_var = char_counter; // Set helper variable as counter to start of user info line.
             do {
@@ -169,7 +169,7 @@ uint8_t system_execute_line(char *line)
               }
             }
             break;
-          } else { // Store startup line
+          } else { // Store startup line [IDLE Only] Prevents motion during ALARM.
             if (sys.state != STATE_IDLE) { return(STATUS_IDLE_ERROR); } // Store only when idle.
             helper_var = true;  // Set helper_var to flag storing method. 
             // No break. Continues into default: to read remaining command characters.
