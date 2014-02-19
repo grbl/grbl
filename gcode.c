@@ -101,6 +101,7 @@ uint8_t gc_execute_line(char *line)
   float target[N_AXIS];
   clear_vector(target); // XYZ(ABC) axes parameters.
 
+  uint32_t line_number = 0;
   gc.arc_radius = 0;
   clear_vector(gc.arc_offset); // IJK Arc offsets are incremental. Value of zero indicates no change.
 
@@ -215,7 +216,7 @@ uint8_t gc_execute_line(char *line)
   char_counter = 0;
   while(next_statement(&letter, &value, line, &char_counter)) {
     switch(letter) {
-      case 'G': case 'M': case 'N': break; // Ignore command statements and line numbers
+      case 'G': case 'M': break; // Ignore command statements and line numbers
       case 'F': 
         if (value <= 0) { FAIL(STATUS_INVALID_STATEMENT); } // Must be greater than zero
         if (gc.inverse_feed_rate_mode) {
@@ -226,6 +227,7 @@ uint8_t gc_execute_line(char *line)
         break;
       case 'I': case 'J': case 'K': gc.arc_offset[letter-'I'] = to_millimeters(value); break;
       case 'L': l = trunc(value); break;
+      case 'N': line_number = trunc(value); break;
       case 'P': p = value; break;                    
       case 'R': gc.arc_radius = to_millimeters(value); break;
       case 'S': 
@@ -329,7 +331,7 @@ uint8_t gc_execute_line(char *line)
             target[idx] = gc.position[idx];
           }
         }
-        mc_line(target, -1.0, false);
+        mc_line(target, -1.0, false, line_number);
       }
       // Retreive G28/30 go-home position data (in machine coordinates) from EEPROM
       float coord_data[N_AXIS];
@@ -338,7 +340,7 @@ uint8_t gc_execute_line(char *line)
       } else {
         if (!settings_read_coord_data(SETTING_INDEX_G30,coord_data)) { return(STATUS_SETTING_READ_FAIL); }
       }
-      mc_line(coord_data, -1.0, false); 
+      mc_line(coord_data, -1.0, false, line_number); 
       memcpy(gc.position, coord_data, sizeof(coord_data)); // gc.position[] = coord_data[];
       axis_words = 0; // Axis words used. Lock out from motion modes by clearing flags.
       break;
@@ -409,7 +411,7 @@ uint8_t gc_execute_line(char *line)
         break;
       case MOTION_MODE_SEEK:
         if (!axis_words) { FAIL(STATUS_INVALID_STATEMENT);} 
-        else { mc_line(target, -1.0, false); }
+        else { mc_line(target, -1.0, false, line_number); }
         break;
       case MOTION_MODE_LINEAR:
         // TODO: Inverse time requires F-word with each statement. Need to do a check. Also need
@@ -417,7 +419,7 @@ uint8_t gc_execute_line(char *line)
         // and after an inverse time move and then check for non-zero feed rate each time. This
         // should be efficient and effective.
         if (!axis_words) { FAIL(STATUS_INVALID_STATEMENT);} 
-        else { mc_line(target, (gc.inverse_feed_rate_mode) ? inverse_feed_rate : gc.feed_rate, gc.inverse_feed_rate_mode); }
+        else { mc_line(target, (gc.inverse_feed_rate_mode) ? inverse_feed_rate : gc.feed_rate, gc.inverse_feed_rate_mode, line_number); }
         break;
       case MOTION_MODE_CW_ARC: case MOTION_MODE_CCW_ARC:
         // Check if at least one of the axes of the selected plane has been specified. If in center 
@@ -441,7 +443,7 @@ uint8_t gc_execute_line(char *line)
           // Trace the arc
           mc_arc(gc.position, target, gc.arc_offset, gc.plane_axis_0, gc.plane_axis_1, gc.plane_axis_2,
             (gc.inverse_feed_rate_mode) ? inverse_feed_rate : gc.feed_rate, gc.inverse_feed_rate_mode,
-            gc.arc_radius, isclockwise);
+            gc.arc_radius, isclockwise, line_number);
         }            
         break;
     }
