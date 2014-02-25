@@ -282,6 +282,12 @@ ISR(TIMER1_COMPA_vect)
 {        
 // SPINDLE_ENABLE_PORT ^= 1<<SPINDLE_ENABLE_BIT; // Debug: Used to time ISR
   if (busy) { return; } // The busy-flag is used to avoid reentering this interrupt
+
+  //Check if we need to copy the current position to the probe_position
+  if(sys.probe_state == PROBE_COPY_POSITION){
+    sys.probe_state = PROBE_OFF;
+    memcpy(sys.probe_position, sys.position, sizeof(float)*N_AXIS);
+  }
   
   // Set the direction pins a couple of nanoseconds before we step the steppers
   DIRECTION_PORT = (DIRECTION_PORT & ~DIRECTION_MASK) | (st.dir_outbits & DIRECTION_MASK);

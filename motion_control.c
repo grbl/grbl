@@ -30,6 +30,7 @@
 #include "spindle_control.h"
 #include "coolant_control.h"
 #include "limits.h"
+#include "report.h"
 
 
 // Execute linear motion in absolute millimeter coordinates. Feed rate given in millimeters/second
@@ -246,6 +247,102 @@ void mc_homing_cycle()
   limits_init();
 }
 
+uint8_t mc_probe_cycle(float *t, float feed_rate, uint8_t invert_feed_rate, int32_t line_number)
+{
+  protocol_buffer_synchronize(); //finish all queued commands
+
+  if (sys.abort) { return STATUS_OK; } // Return if system reset has been issued.
+    
+  uint8_t i;
+  float target[N_AXIS];
+
+  //copy target position since we'll be modifying it with the probe position on a successful move
+  //The gc_sync_position() at the end may elimiante the need for this.  Not sure though.
+  for(i=0; i<N_AXIS; ++i){
+    target[i] = t[i];
+  }
+
+  plan_reset(); // Reset planner buffer to zero planner current position and to clear previous motions.
+  
+  // Perform probing cycle. Planner buffer should be empty at this point.
+  // An empty buffer is needed because we need to enable the probe pin along the same move that we're about to execute.
+  
+  sys.state = STATE_CYCLE;
+  plan_buffer_line(target, feed_rate, invert_feed_rate, line_number); // Bypass mc_line(). Directly plan homing motion.
+  st_prep_buffer(); // Prep and fill segment buffer from newly planned block.
+  st_wake_up(); // Initiate motion
+  
+  sys.probe_state = PROBE_ACTIVE;
+  //TODO - make sure the probe isn't already closed
+  do {
+      
+    if( sys.probe_state == PROBE_OFF ){
+      sys.execute |= EXEC_FEED_HOLD;
+      protocol_execute_runtime();
+      break;
+    }
+    protocol_execute_runtime();
+    st_prep_buffer(); // Check and prep segment buffer. NOTE: Should take no longer than 200us.
+    
+    if (sys.execute & EXEC_RESET) { 
+      sys.probe_state = PROBE_OFF;
+      protocol_execute_runtime(); 
+      return STATUS_OK; 
+    }
+
+    //Check for motion ended because switch never triggered
+    if(sys.state != STATE_CYCLE && sys.state != STATE_HOLD){
+      sys.probe_state = PROBE_OFF;
+      report_realtime_status_probe();
+      return STATUS_PROBE_ERROR;
+    }
+
+  } while (1);
+
+  //report_realtime_status(); //debug
+
+  while((sys.execute & EXEC_CYCLE_STOP) == 0 && (sys.state == STATE_CYCLE || sys.state == STATE_HOLD)){
+    protocol_execute_runtime();
+    if (sys.abort) { return STATUS_OK; } // Check for system abort
+  }
+
+  //Prep the new target based on the position that the probe triggered
+  for(i=0; i<N_AXIS; ++i){
+    target[i] = (float)sys.probe_position[i]/settings.steps_per_mm[i];
+  }
+
+  protocol_execute_runtime();
+
+  st_reset(); // Immediately force kill steppers and reset step segment buffer.
+  plan_reset(); // Reset planner buffer. Zero planner positions. Ensure homing motion is cleared.
+  plan_sync_position(); // Sync planner position to current machine position for pull-off move.
+
+  //report_realtime_status(); //debug
+
+  plan_buffer_line(target, feed_rate, invert_feed_rate, line_number); // Bypass mc_line(). Directly plan motion.
+  st_prep_buffer(); // Prep and fill segment buffer from newly planned block.
+  st_wake_up(); // Initiate motion
+
+  protocol_execute_runtime();
+  sys.execute |= EXEC_CYCLE_START;
+  protocol_buffer_synchronize(); // Complete pull-off motion.
+
+  //report_realtime_status(); //debug
+    
+  protocol_execute_runtime(); // Check for reset and set system abort.
+  if (sys.abort) { return STATUS_OK; } // Did not complete. Alarm state set by mc_alarm.
+
+  // Gcode parser position was circumvented by the this routine, so sync position now.
+  gc_sync_position();
+  
+  // Set idle state after probing completes and before returning to main program.  
+  sys.state = STATE_IDLE;
+  st_go_idle(); 
+
+  //TODO - ouput a mandatory status update with the probe position.  What if another was recently sent?
+  report_realtime_status_probe();
+  return STATUS_OK;
+}
 
 // Method to ready the system to reset by setting the runtime reset command and killing any
 // active processes in the system. This also checks if a system reset is issued while Grbl

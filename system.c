@@ -49,6 +49,11 @@ ISR(PINOUT_INT_vect)
       sys.execute |= EXEC_FEED_HOLD; 
     } else if (bit_isfalse(PINOUT_PIN,bit(PIN_CYCLE_START))) {
       sys.execute |= EXEC_CYCLE_START;
+    } else if (bit_isfalse(PINOUT_PIN,bit(PIN_PROBE))) {
+      if(sys.probe_state == PROBE_ACTIVE){
+        sys.probe_state = PROBE_COPY_POSITION;
+        //sys.execute |= EXEC_FEED_HOLD; //Probably OK to call a feedhold here.  I'd prefer to do it in the main probe loop for now
+      }
     }
   }
 }
