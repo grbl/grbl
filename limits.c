@@ -50,9 +50,9 @@ void limits_init()
   }
   
   #ifdef ENABLE_SOFTWARE_DEBOUNCE
-    MCUSR &= ~(1<<WDRF);
-    WDTCSR |= (1<<WDCE) | (1<<WDE);
-    WDTCSR = (1<<WDP0); // Set time-out at ~32msec.
+  MCUSR &= ~(1<<WDRF);
+  WDTCSR |= (1<<WDCE) | (1<<WDE);
+  WDTCSR = (1<<WDP0); // Set time-out at ~32msec.
   #endif
 }
 
@@ -76,38 +76,38 @@ void limits_disable()
 // special pinout for an e-stop, but it is generally recommended to just directly connect
 // your e-stop switch to the Arduino reset pin, since it is the most correct way to do this.
 #ifndef ENABLE_SOFTWARE_DEBOUNCE
-  ISR(LIMIT_INT_vect) // DEFAULT: Limit pin change interrupt process. 
-  {
-    // Ignore limit switches if already in an alarm state or in-process of executing an alarm.
-    // When in the alarm state, Grbl should have been reset or will force a reset, so any pending 
-    // moves in the planner and serial buffers are all cleared and newly sent blocks will be 
-    // locked out until a homing cycle or a kill lock command. Allows the user to disable the hard
-    // limit setting if their limits are constantly triggering after a reset and move their axes.
-    if (sys.state != STATE_ALARM) { 
-      if (bit_isfalse(sys.execute,EXEC_ALARM)) {
+ISR(LIMIT_INT_vect) // DEFAULT: Limit pin change interrupt process. 
+{
+  // Ignore limit switches if already in an alarm state or in-process of executing an alarm.
+  // When in the alarm state, Grbl should have been reset or will force a reset, so any pending 
+  // moves in the planner and serial buffers are all cleared and newly sent blocks will be 
+  // locked out until a homing cycle or a kill lock command. Allows the user to disable the hard
+  // limit setting if their limits are constantly triggering after a reset and move their axes.
+  if (sys.state != STATE_ALARM) { 
+    if (bit_isfalse(sys.execute,EXEC_ALARM)) {
+      mc_reset(); // Initiate system kill.
+      sys.execute |= EXEC_CRIT_EVENT; // Indicate hard limit critical event
+    }
+  }
+}  
+#else // OPTIONAL: Software debounce limit pin routine.
+// Upon limit pin change, enable watchdog timer to create a short delay. 
+ISR(LIMIT_INT_vect) { if (!(WDTCSR & (1<<WDIE))) { WDTCSR |= (1<<WDIE); } }
+ISR(WDT_vect) // Watchdog timer ISR
+{
+  WDTCSR &= ~(1<<WDIE); // Disable watchdog timer. 
+  if (sys.state != STATE_ALARM) {  // Ignore if already in alarm state. 
+    if (bit_isfalse(sys.execute,EXEC_ALARM)) {
+      uint8_t bits = LIMIT_PIN;
+      // Check limit pin state. 
+      if (bit_istrue(settings.flags,BITFLAG_INVERT_LIMIT_PINS)) { bits ^= LIMIT_MASK; }
+      if (bits & LIMIT_MASK) {
         mc_reset(); // Initiate system kill.
         sys.execute |= EXEC_CRIT_EVENT; // Indicate hard limit critical event
       }
-    }
-  }  
-#else // OPTIONAL: Software debounce limit pin routine.
-  // Upon limit pin change, enable watchdog timer to create a short delay. 
-  ISR(LIMIT_INT_vect) { if (!(WDTCSR & (1<<WDIE))) { WDTCSR |= (1<<WDIE); } }
-  ISR(WDT_vect) // Watchdog timer ISR
-  {
-    WDTCSR &= ~(1<<WDIE); // Disable watchdog timer. 
-    if (sys.state != STATE_ALARM) {  // Ignore if already in alarm state. 
-      if (bit_isfalse(sys.execute,EXEC_ALARM)) {
-        uint8_t bits = LIMIT_PIN;
-        // Check limit pin state. 
-        if (bit_istrue(settings.flags,BITFLAG_INVERT_LIMIT_PINS)) { bits ^= LIMIT_MASK; }
-        if (bits & LIMIT_MASK) {
-          mc_reset(); // Initiate system kill.
-          sys.execute |= EXEC_CRIT_EVENT; // Indicate hard limit critical event
-        }
-      }  
-    }
+    }  
   }
+}
 #endif
 
 
@@ -168,7 +168,11 @@ void limits_go_home(uint8_t cycle_mask)
   
     // Perform homing cycle. Planner buffer should be empty, as required to initiate the homing cycle.
     uint8_t limit_state;
+    #ifdef USE_LINE_NUMBERS
     plan_buffer_line(target, homing_rate, false, HOMING_CYCLE_LINE_NUMBER); // Bypass mc_line(). Directly plan homing motion.
+    #else
+    plan_buffer_line(target, homing_rate, false); // Bypass mc_line(). Directly plan homing motion.
+    #endif
     st_prep_buffer(); // Prep and fill segment buffer from newly planned block.
     st_wake_up(); // Initiate motion
     do {
@@ -225,8 +229,12 @@ void limits_go_home(uint8_t cycle_mask)
     }
   }
   plan_sync_position(); // Sync planner position to current machine position for pull-off move.
+  #ifdef USE_LINE_NUMBERS
   plan_buffer_line(target, settings.homing_seek_rate, false, HOMING_CYCLE_LINE_NUMBER); // Bypass mc_line(). Directly plan motion.
-
+  #else
+  plan_buffer_line(target, settings.homing_seek_rate, false); // Bypass mc_line(). Directly plan motion.
+  #endif
+  
   // Initiate pull-off using main motion control routines. 
   // TODO : Clean up state routines so that this motion still shows homing state.
   sys.state = STATE_QUEUED;

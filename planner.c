@@ -259,7 +259,11 @@ uint8_t plan_check_full_buffer()
    is used in three ways: as a normal feed rate if invert_feed_rate is false, as inverse time if
    invert_feed_rate is true, or as seek/rapids rate if the feed_rate value is negative (and
    invert_feed_rate always false). */
+#ifdef USE_LINE_NUMBERS   
 void plan_buffer_line(float *target, float feed_rate, uint8_t invert_feed_rate, int32_t line_number) 
+#else
+void plan_buffer_line(float *target, float feed_rate, uint8_t invert_feed_rate) 
+#endif
 {
   // Prepare and initialize new block
   plan_block_t *block = &block_buffer[block_buffer_head];

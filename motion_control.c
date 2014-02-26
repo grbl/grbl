@@ -39,7 +39,11 @@
 // segments, must pass through this routine before being passed to the planner. The seperation of
 // mc_line and plan_buffer_line is done primarily to place non-planner-type functions from being
 // in the planner and to let backlash compensation or canned cycle integration simple and direct.
+#ifdef USE_LINE_NUMBERS
 void mc_line(float *target, float feed_rate, uint8_t invert_feed_rate, int32_t line_number)
+#else
+void mc_line(float *target, float feed_rate, uint8_t invert_feed_rate)
+#endif
 {
   // If enabled, check for soft limit violations. Placed here all line motions are picked up
   // from everywhere in Grbl.
@@ -71,8 +75,12 @@ void mc_line(float *target, float feed_rate, uint8_t invert_feed_rate, int32_t l
     else { break; }
   } while (1);
 
+  #ifdef USE_LINE_NUMBERS
   plan_buffer_line(target, feed_rate, invert_feed_rate, line_number);
-
+  #else
+  plan_buffer_line(target, feed_rate, invert_feed_rate);
+  #endif
+  
   // If idle, indicate to the system there is now a planned block in the buffer ready to cycle 
   // start. Otherwise ignore and continue on.
   if (!sys.state) { sys.state = STATE_QUEUED; }
@@ -86,8 +94,13 @@ void mc_line(float *target, float feed_rate, uint8_t invert_feed_rate, int32_t l
 // The arc is approximated by generating a huge number of tiny, linear segments. The chordal tolerance
 // of each segment is configured in settings.arc_tolerance, which is defined to be the maximum normal
 // distance from segment to the circle when the end points both lie on the circle.
+#ifdef USE_LINE_NUMBERS
 void mc_arc(float *position, float *target, float *offset, uint8_t axis_0, uint8_t axis_1, 
   uint8_t axis_linear, float feed_rate, uint8_t invert_feed_rate, float radius, uint8_t isclockwise, int32_t line_number)
+#else
+void mc_arc(float *position, float *target, float *offset, uint8_t axis_0, uint8_t axis_1, 
+  uint8_t axis_linear, float feed_rate, uint8_t invert_feed_rate, float radius, uint8_t isclockwise)
+#endif
 {      
   float center_axis0 = position[axis_0] + offset[axis_0];
   float center_axis1 = position[axis_1] + offset[axis_1];
@@ -183,14 +196,23 @@ void mc_arc(float *position, float *target, float *offset, uint8_t axis_0, uint8
       arc_target[axis_0] = center_axis0 + r_axis0;
       arc_target[axis_1] = center_axis1 + r_axis1;
       arc_target[axis_linear] += linear_per_segment;
+      
+      #ifdef USE_LINE_NUMBERS
       mc_line(arc_target, feed_rate, invert_feed_rate, line_number);
+      #else
+      mc_line(arc_target, feed_rate, invert_feed_rate);
+      #endif
       
       // Bail mid-circle on system abort. Runtime command check already performed by mc_line.
       if (sys.abort) { return; }
     }
   }
   // Ensure last segment arrives at target location.
+  #ifdef USE_LINE_NUMBERS
   mc_line(target, feed_rate, invert_feed_rate, line_number);
+  #else
+  mc_line(target, feed_rate, invert_feed_rate);
+  #endif
 }
 
 

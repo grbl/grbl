@@ -86,12 +86,12 @@
 
 // Allows GRBL to tranck and report gcode line numbers.  Enabling this means that the planning buffer
 // goes from 18 or 16 to make room for the additional line number data in the plan_block_t struct
-// #define USE_LINE_NUMBERS
+// #define USE_LINE_NUMBERS // Disabled by default. Uncomment to enable.
 
 // Enables a second coolant control pin via the mist coolant g-code command M7 on the Arduino Uno
 // analog pin 5. Only use this option if you require a second coolant control pin.
 // NOTE: The M8 flood coolant control pin on analog pin 4 will still be functional regardless.
-// #define ENABLE_M7 // Mist coolant disabled by default. See config.h to enable/disable.
+// #define ENABLE_M7 // Disabled by default. Uncomment to enable.
 
 // ---------------------------------------------------------------------------------------
 // ADVANCED CONFIGURATION OPTIONS:
