@@ -149,6 +149,14 @@ uint8_t gc_execute_line(char *line)
               default: FAIL(STATUS_UNSUPPORTED_STATEMENT);
             }
             break;
+          case 38: 
+            int_value = trunc(10*value); // Multiply by 10 to pick up Gxx.1
+            switch(int_value) {
+              case 382: non_modal_action = NON_MODAL_PROBE_WITH_ERROR; break;
+              case 383: non_modal_action = NON_MODAL_PROBE_NO_ERROR; break;
+              default: FAIL(STATUS_UNSUPPORTED_STATEMENT);
+            }
+            break;  
           case 53: absolute_override = true; break;
           case 54: case 55: case 56: case 57: case 58: case 59:
             gc.coord_select = int_value-54;
@@ -358,6 +366,24 @@ uint8_t gc_execute_line(char *line)
       memcpy(gc.position, coord_data, sizeof(coord_data)); // gc.position[] = coord_data[];
       axis_words = 0; // Axis words used. Lock out from motion modes by clearing flags.
       break;
+    case NON_MODAL_PROBE_WITH_ERROR:
+        if (!axis_words) { // No axis words
+          FAIL(STATUS_INVALID_STATEMENT);
+          break;
+        }
+        if(mc_probe_cycle(target, (gc.inverse_feed_rate_mode) ? inverse_feed_rate : gc.feed_rate, gc.inverse_feed_rate_mode, line_number)){
+          FAIL(STATUS_PROBE_ERROR);
+        }
+        axis_words = 0;
+      break;
+    case NON_MODAL_PROBE_NO_ERROR:
+        if (!axis_words) { // No axis words
+          FAIL(STATUS_INVALID_STATEMENT);
+          break;
+        }
+        mc_probe_cycle(target, (gc.inverse_feed_rate_mode) ? inverse_feed_rate : gc.feed_rate, gc.inverse_feed_rate_mode, line_number);
+        axis_words = 0;
+      break;   
     case NON_MODAL_SET_HOME_0: case NON_MODAL_SET_HOME_1:
       if (non_modal_action == NON_MODAL_SET_HOME_0) {
         settings_write_coord_data(SETTING_INDEX_G28,gc.position);

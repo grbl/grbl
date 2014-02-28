@@ -51,6 +51,11 @@ void mc_dwell(float seconds);
 // Perform homing cycle to locate machine zero. Requires limit switches.
 void mc_homing_cycle();
 
+// Perform tool length probe cycle. Requires probe switch.
+// Returns STATUS_OK in all cases except when the motion is completed without the probe being triggered.
+// In that case, it returns a STATUS_PROBE_ERROR
+uint8_t mc_probe_cycle(float *target, float feed_rate, uint8_t invert_feed_rate, int32_t line_number);
+
 // Performs system reset. If in motion state, kills all motion and sets system alarm.
 void mc_reset();
 
