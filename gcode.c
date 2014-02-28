@@ -371,7 +371,11 @@ uint8_t gc_execute_line(char *line)
           FAIL(STATUS_INVALID_STATEMENT);
           break;
         }
+        #ifdef USE_LINE_NUMBERS
         if(mc_probe_cycle(target, (gc.inverse_feed_rate_mode) ? inverse_feed_rate : gc.feed_rate, gc.inverse_feed_rate_mode, line_number)){
+        #else
+        if(mc_probe_cycle(target, (gc.inverse_feed_rate_mode) ? inverse_feed_rate : gc.feed_rate, gc.inverse_feed_rate_mode)){
+        #endif
           FAIL(STATUS_PROBE_ERROR);
         }
         axis_words = 0;
@@ -381,7 +385,11 @@ uint8_t gc_execute_line(char *line)
           FAIL(STATUS_INVALID_STATEMENT);
           break;
         }
+        #ifdef USE_LINE_NUMBERS
         mc_probe_cycle(target, (gc.inverse_feed_rate_mode) ? inverse_feed_rate : gc.feed_rate, gc.inverse_feed_rate_mode, line_number);
+        #else
+        mc_probe_cycle(target, (gc.inverse_feed_rate_mode) ? inverse_feed_rate : gc.feed_rate, gc.inverse_feed_rate_mode);
+        #endif
         axis_words = 0;
       break;   
     case NON_MODAL_SET_HOME_0: case NON_MODAL_SET_HOME_1:

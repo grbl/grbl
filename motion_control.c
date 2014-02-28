@@ -269,7 +269,12 @@ void mc_homing_cycle()
   limits_init();
 }
 
+
+#ifdef USE_LINE_NUMBERS
 uint8_t mc_probe_cycle(float *t, float feed_rate, uint8_t invert_feed_rate, int32_t line_number)
+#else
+uint8_t mc_probe_cycle(float *t, float feed_rate, uint8_t invert_feed_rate)
+#endif
 {
   protocol_buffer_synchronize(); //finish all queued commands
 
@@ -290,7 +295,12 @@ uint8_t mc_probe_cycle(float *t, float feed_rate, uint8_t invert_feed_rate, int3
   // An empty buffer is needed because we need to enable the probe pin along the same move that we're about to execute.
   
   sys.state = STATE_CYCLE;
+
+  #ifdef USE_LINE_NUMBERS
   plan_buffer_line(target, feed_rate, invert_feed_rate, line_number); // Bypass mc_line(). Directly plan homing motion.
+  #else
+  plan_buffer_line(target, feed_rate, invert_feed_rate); // Bypass mc_line(). Directly plan homing motion.
+  #endif
   st_prep_buffer(); // Prep and fill segment buffer from newly planned block.
   st_wake_up(); // Initiate motion
   
@@ -341,7 +351,11 @@ uint8_t mc_probe_cycle(float *t, float feed_rate, uint8_t invert_feed_rate, int3
 
   //report_realtime_status(); //debug
 
-  plan_buffer_line(target, feed_rate, invert_feed_rate, line_number); // Bypass mc_line(). Directly plan motion.
+  #ifdef USE_LINE_NUMBERS
+  plan_buffer_line(target, feed_rate, invert_feed_rate, line_number); // Bypass mc_line(). Directly plan homing motion.
+  #else
+  plan_buffer_line(target, feed_rate, invert_feed_rate); // Bypass mc_line(). Directly plan homing motion.
+  #endif
   st_prep_buffer(); // Prep and fill segment buffer from newly planned block.
   st_wake_up(); // Initiate motion
 
