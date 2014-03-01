@@ -52,12 +52,10 @@ void mc_dwell(float seconds);
 void mc_homing_cycle();
 
 // Perform tool length probe cycle. Requires probe switch.
-// Returns STATUS_OK in all cases except when the motion is completed without the probe being triggered.
-// In that case, it returns a STATUS_PROBE_ERROR
 #ifdef USE_LINE_NUMBERS
-uint8_t mc_probe_cycle(float *target, float feed_rate, uint8_t invert_feed_rate, int32_t line_number);
+void mc_probe_cycle(float *target, float feed_rate, uint8_t invert_feed_rate, int32_t line_number);
 #else
-uint8_t mc_probe_cycle(float *target, float feed_rate, uint8_t invert_feed_rate);
+void mc_probe_cycle(float *target, float feed_rate, uint8_t invert_feed_rate);
 #endif
 
 // Performs system reset. If in motion state, kills all motion and sets system alarm.

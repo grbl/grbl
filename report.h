@@ -36,11 +36,11 @@
 #define STATUS_ALARM_LOCK 12
 #define STATUS_SOFT_LIMIT_ERROR 13
 #define STATUS_OVERFLOW 14
-#define STATUS_PROBE_ERROR 15
 
 // Define Grbl alarm codes. Less than zero to distinguish alarm error from status error.
 #define ALARM_LIMIT_ERROR -1
 #define ALARM_ABORT_CYCLE -2
+#define ALARM_PROBE_FAIL -3
 
 // Define Grbl feedback message codes.
 #define MESSAGE_CRITICAL_EVENT 1
@@ -70,13 +70,11 @@ void report_grbl_settings();
 // Prints realtime status report
 void report_realtime_status();
 
-// Prints realtime position status report at the end of a probe cycle
-// This is in leiu of saving the probe position to internal variables like an 
-// EMC machine
-void report_realtime_status_probe();
+// Prints recorded probe position
+void report_probe_parameters();
 
-// Prints Grbl persistent coordinate parameters
-void report_gcode_parameters();
+// Prints Grbl NGC parameters (coordinate offsets, probe)
+void report_ngc_parameters();
 
 // Prints current g-code parser mode state
 void report_gcode_modes();

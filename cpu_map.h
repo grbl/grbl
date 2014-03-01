@@ -107,11 +107,18 @@
   #define PIN_RESET        0  // Uno Analog Pin 0
   #define PIN_FEED_HOLD    1  // Uno Analog Pin 1
   #define PIN_CYCLE_START  2  // Uno Analog Pin 2
-  #define PIN_PROBE        5  // Uno Analog Pin 5
   #define PINOUT_INT       PCIE1  // Pin change interrupt enable pin
   #define PINOUT_INT_vect  PCINT1_vect
   #define PINOUT_PCMSK     PCMSK1 // Pin change interrupt register
-  #define PINOUT_MASK ((1<<PIN_RESET)|(1<<PIN_FEED_HOLD)|(1<<PIN_CYCLE_START)|(1<<PIN_PROBE))
+  #define PINOUT_MASK ((1<<PIN_RESET)|(1<<PIN_FEED_HOLD)|(1<<PIN_CYCLE_START))
+  
+  // Define probe switch input pin.
+  #define PROBE_DDR       DDRC
+  #define PROBE_PIN       PINC
+  #define PROBE_PORT      PORTC
+  #define PROBE_BIT       5  // Uno Analog Pin 5
+  #define PROBE_MASK      (1<<PROBE_BIT)
+
   
   #ifdef VARIABLE_SPINDLE
     // Advanced Configuration Below You should not need to touch these variables

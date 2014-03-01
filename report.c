@@ -79,8 +79,6 @@ void report_status_message(uint8_t status_code)
       printPgmString(PSTR("Homing not enabled")); break;
       case STATUS_OVERFLOW:
       printPgmString(PSTR("Line overflow")); break; 
-      case STATUS_PROBE_ERROR:
-      printPgmString(PSTR("Probe error")); break; 
     }
     printPgmString(PSTR("\r\n"));
   }
@@ -95,8 +93,10 @@ void report_alarm_message(int8_t alarm_code)
     printPgmString(PSTR("Hard/soft limit")); break;
     case ALARM_ABORT_CYCLE: 
     printPgmString(PSTR("Abort during cycle")); break;
+    case ALARM_PROBE_FAIL:
+    printPgmString(PSTR("Probe fail")); break;
   }
-  printPgmString(PSTR(". MPos?\r\n"));
+  printPgmString(PSTR("\r\n"));
   delay_ms(500); // Force delay to ensure message clears serial write buffer.
 }
 
@@ -190,8 +190,28 @@ void report_grbl_settings() {
 }
 
 
-// Prints gcode coordinate offset parameters
-void report_gcode_parameters()
+// Prints current probe parameters. Upon a probe command, these parameters are updated upon a
+// successful probe or upon a failed probe with the G38.3 without errors command (if supported). 
+// These values are retained until Grbl is power-cycled, whereby they will be re-zeroed.
+void report_probe_parameters()
+{
+  uint8_t i;
+  float print_position[N_AXIS];
+ 
+  // Report in terms of machine position.
+  printPgmString(PSTR("[Probe:")); 
+  for (i=0; i< N_AXIS; i++) {
+    print_position[i] = sys.probe_position[i]/settings.steps_per_mm[i];
+    if (bit_istrue(settings.flags,BITFLAG_REPORT_INCHES)) { print_position[i] *= INCH_PER_MM; }
+    printFloat(print_position[i]);
+    if (i < (N_AXIS-1)) { printPgmString(PSTR(",")); }
+  }  
+  printPgmString(PSTR("]\r\n"));
+}
+
+
+// Prints Grbl NGC parameters (coordinate offsets, probing)
+void report_ngc_parameters()
 {
   float coord_data[N_AXIS];
   uint8_t coord_select, i;
@@ -226,6 +246,7 @@ void report_gcode_parameters()
     if (i < (N_AXIS-1)) { printPgmString(PSTR(",")); }
     else { printPgmString(PSTR("]\r\n")); }
   } 
+  report_probe_parameters(); // Print probe parameters. Not persistent in memory.
 }
 
 
@@ -353,7 +374,7 @@ void report_realtime_status()
     if (i < (N_AXIS-1)) { printPgmString(PSTR(",")); }
   }
     
-#ifdef USE_LINE_NUMBERS
+  #ifdef USE_LINE_NUMBERS
   // Report current line number
   printPgmString(PSTR(",Ln:")); 
   int32_t ln=0;
@@ -362,56 +383,7 @@ void report_realtime_status()
     ln = pb->line_number;
   } 
   printInteger(ln);
-#endif
-    
-  printPgmString(PSTR(">\r\n"));
-}
-
-// Prints real-time data. This function grabs a real-time snapshot of the stepper subprogram 
- // and the actual location of the CNC machine. Users may change the following function to their
- // specific needs.  It is kept separate from the "normal" report_realtime_status() to allow customization. 
-void report_realtime_status_probe()
-{
-  // **Under construction** Bare-bones status report. Provides real-time machine position relative to 
-  // the system power on location (0,0,0) and work coordinate position (G54 and G92 applied). 
-  uint8_t i;
-  int32_t current_position[N_AXIS]; // Copy current state of the system position variable
-  memcpy(current_position,sys.position,sizeof(sys.position));
-  float print_position[N_AXIS];
- 
-  printPgmString(PSTR("<Probe")); 
-
-  // Report machine position
-  printPgmString(PSTR(",MPos:")); 
-  for (i=0; i< N_AXIS; i++) {
-    print_position[i] = current_position[i]/settings.steps_per_mm[i];
-    if (bit_istrue(settings.flags,BITFLAG_REPORT_INCHES)) { print_position[i] *= INCH_PER_MM; }
-    printFloat(print_position[i]);
-    printPgmString(PSTR(","));
-  }
-  
-  // Report work position
-  printPgmString(PSTR("WPos:")); 
-  for (i=0; i< N_AXIS; i++) {
-    if (bit_istrue(settings.flags,BITFLAG_REPORT_INCHES)) {
-      print_position[i] -= (gc.coord_system[i]+gc.coord_offset[i])*INCH_PER_MM;
-    } else {
-      print_position[i] -= gc.coord_system[i]+gc.coord_offset[i];
-    }
-    printFloat(print_position[i]);
-    if (i < (N_AXIS-1)) { printPgmString(PSTR(",")); }
-  }
-    
-#ifdef USE_LINE_NUMBERS
-  // Report current line number
-  printPgmString(PSTR(",Ln:")); 
-  int32_t ln=0;
-  plan_block_t * pb = plan_get_current_block();
-  if(pb != NULL) {
-    ln = pb->line_number;
-  } 
-  printInteger(ln);
-#endif
+  #endif
     
   printPgmString(PSTR(">\r\n"));
 }

@@ -49,12 +49,7 @@ ISR(PINOUT_INT_vect)
       sys.execute |= EXEC_FEED_HOLD; 
     } else if (bit_isfalse(PINOUT_PIN,bit(PIN_CYCLE_START))) {
       sys.execute |= EXEC_CYCLE_START;
-    } else if (bit_isfalse(PINOUT_PIN,bit(PIN_PROBE))) {
-      if(sys.probe_state == PROBE_ACTIVE){
-        sys.probe_state = PROBE_COPY_POSITION;
-        //sys.execute |= EXEC_FEED_HOLD; //Probably OK to call a feedhold here.  I'd prefer to do it in the main probe loop for now
-      }
-    }
+    } 
   }
 }
 
@@ -91,14 +86,10 @@ uint8_t system_execute_line(char *line)
   float parameter, value;
   switch( line[char_counter] ) {
     case 0 : report_grbl_help(); break;
-    case '#' : // Print gcode parameters
-      if ( line[++char_counter] != 0 ) { return(STATUS_UNSUPPORTED_STATEMENT); }
-      else { report_gcode_parameters(); }
-      break;
     case 'G' : // Prints gcode parser state
       if ( line[++char_counter] != 0 ) { return(STATUS_UNSUPPORTED_STATEMENT); }
       else { report_gcode_modes(); }
-      break;
+      break;   
     case 'C' : // Set check g-code mode [IDLE/CHECK]
       if ( line[++char_counter] != 0 ) { return(STATUS_UNSUPPORTED_STATEMENT); }
       // Perform reset when toggling off. Check g-code mode should only work if Grbl
@@ -141,6 +132,10 @@ uint8_t system_execute_line(char *line)
           if ( line[++char_counter] != 0 ) { return(STATUS_UNSUPPORTED_STATEMENT); }
           else { report_grbl_settings(); }
           break;
+        case '#' : // Print Grbl NGC parameters
+          if ( line[++char_counter] != 0 ) { return(STATUS_UNSUPPORTED_STATEMENT); }
+          else { report_ngc_parameters(); }
+          break;          
         case 'H' : // Perform homing cycle [IDLE/ALARM]
           if (bit_istrue(settings.flags,BITFLAG_HOMING_ENABLE)) { 
             // Only perform homing if Grbl is idle or lost.

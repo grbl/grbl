@@ -173,9 +173,11 @@ void protocol_execute_runtime()
     if (rt_exec & (EXEC_ALARM | EXEC_CRIT_EVENT)) {      
       sys.state = STATE_ALARM; // Set system alarm state
 
-      // Critical event. Only hard/soft limit errors currently qualify.
+      // Critical events. Hard/soft limit events identified by both critical event and alarm exec
+      // flags. Probe fail is identified by the critical event exec flag only.
       if (rt_exec & EXEC_CRIT_EVENT) {
-        report_alarm_message(ALARM_LIMIT_ERROR); 
+        if (rt_exec & EXEC_ALARM) { report_alarm_message(ALARM_LIMIT_ERROR); }
+        else { report_alarm_message(ALARM_PROBE_FAIL); }
         report_feedback_message(MESSAGE_CRITICAL_EVENT);
         bit_false(sys.execute,EXEC_RESET); // Disable any existing reset
         do { 

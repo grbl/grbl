@@ -67,12 +67,6 @@
 #define STATE_HOLD       bit(5) // Executing feed hold
 // #define STATE_JOG     bit(6) // Jogging mode is unique like homing.
 
-// Values that define the probing state machine.  
-#define PROBE_OFF     0 //No probing
-#define PROBE_ACTIVE  1 //Actively watching the input pin.  If it is triggered, the stante is changed to PROBE_COPY_POSITION
-#define PROBE_COPY_POSITION 2 //In this state, the current position will be copied to probe_position in the stepper ISR.  State is then changed to PROBE_OFF.
-                              //Copying to a separate set of variables ensures that no race condition can occur if the ISR updates the main position variables
-                              //while the probing routine is copying them.
 
 // Define global system variables
 typedef struct {
@@ -83,8 +77,8 @@ typedef struct {
   int32_t position[N_AXIS];      // Real-time machine (aka home) position vector in steps. 
                                  // NOTE: This may need to be a volatile variable, if problems arise.                             
   uint8_t auto_start;            // Planner auto-start flag. Toggled off during feed hold. Defaulted by settings.
-  uint8_t probe_state;            // Probing state value.  Used in the mc_probe_cycle(), the PINOUT_PIN IRT, and the stepper ISR to coordinate the probing cycle.
-  int32_t probe_position[N_AXIS];      // Copy of the position when the probe is triggered that can be read/copied without worring about changes in the middle of a read.   
+  volatile uint8_t probe_state;   // Probing state value.  Used to coordinate the probing cycle with stepper ISR.
+  int32_t probe_position[N_AXIS]; // Last probe position in machine coordinates and steps.
 } system_t;
 extern system_t sys;
 
