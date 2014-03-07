@@ -279,6 +279,7 @@ void mc_probe_cycle(float *target, float feed_rate, uint8_t invert_feed_rate, in
 void mc_probe_cycle(float *target, float feed_rate, uint8_t invert_feed_rate)
 #endif
 {
+  if (sys.state != STATE_CYCLE) protocol_auto_cycle_start();
   protocol_buffer_synchronize(); // Finish all queued commands
   if (sys.abort) { return; } // Return if system reset has been issued.
 
