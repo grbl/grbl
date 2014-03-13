@@ -223,10 +223,17 @@
   #define PINOUT_PCMSK     PCMSK2 // Pin change interrupt register
   #define PINOUT_MASK ((1<<PIN_RESET)|(1<<PIN_FEED_HOLD)|(1<<PIN_CYCLE_START))
 
+  // Define probe switch input pin.
+  #define PROBE_DDR       DDRK
+  #define PROBE_PIN       PINK
+  #define PROBE_PORT      PORTK
+  #define PROBE_BIT       3  // MEGA2560 Analog Pin 11
+  #define PROBE_MASK      (1<<PROBE_BIT)
+
   // Start of PWM & Stepper Enabled Spindle
   #ifdef VARIABLE_SPINDLE
     // Advanced Configuration Below You should not need to touch these variables
-    // Set Timer up to use TIMER4 OCR4B which is attached to Digital Pin 7
+    // Set Timer up to use TIMER2B which is attached to Digital Pin 9
     #define TCCRA_REGISTER		TCCR2A
     #define TCCRB_REGISTER		TCCR2B
     #define OCR_REGISTER		OCR2B
