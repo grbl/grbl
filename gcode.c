@@ -64,7 +64,7 @@ void gc_init()
 
 // Sets g-code parser position in mm. Input in steps. Called by the system abort and hard
 // limit pull-off routines.
-void gc_sync_position(int32_t x, int32_t y, int32_t z) 
+void gc_sync_position() 
 {
   uint8_t i;
   for (i=0; i<N_AXIS; i++) {

@@ -35,9 +35,9 @@
   #define DEFAULT_X_MAX_RATE 500.0 // mm/min
   #define DEFAULT_Y_MAX_RATE 500.0 // mm/min
   #define DEFAULT_Z_MAX_RATE 500.0 // mm/min
-  #define DEFAULT_X_ACCELERATION (10.0*60*60) // 10 mm/min^2
-  #define DEFAULT_Y_ACCELERATION (10.0*60*60) // 10 mm/min^2
-  #define DEFAULT_Z_ACCELERATION (10.0*60*60) // 10 mm/min^2
+  #define DEFAULT_X_ACCELERATION (10.0*60*60) // 10*60*60 mm/min^2 = 10 mm/sec^2
+  #define DEFAULT_Y_ACCELERATION (10.0*60*60) // 10*60*60 mm/min^2 = 10 mm/sec^2
+  #define DEFAULT_Z_ACCELERATION (10.0*60*60) // 10*60*60 mm/min^2 = 10 mm/sec^2
   #define DEFAULT_X_MAX_TRAVEL 200.0 // mm
   #define DEFAULT_Y_MAX_TRAVEL 200.0 // mm
   #define DEFAULT_Z_MAX_TRAVEL 200.0 // mm
@@ -75,9 +75,9 @@
   #define DEFAULT_X_MAX_RATE 635.0 // mm/min (25 ipm)
   #define DEFAULT_Y_MAX_RATE 635.0 // mm/min
   #define DEFAULT_Z_MAX_RATE 635.0 // mm/min
-  #define DEFAULT_X_ACCELERATION (50.0*60*60) // 10 mm/min^2
-  #define DEFAULT_Y_ACCELERATION (50.0*60*60) // 10 mm/min^2
-  #define DEFAULT_Z_ACCELERATION (50.0*60*60) // 10 mm/min^2
+  #define DEFAULT_X_ACCELERATION (50.0*60*60) // 50*60*60 mm/min^2 = 50 mm/sec^2
+  #define DEFAULT_Y_ACCELERATION (50.0*60*60) // 50*60*60 mm/min^2 = 50 mm/sec^2
+  #define DEFAULT_Z_ACCELERATION (50.0*60*60) // 50*60*60 mm/min^2 = 50 mm/sec^2
   #define DEFAULT_X_MAX_TRAVEL 225.0 // mm
   #define DEFAULT_Y_MAX_TRAVEL 125.0 // mm
   #define DEFAULT_Z_MAX_TRAVEL 170.0 // mm
@@ -118,9 +118,9 @@
   #define DEFAULT_X_MAX_RATE 1000.0 // mm/min
   #define DEFAULT_Y_MAX_RATE 1000.0 // mm/min
   #define DEFAULT_Z_MAX_RATE 1000.0 // mm/min
-  #define DEFAULT_X_ACCELERATION (15.0*60*60) // 10 mm/min^2
-  #define DEFAULT_Y_ACCELERATION (15.0*60*60) // 10 mm/min^2
-  #define DEFAULT_Z_ACCELERATION (15.0*60*60) // 10 mm/min^2
+  #define DEFAULT_X_ACCELERATION (15.0*60*60) // 15*60*60 mm/min^2 = 15 mm/sec^2
+  #define DEFAULT_Y_ACCELERATION (15.0*60*60) // 15*60*60 mm/min^2 = 15 mm/sec^2
+  #define DEFAULT_Z_ACCELERATION (15.0*60*60) // 15*60*60 mm/min^2 = 15 mm/sec^2
   #define DEFAULT_X_MAX_TRAVEL 200.0 // mm
   #define DEFAULT_Y_MAX_TRAVEL 200.0 // mm
   #define DEFAULT_Z_MAX_TRAVEL 200.0 // mm
@@ -161,9 +161,9 @@
   #define DEFAULT_X_MAX_RATE 800.0 // mm/min
   #define DEFAULT_Y_MAX_RATE 800.0 // mm/min
   #define DEFAULT_Z_MAX_RATE 800.0 // mm/min
-  #define DEFAULT_X_ACCELERATION (15.0*60*60) // 10 mm/min^2
-  #define DEFAULT_Y_ACCELERATION (15.0*60*60) // 10 mm/min^2
-  #define DEFAULT_Z_ACCELERATION (15.0*60*60) // 10 mm/min^2
+  #define DEFAULT_X_ACCELERATION (15.0*60*60) // 15*60*60 mm/min^2 = 15 mm/sec^2
+  #define DEFAULT_Y_ACCELERATION (15.0*60*60) // 15*60*60 mm/min^2 = 15 mm/sec^2
+  #define DEFAULT_Z_ACCELERATION (15.0*60*60) // 15*60*60 mm/min^2 = 15 mm/sec^2
   #define DEFAULT_X_MAX_TRAVEL 200.0 // mm
   #define DEFAULT_Y_MAX_TRAVEL 200.0 // mm
   #define DEFAULT_Z_MAX_TRAVEL 200.0 // mm
@@ -202,9 +202,9 @@
   #define DEFAULT_X_MAX_RATE 6000.0 // mm/min
   #define DEFAULT_Y_MAX_RATE 6000.0 // mm/min
   #define DEFAULT_Z_MAX_RATE 6000.0 // mm/min
-  #define DEFAULT_X_ACCELERATION (600.0*60*60) // 10 mm/min^2
-  #define DEFAULT_Y_ACCELERATION (600.0*60*60) // 10 mm/min^2
-  #define DEFAULT_Z_ACCELERATION (600.0*60*60) // 10 mm/min^2
+  #define DEFAULT_X_ACCELERATION (600.0*60*60) // 600*60*60 mm/min^2 = 600 mm/sec^2
+  #define DEFAULT_Y_ACCELERATION (600.0*60*60) // 600*60*60 mm/min^2 = 600 mm/sec^2
+  #define DEFAULT_Z_ACCELERATION (600.0*60*60) // 600*60*60 mm/min^2 = 600 mm/sec^2
   #define DEFAULT_X_MAX_TRAVEL 190.0 // mm
   #define DEFAULT_Y_MAX_TRAVEL 180.0 // mm
   #define DEFAULT_Z_MAX_TRAVEL 150.0 // mm
