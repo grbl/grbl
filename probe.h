@@ -23,7 +23,9 @@
 
 // Values that define the probing state machine.  
 #define PROBE_OFF     0 // No probing. (Must be zero.)
-#define PROBE_ACTIVE  1 // Actively watching the input pin.
+#define PROBE_ACTIVE  1<<0 // Actively watching the input pin.
+#define PROBE_TO      1<<1
+#define PROBE_ERROR   1<<2
 
 
 // Probe pin initialization routine.
