@@ -33,7 +33,6 @@
 #include "probe.h"
 #include "report.h"
 
-
 // Execute linear motion in absolute millimeter coordinates. Feed rate given in millimeters/second
 // unless invert_feed_rate is true. Then the feed_rate means that the motion should be completed in
 // (1 minute)/feed_rate time.
@@ -290,8 +289,8 @@ void mc_probe_cycle(float *target, float feed_rate, uint8_t invert_feed_rate)
   mc_line(target, feed_rate, invert_feed_rate);
   #endif
 
-  //TODO - make sure the probe isn't already closed
-  sys.probe_state = PROBE_ACTIVE;
+  //TODO - make sure the probe isn't already closed 38.2-3 or open 38.4-5
+  bit_true(sys.probe_state, PROBE_ACTIVE);
 
   sys.execute |= EXEC_CYCLE_START;
   do {
@@ -299,7 +298,14 @@ void mc_probe_cycle(float *target, float feed_rate, uint8_t invert_feed_rate)
     if (sys.abort) { return; } // Check for system abort
   } while ((sys.state != STATE_IDLE) && (sys.state != STATE_QUEUED));
 
-  if (sys.probe_state == PROBE_ACTIVE) { sys.execute |= EXEC_CRIT_EVENT; }
+  if (bit_istrue(sys.probe_state , PROBE_ACTIVE)) {
+    if(bit_istrue(sys.probe_state , PROBE_ERROR)){
+      sys.execute |= EXEC_CRIT_EVENT;
+    } else {
+      sys.probe_state = PROBE_OFF;
+      return;
+    }
+  }
   protocol_execute_runtime();   // Check and execute run-time commands
   if (sys.abort) { return; } // Check for system abort
 

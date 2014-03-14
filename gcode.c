@@ -30,6 +30,7 @@
 #include "spindle_control.h"
 #include "coolant_control.h"
 #include "report.h"
+#include "probe.h"
 
 // Declare gc extern struct
 parser_state_t gc;
@@ -151,11 +152,12 @@ uint8_t gc_execute_line(char *line)
             break;
           case 38: 
             int_value = trunc(10*value); // Multiply by 10 to pick up Gxx.1
+            gc.motion_mode = MOTION_MODE_PROBE;
             switch(int_value) {
-              case 382: gc.motion_mode = MOTION_MODE_PROBE; break;
-              // case 383: gc.motion_mode = MOTION_MODE_PROBE_NO_ERROR; break; // Not supported.
-              // case 384: // Not supported.
-              // case 385: // Not supported.                            
+              case 382: sys.probe_state = PROBE_TO | PROBE_ERROR; break;
+              case 383: sys.probe_state = PROBE_TO; break;
+              case 384: sys.probe_state = PROBE_ERROR; break;
+              case 385: sys.probe_state = 0; break;
               default: FAIL(STATUS_UNSUPPORTED_STATEMENT);
             }
             break;  
