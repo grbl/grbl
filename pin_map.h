@@ -97,41 +97,44 @@
 #endif
 
 
-#ifdef PIN_MAP_ARDUINO_MEGA_2560 // Unsupported. Doesn't work. Supplied by @elmom.
+#ifdef PIN_MAP_ARDUINO_MEGA_2560 // Working @EliteEng
 
   // Serial port pins
   #define SERIAL_RX USART0_RX_vect
   #define SERIAL_UDRE USART0_UDRE_vect
 
+  // Increase Buffers to make use of extra SRAM
+  #define RX_BUFFER_SIZE 256
+  #define TX_BUFFER_SIZE 128
+  #define BLOCK_BUFFER_SIZE 36
+  #define LINE_BUFFER_SIZE 100
+
   // NOTE: All step bit and direction pins must be on the same port.
   #define STEPPING_DDR      DDRA
   #define STEPPING_PORT     PORTA
   #define STEPPING_PIN      PINA
-  #define X_STEP_BIT        0 // MEGA2560 Digital Pin 22
-  #define Y_STEP_BIT        1 // MEGA2560 Digital Pin 23
-  #define Z_STEP_BIT        2 // MEGA2560 Digital Pin 24
-  // #define C_STEP_BIT        3 // MEGA2560 Digital Pin 25
-  #define X_DIRECTION_BIT   4 // MEGA2560 Digital Pin 26
-  #define Y_DIRECTION_BIT   5 // MEGA2560 Digital Pin 27
-  #define Z_DIRECTION_BIT   6 // MEGA2560 Digital Pin 28
-  // #define C_DIRECTION_BIT   7 // MEGA2560 Digital Pin 29
+  #define X_STEP_BIT        2 // MEGA2560 Digital Pin 24
+  #define Y_STEP_BIT        3 // MEGA2560 Digital Pin 25
+  #define Z_STEP_BIT        4 // MEGA2560 Digital Pin 26
+  #define X_DIRECTION_BIT   5 // MEGA2560 Digital Pin 27
+  #define Y_DIRECTION_BIT   6 // MEGA2560 Digital Pin 28
+  #define Z_DIRECTION_BIT   7 // MEGA2560 Digital Pin 29
   #define STEP_MASK ((1<<X_STEP_BIT)|(1<<Y_STEP_BIT)|(1<<Z_STEP_BIT)) // All step bits
   #define DIRECTION_MASK ((1<<X_DIRECTION_BIT)|(1<<Y_DIRECTION_BIT)|(1<<Z_DIRECTION_BIT)) // All direction bits
   #define STEPPING_MASK (STEP_MASK | DIRECTION_MASK) // All stepping-related bits (step/direction)
 
-  #define STEPPERS_DISABLE_DDR   DDRC
-  #define STEPPERS_DISABLE_PORT  PORTC
-  #define STEPPERS_DISABLE_BIT   7 // MEGA2560 Digital Pin 30
+  #define STEPPERS_DISABLE_DDR   DDRB
+  #define STEPPERS_DISABLE_PORT  PORTB
+  #define STEPPERS_DISABLE_BIT   7 // MEGA2560 Digital Pin 13
   #define STEPPERS_DISABLE_MASK (1<<STEPPERS_DISABLE_BIT)
 
   // NOTE: All limit bit pins must be on the same port
-  #define LIMIT_DDR       DDRC
-  #define LIMIT_PORT      PORTC
-  #define LIMIT_PIN       PINC
-  #define X_LIMIT_BIT     6 // MEGA2560 Digital Pin 31
-  #define Y_LIMIT_BIT     5 // MEGA2560 Digital Pin 32
-  #define Z_LIMIT_BIT     4 // MEGA2560 Digital Pin 33
-  // #define C_LIMIT_BIT     3 // MEGA2560 Digital Pin 34
+  #define LIMIT_DDR       DDRB
+  #define LIMIT_PORT      PORTB
+  #define LIMIT_PIN       PINB
+  #define X_LIMIT_BIT     4 // MEGA2560 Digital Pin 10
+  #define Y_LIMIT_BIT     5 // MEGA2560 Digital Pin 11
+  #define Z_LIMIT_BIT     6 // MEGA2560 Digital Pin 12
   #define LIMIT_INT       PCIE0  // Pin change interrupt enable pin
   #define LIMIT_INT_vect  PCINT0_vect 
   #define LIMIT_PCMSK     PCMSK0 // Pin change interrupt register
@@ -153,19 +156,19 @@
   #ifdef ENABLE_M7
     #define COOLANT_MIST_DDR   DDRC
     #define COOLANT_MIST_PORT  PORTC
-    #define COOLANT_MIST_BIT   0 // MEGA2560 Digital Pin 37
+    #define COOLANT_MIST_BIT   3 // MEGA2560 Digital Pin 34
   #endif  
 
   // NOTE: All pinouts pins must be on the same port
-  #define PINOUT_DDR       DDRC
-  #define PINOUT_PIN       PINC
-  #define PINOUT_PORT      PORTC
-  #define PIN_RESET        0  // Uno Analog Pin 0
-  #define PIN_FEED_HOLD    1  // Uno Analog Pin 1
-  #define PIN_CYCLE_START  2  // Uno Analog Pin 2
-  #define PINOUT_INT       PCIE1  // Pin change interrupt enable pin
-  #define PINOUT_INT_vect  PCINT1_vect
-  #define PINOUT_PCMSK     PCMSK1 // Pin change interrupt register
+  #define PINOUT_DDR       DDRK
+  #define PINOUT_PIN       PINK
+  #define PINOUT_PORT      PORTK
+  #define PIN_RESET        0  // MEGA2560 Analog Pin 8
+  #define PIN_FEED_HOLD    1  // MEGA2560 Analog Pin 9
+  #define PIN_CYCLE_START  2  // MEGA2560 Analog Pin 10
+  #define PINOUT_INT       PCIE2  // Pin change interrupt enable pin
+  #define PINOUT_INT_vect  PCINT2_vect
+  #define PINOUT_PCMSK     PCMSK2 // Pin change interrupt register
   #define PINOUT_MASK ((1<<PIN_RESET)|(1<<PIN_FEED_HOLD)|(1<<PIN_CYCLE_START))
 
 #endif

@@ -38,7 +38,11 @@
 void limits_init() 
 {
   LIMIT_DDR &= ~(LIMIT_MASK); // Set as input pins
-  LIMIT_PORT |= (LIMIT_MASK); // Enable internal pull-up resistors. Normal high operation.
+  #ifndef LIMIT_SWITCHES_ACTIVE_HIGH
+    LIMIT_PORT |= (LIMIT_MASK); // Enable internal pull-up resistors. Normal high operation.
+  #else // LIMIT_SWITCHES_ACTIVE_HIGH
+    LIMIT_PORT &= ~(LIMIT_MASK); // Normal low operation. Requires external pull-down.
+  #endif // !LIMIT_SWITCHES_ACTIVE_HIGH
   if (bit_istrue(settings.flags,BITFLAG_HARD_LIMIT_ENABLE)) {
     LIMIT_PCMSK |= LIMIT_MASK; // Enable specific pins of the Pin Change Interrupt
     PCICR |= (1 << LIMIT_INT); // Enable Pin Change Interrupt
@@ -89,6 +93,11 @@ ISR(LIMIT_INT_vect)
 // NOTE: Only the abort runtime command can interrupt this process.
 static void homing_cycle(uint8_t cycle_mask, int8_t pos_dir, bool invert_pin, float homing_rate) 
 {
+  #ifdef LIMIT_SWITCHES_ACTIVE_HIGH
+    // When in an active-high switch configuration, invert_pin needs to be adjusted.
+    invert_pin = !invert_pin;
+  #endif
+
   // Determine governing axes with finest step resolution per distance for the Bresenham
   // algorithm. This solves the issue when homing multiple axes that have different 
   // resolutions without exceeding system acceleration setting. It doesn't have to be

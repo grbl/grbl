@@ -307,14 +307,14 @@ void plan_init()
   memset(&pl, 0, sizeof(pl)); // Clear planner struct
 }
 
-inline void plan_discard_current_block() 
+void plan_discard_current_block() 
 {
   if (block_buffer_head != block_buffer_tail) {
     block_buffer_tail = next_block_index( block_buffer_tail );
   }
 }
 
-inline block_t *plan_get_current_block() 
+block_t *plan_get_current_block() 
 {
   if (block_buffer_head == block_buffer_tail) { return(NULL); }
   return(&block_buffer[block_buffer_tail]);
@@ -393,7 +393,7 @@ void plan_buffer_line(float x, float y, float z, float feed_rate, uint8_t invert
   // average travel per step event changes. For a line along one axis the travel per step event
   // is equal to the travel/step in the particular axis. For a 45 degree line the steppers of both
   // axes might step for every step event. Travel per step event is then sqrt(travel_x^2+travel_y^2).
-  // To generate trapezoids with contant acceleration between blocks the rate_delta must be computed 
+  // To generate trapezoids with constant acceleration between blocks the rate_delta must be computed 
   // specifically for each line to compensate for this phenomenon:
   // Convert universal acceleration for direction-dependent stepper rate change parameter
   block->rate_delta = ceil( block->step_event_count*inverse_millimeters *  
