@@ -213,6 +213,15 @@
 // work well and are cheap to find) and wire in a low-pass circuit into each limit pin.
 // #define ENABLE_SOFTWARE_DEBOUNCE // Default disabled. Uncomment to enable.
 
+// Enable CoreXY kinematics
+// http://corexy.com/
+// #define COREXY // Default disabled. Uncomment to enable.
+
+#ifdef COREXY  // Where A and B motors are connected
+ #define A_MOTOR X_AXIS
+ #define B_MOTOR Y_AXIS
+#endif
+
 // ---------------------------------------------------------------------------------------
 
 // TODO: Install compile-time option to send numeric status codes rather than strings.
