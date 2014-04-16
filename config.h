@@ -220,6 +220,10 @@
 #ifdef COREXY  // Where A and B motors are connected
  #define A_MOTOR X_AXIS
  #define B_MOTOR Y_AXIS
+
+ // Define axis X and Y to do homing separately so it will work with CoreXY, use something like this on homing section above
+ // #define HOMING_CYCLE_1 (1<<X_AXIS)
+ // #define HOMING_CYCLE_2 (1<<Y_AXIS)
 #endif
 
 // ---------------------------------------------------------------------------------------
