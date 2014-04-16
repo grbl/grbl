@@ -392,6 +392,13 @@ ISR(TIMER1_COMPA_vect)
   // During a homing cycle, lock out and prevent desired axes from moving.
   if (sys.state == STATE_HOMING) { st.step_outbits &= sys.homing_axis_lock; }   
 
+#ifdef COREXY
+  if (sys.state == STATE_HOMING) {
+    if (st.counter_x != 0) { st.step_outbits |= (1<<X_STEP_BIT); }
+    if (st.counter_y != 0) { st.step_outbits |= (1<<Y_STEP_BIT); }
+  }
+#endif
+
   st.step_count--; // Decrement step events count 
   if (st.step_count == 0) {
     // Segment is complete. Discard current segment and advance segment indexing.
