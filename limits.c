@@ -179,15 +179,12 @@ void limits_go_home(uint8_t cycle_mask)
       // Check limit state. Lock out cycle axes when they change.
       limit_state = LIMIT_PIN;
       if (invert_pin) { limit_state ^= LIMIT_MASK; }
-//#ifndef COREXY
       if (axislock & (1<<X_STEP_BIT)) {
         if (limit_state & (1<<X_LIMIT_BIT)) { axislock &= ~(1<<X_STEP_BIT); }
       }
       if (axislock & (1<<Y_STEP_BIT)) {
         if (limit_state & (1<<Y_LIMIT_BIT)) { axislock &= ~(1<<Y_STEP_BIT); }
       }
-//#else
-//#endif
       if (axislock & (1<<Z_STEP_BIT)) {
         if (limit_state & (1<<Z_LIMIT_BIT)) { axislock &= ~(1<<Z_STEP_BIT); }
       }
