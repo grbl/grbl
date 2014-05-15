@@ -12,4 +12,6 @@ Grbl includes full acceleration management with look ahead. That means the contr
 
 *Note for users upgrading from 0.51 to 0.6:* The new version has new and improved default pin-out. If nothing works when you upgrade, that is because the pulse trains are coming from the wrong pins. This is a simple matter of editing config.h – the whole legacy pin assignment is there for you to uncomment.
 
+*Note on licensing: Grbl has been re-licensed to the MIT software license. This change applies to all proceeding versions of Grbl. Please see the COPYING text for details.
+
 _The project was initially inspired by the Arduino GCode Interpreter by Mike Ellery_
