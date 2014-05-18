@@ -9,6 +9,8 @@ It accepts standards-compliant G-code and has been tested with the output of sev
 
 Grbl includes full acceleration management with look ahead. That means the controller will look up to 18 motions into the future and plan its velocities ahead to deliver smooth acceleration and jerk-free cornering.
 
+* Note on licensing: Grbl has been re-licensed to the MIT software license. Please see the COPYING text for details.
+
 * For more information and help, check out our **[Wiki pages!](https://github.com/grbl/grbl/wiki)** If you find that the information is out-dated, please to help us keep it updated by editing it or notifying our community! Thanks!
 
 ##Downloads (Right-Click and Save-Link-As):
