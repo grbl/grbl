@@ -87,11 +87,11 @@ uint8_t system_execute_line(char *line)
   switch( line[char_counter] ) {
     case 0 : report_grbl_help(); break;
     case 'G' : // Prints gcode parser state
-      if ( line[++char_counter] != 0 ) { return(STATUS_UNSUPPORTED_STATEMENT); }
+      if ( line[++char_counter] != 0 ) { return(STATUS_INVALID_STATEMENT); }
       else { report_gcode_modes(); }
       break;   
     case 'C' : // Set check g-code mode [IDLE/CHECK]
-      if ( line[++char_counter] != 0 ) { return(STATUS_UNSUPPORTED_STATEMENT); }
+      if ( line[++char_counter] != 0 ) { return(STATUS_INVALID_STATEMENT); }
       // Perform reset when toggling off. Check g-code mode should only work if Grbl
       // is idle and ready, regardless of alarm locks. This is mainly to keep things
       // simple and consistent.
@@ -105,7 +105,7 @@ uint8_t system_execute_line(char *line)
       }
       break; 
     case 'X' : // Disable alarm lock [ALARM]
-      if ( line[++char_counter] != 0 ) { return(STATUS_UNSUPPORTED_STATEMENT); }
+      if ( line[++char_counter] != 0 ) { return(STATUS_INVALID_STATEMENT); }
       if (sys.state == STATE_ALARM) { 
         report_feedback_message(MESSAGE_ALARM_UNLOCK);
         sys.state = STATE_IDLE;
@@ -129,11 +129,11 @@ uint8_t system_execute_line(char *line)
       if ( !(sys.state == STATE_IDLE || sys.state == STATE_ALARM) ) { return(STATUS_IDLE_ERROR); }
       switch( line[char_counter] ) {
         case '$' : // Prints Grbl settings [IDLE/ALARM]
-          if ( line[++char_counter] != 0 ) { return(STATUS_UNSUPPORTED_STATEMENT); }
+          if ( line[++char_counter] != 0 ) { return(STATUS_INVALID_STATEMENT); }
           else { report_grbl_settings(); }
           break;
         case '#' : // Print Grbl NGC parameters
-          if ( line[++char_counter] != 0 ) { return(STATUS_UNSUPPORTED_STATEMENT); }
+          if ( line[++char_counter] != 0 ) { return(STATUS_INVALID_STATEMENT); }
           else { report_ngc_parameters(); }
           break;          
         case 'H' : // Perform homing cycle [IDLE/ALARM]
@@ -151,7 +151,7 @@ uint8_t system_execute_line(char *line)
               report_build_info(line);
             }
           } else { // Store startup line [IDLE/ALARM]
-            if(line[char_counter++] != '=') { return(STATUS_UNSUPPORTED_STATEMENT); }
+            if(line[char_counter++] != '=') { return(STATUS_INVALID_STATEMENT); }
             helper_var = char_counter; // Set helper variable as counter to start of user info line.
             do {
               line[char_counter-helper_var] = line[char_counter];
@@ -176,7 +176,7 @@ uint8_t system_execute_line(char *line)
           }
         default :  // Storing setting methods [IDLE/ALARM]
           if(!read_float(line, &char_counter, &parameter)) { return(STATUS_BAD_NUMBER_FORMAT); }
-          if(line[char_counter++] != '=') { return(STATUS_UNSUPPORTED_STATEMENT); }
+          if(line[char_counter++] != '=') { return(STATUS_INVALID_STATEMENT); }
           if (helper_var) { // Store startup line
             // Prepare sending gcode block to gcode parser by shifting all characters
             helper_var = char_counter; // Set helper variable as counter to start of gcode block
@@ -192,7 +192,7 @@ uint8_t system_execute_line(char *line)
             }
           } else { // Store global setting.
             if(!read_float(line, &char_counter, &value)) { return(STATUS_BAD_NUMBER_FORMAT); }
-            if(line[char_counter] != 0) { return(STATUS_UNSUPPORTED_STATEMENT); }
+            if(line[char_counter] != 0) { return(STATUS_INVALID_STATEMENT); }
             return(settings_store_global_setting(parameter, value));
           }
       }    

@@ -97,16 +97,15 @@ void mc_line(float *target, float feed_rate, uint8_t invert_feed_rate)
 // of each segment is configured in settings.arc_tolerance, which is defined to be the maximum normal
 // distance from segment to the circle when the end points both lie on the circle.
 #ifdef USE_LINE_NUMBERS
-void mc_arc(float *position, float *target, float *offset, uint8_t axis_0, uint8_t axis_1, 
-  uint8_t axis_linear, float feed_rate, uint8_t invert_feed_rate, float radius, uint8_t isclockwise, int32_t line_number)
+void mc_arc(float *position, float *target, float *offset, float radius, float feed_rate, 
+  uint8_t invert_feed_rate, uint8_t axis_0, uint8_t axis_1, uint8_t axis_linear, int32_t line_number)
 #else
-void mc_arc(float *position, float *target, float *offset, uint8_t axis_0, uint8_t axis_1, 
-  uint8_t axis_linear, float feed_rate, uint8_t invert_feed_rate, float radius, uint8_t isclockwise)
+void mc_arc(float *position, float *target, float *offset, float radius, float feed_rate,
+  uint8_t invert_feed_rate, uint8_t axis_0, uint8_t axis_1, uint8_t axis_linear)
 #endif
-{      
+{
   float center_axis0 = position[axis_0] + offset[axis_0];
   float center_axis1 = position[axis_1] + offset[axis_1];
-  float linear_travel = target[axis_linear] - position[axis_linear];
   float r_axis0 = -offset[axis_0];  // Radius vector from center to current location
   float r_axis1 = -offset[axis_1];
   float rt_axis0 = target[axis_0] - center_axis0;
@@ -114,7 +113,7 @@ void mc_arc(float *position, float *target, float *offset, uint8_t axis_0, uint8
   
   // CCW angle between position and target from circle center. Only one atan2() trig computation required.
   float angular_travel = atan2(r_axis0*rt_axis1-r_axis1*rt_axis0, r_axis0*rt_axis0+r_axis1*rt_axis1);
-  if (isclockwise) { // Correct atan2 output per direction
+  if (gc_state.modal.motion == MOTION_MODE_CW_ARC) { // Correct atan2 output per direction
     if (angular_travel >= 0) { angular_travel -= 2*M_PI; }
   } else {
     if (angular_travel <= 0) { angular_travel += 2*M_PI; }
@@ -123,10 +122,8 @@ void mc_arc(float *position, float *target, float *offset, uint8_t axis_0, uint8
   // NOTE: Segment end points are on the arc, which can lead to the arc diameter being smaller by up to
   // (2x) settings.arc_tolerance. For 99% of users, this is just fine. If a different arc segment fit
   // is desired, i.e. least-squares, midpoint on arc, just change the mm_per_arc_segment calculation.
-  // Computes: mm_per_arc_segment = sqrt(4*arc_tolerance*(2*radius-arc_tolerance)),
-  //           segments = millimeters_of_travel/mm_per_arc_segment
-  float millimeters_of_travel = hypot(angular_travel*radius, fabs(linear_travel));
-  uint16_t segments = floor(0.5*millimeters_of_travel/
+  // For the intended uses of Grbl, this value shouldn't exceed 2000 for the strictest of cases.
+  uint16_t segments = floor(fabs(0.5*angular_travel*radius)/
                           sqrt(settings.arc_tolerance*(2*radius - settings.arc_tolerance)) );
   
   if (segments) { 
@@ -136,7 +133,7 @@ void mc_arc(float *position, float *target, float *offset, uint8_t axis_0, uint8
     if (invert_feed_rate) { feed_rate *= segments; }
    
     float theta_per_segment = angular_travel/segments;
-    float linear_per_segment = linear_travel/segments;
+    float linear_per_segment = (target[axis_linear] - position[axis_linear])/segments;
 
     /* Vector rotation by transformation matrix: r is the original vector, r_T is the rotated vector,
        and phi is the angle of rotation. Solution approach by Jens Geisler.
@@ -166,17 +163,13 @@ void mc_arc(float *position, float *target, float *offset, uint8_t axis_0, uint8
     float sin_T = theta_per_segment*0.16666667*(cos_T + 4.0);
     cos_T *= 0.5;
 
-    float arc_target[N_AXIS];
     float sin_Ti;
     float cos_Ti;
     float r_axisi;
     uint16_t i;
     uint8_t count = 0;
   
-    // Initialize the linear axis
-    arc_target[axis_linear] = position[axis_linear];
-  
-    for (i = 1; i<segments; i++) { // Increment (segments-1)
+    for (i = 1; i<segments; i++) { // Increment (segments-1).
       
       if (count < N_ARC_CORRECTION) {
         // Apply vector rotation matrix. ~40 usec
@@ -184,7 +177,7 @@ void mc_arc(float *position, float *target, float *offset, uint8_t axis_0, uint8
         r_axis0 = r_axis0*cos_T - r_axis1*sin_T;
         r_axis1 = r_axisi;
         count++;
-      } else {
+      } else {      
         // Arc correction to radius vector. Computed only every N_ARC_CORRECTION increments. ~375 usec
         // Compute exact location by applying transformation matrix from initial radius vector(=-offset).
         cos_Ti = cos(i*theta_per_segment);
@@ -195,14 +188,14 @@ void mc_arc(float *position, float *target, float *offset, uint8_t axis_0, uint8
       }
   
       // Update arc_target location
-      arc_target[axis_0] = center_axis0 + r_axis0;
-      arc_target[axis_1] = center_axis1 + r_axis1;
-      arc_target[axis_linear] += linear_per_segment;
+      position[axis_0] = center_axis0 + r_axis0;
+      position[axis_1] = center_axis1 + r_axis1;
+      position[axis_linear] += linear_per_segment;
       
       #ifdef USE_LINE_NUMBERS
-      mc_line(arc_target, feed_rate, invert_feed_rate, line_number);
+      mc_line(position, feed_rate, invert_feed_rate, line_number);
       #else
-      mc_line(arc_target, feed_rate, invert_feed_rate);
+      mc_line(position, feed_rate, invert_feed_rate);
       #endif
       
       // Bail mid-circle on system abort. Runtime command check already performed by mc_line.
@@ -221,6 +214,8 @@ void mc_arc(float *position, float *target, float *offset, uint8_t axis_0, uint8
 // Execute dwell in seconds.
 void mc_dwell(float seconds) 
 {
+   if (sys.state != STATE_CHECK_MODE) { return; }
+   
    uint16_t i = floor(1000/DWELL_TIME_STEP*seconds);
    protocol_buffer_synchronize();
    delay_ms(floor(1000*seconds-i*DWELL_TIME_STEP)); // Delay millisecond remainder.
@@ -290,7 +285,7 @@ void mc_probe_cycle(float *target, float feed_rate, uint8_t invert_feed_rate)
   mc_line(target, feed_rate, invert_feed_rate);
   #endif
 
-  //TODO - make sure the probe isn't already closed
+  // NOTE: Parser error-checking ensures the probe isn't already closed/triggered.
   sys.probe_state = PROBE_ACTIVE;
 
   sys.execute |= EXEC_CYCLE_START;
@@ -328,7 +323,7 @@ void mc_probe_cycle(float *target, float feed_rate, uint8_t invert_feed_rate)
   // Gcode parser position was circumvented by the this routine, so sync position now.
   gc_sync_position();
 
-  //TODO - ouput a mandatory status update with the probe position.  What if another was recently sent?
+  // Output the probe position as message.
   report_probe_parameters();
 }
 

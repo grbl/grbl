@@ -29,7 +29,7 @@
 #define config_h
 
 // Default settings. Used when resetting EEPROM. Change to desired name in defaults.h
-#define DEFAULTS_SHERLINE_5400
+#define DEFAULTS_GENERIC
 
 // Serial baud rate
 #define BAUD_RATE 115200

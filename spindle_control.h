@@ -23,11 +23,6 @@
 #define spindle_control_h 
 
 
-#define SPINDLE_DISABLE 0 // Must be zero.
-#define SPINDLE_ENABLE_CW 1
-#define SPINDLE_ENABLE_CCW 2
-
-
 // Initializes spindle pins and hardware PWM, if enabled.
 void spindle_init();
 

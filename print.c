@@ -76,32 +76,52 @@ void print_uint8_base2(uint8_t n)
 		serial_write('0' + buf[i - 1]);
 }
 
-void print_uint32_base10(unsigned long n)
+void print_uint8_base10(uint8_t n)
 { 
-  unsigned char buf[10]; 
-  uint8_t i = 0;
-  
   if (n == 0) {
     serial_write('0');
     return;
   } 
+
+  unsigned char buf[3];
+  uint8_t i = 0;
+
+  while (n > 0) {
+      buf[i++] = n % 10 + '0';
+      n /= 10;
+  }
+
+  for (; i > 0; i--)
+      serial_write(buf[i - 1]);
+}
+
+void print_uint32_base10(unsigned long n)
+{ 
+  if (n == 0) {
+    serial_write('0');
+    return;
+  } 
+
+  unsigned char buf[10]; 
+  uint8_t i = 0;  
   
   while (n > 0) {
-    buf[i++] = n % 10 + '0';
+    buf[i++] = n % 10;
     n /= 10;
   }
     
   for (; i > 0; i--)
-    serial_write(buf[i-1]);
+    serial_write('0' + buf[i-1]);
 }
 
 void printInteger(long n)
 {
   if (n < 0) {
     serial_write('-');
-    n = -n;
+    print_uint32_base10((-n));
+  } else {
+    print_uint32_base10(n);
   }
-  print_uint32_base10(n);
 }
 
 // Convert float to string by immediately converting to a long integer, which contains

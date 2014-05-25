@@ -22,11 +22,6 @@
 #define coolant_control_h 
 
 
-#define COOLANT_MIST_ENABLE 2
-#define COOLANT_FLOOD_ENABLE 1
-#define COOLANT_DISABLE 0 // Must be zero.
-
-
 void coolant_init();
 void coolant_stop();
 void coolant_run(uint8_t mode);

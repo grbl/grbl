@@ -36,37 +36,27 @@ static char line[LINE_BUFFER_SIZE]; // Line to be executed. Zero-terminated.
 // Directs and executes one line of formatted input from protocol_process. While mostly
 // incoming streaming g-code blocks, this also directs and executes Grbl internal commands,
 // such as settings, initiating the homing cycle, and toggling switch states.
-// TODO: Eventually re-organize this function to more cleanly organize order of operations,
-// which will hopefully reduce some of the current spaghetti logic and dynamic memory usage. 
 static void protocol_execute_line(char *line) 
 {      
   protocol_execute_runtime(); // Runtime command check point.
   if (sys.abort) { return; } // Bail to calling function upon system abort  
 
-  uint8_t status;
   if (line[0] == 0) {
     // Empty or comment line. Send status message for syncing purposes.
-    status = STATUS_OK;
+    report_status_message(STATUS_OK);
 
   } else if (line[0] == '$') {
     // Grbl '$' system command
-    status = system_execute_line(line);
+    report_status_message(system_execute_line(line));
     
+  } else if (sys.state == STATE_ALARM) {
+    // Everything else is gcode. Block if in alarm mode.
+    report_status_message(STATUS_ALARM_LOCK);
+
   } else {
-    // Everything else is gcode. Send to g-code parser! Block if in alarm mode.
-    if (sys.state == STATE_ALARM) { status = STATUS_ALARM_LOCK; }
-    else { status = gc_execute_line(line); }
-    
-    // TODO: Separate the parsing from the g-code execution. Need to re-write the parser
-    // completely to do this. First parse the line completely, checking for modal group 
-    // errors and storing all of the g-code words. Then, send the stored g-code words to
-    // a separate g-code executor. This will be more in-line with actual g-code protocol.
-    
-    // TODO: Clean up the multi-tasking workflow with the execution of commands. It's a 
-    // bit complicated and patch-worked. Could be made simplier to understand.
+    // Parse and execute g-code block!
+    report_status_message(gc_execute_line(line));
   }
-  
-  report_status_message(status);
 }
 
 
@@ -117,12 +107,27 @@ void protocol_main_loop()
           }
         } else {
           if (c <= ' ') { 
-            // Throw away whitepace and control characters
+            // Throw away whitepace and control characters  
           } else if (c == '/') { 
-            // Block delete not supported. Ignore character.
+            // Block delete NOT SUPPORTED. Ignore character.
+            // NOTE: If supported, would simply need to check the system if block delete is enabled.
           } else if (c == '(') {
             // Enable comments flag and ignore all characters until ')' or EOL.
+            // NOTE: This doesn't follow the NIST definition exactly, but is good enough for now.
+            // In the future, we could simply remove the items within the comments, but retain the
+            // comment control characters, so that the g-code parser can error-check it.
             iscomment = true;
+          // } else if (c == ';') {
+            // Comment character to EOL NOT SUPPORTED. LinuxCNC definition. Not NIST.
+            
+          // TODO: Install '%' feature 
+          // } else if (c == '%') {
+            // Program start-end percent sign NOT SUPPORTED.
+            // NOTE: This maybe installed to tell Grbl when a program is running vs manual input,
+            // where, during a program, the system auto-cycle start will continue to execute 
+            // everything until the next '%' sign. This will help fix resuming issues with certain
+            // functions that empty the planner buffer to execute its task on-time.
+
           } else if (char_counter >= LINE_BUFFER_SIZE-1) {
             // Detect line buffer overflow. Report error and reset line buffer.
             report_status_message(STATUS_OVERFLOW);
