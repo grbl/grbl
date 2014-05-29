@@ -45,7 +45,7 @@ void coolant_stop()
 
 void coolant_run(uint8_t mode)
 {
-  if (sys.state != STATE_CHECK_MODE) { return; }
+  if (sys.state == STATE_CHECK_MODE) { return; }
   
   protocol_buffer_synchronize(); // Ensure coolant turns on when specified in program.
   if (mode == COOLANT_FLOOD_ENABLE) {

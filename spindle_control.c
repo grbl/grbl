@@ -57,7 +57,7 @@ void spindle_stop()
 
 void spindle_run(uint8_t direction, float rpm) 
 {
-  if (sys.state != STATE_CHECK_MODE) { return; }
+  if (sys.state == STATE_CHECK_MODE) { return; }
   
   // Empty planner buffer to ensure spindle is set when programmed.
   protocol_buffer_synchronize(); 
