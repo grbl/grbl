@@ -46,6 +46,13 @@
 // may exist from user-supplied templates or directly user-defined in pin_map.h
 #define PIN_MAP_ARDUINO_UNO
 
+//
+// Enable PWM spindle speed control on PIN 11
+// This also causes the stepper to use Timer 0 instead of Timer 2 (overflow)
+// to avoid conflicts with Timer 2 which is needed for PWM
+// This also means PIN 11 is no longer available for a Z-limit switch
+#define SPINDLE_SPEEDCONTROL_PIN11
+
 // Define runtime command special characters. These characters are 'picked-off' directly from the
 // serial read data stream and are not passed to the grbl line execution parser. Select characters
 // that do not and must not exist in the streamed g-code program. ASCII control characters may be 

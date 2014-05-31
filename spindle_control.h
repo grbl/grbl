@@ -32,7 +32,8 @@
 #include <avr/io.h>
 
 void spindle_init();
-void spindle_run(int8_t direction); //, uint16_t rpm);
+void spindle_run(int8_t direction);
+void spindle_speed(uint8_t speed);
 void spindle_stop();
 
 #endif

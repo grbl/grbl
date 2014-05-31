@@ -36,14 +36,16 @@ static uint8_t current_direction;
 void spindle_init()
 {
   current_direction = 0;
-  SPINDLE_ENABLE_DDR |= (1<<SPINDLE_ENABLE_BIT);
-  SPINDLE_DIRECTION_DDR |= (1<<SPINDLE_DIRECTION_BIT);  
+  SPINDLE_SPEED_DDR |= (1 << SPINDLE_ENABLE_BIT);		// OUTPUT
+  SPINDLE_ENABLE_DDR |= (1 << SPINDLE_ENABLE_BIT);
+  SPINDLE_DIRECTION_DDR |= (1 << SPINDLE_DIRECTION_BIT);  
   spindle_stop();
 }
 
 void spindle_stop()
 {
-  SPINDLE_ENABLE_PORT &= ~(1<<SPINDLE_ENABLE_BIT);
+	spindle_speed(0);
+	SPINDLE_ENABLE_PORT &= ~(1 << SPINDLE_ENABLE_BIT);
 }
 
 void spindle_run(int8_t direction) //, uint16_t rpm) 
@@ -62,4 +64,28 @@ void spindle_run(int8_t direction) //, uint16_t rpm)
     }
     current_direction = direction;
   }
+}
+
+void spindle_speed(uint8_t speed)		// Speed is analog 0 - 255 (0 to 5v)
+{
+#ifdef SPINDLE_SPEEDCONTROL_PIN11
+	SPINDLE_SPEED_DDR |= (1 << SPINDLE_SPEED_BIT);	// OUTPUT mode on PIN 11
+	if(speed == 0)
+	{
+		TCCR2A &= ~(1 << COM2A1);  // Output voltage is zero on PIN 11
+		SPINDLE_SPEED_PORT &= ~(1 << SPINDLE_SPEED_BIT);
+		return;
+	}
+	else if(speed == 255)
+	{
+		TCCR2A &= ~(1 << COM2A1);  // Output voltage is zero on PIN 11
+		SPINDLE_SPEED_PORT |= (1 << SPINDLE_SPEED_BIT);		// Full on
+		return;
+	}
+	//
+	// Set speed PWM...
+	TCCR2A = (1 << COM2A1) | (1 << WGM21) | (1 << WGM20);
+	TCCR2B = (TCCR2B & 0b11111000) | 0x02; // set to 1/8 Prescaler
+	OCR2A = speed;
+#endif
 }

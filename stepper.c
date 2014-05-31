@@ -164,8 +164,13 @@ ISR(TIMER1_COMPA_vect)
   #endif
   // Enable step pulse reset timer so that The Stepper Port Reset Interrupt can reset the signal after
   // exactly settings.pulse_microseconds microseconds, independent of the main Timer1 prescaler.
+#ifdef SPINDLE_SPEEDCONTROL_PIN11
+	TCNT0 = step_pulse_time; // Reload Timer0 counter
+	TCCR0B = (1 << CS01);    // Begin Timer0. Full speed, 1/8 prescaler
+#else
   TCNT2 = step_pulse_time; // Reload timer counter
   TCCR2B = (1<<CS21); // Begin timer2. Full speed, 1/8 prescaler
+#endif
 
   busy = true;
   // Re-enable interrupts to allow ISR_TIMER2_OVERFLOW to trigger on-time and allow serial communications
@@ -324,12 +329,21 @@ ISR(TIMER1_COMPA_vect)
 // a few microseconds, if they execute right before one another. Not a big deal, but can
 // cause issues at high step rates if another high frequency asynchronous interrupt is 
 // added to Grbl.
+#ifdef SPINDLE_SPEEDCONTROL_PIN11
+ISR(TIMER0_OVF_vect)
+{
+	// Reset stepping pins (leave the direction pins)
+	STEPPING_PORT = (STEPPING_PORT & ~STEP_MASK) | (settings.invert_mask & STEP_MASK); 
+	TCCR0B = 0; // Disable Timer0 to prevent re-entering this interrupt when it's not needed. 
+}
+#else
 ISR(TIMER2_OVF_vect)
 {
   // Reset stepping pins (leave the direction pins)
   STEPPING_PORT = (STEPPING_PORT & ~STEP_MASK) | (settings.invert_mask & STEP_MASK); 
   TCCR2B = 0; // Disable Timer2 to prevent re-entering this interrupt when it's not needed. 
 }
+#endif
 
 #ifdef STEP_PULSE_DELAY
   // This interrupt is used only when STEP_PULSE_DELAY is enabled. Here, the step pulse is
@@ -370,6 +384,16 @@ void st_init()
   TCCR1A &= ~(3<<COM1A0); 
   TCCR1A &= ~(3<<COM1B0); 
 	
+#ifdef SPINDLE_SPEEDCONTROL_PIN11
+  // Configure Timer 0: Stepper Port Reset Interrupt
+  TIMSK0 &= ~((1<<OCIE0B) | (1<<OCIE0A) | (1<<TOIE0)); // Disconnect OC0 outputs and OVF interrupt.
+  TCCR0A = 0; // Normal operation
+  TCCR0B = 0; // Disable Timer0 until needed
+  TIMSK0 |= (1<<TOIE0); // Enable Timer0 overflow interrupt
+#ifdef STEP_PULSE_DELAY
+  TIMSK0 |= (1<<OCIE0A); // Enable Timer0 Compare Match A interrupt
+#endif
+#else
   // Configure Timer 2
   TCCR2A = 0; // Normal operation
   TCCR2B = 0; // Disable timer until needed.
@@ -377,6 +401,7 @@ void st_init()
   #ifdef STEP_PULSE_DELAY
     TIMSK2 |= (1<<OCIE2A); // Enable Timer2 Compare Match A interrupt
   #endif
+#endif
 
   // Start in the idle state, but first wake up to check for keep steppers enabled option.
   st_wake_up();

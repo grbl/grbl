@@ -32,6 +32,7 @@
 
 #ifndef pin_map_h
 #define pin_map_h
+#include "config.h"
 
 #ifdef PIN_MAP_ARDUINO_UNO // AVR 328p, Officially supported by Grbl.
 
@@ -67,8 +68,17 @@
   #define LIMIT_INT       PCIE0  // Pin change interrupt enable pin
   #define LIMIT_INT_vect  PCINT0_vect 
   #define LIMIT_PCMSK     PCMSK0 // Pin change interrupt register
+#ifdef SPINDLE_SPEEDCONTROL_PIN11
+  #define LIMIT_MASK ((1 << X_LIMIT_BIT)|(1 << Y_LIMIT_BIT)) // X & Y limit bits only, PIN 11 used for PWM spindle speed
+#else
   #define LIMIT_MASK ((1<<X_LIMIT_BIT)|(1<<Y_LIMIT_BIT)|(1<<Z_LIMIT_BIT)) // All limit bits
+#endif
 
+#ifdef SPINDLE_SPEEDCONTROL_PIN11
+  #define SPINDLE_SPEED_DDR   DDRB
+  #define SPINDLE_SPEED_PORT  PORTB
+  #define SPINDLE_SPEED_BIT   3  // Uno Digital Pin 11 (PWM)
+#endif
   #define SPINDLE_ENABLE_DDR   DDRB
   #define SPINDLE_ENABLE_PORT  PORTB
   #define SPINDLE_ENABLE_BIT   4  // Uno Digital Pin 12
