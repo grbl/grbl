@@ -124,9 +124,14 @@ uint8_t gc_execute_line(char *line)
     if (!read_float(line, &char_counter, &value)) { FAIL(STATUS_BAD_NUMBER_FORMAT); } // [Expected word value]
 
     // Convert values to smaller uint8 significand and mantissa values for parsing this word.
-    // NOTE: Mantissa is multiplied by 1000 to catch non-integer command values.
+    // NOTE: Mantissa is multiplied by 100 to catch non-integer command values. This is more 
+    // accurate than the NIST gcode requirement of x10 when used for commands, but not quite
+    // accurate enough for value words that require integers to within 0.0001. This should be
+    // a good enough comprimise and catch most all non-integer errors. To make it compliant, 
+    // we would simply need to change the mantissa to int16, but this add compiled flash space.
+    // Maybe update this later. 
     int_value = trunc(value);
-    mantissa = trunc(1000*(value - int_value)); // Compute mantissa for Gxx.x commands
+    mantissa = trunc(100*(value - int_value)); // Compute mantissa for Gxx.x commands
 
     // Check if the g-code word is supported or errors due to modal group violations or has
     // been repeated in the g-code block. If ok, update the command or record its value.
@@ -153,7 +158,7 @@ uint8_t gc_execute_line(char *line)
               case 28:
                 switch(mantissa) {
                   case 0: gc_block.non_modal_command = NON_MODAL_GO_HOME_0; break;  // G28
-                  case 100: gc_block.non_modal_command = NON_MODAL_SET_HOME_0; break; // G28.1
+                  case 10: gc_block.non_modal_command = NON_MODAL_SET_HOME_0; break; // G28.1
                   default: FAIL(STATUS_GCODE_UNSUPPORTED_COMMAND); // [Unsupported G28.x command]
                 }
                 mantissa = 0; // Set to zero to indicate valid non-integer G command.
@@ -161,7 +166,7 @@ uint8_t gc_execute_line(char *line)
               case 30: 
                 switch(mantissa) {
                   case 0: gc_block.non_modal_command = NON_MODAL_GO_HOME_1; break;  // G30
-                  case 100: gc_block.non_modal_command = NON_MODAL_SET_HOME_1; break; // G30.1
+                  case 10: gc_block.non_modal_command = NON_MODAL_SET_HOME_1; break; // G30.1
                   default: FAIL(STATUS_GCODE_UNSUPPORTED_COMMAND); // [Unsupported G30.x command]
                 }
                 mantissa = 0; // Set to zero to indicate valid non-integer G command.
@@ -170,7 +175,7 @@ uint8_t gc_execute_line(char *line)
               case 92: 
                 switch(mantissa) {
                   case 0: gc_block.non_modal_command = NON_MODAL_SET_COORDINATE_OFFSET; break; // G92
-                  case 100: gc_block.non_modal_command = NON_MODAL_RESET_COORDINATE_OFFSET; break; // G92.1
+                  case 10: gc_block.non_modal_command = NON_MODAL_RESET_COORDINATE_OFFSET; break; // G92.1
                   default: FAIL(STATUS_GCODE_UNSUPPORTED_COMMAND); // [Unsupported G92.x command]
                 }
                 mantissa = 0; // Set to zero to indicate valid non-integer G command.
@@ -191,11 +196,11 @@ uint8_t gc_execute_line(char *line)
               case 3: gc_block.modal.motion = MOTION_MODE_CCW_ARC; break; // G3
               case 38: 
                 switch(mantissa) {
-                  case 200: gc_block.modal.motion = MOTION_MODE_PROBE; break;  // G38.2
+                  case 20: gc_block.modal.motion = MOTION_MODE_PROBE; break;  // G38.2
                   // NOTE: If G38.3+ are enabled, change mantissa variable type to uint16_t.
-                  // case 300: gc_block.modal.motion = MOTION_MODE_PROBE_NO_ERROR; break; // G38.3 Not supported.
-                  // case 400: // Not supported.
-                  // case 500: // Not supported.
+                  // case 30: gc_block.modal.motion = MOTION_MODE_PROBE_NO_ERROR; break; // G38.3 Not supported.
+                  // case 40: // Not supported.
+                  // case 50: // Not supported.
                   default: FAIL(STATUS_GCODE_UNSUPPORTED_COMMAND); // [Unsupported G38.x command]
                 }
                 mantissa = 0; // Set to zero to indicate valid non-integer G command.
@@ -324,6 +329,7 @@ uint8_t gc_execute_line(char *line)
       
     }   
   } 
+  // Parsing complete!
   
 
   /* -------------------------------------------------------------------------------------
@@ -338,8 +344,7 @@ uint8_t gc_execute_line(char *line)
      accurately calculated if we convert these values in conjunction with the error-checking.
      This relegates the next execution step as only updating the system g-code modes and 
      performing the programmed actions in order. The execution step should not require any 
-     conversion calculations and would only require minimal computations necessary to execute
-     the commands.
+     conversion calculations and would only require minimal checks necessary to execute.
   */
 
   /* NOTE: At this point, the g-code block has been parsed and the block line can be freed.
@@ -510,7 +515,7 @@ uint8_t gc_execute_line(char *line)
     
       // Load EEPROM coordinate data and pre-calculate the new coordinate data.
       if (int_value > 0) { int_value--; } // Adjust P1-P6 index to EEPROM coordinate data indexing.
-      else { int_value = gc_state.modal.coord_select; } // Index P0 as the active coordinate system
+      else { int_value = gc_block.modal.coord_select; } // Index P0 as the active coordinate system
       if (!settings_read_coord_data(int_value,parameter_data)) { FAIL(STATUS_SETTING_READ_FAIL); } // [EEPROM read fail]
       for (idx=0; idx<N_AXIS; idx++) { // Axes indices are consistent, so loop may be used.
         // Update axes defined only in block. Always in machine coordinates. Can change non-active system.
@@ -553,7 +558,7 @@ uint8_t gc_execute_line(char *line)
             // NOTE: G53 is never active with G28/30 since they are in the same modal group.
             if (gc_block.non_modal_command != NON_MODAL_ABSOLUTE_OVERRIDE) {
               // Apply coordinate offsets based on distance mode.
-              if (gc_state.modal.distance == DISTANCE_MODE_ABSOLUTE) {
+              if (gc_block.modal.distance == DISTANCE_MODE_ABSOLUTE) {
                 gc_block.values.xyz[idx] += coordinate_data[idx] + gc_state.coord_offset[idx];
               } else {  // Incremental mode
                 gc_block.values.xyz[idx] += gc_state.position[idx];
