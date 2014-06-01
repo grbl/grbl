@@ -742,8 +742,12 @@ uint8_t gc_execute_line(char *line)
             y -= gc_block.values.ijk[axis_1]; // Delta y between circle center and target
             float target_r = hypot_f(x,y);
             gc_block.values.r = hypot_f(gc_block.values.ijk[axis_0], gc_block.values.ijk[axis_1]); // Compute arc radius for mc_arc
-
-            if (fabs(target_r-gc_block.values.r) > 0.002) { FAIL(STATUS_GCODE_INVALID_TARGET); } // [Arc definition error]
+            
+            target_r = fabs(target_r-gc_block.values.r);
+            if (target_r > 0.005) { 
+              if (target_r > 0.5) { FAIL(STATUS_GCODE_INVALID_TARGET); } // [Arc definition error]
+              if (target_r > 0.001*gc_block.values.r) { FAIL(STATUS_GCODE_INVALID_TARGET); } // [Arc definition error]
+            }
           }
           break;
         case MOTION_MODE_PROBE:
