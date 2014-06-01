@@ -23,6 +23,11 @@ _**Edge/Development Branch:**_
 * [Grbl v0.9a Build 2013-03-19](http://bit.ly/Y0tMHo) : Edge Branch
   - New experimental stepper algorithm. Smoother. Axes acceleration and maximum velocity limits. Automatic arc segment scaling by tolerance setting, leading to much faster feedrates about them. Updated g-code G10. 30kHz step rate absolute max. CAUTION: Bugs still exist. Settings WILL be over-written. Please let us know of any lingering bugs (except with homing).
 
+_**SpindleSpeedControl_v0_8 Branch:**_
+* [Grbl v0.8l Atmega328p 16mhz 9600baud](http://www.andrewlsandoval.com/GrblSpindleSpeed/grbl.hex) (Last updated: 2014-05-31)
+  - Accepts S0 through S255 spindle speed commands and produces a matching PWM pulse (0 to 5v) on Arduino Pin 11.  It was necessary to disable the Z-axis limit switch functionality in order to use PWM pin 11 for spindle speed control.  In the future Z axis limit switch functionality might be moved to an Analog Input pin.  The stepper now uses Timer 0 overflow instead of Timer 2, in order to allow Timer 2 to be used with Pin 11 PWM.
+  - This change has been tested by connecting a FlexMod P3 laser diode driver's Mod+ to the Arduino PIN 11 and Mod- to the Arduino GND, and driving a M140 2 watt laser diode mounted on a Shapeoko 2 using gcode produced by PicLaser Lite to produce a grayscale image on wood.  PicLaser Lite can produce S0 to S255 commands to vary laser intensity for gray shades.
+  - Arduino PIN 12 is still used for M3/M4/M5 spindle enable/disable, and PIN 13 for spindle direction.  This allows a laser to be on and enabled via M3 at lower power (S0) for focusing and start-delay, and completely powered off (before removing safety googles) with M5.
   
 _**Archives:**_
 * [Grbl v0.8a Atmega328p 16mhz 9600baud](http://bit.ly/TVCTVv)

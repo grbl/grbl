@@ -232,9 +232,18 @@ uint8_t gc_execute_line(char *line)
       case 'P': p = value; break;                    
       case 'R': r = to_millimeters(value); break;
       case 'S': 
-        if (value < 0) { FAIL(STATUS_INVALID_STATEMENT); } // Cannot be negative
-        // TBD: Spindle speed not supported due to PWM issues, but may come back once resolved.
-        // gc.spindle_speed = value;
+		  {
+			  int_value = trunc(value);
+			  if(int_value < 0)
+			  {
+				  FAIL(STATUS_INVALID_STATEMENT);
+			  } // Cannot be negative
+			  else if(int_value > 255)
+			  {
+				  int_value = 255;
+			  }
+			  spindle_speed((uint8_t)int_value);
+		  }
         break;
       case 'T': 
         if (value < 0) { FAIL(STATUS_INVALID_STATEMENT); } // Cannot be negative
