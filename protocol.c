@@ -288,4 +288,4 @@ void protocol_buffer_synchronize()
 // NOTE: This function is called from the main loop and mc_line() only and executes when one of
 // two conditions exist respectively: There are no more blocks sent (i.e. streaming is finished, 
 // single commands), or the planner buffer is full and ready to go.
-void protocol_auto_cycle_start() { if (sys.auto_start) { sys.execute |= EXEC_CYCLE_START; } } 
+void protocol_auto_cycle_start() { if (sys.auto_start) { bit_true(sys.execute, EXEC_CYCLE_START); } } 

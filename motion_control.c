@@ -288,13 +288,13 @@ void mc_probe_cycle(float *target, float feed_rate, uint8_t invert_feed_rate)
   // NOTE: Parser error-checking ensures the probe isn't already closed/triggered.
   sys.probe_state = PROBE_ACTIVE;
 
-  sys.execute |= EXEC_CYCLE_START;
+  bit_true(sys.execute, EXEC_CYCLE_START);
   do {
     protocol_execute_runtime(); 
     if (sys.abort) { return; } // Check for system abort
   } while ((sys.state != STATE_IDLE) && (sys.state != STATE_QUEUED));
 
-  if (sys.probe_state == PROBE_ACTIVE) { sys.execute |= EXEC_CRIT_EVENT; }
+  if (sys.probe_state == PROBE_ACTIVE) { bit_true(sys.execute, EXEC_CRIT_EVENT); }
   protocol_execute_runtime();   // Check and execute run-time commands
   if (sys.abort) { return; } // Check for system abort
 
@@ -316,7 +316,7 @@ void mc_probe_cycle(float *target, float feed_rate, uint8_t invert_feed_rate)
   mc_line(target, feed_rate, invert_feed_rate); // Bypass mc_line(). Directly plan homing motion.
   #endif
 
-  sys.execute |= EXEC_CYCLE_START;
+  bit_true(sys.execute, EXEC_CYCLE_START);
   protocol_buffer_synchronize(); // Complete pull-off motion.
   if (sys.abort) { return; } // Did not complete. Alarm state set by mc_alarm.
 
@@ -337,7 +337,7 @@ void mc_reset()
 {
   // Only this function can set the system reset. Helps prevent multiple kill calls.
   if (bit_isfalse(sys.execute, EXEC_RESET)) {
-    sys.execute |= EXEC_RESET;
+    bit_true(sys.execute, EXEC_RESET);
 
     // Kill spindle and coolant.   
     spindle_stop();
@@ -348,7 +348,7 @@ void mc_reset()
     // the steppers enabled by avoiding the go_idle call altogether, unless the motion state is
     // violated, by which, all bets are off.
     if (sys.state & (STATE_CYCLE | STATE_HOLD | STATE_HOMING)) {
-      sys.execute |= EXEC_ALARM; // Flag main program to execute alarm state.
+      bit_true(sys.execute, EXEC_ALARM); // Flag main program to execute alarm state.
       st_go_idle(); // Force kill steppers. Position has likely been lost.
     }
   }
