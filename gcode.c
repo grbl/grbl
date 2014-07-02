@@ -29,7 +29,10 @@
 #include "probe.h"
 #include "report.h"
 
-#define MAX_LINE_NUMBER 99999
+// NOTE: Max line number is defined by the g-code standard to be 99999. It seems to be an
+// arbitrary value, and some GUIs may require more. So we increased it based on a max safe
+// value when converting a float (7.2 digit precision)s to an integer.
+#define MAX_LINE_NUMBER 9999999 
 
 #define AXIS_COMMAND_NONE 0
 #define AXIS_COMMAND_NON_MODAL 1 
@@ -91,8 +94,8 @@ uint8_t gc_execute_line(char *line)
   memcpy(&gc_block.modal,&gc_state.modal,sizeof(gc_modal_t)); // Copy current modes
   uint8_t axis_explicit = AXIS_COMMAND_NONE;
   uint8_t axis_0, axis_1, axis_linear;
-  float coordinate_data[N_AXIS];
-  float parameter_data[N_AXIS];
+  float coordinate_data[N_AXIS]; // Multi-use variable to store coordinate data for execution
+  float parameter_data[N_AXIS]; // Multi-use variable to store parameter data for execution
   
   // Initialize bitflag tracking variables for axis indices compatible operations.
   uint8_t axis_words = 0; // XYZ tracking
@@ -305,7 +308,7 @@ uint8_t gc_execute_line(char *line)
           case 'J': word_bit = WORD_J; gc_block.values.ijk[Y_AXIS] = value; ijk_words |= (1<<Y_AXIS); break;
           case 'K': word_bit = WORD_K; gc_block.values.ijk[Z_AXIS] = value; ijk_words |= (1<<Z_AXIS); break;
           case 'L': word_bit = WORD_L; gc_block.values.l = int_value; break;
-          case 'N': word_bit = WORD_N; gc_block.values.n = int_value; break;
+          case 'N': word_bit = WORD_N; gc_block.values.n = trunc(value); break;
           case 'P': word_bit = WORD_P; gc_block.values.p = value; break;
           // NOTE: For certain commands, P value must be an integer, but none of these commands are supported.
           // case 'Q': // Not supported
@@ -737,16 +740,20 @@ uint8_t gc_execute_line(char *line)
                 if (ijk_words & bit(idx)) { gc_block.values.ijk[idx] *= MM_PER_INCH; }
               }
             }         
-          
+
+            // Arc radius from center to target
             x -= gc_block.values.ijk[axis_0]; // Delta x between circle center and target
             y -= gc_block.values.ijk[axis_1]; // Delta y between circle center and target
-            float target_r = hypot_f(x,y);
-            gc_block.values.r = hypot_f(gc_block.values.ijk[axis_0], gc_block.values.ijk[axis_1]); // Compute arc radius for mc_arc
+            float target_r = hypot_f(x,y); 
+
+            // Compute arc radius for mc_arc. Defined from current location to center.
+            gc_block.values.r = hypot_f(gc_block.values.ijk[axis_0], gc_block.values.ijk[axis_1]); 
             
-            target_r = fabs(target_r-gc_block.values.r);
-            if (target_r > 0.005) { 
-              if (target_r > 0.5) { FAIL(STATUS_GCODE_INVALID_TARGET); } // [Arc definition error]
-              if (target_r > 0.001*gc_block.values.r) { FAIL(STATUS_GCODE_INVALID_TARGET); } // [Arc definition error]
+            // Compute difference between current location and target radii for final error-checks.
+            float delta_r = fabs(target_r-gc_block.values.r);
+            if (delta_r > 0.005) { 
+              if (delta_r > 0.5) { FAIL(STATUS_GCODE_INVALID_TARGET); } // [Arc definition error] > 0.5mm
+              if (delta_r > (0.001*gc_block.values.r)) { FAIL(STATUS_GCODE_INVALID_TARGET); } // [Arc definition error] > 0.005mm AND 0.1% radius
             }
           }
           break;

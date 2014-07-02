@@ -151,6 +151,7 @@ uint8_t get_direction_mask(uint8_t axis_idx)
   return(axis_mask);
 }
 
+
 float hypot_f(float x, float y)
 {
    return(sqrt(x*x + y*y));
