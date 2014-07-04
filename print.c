@@ -129,14 +129,14 @@ void printInteger(long n)
 // may be set by the user. The integer is then efficiently converted to a string.
 // NOTE: AVR '%' and '/' integer operations are very efficient. Bitshifting speed-up 
 // techniques are actually just slightly slower. Found this out the hard way.
-void printFloat(float n)
+void printFloat(float n, uint8_t decimal_places)
 {
   if (n < 0) {
     serial_write('-');
     n = -n;
   }
 
-  uint8_t decimals = settings.decimal_places;
+  uint8_t decimals = decimal_places;
   while (decimals >= 2) { // Quickly convert values expected to be E0 to E-4.
     n *= 100;
     decimals -= 2;
@@ -148,16 +148,16 @@ void printFloat(float n)
   unsigned char buf[10]; 
   uint8_t i = 0;
   uint32_t a = (long)n;  
-  buf[settings.decimal_places] = '.'; // Place decimal point, even if decimal places are zero.
+  buf[decimal_places] = '.'; // Place decimal point, even if decimal places are zero.
   while(a > 0) {
-    if (i == settings.decimal_places) { i++; } // Skip decimal point location
+    if (i == decimal_places) { i++; } // Skip decimal point location
     buf[i++] = (a % 10) + '0'; // Get digit
     a /= 10;
   }
-  while (i < settings.decimal_places) { 
+  while (i < decimal_places) { 
      buf[i++] = '0'; // Fill in zeros to decimal point for (n < 1)
   }
-  if (i == settings.decimal_places) { // Fill in leading zero, if needed.
+  if (i == decimal_places) { // Fill in leading zero, if needed.
     i++;
     buf[i++] = '0'; 
   }   
@@ -166,3 +166,27 @@ void printFloat(float n)
   for (; i > 0; i--)
     serial_write(buf[i-1]);
 }
+
+
+// Floating value printing handlers for special variables types used in Grbl and are defined
+// in the config.h.
+//  - CoordValue: Handles all position or coordinate values in inches or mm reporting.
+//  - RateValue: Handles feed rate and current velocity in inches or mm reporting.
+//  - SettingValue: Handles all floating point settings values (always in mm.)
+void printFloat_CoordValue(float n) { 
+  if (bit_istrue(settings.flags,BITFLAG_REPORT_INCHES)) { 
+    printFloat(n*INCH_PER_MM,N_DECIMAL_COORDVALUE_INCH);
+  } else {
+    printFloat(n,N_DECIMAL_COORDVALUE_MM);
+  }
+}
+
+void printFloat_RateValue(float n) { 
+  if (bit_istrue(settings.flags,BITFLAG_REPORT_INCHES)) {
+    printFloat(n*INCH_PER_MM,N_DECIMAL_RATEVALUE_INCH);
+  } else {
+    printFloat(n,N_DECIMAL_RATEVALUE_MM);
+  }
+}
+
+void printFloat_SettingValue(float n) { printFloat(n,N_DECIMAL_SETTINGVALUE); }

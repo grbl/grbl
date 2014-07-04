@@ -70,7 +70,6 @@ typedef struct {
   uint8_t stepper_idle_lock_time; // If max value 255, steppers do not disable.
   float junction_deviation;
   float arc_tolerance;
-  uint8_t decimal_places;
   uint8_t flags;  // Contains default boolean settings
   uint8_t homing_dir_mask;
   float homing_feed_rate;

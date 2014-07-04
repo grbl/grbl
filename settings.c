@@ -90,7 +90,6 @@ void settings_reset() {
   settings.homing_debounce_delay = DEFAULT_HOMING_DEBOUNCE_DELAY;
   settings.homing_pulloff = DEFAULT_HOMING_PULLOFF;
   settings.stepper_idle_lock_time = DEFAULT_STEPPER_IDLE_LOCK_TIME;
-  settings.decimal_places = DEFAULT_DECIMAL_PLACES;
   settings.max_travel[X_AXIS] = (-DEFAULT_X_MAX_TRAVEL);
   settings.max_travel[Y_AXIS] = (-DEFAULT_Y_MAX_TRAVEL);
   settings.max_travel[Z_AXIS] = (-DEFAULT_Z_MAX_TRAVEL);    
@@ -181,7 +180,6 @@ uint8_t settings_store_global_setting(int parameter, float value) {
     case 15: settings.stepper_idle_lock_time = round(value); break;
     case 16: settings.junction_deviation = fabs(value); break;
     case 17: settings.arc_tolerance = value; break;
-    case 18: settings.decimal_places = round(value); break;
     case 19:
       if (value) { settings.flags |= BITFLAG_REPORT_INCHES; }
       else { settings.flags &= ~BITFLAG_REPORT_INCHES; }

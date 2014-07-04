@@ -634,7 +634,7 @@ uint8_t gc_execute_line(char *line)
           // Calculate the change in position along each selected axis
           float x = gc_block.values.xyz[axis_0]-gc_state.position[axis_0]; // Delta x between current position and target
           float y = gc_block.values.xyz[axis_1]-gc_state.position[axis_1]; // Delta y between current position and target
-                
+
           if (value_words & bit(WORD_R)) { // Arc Radius Mode  
             bit_false(value_words,bit(WORD_R));
             if (gc_check_same_position(gc_state.position, gc_block.values.xyz)) { FAIL(STATUS_GCODE_INVALID_TARGET); } // [Invalid target]

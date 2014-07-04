@@ -44,4 +44,9 @@ void st_prep_buffer();
 // Called by planner_recalculate() when the executing block is updated by the new plan.
 void st_update_plan_block_parameters();
 
+// Called by runtime status reporting if realtime rate reporting is enabled in config.h.
+#ifdef REPORT_REALTIME_RATE
+float st_get_realtime_rate();
+#endif
+
 #endif
