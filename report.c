@@ -235,10 +235,11 @@ void report_gcode_modes()
   printPgmString(PSTR(" G"));
   printInteger(gc.coord_select+54);
   
-  if (gc.plane_axis_0 == X_AXIS) {
-    if (gc.plane_axis_1 == Y_AXIS) { printPgmString(PSTR(" G17")); }
-    else { printPgmString(PSTR(" G18")); }
-  } else { printPgmString(PSTR(" G19")); }
+  switch (gc.plane_axis_0) {
+    case X_AXIS: printPgmString(PSTR(" G17")); break;
+    case Z_AXIS: printPgmString(PSTR(" G18")); break;
+    default: printPgmString(PSTR(" G19")); 
+  }
   
   if (gc.inches_mode) { printPgmString(PSTR(" G20")); }
   else { printPgmString(PSTR(" G21")); }
