@@ -28,92 +28,145 @@
 #include "../planner.h"
 #include "../nuts_bolts.h"
 #include "simulator.h"
-
-// This variable is needed to determine if execute_runtime() is called in a loop
-// waiting for the buffer to empty, as in plan_synchronize()
-// it is reset in serial_write() because this is certainly called at the end of
-// every command processing
-int runtime_second_call= 0;
+#include "avr/interrupt.h" //for registers and isr declarations.
+#include "eeprom.h"
 
 
-// Current time of the stepper simulation
-double sim_time= 0.0;
-// Next time the status of stepper values should be printed
-double next_print_time= 0.0;
-// Minimum time step for printing stepper values. Given by user via command line
-double step_time= 0.0;
-
-// global system variable structure for position etc.
-system_t sys;
-int block_position[]= {0,0,0};
-uint8_t print_comment= 1;
-uint8_t end_of_block= 1;
+int block_position[]= {0,0,0}; //step count after most recently planned block
 uint32_t block_number= 0;
 
-// Output file handles set by main program
-FILE *block_out_file;
-FILE *step_out_file;
+sim_vars_t sim={0};
 
-// dummy port variables
-uint8_t stepping_ddr;
-uint8_t stepping_port;
-uint8_t spindle_ddr;
-uint8_t spindle_port;
-uint8_t limit_ddr;
-uint8_t limit_port;
-uint8_t limit_int_reg;
-uint8_t pinout_ddr;
-uint8_t pinout_port;
-uint8_t pinout_int_reg;
-uint8_t coolant_flood_ddr;
-uint8_t coolant_flood_port;
-
-extern block_t block_buffer[BLOCK_BUFFER_SIZE];  // A ring buffer for motion instructions
-extern uint8_t block_buffer_head;       // Index of the next block to be pushed
-extern uint8_t block_buffer_tail;       // Index of the block to process now
+//local prototypes 
+void print_steps(bool force);
 
 
-// Stub of the timer interrupt function from stepper.c
-void interrupt_TIMER2_COMPA_vect();
+//setup 
+void init_simulator(float time_multiplier) {
 
-// Call the stepper interrupt until one block is finished
-void sim_stepper() {
-  //printf("sim_stepper()\n");
-  block_t *current_block= plan_get_current_block();
+  //register the interrupt handlers we actually use.
+  compa_vect[1] = interrupt_TIMER1_COMPA_vect;
+  ovf_vect[0] = interrupt_TIMER0_OVF_vect;
+#ifdef STEP_PULSE_DELAY
+  compa_vect[0] = interrupt_TIMER0_COMPA_vect;
+#endif
 
-  // If the block buffer is empty, call the stepper interrupt one last time
-  // to let it handle sys.cycle_start etc.
-  if(current_block==NULL) {
-	  interrupt_TIMER2_COMPA_vect();
-	  return;
-  }
+  sim.next_print_time = args.step_time;
+  sim.speedup = time_multiplier;
+  sim.baud_ticks = (int)((double)F_CPU*8/BAUD_RATE); //ticks per byte
+}
 
-  while(current_block==plan_get_current_block()) {
-    sim_time+= get_step_time();
-    interrupt_TIMER2_COMPA_vect();
 
-    // Check to see if we should print some info
-    if(step_time>0.0) {
-    	if(sim_time>=next_print_time) {
-    	  if(end_of_block) {
-    		end_of_block= 0;
-    		fprintf(step_out_file, "# block number %d\n", block_number);
-    	  }
-          fprintf(step_out_file, "%20.15f, %d, %d, %d\n", sim_time, sys.position[X_AXIS], sys.position[Y_AXIS], sys.position[Z_AXIS]);
 
-          // Make sure the simulation time doesn't get ahead of next_print_time
-          while(next_print_time<sim_time) next_print_time+= step_time;
-    	}
-    }
+//shutdown simulator - close open files
+int shutdown_simulator(uint8_t exitflag) {
+  fclose(args.block_out_file);
+  print_steps(1);
+  fclose(args.step_out_file);
+  fclose(args.grbl_out_file);
+  eeprom_close();
+  return 1/(!exitflag);  //force exception, since avr_main() has no returns.
+}
 
-  }
-  // always print stepper values at the end of a block
-  if(step_time>0.0) {
-	fprintf(step_out_file, "%20.15f, %d, %d, %d\n", sim_time, sys.position[X_AXIS], sys.position[Y_AXIS], sys.position[Z_AXIS]);
-	end_of_block= 1;
-	block_number++;
+
+
+void simulate_hardware(bool do_serial){
+
+  //do one tick
+  sim.masterclock++;
+  sim.sim_time = (float)sim.masterclock/F_CPU;
+
+  timer_interrupts();
+  
+  if (do_serial) simulate_serial();
+
+  //TODO:
+  //  check limit pins,  call pinchange interrupt if enabled
+  //  can ignore pinout int vect - hw start/hold not supported
+
+}
+
+//runs the hardware simulator at the desired rate until sim.exit is set
+void sim_loop(){
+  uint64_t simulated_ticks=0;
+  uint32_t ns_prev = platform_ns();
+  uint64_t next_byte_tick = F_CPU;   //wait 1 sec before reading IO.
+
+  while (!sim.exit || sys.state>2 ) { //don't quit until idle
+
+	 if (sim.speedup) {
+		//calculate how many ticks to do.
+		uint32_t ns_now = platform_ns();
+		uint32_t ns_elapsed = (ns_now-ns_prev)*sim.speedup; //todo: try multipling nsnow
+		simulated_ticks += F_CPU/1e9*ns_elapsed;
+		ns_prev = ns_now;
+	 }
+	 else {
+		simulated_ticks++;  //as fast as possible
+	 }
+		
+	 while (sim.masterclock < simulated_ticks){
+
+		//only read serial port as fast as the baud rate allows
+		bool read_serial = (sim.masterclock >= next_byte_tick);
+
+		//do low level hardware
+		simulate_hardware(read_serial);
+
+		//print the steps. 
+		//For further decoupling, could maintain own counter of STEP_PORT pulses, 
+      // print that instead of sys.position.
+		print_steps(0);  
+		
+		if (read_serial){
+		  next_byte_tick+=sim.baud_ticks;
+		  //recent block can only change after input, so check here.
+		  printBlock();
+		}
+
+		//TODO:
+		//  set limit pins based on position,
+		//  set probe pin when probing.
+		//  if VARIABLE_SPINDLE, measure pwm pin to report speed?
+	 }
+
+	 platform_sleep(0); //yield
   }
 }
+
+
+//show current position in steps
+void print_steps(bool force)
+{ 
+  static plan_block_t* printed_block = NULL;
+  plan_block_t* current_block = plan_get_current_block();
+
+  if (sim.next_print_time == 0.0) { return; }  //no printing
+  if (current_block != printed_block ) {
+	 //new block. 
+	 if (block_number) { //print values from the end of prev block
+		fprintf(args.step_out_file, "%20.15f %d, %d, %d\n", sim.sim_time, sys.position[X_AXIS], sys.position[Y_AXIS], sys.position[Z_AXIS]);
+	 }
+	 printed_block = current_block;
+	 if (current_block == NULL) { return; }
+	 // print header
+	 fprintf(args.step_out_file, "# block number %d\n", block_number++);
+  }
+  //print at correct interval while executing block
+  else if ((current_block && sim.sim_time>=sim.next_print_time) || force ) {
+	 fprintf(args.step_out_file, "%20.15f %d, %d, %d\n", sim.sim_time, sys.position[X_AXIS], sys.position[Y_AXIS], sys.position[Z_AXIS]);
+	 fflush(args.step_out_file);
+
+	 //make sure the simulation time doesn't get ahead of next_print_time
+	 while (sim.next_print_time<=sim.sim_time) sim.next_print_time += args.step_time;
+  }
+}
+
+
+//Functions for peeking inside planner state:
+plan_block_t *get_block_buffer();
+uint8_t get_block_buffer_head();
+uint8_t get_block_buffer_tail();
 
 // Returns the index of the previous block in the ring buffer
 uint8_t prev_block_index(uint8_t block_index)
@@ -123,95 +176,49 @@ uint8_t prev_block_index(uint8_t block_index)
   return(block_index);
 }
 
-block_t *get_block_buffer();
-uint8_t get_block_buffer_head();
-uint8_t get_block_buffer_tail();
-
-block_t *plan_get_recent_block() {
+plan_block_t *plan_get_recent_block() {
   if (get_block_buffer_head() == get_block_buffer_tail()) { return(NULL); }
   return(get_block_buffer()+prev_block_index(get_block_buffer_head()));
 }
 
-
 // Print information about the most recently inserted block
 // but only once!
 void printBlock() {
-  block_t *b;
-  static block_t *last_block;
-
-  //printf("printBlock()\n");
+  plan_block_t *b;
+  static plan_block_t *last_block;
 
   b= plan_get_recent_block();
   if(b!=last_block && b!=NULL) {
-	//fprintf(block_out_file,"%s\n", line);
-    //fprintf(block_out_file,"  block: ");
-    if(b->direction_bits & (1<<X_DIRECTION_BIT)) block_position[0]-= b->steps_x;
-    else block_position[0]+= b->steps_x;
-    fprintf(block_out_file,"%d, ", block_position[0]);
-
-    if(b->direction_bits & (1<<Y_DIRECTION_BIT)) block_position[1]-= b->steps_y;
-    else block_position[1]+= b->steps_y;
-    fprintf(block_out_file,"%d, ", block_position[1]);
-
-    if(b->direction_bits & (1<<Z_DIRECTION_BIT)) block_position[2]-= b->steps_z;
-    else block_position[2]+= b->steps_z;
-    fprintf(block_out_file,"%d, ", block_position[2]);
-
-    fprintf(block_out_file,"%f", b->entry_speed_sqr);
-    fprintf(block_out_file,"\n");
+	 int i;
+	 for (i=0;i<N_AXIS;i++){
+		if(b->direction_bits & get_direction_mask(i)) block_position[i]-= b->steps[i];
+		else block_position[i]+= b->steps[i];
+		fprintf(args.block_out_file,"%d, ", block_position[i]);
+	 }
+	 fprintf(args.block_out_file,"%f", b->entry_speed_sqr);
+	 fprintf(args.block_out_file,"\n");
+	 fflush(args.block_out_file); //TODO: needed?
 
     last_block= b;
   }
 }
 
-// The simulator assumes that grbl is fast enough to keep the buffer full.
-// Thus, the stepper interrupt is only called when the buffer is full and then only to
-// finish one block.
-// Only when plan_synchronize() wait for the whole buffer to clear, the stepper interrupt
-// to finish all pending moves.
-void handle_buffer() {
-  // runtime_second_call is reset by serial_write() after every command.
-  // Only when execute_runtime() is called repeatedly by plan_synchronize()
-  // runtime_second_call will be incremented above 2
-  //printf("handle_buffer()\n");
-  if(plan_check_full_buffer() || runtime_second_call>2) {
-    sim_stepper(step_out_file);
-  } else {
-    runtime_second_call++;
+
+//printer for grbl serial port output
+void grbl_out(uint8_t data){
+  static uint8_t buf[128]={0};
+  static uint8_t len=0;
+  static bool continuation = 0;
+
+  buf[len++]=data;
+  if(data=='\n' || data=='\r' || len>=127) {
+	 if (args.comment_char && !continuation){
+		fprintf(args.grbl_out_file,"%c ",args.comment_char);
+	 }
+	 buf[len]=0;
+	 fprintf(args.grbl_out_file,"%s",buf);
+	 continuation = (len>=128); //print comment on next line unless we are only printing to avoid buffer overflow)
+	 len=0;
   }
 }
 
-double get_step_time() {
-/* code for the old stepper algorithm
-  uint16_t ceiling;
-  uint16_t prescaler;
-  uint32_t actual_cycles;
-  uint8_t invalid_prescaler= 0;
-
-  prescaler= ((TCCR1B>>CS10) & 0x07) - 1;
-  ceiling= OCR1A;
-
-  switch(prescaler) {
-    case 0:
-      actual_cycles= ceiling;
-	  break;
-    case 1:
-      actual_cycles= ceiling * 8L;
-	  break;
-    case 2:
-      actual_cycles = ceiling * 64L;
-	  break;
-    case 3:
-      actual_cycles = ceiling * 256L;
-	  break;
-    case 4:
-      actual_cycles = ceiling * 1024L;
-	  break;
-    default:
-    	invalid_prescaler= 1;
-  }
-
-  if(invalid_prescaler) return 12345.0;
-  else return (double)actual_cycles/F_CPU;*/
-  return (double)((ocr2a+1)*8)/(double)(F_CPU);
-}
