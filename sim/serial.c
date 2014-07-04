@@ -26,8 +26,6 @@
 #include "simulator.h"
 #include <stdio.h>
 
-#include "kbhit.h"
-
 
 //prototypes for overridden functions
 uint8_t orig_serial_read();

@@ -62,7 +62,7 @@ void gc_sync_position()
 {
   uint8_t i;
   for (i=0; i<N_AXIS; i++) {
-	 gc_state.position[i] = sys.position[i]/settings.steps_per_mm[i];
+     gc_state.position[i] = sys.position[i]/settings.steps_per_mm[i];
   }
 }
 
@@ -75,7 +75,7 @@ static uint8_t gc_check_same_position(float *pos_a, float *pos_b)
   }
   return(true);
 }
-
+         
 // Executes one line of 0-terminated G-Code. The line is assumed to contain only uppercase
 // characters and signed floating point values (no whitespace). Comments and block delete
 // characters have been removed. In this function, all units and positions are converted and 

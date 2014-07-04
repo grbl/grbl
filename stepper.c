@@ -76,9 +76,6 @@ typedef struct {
   #else
     uint8_t prescaler;      // Without AMASS, a prescaler is required to adjust for slow timing.
   #endif
-  #ifdef AUTO_REPORT_MOVE_DONE
-    uint8_t block_end;         //true for last segment of a block
-  #endif
 } segment_t;
 static segment_t segment_buffer[SEGMENT_BUFFER_SIZE];
 
@@ -284,7 +281,7 @@ void st_go_idle()
 // with probing and homing cycles that require true real-time positions.
 ISR(TIMER1_COMPA_vect)
 {        
-  //  TIMING_ENABLE_PORT ^= 1<<TIMING_ENABLE_BIT; // Debug: Used to time ISR
+  //  SPINDLE_ENABLE_PORT ^= 1<<SPINDLE_ENABLE_BIT; // Debug: Used to time ISR
   if (busy) { return; } // The busy-flag is used to avoid reentering this interrupt
   
   // Set the direction pins a couple of nanoseconds before we step the steppers
@@ -398,9 +395,6 @@ ISR(TIMER1_COMPA_vect)
   st.step_count--; // Decrement step events count 
   if (st.step_count == 0) {
     // Segment is complete. Discard current segment and advance segment indexing.
-	 #ifdef AUTO_REPORT_MOVE_DONE
-      sys.execute |= st.exec_segment->block_end;
-	 #endif
     st.exec_segment = NULL;
     if ( ++segment_buffer_tail == SEGMENT_BUFFER_SIZE) { segment_buffer_tail = 0; }
   }
@@ -799,14 +793,8 @@ void st_prep_buffer()
       // Normal operation. Block incomplete. Distance remaining in block to be executed.
       pl_block->millimeters = mm_remaining;      
       prep.steps_remaining = steps_remaining;  
-		#ifdef AUTO_REPORT_MOVE_DONE
-  		  prep_segment->block_end = 0;
-		#endif
     } else { 
       // End of planner block or forced-termination. No more distance to be executed.
-		#ifdef AUTO_REPORT_MOVE_DONE  
- 		  prep_segment->block_end = EXEC_STATUS_REPORT; // force move-done report
-		#endif
       if (mm_remaining > 0.0) { // At end of forced-termination.
         // Reset prep parameters for resuming and then bail.
         // NOTE: Currently only feed holds qualify for this scenario. May change with overrides.       
