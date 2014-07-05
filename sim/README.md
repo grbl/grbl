@@ -14,5 +14,5 @@ Realtime modifications by Adam Shelly:
 
   Simulates Atmel hardware in separate thread.  Runs in aproximate realtime.  
   
-  On Linux, use `socat PTY,raw,link=/dev/ttyFAKE,echo=0 "EXEC:'./grbl_sim.exe -n -s step.out -b block.out',pty,raw,echo=0" to create a fake serial port connected to the simulator.  This is useful for testing grbl interface software.
+  On Linux, use `socat PTY,raw,link=/dev/ttyFAKE,echo=0 "EXEC:'./grbl_sim.exe -n -s step.out -b block.out',pty,raw,echo=0"` to create a fake serial port connected to the simulator.  This is useful for testing grbl interface software.
   
