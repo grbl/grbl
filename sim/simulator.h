@@ -25,36 +25,56 @@
 
 #include <stdio.h>
 #include "../nuts_bolts.h"
+#include "../system.h"
+#include "platform.h"
 
-// Output file handles
-extern FILE *block_out_file;
-extern FILE *step_out_file;
+//simulation globals
+typedef struct sim_vars {
+  uint64_t masterclock;
+  double sim_time;  //current time of the simulation
+  uint8_t started;  //don't start timers until first char recieved.
+  uint8_t exit; 
+  float speedup;
+  int32_t baud_ticks;
+  double next_print_time;
 
-// This variable is needed to determine if execute_runtime() is called in a loop
-// waiting for the buffer to empty, as in plan_synchronize()
-extern int runtime_second_call;
+} sim_vars_t;  
+extern sim_vars_t sim;
 
-// Minimum time step for printing stepper values. Given by user via command line
-extern double step_time;
+
+typedef struct arg_vars {
+  // Output file handles
+  FILE *block_out_file;
+  FILE *step_out_file;
+  FILE *grbl_out_file;
+  // Minimum time step for printing stepper values.  //Given by user via command line
+  double step_time;
+  //char to prefix comments; default  '#' 
+  uint8_t comment_char;   
+  
+} arg_vars_t;
+extern arg_vars_t args;
+
 
 // global system variable structure for position etc.
 extern system_t sys;
-extern uint8_t print_comment;
 
+// setup avr simulation
+void init_simulator(float time_multiplier);
+
+//shutdown simulator - close open files
+int shutdown_simulator(uint8_t exitflag);
+
+//simulates the hardware until sim.exit is set.
+void sim_loop();
 
 // Call the stepper interrupt until one block is finished
-void sim_stepper();
-
-// Check if buffer is full or if plan_synchronize() wants to clear the buffer
-void handle_buffer();
+void simulate_serial();
 
 // Print information about the most recently inserted block
 void printBlock();
 
-// Calculate the time between stepper interrupt calls from TCCR1B and OCR1A AVR registers
-// which are set in config_step_timer in stepper.c
-// This reconstructs the stepper-internal value of variable st.cycles_per_step_event
-// The reconstruction is done to truely decouple the simulator from the actual grbl code
-double get_step_time();
+//printer for grbl serial port output
+void grbl_out(uint8_t char_out);
 
 #endif

@@ -24,60 +24,33 @@
 #ifndef interrupt_h
 #define interrupt_h
 
-#include <inttypes.h>
-
-// dummy register variables
-extern uint16_t timsk0;
-extern uint16_t timsk1;
-extern uint16_t timsk2;
-extern uint16_t tcnt0;
-extern uint16_t tcnt2;
-extern uint16_t tccr0b;
-extern uint16_t tccr0a;
-extern uint16_t tccr2a;
-extern uint16_t tccr2b;
-extern uint16_t tccr1b;
-extern uint16_t tccr1a;
-extern uint16_t ocr1a;
-extern uint16_t ocr2a;
-extern uint16_t pcmsk0;
-extern uint16_t pcicr;
-
 // macros to turn avr interrupts into regular functions
-#define TIMER1_COMPA_vect
+//#define TIMER1_COMPA_vect
 #define ISR(a) void interrupt_ ## a ()
 
-// enable interrupts does nothing in the simulation environment
+// Stub of the timer interrupt functions we need
+void interrupt_TIMER0_COMPA_vect();
+void interrupt_TIMER1_COMPA_vect();
+void interrupt_TIMER0_OVF_vect();
+void interrupt_SERIAL_UDRE();
+void interrupt_SERIAL_RX();
+
+
+//pseudo-Interrupt vector table  
+typedef void(*isr_fp)(void);
+extern isr_fp compa_vect[6];
+extern isr_fp compb_vect[6];
+extern isr_fp ovf_vect[6];
+
+
+// enable interrupts now does something in the simulation environment
+#define SEI 0x80
 void sei();
 void cli();
 
-// dummy macros for interrupt related registers
-#define TIMSK0 timsk0
-#define TIMSK1 timsk1
-#define TIMSK2 timsk2
-#define OCR1A ocr1a
-#define OCR2A ocr2a
-#define OCIE1A 0
-#define OCIE2A 0
-#define TCNT0 tcnt0
-#define TCNT2 tcnt2
-#define TCCR0B tccr0b
-#define TCCR0A tccr0a
-#define TCCR1A tccr1a
-#define TCCR1B tccr1b
-#define TCCR2A tccr2a
-#define TCCR2B tccr2b
-#define CS21 0
-#define CS10 0
-#define WGM13 0
-#define WGM12 0
-#define WGM11 0
-#define WGM10 0
-#define WGM21 0
-#define COM1A0 0
-#define COM1B0 0
-#define TOIE0 0
-#define TOIE2 0
-#define PCICR pcicr
+//simulate timer operation
+void timer_interrupts();
+
+
 
 #endif
