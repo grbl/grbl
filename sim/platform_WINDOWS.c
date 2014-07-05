@@ -14,7 +14,7 @@ double ns_per_perfcount;
 void platform_init()
 {
   __int64 counts_per_sec;
-  QueryPerformanceFrequency((LARGE_INTEGER*)&countsPerSec);
+  QueryPerformanceFrequency((LARGE_INTEGER*)&counts_per_sec);
   ns_per_perfcount = (float)NS_PER_SEC / counts_per_sec;
 }
 
@@ -46,7 +46,7 @@ void platform_sleep(long  microsec)
 //create a thread
 plat_thread_t* platform_start_thread(plat_threadfunc_t threadfunc) {
   plat_thread_t* th = malloc(sizeof(plat_thread_t));
-  th->tid = CreateThread(NULL,0,threadfunc,&th->exit,0);
+  th->tid = CreateThread(NULL,0,threadfunc,&th->exit,0,NULL);
   if (!th->tid){
 	 free(th);
 	 return NULL;
@@ -63,10 +63,13 @@ void platform_stop_thread(plat_thread_t* th){
 //force-kill thread
 void platform_kill_thread(plat_thread_t* th){
   th->exit = 1;
-  TerminateThread(th->tid);
+  TerminateThread(th->tid, 0);
 }
 
 //return char if one available.
 uint8_t platform_poll_stdin() {
-  return _kbhit();
+  if (_kbhit()) {
+     return getch();
+  }
+  return 0;
 }
