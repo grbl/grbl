@@ -821,6 +821,21 @@ void st_prep_buffer()
   } 
 }      
 
+
+// Called by runtime status reporting to fetch the current speed being executed. This value
+// however is not exactly the current speed, but the speed computed in the last step segment
+// in the segment buffer. It will always be behind by up to the number of segment blocks (-1)
+// divided by the ACCELERATION TICKS PER SECOND in seconds. 
+#ifdef REPORT_REALTIME_RATE
+float st_get_realtime_rate()
+{
+   if (sys.state & (STATE_CYCLE | STATE_HOMING)){
+     return prep.current_speed;
+   }
+  return 0.0f;
+}
+#endif
+ 
 /* 
    TODO: With feedrate overrides, increases to the override value will not significantly
      change the current planner and stepper operation. When the value increases, we simply

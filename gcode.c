@@ -37,6 +37,7 @@
 #define AXIS_COMMAND_NONE 0
 #define AXIS_COMMAND_NON_MODAL 1 
 #define AXIS_COMMAND_MOTION_MODE 2
+#define AXIS_COMMAND_TOOL_LENGTH_OFFSET 3 // *Undefined but required
 
 // Declare gc extern struct
 parser_state_t gc_state;
@@ -148,6 +149,7 @@ uint8_t gc_execute_line(char *line)
         switch(int_value) {
           case 10: case 28: case 30: case 92: 
             // Check for G10/28/30/92 being called with G0/1/2/3/38 on same block.
+            // * G43.1 is also an axis command but is not explicitly defined this way.
             if (mantissa == 0) { // Ignore G28.1, G30.1, and G92.1
               if (axis_command) { FAIL(STATUS_GCODE_AXIS_COMMAND_CONFLICT); } // [Axis word/command conflict]
               axis_command = AXIS_COMMAND_NON_MODAL;
@@ -187,6 +189,7 @@ uint8_t gc_execute_line(char *line)
             break;
           case 0: case 1: case 2: case 3: case 38: 
             // Check for G0/1/2/3/38 being called with G10/28/30/92 on same block.
+            // * G43.1 is also an axis command but is not explicitly defined this way.
             if (axis_command) { FAIL(STATUS_GCODE_AXIS_COMMAND_CONFLICT); } // [Axis word/command conflict]
             axis_command = AXIS_COMMAND_MOTION_MODE; 
             // No break. Continues to next line.
@@ -234,6 +237,18 @@ uint8_t gc_execute_line(char *line)
             if (int_value == 20) { gc_block.modal.units = UNITS_MODE_INCHES; }  // G20
             else { gc_block.modal.units = UNITS_MODE_MM; } // G21
             break;
+          case 43: case 49:
+            word_bit = MODAL_GROUP_G8;
+            if (int_value == 49) { 
+              gc_block.modal.tool_length = TOOL_LENGTH_OFFSET_CANCEL; 
+            // Else command is G43. Only G43.1 is supported. G43 is NOT.
+            } else if (mantissa == 1) { 
+              // * G43.1 is requires an axis word to operate and cannot exist with other axis
+              // commands in the same line. However, it's not explicitly defined this way.
+              if (axis_command) { FAIL(STATUS_GCODE_AXIS_COMMAND_CONFLICT); } // [Axis word/command conflict] }
+              axis_command = AXIS_COMMAND_TOOL_LENGTH_OFFSET;
+              gc_block.modal.tool_length = TOOL_LENGTH_OFFSET_ENABLE_DYNAMIC;
+            } else { FAIL(STATUS_GCODE_UNSUPPORTED_COMMAND); } // [Unsupported G43.x command]
           case 54: case 55: case 56: case 57: case 58: case 59: 
             // NOTE: G59.x are not supported. (But their int_values would be 60, 61, and 62.)
             word_bit = MODAL_GROUP_G12;
@@ -422,7 +437,7 @@ uint8_t gc_execute_line(char *line)
   if (bit_isfalse(value_words,bit(WORD_S))) { gc_block.values.s = gc_state.spindle_speed; }
   // bit_false(value_words,bit(WORD_S)); // NOTE: Single-meaning value word. Set at end of error-checking.
     
-  // [5. Select tool ]: NOT SUPPORTED. T is negative (done.) Not an integer. Greater than max tool value.
+  // [5. Select tool ]: NOT SUPPORTED. Only tracks value. T is negative (done.) Not an integer. Greater than max tool value.
   // bit_false(value_words,bit(WORD_T)); // NOTE: Single-meaning value word. Set at end of error-checking.
 
   // [6. Change tool ]: N/A
@@ -466,7 +481,9 @@ uint8_t gc_execute_line(char *line)
   }
   
   // [13. Cutter radius compensation ]: NOT SUPPORTED. Error, if G53 is active.
-  // [14. Cutter length compensation ]: NOT SUPPORTED.
+  
+  // [14. Cutter length compensation ]: G43 NOT SUPPORTED, but G43.1 and G49 are. 
+  // G43.1 Error with motion command in same line. (Already done by axis command checks in parser.)
   
   // [15. Coordinate system selection ]: *N/A. Error, if cutter radius comp is active.
   // TODO: An EEPROM read of the coordinate data may require a buffer sync when the cycle
@@ -634,7 +651,7 @@ uint8_t gc_execute_line(char *line)
           // Calculate the change in position along each selected axis
           float x = gc_block.values.xyz[axis_0]-gc_state.position[axis_0]; // Delta x between current position and target
           float y = gc_block.values.xyz[axis_1]-gc_state.position[axis_1]; // Delta y between current position and target
-                
+
           if (value_words & bit(WORD_R)) { // Arc Radius Mode  
             bit_false(value_words,bit(WORD_R));
             if (gc_check_same_position(gc_state.position, gc_block.values.xyz)) { FAIL(STATUS_GCODE_INVALID_TARGET); } // [Invalid target]

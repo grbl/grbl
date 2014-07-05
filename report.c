@@ -34,6 +34,7 @@
 #include "coolant_control.h"
 #include "planner.h"
 #include "spindle_control.h"
+#include "stepper.h"
 
 
 // Handles the primary confirmation protocol response for streaming interfaces and human-feedback.
@@ -157,28 +158,27 @@ void report_grbl_help() {
 // Grbl global settings print out.
 // NOTE: The numbering scheme here must correlate to storing in settings.c
 void report_grbl_settings() {
-  printPgmString(PSTR("$0=")); printFloat(settings.steps_per_mm[X_AXIS]);
-  printPgmString(PSTR(" (x, step/mm)\r\n$1=")); printFloat(settings.steps_per_mm[Y_AXIS]);
-  printPgmString(PSTR(" (y, step/mm)\r\n$2=")); printFloat(settings.steps_per_mm[Z_AXIS]);
-  printPgmString(PSTR(" (z, step/mm)\r\n$3=")); printFloat(settings.max_rate[X_AXIS]);
-  printPgmString(PSTR(" (x max rate, mm/min)\r\n$4=")); printFloat(settings.max_rate[Y_AXIS]);
-  printPgmString(PSTR(" (y max rate, mm/min)\r\n$5=")); printFloat(settings.max_rate[Z_AXIS]);
-  printPgmString(PSTR(" (z max rate, mm/min)\r\n$6=")); printFloat(settings.acceleration[X_AXIS]/(60*60)); // Convert from mm/min^2 for human readability
-  printPgmString(PSTR(" (x accel, mm/sec^2)\r\n$7=")); printFloat(settings.acceleration[Y_AXIS]/(60*60)); // Convert from mm/min^2 for human readability
-  printPgmString(PSTR(" (y accel, mm/sec^2)\r\n$8=")); printFloat(settings.acceleration[Z_AXIS]/(60*60)); // Convert from mm/min^2 for human readability
-  printPgmString(PSTR(" (z accel, mm/sec^2)\r\n$9=")); printFloat(-settings.max_travel[X_AXIS]); // Grbl internally store this as negative.
-  printPgmString(PSTR(" (x max travel, mm)\r\n$10=")); printFloat(-settings.max_travel[Y_AXIS]); // Grbl internally store this as negative.
-  printPgmString(PSTR(" (y max travel, mm)\r\n$11=")); printFloat(-settings.max_travel[Z_AXIS]); // Grbl internally store this as negative.
+  printPgmString(PSTR("$0=")); printFloat_SettingValue(settings.steps_per_mm[X_AXIS]);
+  printPgmString(PSTR(" (x, step/mm)\r\n$1=")); printFloat_SettingValue(settings.steps_per_mm[Y_AXIS]);
+  printPgmString(PSTR(" (y, step/mm)\r\n$2=")); printFloat_SettingValue(settings.steps_per_mm[Z_AXIS]);
+  printPgmString(PSTR(" (z, step/mm)\r\n$3=")); printFloat_SettingValue(settings.max_rate[X_AXIS]);
+  printPgmString(PSTR(" (x max rate, mm/min)\r\n$4=")); printFloat_SettingValue(settings.max_rate[Y_AXIS]);
+  printPgmString(PSTR(" (y max rate, mm/min)\r\n$5=")); printFloat_SettingValue(settings.max_rate[Z_AXIS]);
+  printPgmString(PSTR(" (z max rate, mm/min)\r\n$6=")); printFloat_SettingValue(settings.acceleration[X_AXIS]/(60*60)); // Convert from mm/min^2 for human readability
+  printPgmString(PSTR(" (x accel, mm/sec^2)\r\n$7=")); printFloat_SettingValue(settings.acceleration[Y_AXIS]/(60*60)); // Convert from mm/min^2 for human readability
+  printPgmString(PSTR(" (y accel, mm/sec^2)\r\n$8=")); printFloat_SettingValue(settings.acceleration[Z_AXIS]/(60*60)); // Convert from mm/min^2 for human readability
+  printPgmString(PSTR(" (z accel, mm/sec^2)\r\n$9=")); printFloat_SettingValue(-settings.max_travel[X_AXIS]); // Grbl internally store this as negative.
+  printPgmString(PSTR(" (x max travel, mm)\r\n$10=")); printFloat_SettingValue(-settings.max_travel[Y_AXIS]); // Grbl internally store this as negative.
+  printPgmString(PSTR(" (y max travel, mm)\r\n$11=")); printFloat_SettingValue(-settings.max_travel[Z_AXIS]); // Grbl internally store this as negative.
   printPgmString(PSTR(" (z max travel, mm)\r\n$12=")); print_uint8_base10(settings.pulse_microseconds);
   printPgmString(PSTR(" (step pulse, usec)\r\n$13=")); print_uint8_base10(settings.step_invert_mask); 
   printPgmString(PSTR(" (step port invert mask:")); print_uint8_base2(settings.step_invert_mask);  
   printPgmString(PSTR(")\r\n$14=")); print_uint8_base10(settings.dir_invert_mask); 
   printPgmString(PSTR(" (dir port invert mask:")); print_uint8_base2(settings.dir_invert_mask);  
   printPgmString(PSTR(")\r\n$15=")); print_uint8_base10(settings.stepper_idle_lock_time);
-  printPgmString(PSTR(" (step idle delay, msec)\r\n$16=")); printFloat(settings.junction_deviation);
-  printPgmString(PSTR(" (junction deviation, mm)\r\n$17=")); printFloat(settings.arc_tolerance);
-  printPgmString(PSTR(" (arc tolerance, mm)\r\n$18=")); print_uint8_base10(settings.decimal_places);
-  printPgmString(PSTR(" (n-decimals, int)\r\n$19=")); print_uint8_base10(bit_istrue(settings.flags,BITFLAG_REPORT_INCHES));
+  printPgmString(PSTR(" (step idle delay, msec)\r\n$16=")); printFloat_SettingValue(settings.junction_deviation);
+  printPgmString(PSTR(" (junction deviation, mm)\r\n$17=")); printFloat_SettingValue(settings.arc_tolerance);
+  printPgmString(PSTR(" (arc tolerance, mm)\r\n$19=")); print_uint8_base10(bit_istrue(settings.flags,BITFLAG_REPORT_INCHES));
   printPgmString(PSTR(" (report inches, bool)\r\n$20=")); print_uint8_base10(bit_istrue(settings.flags,BITFLAG_AUTO_START));
   printPgmString(PSTR(" (auto start, bool)\r\n$21=")); print_uint8_base10(bit_istrue(settings.flags,BITFLAG_INVERT_ST_ENABLE));
   printPgmString(PSTR(" (invert step enable, bool)\r\n$22=")); print_uint8_base10(bit_istrue(settings.flags,BITFLAG_INVERT_LIMIT_PINS));
@@ -187,10 +187,10 @@ void report_grbl_settings() {
   printPgmString(PSTR(" (hard limits, bool)\r\n$25=")); print_uint8_base10(bit_istrue(settings.flags,BITFLAG_HOMING_ENABLE));
   printPgmString(PSTR(" (homing cycle, bool)\r\n$26=")); print_uint8_base10(settings.homing_dir_mask);
   printPgmString(PSTR(" (homing dir invert mask:")); print_uint8_base2(settings.homing_dir_mask);  
-  printPgmString(PSTR(")\r\n$27=")); printFloat(settings.homing_feed_rate);
-  printPgmString(PSTR(" (homing feed, mm/min)\r\n$28=")); printFloat(settings.homing_seek_rate);
+  printPgmString(PSTR(")\r\n$27=")); printFloat_SettingValue(settings.homing_feed_rate);
+  printPgmString(PSTR(" (homing feed, mm/min)\r\n$28=")); printFloat_SettingValue(settings.homing_seek_rate);
   printPgmString(PSTR(" (homing seek, mm/min)\r\n$29=")); print_uint8_base10(settings.homing_debounce_delay);
-  printPgmString(PSTR(" (homing debounce, msec)\r\n$30=")); printFloat(settings.homing_pulloff);
+  printPgmString(PSTR(" (homing debounce, msec)\r\n$30=")); printFloat_SettingValue(settings.homing_pulloff);
   printPgmString(PSTR(" (homing pull-off, mm)\r\n")); 
 }
 
@@ -207,8 +207,7 @@ void report_probe_parameters()
   printPgmString(PSTR("[Probe:")); 
   for (i=0; i< N_AXIS; i++) {
     print_position[i] = sys.probe_position[i]/settings.steps_per_mm[i];
-    if (bit_istrue(settings.flags,BITFLAG_REPORT_INCHES)) { print_position[i] *= INCH_PER_MM; }
-    printFloat(print_position[i]);
+    printFloat_CoordValue(print_position[i]);
     if (i < (N_AXIS-1)) { printPgmString(PSTR(",")); }
   }  
   printPgmString(PSTR("]\r\n"));
@@ -233,16 +232,14 @@ void report_ngc_parameters()
     }  
     printPgmString(PSTR(":"));         
     for (i=0; i<N_AXIS; i++) {
-      if (bit_istrue(settings.flags,BITFLAG_REPORT_INCHES)) { printFloat(coord_data[i]*INCH_PER_MM); }
-      else { printFloat(coord_data[i]); }
+      printFloat_CoordValue(coord_data[i]);
       if (i < (N_AXIS-1)) { printPgmString(PSTR(",")); }
       else { printPgmString(PSTR("]\r\n")); }
     } 
   }
   printPgmString(PSTR("[G92:")); // Print G92,G92.1 which are not persistent in memory
   for (i=0; i<N_AXIS; i++) {
-    if (bit_istrue(settings.flags,BITFLAG_REPORT_INCHES)) { printFloat(gc_state.coord_offset[i]*INCH_PER_MM); }
-    else { printFloat(gc_state.coord_offset[i]); }
+    printFloat_CoordValue(gc_state.coord_offset[i]);
     if (i < (N_AXIS-1)) { printPgmString(PSTR(",")); }
     else { printPgmString(PSTR("]\r\n")); }
   } 
@@ -303,7 +300,7 @@ void report_gcode_modes()
   print_uint8_base10(gc_state.tool);
   
   printPgmString(PSTR(" F"));
-  printFloat(gc_state.feed_rate);
+  printFloat_RateValue(gc_state.feed_rate);
 
   printPgmString(PSTR("]\r\n"));
 }
@@ -357,20 +354,15 @@ void report_realtime_status()
   printPgmString(PSTR(",MPos:")); 
   for (i=0; i< N_AXIS; i++) {
     print_position[i] = current_position[i]/settings.steps_per_mm[i];
-    if (bit_istrue(settings.flags,BITFLAG_REPORT_INCHES)) { print_position[i] *= INCH_PER_MM; }
-    printFloat(print_position[i]);
+    printFloat_CoordValue(print_position[i]);
     printPgmString(PSTR(","));
   }
   
   // Report work position
   printPgmString(PSTR("WPos:")); 
   for (i=0; i< N_AXIS; i++) {
-    if (bit_istrue(settings.flags,BITFLAG_REPORT_INCHES)) {
-      print_position[i] -= (gc_state.coord_system[i]+gc_state.coord_offset[i])*INCH_PER_MM;
-    } else {
-      print_position[i] -= gc_state.coord_system[i]+gc_state.coord_offset[i];
-    }
-    printFloat(print_position[i]);
+    print_position[i] -= gc_state.coord_system[i]+gc_state.coord_offset[i];
+    printFloat_CoordValue(print_position[i]);
     if (i < (N_AXIS-1)) { printPgmString(PSTR(",")); }
   }
     
@@ -385,5 +377,11 @@ void report_realtime_status()
   printInteger(ln);
   #endif
     
+  #ifdef REPORT_REALTIME_RATE
+  // Report realtime rate 
+  printPgmString(PSTR(",F:")); 
+  printFloat_RateValue(st_get_realtime_rate());
+  #endif  
+  
   printPgmString(PSTR(">\r\n"));
 }
