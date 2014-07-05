@@ -63,7 +63,7 @@ void gc_sync_position()
 {
   uint8_t i;
   for (i=0; i<N_AXIS; i++) {
-    gc_state.position[i] = sys.position[i]/settings.steps_per_mm[i];
+     gc_state.position[i] = sys.position[i]/settings.steps_per_mm[i];
   }
 }
 
