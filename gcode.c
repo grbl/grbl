@@ -575,7 +575,7 @@ uint8_t gc_execute_line(char *line)
       // target position with the coordinate system offsets, G92 offsets, absolute override, and distance
       // modes applied. This includes the motion mode commands. We can now pre-compute the target position.
       // NOTE: Tool offsets may be appended to these conversions when/if this feature is added.
-      if (axis_command != AXIS_COMMAND_TOOL_LENGTH_OFFSET ) // TLO block any axis command.
+      if (axis_command != AXIS_COMMAND_TOOL_LENGTH_OFFSET ) { // TLO block any axis command.
         if (axis_words) {
           for (idx=0; idx<N_AXIS; idx++) { // Axes indices are consistent, so loop may be used to save flash space.
             if ( bit_isfalse(axis_words,bit(idx)) ) {
@@ -1013,7 +1013,10 @@ uint8_t gc_execute_line(char *line)
    group 1 = {G81 - G89} (Motion modes: Canned cycles)
    group 4 = {M1} (Optional stop, ignored)
    group 6 = {M6} (Tool change)
+   group 7 = {G40, G41, G42} cutter radius compensation
+   group 8 = {G43} tool length offset (But G43.1/G94 IS SUPPORTED)
    group 8 = {*M7} enable mist coolant
    group 9 = {M48, M49} enable/disable feed and speed override switches
+   group 10 = {G98, G99} return mode canned cycles
    group 13 = {G61, G61.1, G64} path control mode
 */
