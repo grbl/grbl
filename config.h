@@ -85,9 +85,9 @@
 #define N_STARTUP_LINE 2 // Integer (1-3)
 
 // Number of floating decimal points printed by Grbl for certain value types. These settings are 
-// determined by realistic and commonly values observed in CNC machines. For example, position
-// values cannot be less than 0.001mm or 0.0001in, because machines are never more precise than 
-// this. So, there is likely no need to change these, but you can if you need to here.
+// determined by realistic and commonly observed values in CNC machines. For example, position
+// values cannot be less than 0.001mm or 0.0001in, because machines can not be physically more
+// precise this. So, there is likely no need to change these, but you can if you need to here.
 // NOTE: Must be an integer value from 0 to ~4. More than 4 may exhibit round-off errors.
 #define N_DECIMAL_COORDVALUE_INCH 4 // Coordinate or position value in inches
 #define N_DECIMAL_COORDVALUE_MM   3 // Coordinate or position value in mm
@@ -127,6 +127,11 @@
 // noise and shake your machine. At even lower step frequencies, AMASS adapts and provides even better
 // step smoothing. See stepper.c for more details on the AMASS system works.
 #define ADAPTIVE_MULTI_AXIS_STEP_SMOOTHING  // Default enabled. Comment to disable.
+
+// Sets which axis the tool length offset is applied. Assumes the spindle is always parallel with 
+// the selected axis with the tool oriented toward the negative direction. In other words, a positive
+// tool length offset value is subtracted from the current location.
+#define TOOL_LENGTH_OFFSET_AXIS Z_AXIS // Default z-axis. Valid values are X_AXIS, Y_AXIS, or Z_AXIS.
 
 // Enables variable spindle output voltage for different RPM values. On the Arduino Uno, the spindle
 // enable pin will output 5V for maximum RPM with 256 intermediate levels and 0V when disabled.

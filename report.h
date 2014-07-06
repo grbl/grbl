@@ -52,6 +52,7 @@
 #define STATUS_GCODE_NO_OFFSETS_IN_PLANE 35
 #define STATUS_GCODE_PROBE_TRIGGERED 36
 #define STATUS_GCODE_UNUSED_WORDS 37
+#define STATUS_GCODE_G43_DYNAMIC_AXIS_ERROR 38
 
 // Define Grbl alarm codes. Less than zero to distinguish alarm error from status error.
 #define ALARM_LIMIT_ERROR -1
