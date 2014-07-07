@@ -264,7 +264,7 @@ uint8_t gc_execute_line(char *line)
         // Check for more than one command per modal group violations in the current block
         // NOTE: Variable 'word_bit' is always assigned, if the command is valid.
         if ( bit_istrue(command_words,bit(word_bit)) ) { FAIL(STATUS_GCODE_MODAL_GROUP_VIOLATION); }
-        bit_true(command_words,bit(word_bit));
+        command_words |= bit(word_bit);
         break;
         
       case 'M':
@@ -307,7 +307,7 @@ uint8_t gc_execute_line(char *line)
         // Check for more than one command per modal group violations in the current block
         // NOTE: Variable 'word_bit' is always assigned, if the command is valid.
         if ( bit_istrue(command_words,bit(word_bit)) ) { FAIL(STATUS_GCODE_MODAL_GROUP_VIOLATION); }
-        bit_true(command_words,bit(word_bit));
+        command_words |= bit(word_bit);
         break;
       
       // NOTE: All remaining letters assign values.

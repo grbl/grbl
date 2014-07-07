@@ -86,7 +86,7 @@ ISR(LIMIT_INT_vect) // DEFAULT: Limit pin change interrupt process.
   if (sys.state != STATE_ALARM) { 
     if (bit_isfalse(sys.execute,EXEC_ALARM)) {
       mc_reset(); // Initiate system kill.
-      bit_true(sys.execute, (EXEC_ALARM | EXEC_CRIT_EVENT)); // Indicate hard limit critical event
+      bit_true_atomic(sys.execute, (EXEC_ALARM | EXEC_CRIT_EVENT)); // Indicate hard limit critical event
     }
   }
 }  
@@ -103,7 +103,7 @@ ISR(WDT_vect) // Watchdog timer ISR
       if (bit_istrue(settings.flags,BITFLAG_INVERT_LIMIT_PINS)) { bits ^= LIMIT_MASK; }
       if (bits & LIMIT_MASK) {
         mc_reset(); // Initiate system kill.
-        bit_true(sys.execute, (EXEC_ALARM | EXEC_CRIT_EVENT)); // Indicate hard limit critical event
+        bit_true_atomic(sys.execute, (EXEC_ALARM | EXEC_CRIT_EVENT)); // Indicate hard limit critical event
       }
     }  
   }
@@ -238,7 +238,7 @@ void limits_go_home(uint8_t cycle_mask)
   // Initiate pull-off using main motion control routines. 
   // TODO : Clean up state routines so that this motion still shows homing state.
   sys.state = STATE_QUEUED;
-  bit_true(sys.execute, EXEC_CYCLE_START);
+  bit_true_atomic(sys.execute, EXEC_CYCLE_START);
   protocol_execute_runtime();
   protocol_buffer_synchronize(); // Complete pull-off motion.
   
@@ -259,7 +259,7 @@ void limits_soft_check(float *target)
       // workspace volume so just come to a controlled stop so position is not lost. When complete
       // enter alarm mode.
       if (sys.state == STATE_CYCLE) {
-        bit_true(sys.execute, EXEC_FEED_HOLD);
+        bit_true_atomic(sys.execute, EXEC_FEED_HOLD);
         do {
           protocol_execute_runtime();
           if (sys.abort) { return; }
@@ -267,7 +267,7 @@ void limits_soft_check(float *target)
       }
       
       mc_reset(); // Issue system reset and ensure spindle and coolant are shutdown.
-      bit_true(sys.execute, (EXEC_ALARM | EXEC_CRIT_EVENT)); // Indicate soft limit critical event
+      bit_true_atomic(sys.execute, (EXEC_ALARM | EXEC_CRIT_EVENT)); // Indicate soft limit critical event
       protocol_execute_runtime(); // Execute to enter critical event loop and system abort
       return;
     

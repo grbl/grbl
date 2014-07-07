@@ -342,7 +342,7 @@ ISR(TIMER1_COMPA_vect)
     } else {
       // Segment buffer empty. Shutdown.
       st_go_idle();
-      bit_true(sys.execute,EXEC_CYCLE_STOP); // Flag main program for cycle end
+      bit_true_atomic(sys.execute,EXEC_CYCLE_STOP); // Flag main program for cycle end
       return; // Nothing to do but exit.
     }  
   }
