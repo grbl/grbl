@@ -26,28 +26,49 @@
 #include "simulator.h"
 #include <stdio.h>
 
-void serial_write(uint8_t data) {
-  printBlock();
-  if(print_comment && data!='\n' && data!='\r') {
-	  fprintf(block_out_file, "# ");
-	  print_comment= 0;
-  }
-  if(data=='\n' || data=='\r')
-	  print_comment= 1;
 
-  fprintf(block_out_file, "%c", data);
+//prototypes for overridden functions
+uint8_t orig_serial_read();
 
-  // Indicate the end of processing a command. See simulator.c for details
-  runtime_second_call= 0;
+//used to inject a sleep in grbl main loop, 
+// ensures hardware simulator gets some cycles in "parallel"
+uint8_t serial_read() {
+  platform_sleep(0);
+  return orig_serial_read();
 }
 
 
-uint8_t serial_read() {
-  int c;
-  if((c = fgetc(stdin)) != EOF) {
-	serial_write(c);
-    return c;
+void simulate_write_interrupt(){
+  while (UCSR0B & (1<<UDRIE0)){
+	 interrupt_SERIAL_UDRE();
+	 grbl_out(UDR0);
   }
-    
-  return SERIAL_NO_DATA;
+}
+
+void simulate_read_interrupt(){
+  uint8_t char_in = platform_poll_stdin();
+  if (char_in) {
+	 UDR0 = char_in;
+	 //EOF or CTRL-F to exit
+	 if (UDR0 == EOF || UDR0 == 0xFF || UDR0 == 0x06 ) {
+		sim.exit = 1;
+	 }
+	 //debugging
+	 if (UDR0 == '%') { 
+		printf("%ld %f\n",sim.masterclock,(double)sim.sim_time);
+	 }
+	 interrupt_SERIAL_RX();
+  }
+}
+
+
+extern volatile uint8_t rx_buffer_head;
+extern volatile uint8_t rx_buffer_tail;
+void simulate_serial(){
+  simulate_write_interrupt();
+  uint8_t head = rx_buffer_head+1;
+  if (head==RX_BUFFER_SIZE) { head = 0; }
+  if (head!=rx_buffer_tail) {
+	 simulate_read_interrupt();
+  }
 }

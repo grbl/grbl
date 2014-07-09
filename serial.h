@@ -2,8 +2,8 @@
   serial.c - Low level functions for sending and recieving bytes via the serial port
   Part of Grbl
 
+  Copyright (c) 2011-2014 Sungeun K. Jeon
   Copyright (c) 2009-2011 Simen Svale Skogsrud
-  Copyright (c) 2011-2012 Sungeun K. Jeon
 
   Grbl is free software: you can redistribute it and/or modify
   it under the terms of the GNU General Public License as published by
@@ -25,7 +25,6 @@
 #ifndef serial_h
 #define serial_h
 
-#include "nuts_bolts.h"
 
 #ifndef RX_BUFFER_SIZE
   #define RX_BUFFER_SIZE 128

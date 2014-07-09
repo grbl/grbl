@@ -2,8 +2,8 @@
   print.h - Functions for formatting output strings
   Part of Grbl
 
+  Copyright (c) 2011-2014 Sungeun K. Jeon
   Copyright (c) 2009-2011 Simen Svale Skogsrud
-  Copyright (c) 2011-2012 Sungeun K. Jeon
 
   Grbl is free software: you can redistribute it and/or modify
   it under the terms of the GNU General Public License as published by
@@ -31,8 +31,22 @@ void printPgmString(const char *s);
 
 void printInteger(long n);
 
+void print_uint32_base10(uint32_t n);
+
 void print_uint8_base2(uint8_t n);
 
-void printFloat(float n);
+void print_uint8_base10(uint8_t n);
+
+void printFloat(float n, uint8_t decimal_places);
+
+// Floating value printing handlers for special variables types used in Grbl. 
+//  - CoordValue: Handles all position or coordinate values in inches or mm reporting.
+//  - RateValue: Handles feed rate and current velocity in inches or mm reporting.
+//  - SettingValue: Handles all floating point settings values (always in mm.)
+void printFloat_CoordValue(float n);
+
+void printFloat_RateValue(float n);
+
+void printFloat_SettingValue(float n);
 
 #endif

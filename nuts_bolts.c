@@ -2,8 +2,8 @@
   nuts_bolts.c - Shared functions
   Part of Grbl
 
+  Copyright (c) 2011-2014 Sungeun K. Jeon
   Copyright (c) 2009-2011 Simen Svale Skogsrud
-  Copyright (c) 2011-2012 Sungeun K. Jeon
 
   Grbl is free software: you can redistribute it and/or modify
   it under the terms of the GNU General Public License as published by
@@ -19,13 +19,11 @@
   along with Grbl.  If not, see <http://www.gnu.org/licenses/>.
 */
 
-#include <util/delay.h>
-#include "nuts_bolts.h"
-#include "gcode.h"
-#include "planner.h"
+#include "system.h"
+
 
 #define MAX_INT_DIGITS 8 // Maximum number of digits in int32 (and float)
-extern float __floatunsisf (unsigned long);
+
 
 // Extracts a floating point value from a string. The following code is based loosely on
 // the avr-libc strtod() function by Michael Stumpf and Dmitry Xmelkov and many freely
@@ -34,7 +32,7 @@ extern float __floatunsisf (unsigned long);
 // Scientific notation is officially not supported by g-code, and the 'E' character may
 // be a g-code word on some CNC systems. So, 'E' notation will not be recognized. 
 // NOTE: Thanks to Radu-Eosif Mihailescu for identifying the issues with using strtod().
-int read_float(char *line, uint8_t *char_counter, float *float_ptr)                  
+uint8_t read_float(char *line, uint8_t *char_counter, float *float_ptr)                  
 {
   char *ptr = line + *char_counter;
   unsigned char c;
@@ -79,7 +77,7 @@ int read_float(char *line, uint8_t *char_counter, float *float_ptr)
   
   // Convert integer into floating point.
   float fval;
-  fval = __floatunsisf(intval);
+  fval = (float)intval;
   
   // Apply decimal. Should perform no more than two floating point multiplications for the
   // expected range of E0 to E-4.
@@ -140,9 +138,22 @@ void delay_us(uint32_t us)
   }
 }
 
-// Syncs all internal position vectors to the current system position.
-void sys_sync_current_position()
+
+// Returns direction mask according to Grbl internal axis indexing.
+uint8_t get_direction_mask(uint8_t axis_idx)
 {
-  plan_set_current_position(sys.position[X_AXIS],sys.position[Y_AXIS],sys.position[Z_AXIS]);
-  gc_set_current_position(sys.position[X_AXIS],sys.position[Y_AXIS],sys.position[Z_AXIS]);
+  uint8_t axis_mask = 0;
+  switch( axis_idx ) {
+    case X_AXIS: axis_mask = (1<<X_DIRECTION_BIT); break;
+    case Y_AXIS: axis_mask = (1<<Y_DIRECTION_BIT); break;
+    case Z_AXIS: axis_mask = (1<<Z_DIRECTION_BIT); break;
+  }
+  return(axis_mask);
 }
+
+
+float hypot_f(float x, float y)
+{
+   return(sqrt(x*x + y*y));
+}
+

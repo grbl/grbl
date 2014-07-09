@@ -2,8 +2,8 @@
   print.c - Functions for formatting output strings
   Part of Grbl
 
+  Copyright (c) 2011-2014 Sungeun K. Jeon
   Copyright (c) 2009-2011 Simen Svale Skogsrud
-  Copyright (c) 2011-2012 Sungeun K. Jeon
 
   Grbl is free software: you can redistribute it and/or modify
   it under the terms of the GNU General Public License as published by
@@ -22,11 +22,10 @@
 /* This code was initially inspired by the wiring_serial module by David A. Mellis which
    used to be a part of the Arduino project. */ 
 
-
-#include <avr/pgmspace.h>
-#include "config.h"
+#include "system.h"
 #include "serial.h"
 #include "settings.h"
+
 
 void printString(const char *s)
 {
@@ -77,32 +76,52 @@ void print_uint8_base2(uint8_t n)
 		serial_write('0' + buf[i - 1]);
 }
 
-static void print_uint32_base10(unsigned long n)
+void print_uint8_base10(uint8_t n)
 { 
-  unsigned char buf[10]; 
-  uint8_t i = 0;
-  
   if (n == 0) {
     serial_write('0');
     return;
   } 
+
+  unsigned char buf[3];
+  uint8_t i = 0;
+
+  while (n > 0) {
+      buf[i++] = n % 10 + '0';
+      n /= 10;
+  }
+
+  for (; i > 0; i--)
+      serial_write(buf[i - 1]);
+}
+
+void print_uint32_base10(unsigned long n)
+{ 
+  if (n == 0) {
+    serial_write('0');
+    return;
+  } 
+
+  unsigned char buf[10]; 
+  uint8_t i = 0;  
   
   while (n > 0) {
-    buf[i++] = n % 10 + '0';
+    buf[i++] = n % 10;
     n /= 10;
   }
     
   for (; i > 0; i--)
-    serial_write(buf[i-1]);
+    serial_write('0' + buf[i-1]);
 }
 
 void printInteger(long n)
 {
   if (n < 0) {
     serial_write('-');
-    n = -n;
+    print_uint32_base10((-n));
+  } else {
+    print_uint32_base10(n);
   }
-  print_uint32_base10(n);
 }
 
 // Convert float to string by immediately converting to a long integer, which contains
@@ -110,14 +129,14 @@ void printInteger(long n)
 // may be set by the user. The integer is then efficiently converted to a string.
 // NOTE: AVR '%' and '/' integer operations are very efficient. Bitshifting speed-up 
 // techniques are actually just slightly slower. Found this out the hard way.
-void printFloat(float n)
+void printFloat(float n, uint8_t decimal_places)
 {
   if (n < 0) {
     serial_write('-');
     n = -n;
   }
 
-  uint8_t decimals = settings.decimal_places;
+  uint8_t decimals = decimal_places;
   while (decimals >= 2) { // Quickly convert values expected to be E0 to E-4.
     n *= 100;
     decimals -= 2;
@@ -129,16 +148,16 @@ void printFloat(float n)
   unsigned char buf[10]; 
   uint8_t i = 0;
   uint32_t a = (long)n;  
-  buf[settings.decimal_places] = '.'; // Place decimal point, even if decimal places are zero.
+  buf[decimal_places] = '.'; // Place decimal point, even if decimal places are zero.
   while(a > 0) {
-    if (i == settings.decimal_places) { i++; } // Skip decimal point location
+    if (i == decimal_places) { i++; } // Skip decimal point location
     buf[i++] = (a % 10) + '0'; // Get digit
     a /= 10;
   }
-  while (i < settings.decimal_places) { 
+  while (i < decimal_places) { 
      buf[i++] = '0'; // Fill in zeros to decimal point for (n < 1)
   }
-  if (i == settings.decimal_places) { // Fill in leading zero, if needed.
+  if (i == decimal_places) { // Fill in leading zero, if needed.
     i++;
     buf[i++] = '0'; 
   }   
@@ -147,3 +166,27 @@ void printFloat(float n)
   for (; i > 0; i--)
     serial_write(buf[i-1]);
 }
+
+
+// Floating value printing handlers for special variables types used in Grbl and are defined
+// in the config.h.
+//  - CoordValue: Handles all position or coordinate values in inches or mm reporting.
+//  - RateValue: Handles feed rate and current velocity in inches or mm reporting.
+//  - SettingValue: Handles all floating point settings values (always in mm.)
+void printFloat_CoordValue(float n) { 
+  if (bit_istrue(settings.flags,BITFLAG_REPORT_INCHES)) { 
+    printFloat(n*INCH_PER_MM,N_DECIMAL_COORDVALUE_INCH);
+  } else {
+    printFloat(n,N_DECIMAL_COORDVALUE_MM);
+  }
+}
+
+void printFloat_RateValue(float n) { 
+  if (bit_istrue(settings.flags,BITFLAG_REPORT_INCHES)) {
+    printFloat(n*INCH_PER_MM,N_DECIMAL_RATEVALUE_INCH);
+  } else {
+    printFloat(n,N_DECIMAL_RATEVALUE_MM);
+  }
+}
+
+void printFloat_SettingValue(float n) { printFloat(n,N_DECIMAL_SETTINGVALUE); }

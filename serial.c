@@ -2,8 +2,8 @@
   serial.c - Low level functions for sending and recieving bytes via the serial port
   Part of Grbl
 
+  Copyright (c) 2011-2014 Sungeun K. Jeon
   Copyright (c) 2009-2011 Simen Svale Skogsrud
-  Copyright (c) 2011-2012 Sungeun K. Jeon
 
   Grbl is free software: you can redistribute it and/or modify
   it under the terms of the GNU General Public License as published by
@@ -23,18 +23,20 @@
    used to be a part of the Arduino project. */ 
 
 #include <avr/interrupt.h>
+#include "system.h"
 #include "serial.h"
-#include "config.h"
 #include "motion_control.h"
 #include "protocol.h"
 
+
 uint8_t rx_buffer[RX_BUFFER_SIZE];
 uint8_t rx_buffer_head = 0;
-uint8_t rx_buffer_tail = 0;
+volatile uint8_t rx_buffer_tail = 0;
 
 uint8_t tx_buffer[TX_BUFFER_SIZE];
 uint8_t tx_buffer_head = 0;
 volatile uint8_t tx_buffer_tail = 0;
+
 
 #ifdef ENABLE_XONXOFF
   volatile uint8_t flow_ctrl = XON_SENT; // Flow control state variable
@@ -48,6 +50,7 @@ volatile uint8_t tx_buffer_tail = 0;
     return (RX_BUFFER_SIZE - (rx_buffer_head-rx_buffer_tail));
   }
 #endif
+
 
 void serial_init()
 {
@@ -72,6 +75,7 @@ void serial_init()
   // defaults to 8-bit, no parity, 1 stop bit
 }
 
+
 void serial_write(uint8_t data) {
   // Calculate next head
   uint8_t next_head = tx_buffer_head + 1;
@@ -90,15 +94,11 @@ void serial_write(uint8_t data) {
   UCSR0B |=  (1 << UDRIE0); 
 }
 
+
 // Data Register Empty Interrupt handler
-#ifdef __AVR_ATmega644P__
-ISR(USART0_UDRE_vect)
-#else
-ISR(USART_UDRE_vect)
-#endif
+ISR(SERIAL_UDRE)
 {
-  // Temporary tx_buffer_tail (to optimize for volatile)
-  uint8_t tail = tx_buffer_tail;
+  uint8_t tail = tx_buffer_tail; // Temporary tx_buffer_tail (to optimize for volatile)
   
   #ifdef ENABLE_XONXOFF
     if (flow_ctrl == SEND_XOFF) { 
@@ -124,14 +124,18 @@ ISR(USART_UDRE_vect)
   if (tail == tx_buffer_head) { UCSR0B &= ~(1 << UDRIE0); }
 }
 
+
 uint8_t serial_read()
 {
-  if (rx_buffer_head == rx_buffer_tail) {
+  uint8_t tail = rx_buffer_tail; // Temporary rx_buffer_tail (to optimize for volatile)
+  if (rx_buffer_head == tail) {
     return SERIAL_NO_DATA;
   } else {
-    uint8_t data = rx_buffer[rx_buffer_tail];
-    rx_buffer_tail++;
-    if (rx_buffer_tail == RX_BUFFER_SIZE) { rx_buffer_tail = 0; }
+    uint8_t data = rx_buffer[tail];
+    
+    tail++;
+    if (tail == RX_BUFFER_SIZE) { tail = 0; }
+    rx_buffer_tail = tail;
 
     #ifdef ENABLE_XONXOFF
       if ((get_rx_buffer_count() < RX_BUFFER_LOW) && flow_ctrl == XOFF_SENT) { 
@@ -144,11 +148,8 @@ uint8_t serial_read()
   }
 }
 
-#ifdef __AVR_ATmega644P__
-ISR(USART0_RX_vect)
-#else
-ISR(USART_RX_vect)
-#endif
+
+ISR(SERIAL_RX)
 {
   uint8_t data = UDR0;
   uint8_t next_head;
@@ -156,9 +157,9 @@ ISR(USART_RX_vect)
   // Pick off runtime command characters directly from the serial stream. These characters are
   // not passed into the buffer, but these set system state flag bits for runtime execution.
   switch (data) {
-    case CMD_STATUS_REPORT: sys.execute |= EXEC_STATUS_REPORT; break; // Set as true
-    case CMD_CYCLE_START:   sys.execute |= EXEC_CYCLE_START; break; // Set as true
-    case CMD_FEED_HOLD:     sys.execute |= EXEC_FEED_HOLD; break; // Set as true
+    case CMD_STATUS_REPORT: bit_true_atomic(sys.execute, EXEC_STATUS_REPORT); break; // Set as true
+    case CMD_CYCLE_START:   bit_true_atomic(sys.execute, EXEC_CYCLE_START); break; // Set as true
+    case CMD_FEED_HOLD:     bit_true_atomic(sys.execute, EXEC_FEED_HOLD); break; // Set as true
     case CMD_RESET:         mc_reset(); break; // Call motion control reset routine.
     default: // Write character to buffer    
       next_head = rx_buffer_head + 1;
@@ -177,8 +178,10 @@ ISR(USART_RX_vect)
         #endif
         
       }
+      //TODO: else alarm on overflow?
   }
 }
+
 
 void serial_reset_read_buffer() 
 {

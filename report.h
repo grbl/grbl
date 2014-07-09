@@ -2,7 +2,7 @@
   report.h - reporting and messaging methods
   Part of Grbl
 
-  Copyright (c) 2012-2013 Sungeun K. Jeon
+  Copyright (c) 2012-2014 Sungeun K. Jeon
 
   Grbl is free software: you can redistribute it and/or modify
   it under the terms of the GNU General Public License as published by
@@ -20,26 +20,44 @@
 #ifndef report_h
 #define report_h
 
-
 // Define Grbl status codes.
 #define STATUS_OK 0
-#define STATUS_BAD_NUMBER_FORMAT 1
-#define STATUS_EXPECTED_COMMAND_LETTER 2
-#define STATUS_UNSUPPORTED_STATEMENT 3
-#define STATUS_ARC_RADIUS_ERROR 4
-#define STATUS_MODAL_GROUP_VIOLATION 5
-#define STATUS_INVALID_STATEMENT 6
-#define STATUS_SETTING_DISABLED 7
-#define STATUS_SETTING_VALUE_NEG 8
-#define STATUS_SETTING_STEP_PULSE_MIN 9
-#define STATUS_SETTING_READ_FAIL 10
-#define STATUS_IDLE_ERROR 11
-#define STATUS_ALARM_LOCK 12
-#define STATUS_SOFT_LIMIT_ERROR 13
+#define STATUS_EXPECTED_COMMAND_LETTER 1
+#define STATUS_BAD_NUMBER_FORMAT 2
+#define STATUS_INVALID_STATEMENT 3
+#define STATUS_NEGATIVE_VALUE 4
+#define STATUS_SETTING_DISABLED 5
+#define STATUS_SETTING_STEP_PULSE_MIN 6
+#define STATUS_SETTING_READ_FAIL 7
+#define STATUS_IDLE_ERROR 8
+#define STATUS_ALARM_LOCK 9
+#define STATUS_SOFT_LIMIT_ERROR 10
+#define STATUS_OVERFLOW 11
+
+#define STATUS_GCODE_UNSUPPORTED_COMMAND 20
+#define STATUS_GCODE_MODAL_GROUP_VIOLATION 21
+#define STATUS_GCODE_UNDEFINED_FEED_RATE 22
+#define STATUS_GCODE_COMMAND_VALUE_NOT_INTEGER 23
+#define STATUS_GCODE_AXIS_COMMAND_CONFLICT 24
+#define STATUS_GCODE_WORD_REPEATED 25
+#define STATUS_GCODE_NO_AXIS_WORDS 26
+#define STATUS_GCODE_INVALID_LINE_NUMBER 27
+#define STATUS_GCODE_VALUE_WORD_MISSING 28
+#define STATUS_GCODE_UNSUPPORTED_COORD_SYS 29
+#define STATUS_GCODE_G53_INVALID_MOTION_MODE 30
+#define STATUS_GCODE_AXIS_WORDS_EXIST 31
+#define STATUS_GCODE_NO_AXIS_WORDS_IN_PLANE 32
+#define STATUS_GCODE_INVALID_TARGET 33
+#define STATUS_GCODE_ARC_RADIUS_ERROR 34
+#define STATUS_GCODE_NO_OFFSETS_IN_PLANE 35
+#define STATUS_GCODE_PROBE_TRIGGERED 36
+#define STATUS_GCODE_UNUSED_WORDS 37
+#define STATUS_GCODE_G43_DYNAMIC_AXIS_ERROR 38
 
 // Define Grbl alarm codes. Less than zero to distinguish alarm error from status error.
 #define ALARM_LIMIT_ERROR -1
 #define ALARM_ABORT_CYCLE -2
+#define ALARM_PROBE_FAIL -3
 
 // Define Grbl feedback message codes.
 #define MESSAGE_CRITICAL_EVENT 1
@@ -69,13 +87,19 @@ void report_grbl_settings();
 // Prints realtime status report
 void report_realtime_status();
 
-// Prints Grbl persistent coordinate parameters
-void report_gcode_parameters();
+// Prints recorded probe position
+void report_probe_parameters();
+
+// Prints Grbl NGC parameters (coordinate offsets, probe)
+void report_ngc_parameters();
 
 // Prints current g-code parser mode state
 void report_gcode_modes();
 
 // Prints startup line
 void report_startup_line(uint8_t n, char *line);
+
+// Prints build info and user info
+void report_build_info(char *line);
 
 #endif

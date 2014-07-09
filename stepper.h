@@ -2,8 +2,8 @@
   stepper.h - stepper motor driver: executes motion plans of planner.c using the stepper motors
   Part of Grbl
 
+  Copyright (c) 2011-2014 Sungeun K. Jeon
   Copyright (c) 2009-2011 Simen Svale Skogsrud
-  Copyright (c) 2011 Sungeun K. Jeon
 
   Grbl is free software: you can redistribute it and/or modify
   it under the terms of the GNU General Public License as published by
@@ -22,10 +22,12 @@
 #ifndef stepper_h
 #define stepper_h 
 
-#include <avr/io.h>
+#ifndef SEGMENT_BUFFER_SIZE
+  #define SEGMENT_BUFFER_SIZE 6
+#endif
 
 // Initialize and setup the stepper motor subsystem
-void st_init();
+void stepper_init();
 
 // Enable steppers, but cycle does not start unless called by motion control or runtime command.
 void st_wake_up();
@@ -36,13 +38,15 @@ void st_go_idle();
 // Reset the stepper subsystem variables       
 void st_reset();
              
-// Notify the stepper subsystem to start executing the g-code program in buffer.
-void st_cycle_start();
+// Reloads step segment buffer. Called continuously by runtime execution system.
+void st_prep_buffer();
 
-// Reinitializes the buffer after a feed hold for a resume.
-void st_cycle_reinitialize(); 
+// Called by planner_recalculate() when the executing block is updated by the new plan.
+void st_update_plan_block_parameters();
 
-// Initiates a feed hold of the running program
-void st_feed_hold();
+// Called by runtime status reporting if realtime rate reporting is enabled in config.h.
+#ifdef REPORT_REALTIME_RATE
+float st_get_realtime_rate();
+#endif
 
 #endif

@@ -1,9 +1,9 @@
 /*
-  protocol.c - the serial protocol master control unit
+  protocol.c - controls Grbl execution protocol and procedures
   Part of Grbl
 
+  Copyright (c) 2011-2014 Sungeun K. Jeon  
   Copyright (c) 2009-2011 Simen Svale Skogsrud
-  Copyright (c) 2011-2013 Sungeun K. Jeon  
 
   Grbl is free software: you can redistribute it and/or modify
   it under the terms of the GNU General Public License as published by
@@ -19,69 +19,150 @@
   along with Grbl.  If not, see <http://www.gnu.org/licenses/>.
 */
 
-#include <avr/io.h>
-#include <avr/interrupt.h>
+#include "system.h"
+#include "serial.h"
+#include "settings.h"
 #include "protocol.h"
 #include "gcode.h"
-#include "serial.h"
-#include "print.h"
-#include "settings.h"
-#include "config.h"
-#include "nuts_bolts.h"
+#include "planner.h"
 #include "stepper.h"
-#include "report.h"
 #include "motion_control.h"
+#include "report.h"
+
 
 static char line[LINE_BUFFER_SIZE]; // Line to be executed. Zero-terminated.
-static uint8_t char_counter; // Last character counter in line variable.
-static uint8_t iscomment; // Comment/block delete flag for processor to ignore comment characters.
 
 
-void protocol_init() 
-{
-  char_counter = 0; // Reset line input
-  iscomment = false;
-  report_init_message(); // Welcome message   
-  
-  PINOUT_DDR &= ~(PINOUT_MASK); // Set as input pins
-  PINOUT_PORT |= PINOUT_MASK; // Enable internal pull-up resistors. Normal high operation.
-  PINOUT_PCMSK |= PINOUT_MASK;   // Enable specific pins of the Pin Change Interrupt
-  PCICR |= (1 << PINOUT_INT);   // Enable Pin Change Interrupt
-}
+// Directs and executes one line of formatted input from protocol_process. While mostly
+// incoming streaming g-code blocks, this also directs and executes Grbl internal commands,
+// such as settings, initiating the homing cycle, and toggling switch states.
+static void protocol_execute_line(char *line) 
+{      
+  protocol_execute_runtime(); // Runtime command check point.
+  if (sys.abort) { return; } // Bail to calling function upon system abort  
 
-// Executes user startup script, if stored.
-void protocol_execute_startup() 
-{
-  uint8_t n;
-  for (n=0; n < N_STARTUP_LINE; n++) {
-    if (!(settings_read_startup_line(n, line))) {
-      report_status_message(STATUS_SETTING_READ_FAIL);
-    } else {
-      if (line[0] != 0) {
-        printString(line); // Echo startup line to indicate execution.
-        report_status_message(gc_execute_line(line));
-      }
-    } 
-  }  
-}
+  if (line[0] == 0) {
+    // Empty or comment line. Send status message for syncing purposes.
+    report_status_message(STATUS_OK);
 
-// Pin change interrupt for pin-out commands, i.e. cycle start, feed hold, and reset. Sets
-// only the runtime command execute variable to have the main program execute these when 
-// its ready. This works exactly like the character-based runtime commands when picked off
-// directly from the incoming serial data stream.
-ISR(PINOUT_INT_vect) 
-{
-  // Enter only if any pinout pin is actively low.
-  if ((PINOUT_PIN & PINOUT_MASK) ^ PINOUT_MASK) { 
-    if (bit_isfalse(PINOUT_PIN,bit(PIN_RESET))) {
-      mc_reset();
-    } else if (bit_isfalse(PINOUT_PIN,bit(PIN_FEED_HOLD))) {
-      sys.execute |= EXEC_FEED_HOLD; 
-    } else if (bit_isfalse(PINOUT_PIN,bit(PIN_CYCLE_START))) {
-      sys.execute |= EXEC_CYCLE_START;
-    }
+  } else if (line[0] == '$') {
+    // Grbl '$' system command
+    report_status_message(system_execute_line(line));
+    
+  } else if (sys.state == STATE_ALARM) {
+    // Everything else is gcode. Block if in alarm mode.
+    report_status_message(STATUS_ALARM_LOCK);
+
+  } else {
+    // Parse and execute g-code block!
+    report_status_message(gc_execute_line(line));
   }
 }
+
+
+/* 
+  GRBL PRIMARY LOOP:
+*/
+void protocol_main_loop()
+{
+  // ------------------------------------------------------------
+  // Complete initialization procedures upon a power-up or reset.
+  // ------------------------------------------------------------
+  
+  // Print welcome message   
+  report_init_message();
+
+  // Check for and report alarm state after a reset, error, or an initial power up.
+  if (sys.state == STATE_ALARM) {
+    report_feedback_message(MESSAGE_ALARM_LOCK); 
+  } else {
+    // All systems go!
+    sys.state = STATE_IDLE; // Set system to ready. Clear all state flags.
+    system_execute_startup(line); // Execute startup script.
+  }
+    
+  // ---------------------------------------------------------------------------------  
+  // Primary loop! Upon a system abort, this exits back to main() to reset the system. 
+  // ---------------------------------------------------------------------------------  
+  
+  uint8_t iscomment = false;
+  uint8_t char_counter = 0;
+  uint8_t c;
+  for (;;) {
+
+    // Process one line of incoming serial data, as the data becomes available. Performs an
+    // initial filtering by removing spaces and comments and capitalizing all letters.
+    
+    // NOTE: While comment, spaces, and block delete(if supported) handling should technically 
+    // be done in the g-code parser, doing it here helps compress the incoming data into Grbl's
+    // line buffer, which is limited in size. The g-code standard actually states a line can't
+    // exceed 256 characters, but the Arduino Uno does not have the memory space for this.
+    // With a better processor, it would be very easy to pull this initial parsing out as a 
+    // seperate task to be shared by the g-code parser and Grbl's system commands.
+    
+    while((c = serial_read()) != SERIAL_NO_DATA) {
+      if ((c == '\n') || (c == '\r')) { // End of line reached
+        line[char_counter] = 0; // Set string termination character.
+        protocol_execute_line(line); // Line is complete. Execute it!
+        iscomment = false;
+        char_counter = 0;
+      } else {
+        if (iscomment) {
+          // Throw away all comment characters
+          if (c == ')') {
+            // End of comment. Resume line.
+            iscomment = false;
+          }
+        } else {
+          if (c <= ' ') { 
+            // Throw away whitepace and control characters  
+          } else if (c == '/') { 
+            // Block delete NOT SUPPORTED. Ignore character.
+            // NOTE: If supported, would simply need to check the system if block delete is enabled.
+          } else if (c == '(') {
+            // Enable comments flag and ignore all characters until ')' or EOL.
+            // NOTE: This doesn't follow the NIST definition exactly, but is good enough for now.
+            // In the future, we could simply remove the items within the comments, but retain the
+            // comment control characters, so that the g-code parser can error-check it.
+            iscomment = true;
+          // } else if (c == ';') {
+            // Comment character to EOL NOT SUPPORTED. LinuxCNC definition. Not NIST.
+            
+          // TODO: Install '%' feature 
+          // } else if (c == '%') {
+            // Program start-end percent sign NOT SUPPORTED.
+            // NOTE: This maybe installed to tell Grbl when a program is running vs manual input,
+            // where, during a program, the system auto-cycle start will continue to execute 
+            // everything until the next '%' sign. This will help fix resuming issues with certain
+            // functions that empty the planner buffer to execute its task on-time.
+
+          } else if (char_counter >= LINE_BUFFER_SIZE-1) {
+            // Detect line buffer overflow. Report error and reset line buffer.
+            report_status_message(STATUS_OVERFLOW);
+            iscomment = false;
+            char_counter = 0;
+          } else if (c >= 'a' && c <= 'z') { // Upcase lowercase
+            line[char_counter++] = c-'a'+'A';
+          } else {
+            line[char_counter++] = c;
+          }
+        }
+      }
+    }
+    
+    // If there are no more characters in the serial read buffer to be processed and executed,
+    // this indicates that g-code streaming has either filled the planner buffer or has 
+    // completed. In either case, auto-cycle start, if enabled, any queued moves.
+    protocol_auto_cycle_start();
+
+    protocol_execute_runtime();  // Runtime command check point.
+    if (sys.abort) { return; } // Bail to main() program loop to reset system.
+              
+  }
+  
+  return; /* Never reached */
+}
+
 
 // Executes run-time commands, when required. This is called from various check points in the main
 // program, primarily where there may be a while loop waiting for a buffer to clear space or any
@@ -96,8 +177,8 @@ ISR(PINOUT_INT_vect)
 // limit switches, or the main program.
 void protocol_execute_runtime()
 {
-  if (sys.execute) { // Enter only if any bit flag is true
-    uint8_t rt_exec = sys.execute; // Avoid calling volatile multiple times
+  uint8_t rt_exec = sys.execute; // Copy to avoid calling volatile multiple times
+  if (rt_exec) { // Enter only if any bit flag is true
     
     // System alarm. Everything has shutdown by something that has gone severely wrong. Report
     // the source of the error to the user. If critical, Grbl disables by entering an infinite
@@ -105,11 +186,13 @@ void protocol_execute_runtime()
     if (rt_exec & (EXEC_ALARM | EXEC_CRIT_EVENT)) {      
       sys.state = STATE_ALARM; // Set system alarm state
 
-      // Critical event. Only hard/soft limit errors currently qualify.
+      // Critical events. Hard/soft limit events identified by both critical event and alarm exec
+      // flags. Probe fail is identified by the critical event exec flag only.
       if (rt_exec & EXEC_CRIT_EVENT) {
-        report_alarm_message(ALARM_LIMIT_ERROR); 
+        if (rt_exec & EXEC_ALARM) { report_alarm_message(ALARM_LIMIT_ERROR); }
+        else { report_alarm_message(ALARM_PROBE_FAIL); }
         report_feedback_message(MESSAGE_CRITICAL_EVENT);
-        bit_false(sys.execute,EXEC_RESET); // Disable any existing reset
+        bit_false_atomic(sys.execute,EXEC_RESET); // Disable any existing reset
         do { 
           // Nothing. Block EVERYTHING until user issues reset or power cycles. Hard limits
           // typically occur while unattended or not paying attention. Gives the user time
@@ -125,7 +208,7 @@ void protocol_execute_runtime()
         // to indicate the possible severity of the problem.
         report_alarm_message(ALARM_ABORT_CYCLE);
       }
-      bit_false(sys.execute,(EXEC_ALARM | EXEC_CRIT_EVENT));
+      bit_false_atomic(sys.execute,(EXEC_ALARM | EXEC_CRIT_EVENT));
     } 
   
     // Execute system abort. 
@@ -137,200 +220,80 @@ void protocol_execute_runtime()
     // Execute and serial print status
     if (rt_exec & EXEC_STATUS_REPORT) { 
       report_realtime_status();
-      bit_false(sys.execute,EXEC_STATUS_REPORT);
+      bit_false_atomic(sys.execute,EXEC_STATUS_REPORT);
     }
     
-    // Initiate stepper feed hold
+    // Execute a feed hold with deceleration, only during cycle.
     if (rt_exec & EXEC_FEED_HOLD) {
-      st_feed_hold(); // Initiate feed hold.
-      bit_false(sys.execute,EXEC_FEED_HOLD);
+      // !!! During a cycle, the segment buffer has just been reloaded and full. So the math involved
+      // with the feed hold should be fine for most, if not all, operational scenarios.
+      if (sys.state == STATE_CYCLE) {
+        sys.state = STATE_HOLD;
+        st_update_plan_block_parameters();
+        st_prep_buffer();
+        sys.auto_start = false; // Disable planner auto start upon feed hold.
+      }
+      bit_false_atomic(sys.execute,EXEC_FEED_HOLD);
+    }
+        
+    // Execute a cycle start by starting the stepper interrupt begin executing the blocks in queue.
+    if (rt_exec & EXEC_CYCLE_START) { 
+      if (sys.state == STATE_QUEUED) {
+        sys.state = STATE_CYCLE;
+        st_prep_buffer(); // Initialize step segment buffer before beginning cycle.
+        st_wake_up();
+        if (bit_istrue(settings.flags,BITFLAG_AUTO_START)) {
+          sys.auto_start = true; // Re-enable auto start after feed hold.
+        } else {
+          sys.auto_start = false; // Reset auto start per settings.
+        }
+      }    
+      bit_false_atomic(sys.execute,EXEC_CYCLE_START);
     }
     
-    // Reinitializes the stepper module running state and, if a feed hold, re-plans the buffer.
+    // Reinitializes the cycle plan and stepper system after a feed hold for a resume. Called by 
+    // runtime command execution in the main program, ensuring that the planner re-plans safely.
+    // NOTE: Bresenham algorithm variables are still maintained through both the planner and stepper
+    // cycle reinitializations. The stepper path should continue exactly as if nothing has happened.   
     // NOTE: EXEC_CYCLE_STOP is set by the stepper subsystem when a cycle or feed hold completes.
     if (rt_exec & EXEC_CYCLE_STOP) {
-      st_cycle_reinitialize();
-      bit_false(sys.execute,EXEC_CYCLE_STOP);
+      if ( plan_get_current_block() ) { sys.state = STATE_QUEUED; }
+      else { sys.state = STATE_IDLE; }
+      bit_false_atomic(sys.execute,EXEC_CYCLE_STOP);
     }
-    
-    if (rt_exec & EXEC_CYCLE_START) { 
-      st_cycle_start(); // Issue cycle start command to stepper subsystem
-      if (bit_istrue(settings.flags,BITFLAG_AUTO_START)) {
-        sys.auto_start = true; // Re-enable auto start after feed hold.
-      }
-      bit_false(sys.execute,EXEC_CYCLE_START);
-    }
+
   }
   
   // Overrides flag byte (sys.override) and execution should be installed here, since they 
   // are runtime and require a direct and controlled interface to the main stepper program.
+
+  // Reload step segment buffer
+  if (sys.state & (STATE_CYCLE | STATE_HOLD | STATE_HOMING)) { st_prep_buffer(); }  
+  
 }  
 
 
-// Directs and executes one line of formatted input from protocol_process. While mostly
-// incoming streaming g-code blocks, this also executes Grbl internal commands, such as 
-// settings, initiating the homing cycle, and toggling switch states. This differs from
-// the runtime command module by being susceptible to when Grbl is ready to execute the 
-// next line during a cycle, so for switches like block delete, the switch only effects
-// the lines that are processed afterward, not necessarily real-time during a cycle, 
-// since there are motions already stored in the buffer. However, this 'lag' should not
-// be an issue, since these commands are not typically used during a cycle.
-uint8_t protocol_execute_line(char *line) 
-{   
-  // Grbl internal command and parameter lines are of the form '$4=374.3' or '$' for help  
-  if(line[0] == '$') {
-    
-    uint8_t char_counter = 1; 
-    uint8_t helper_var = 0; // Helper variable
-    float parameter, value;
-    switch( line[char_counter] ) {
-      case 0 : report_grbl_help(); break;
-      case '$' : // Prints Grbl settings
-        if ( line[++char_counter] != 0 ) { return(STATUS_UNSUPPORTED_STATEMENT); }
-        else { report_grbl_settings(); }
-        break;
-      case '#' : // Print gcode parameters
-        if ( line[++char_counter] != 0 ) { return(STATUS_UNSUPPORTED_STATEMENT); }
-        else { report_gcode_parameters(); }
-        break;
-      case 'G' : // Prints gcode parser state
-        if ( line[++char_counter] != 0 ) { return(STATUS_UNSUPPORTED_STATEMENT); }
-        else { report_gcode_modes(); }
-        break;
-      case 'C' : // Set check g-code mode
-        if ( line[++char_counter] != 0 ) { return(STATUS_UNSUPPORTED_STATEMENT); }
-        // Perform reset when toggling off. Check g-code mode should only work if Grbl
-        // is idle and ready, regardless of alarm locks. This is mainly to keep things
-        // simple and consistent.
-        if ( sys.state == STATE_CHECK_MODE ) { 
-          mc_reset(); 
-          report_feedback_message(MESSAGE_DISABLED);
-        } else {
-          if (sys.state) { return(STATUS_IDLE_ERROR); }
-          sys.state = STATE_CHECK_MODE;
-          report_feedback_message(MESSAGE_ENABLED);
-        }
-        break; 
-      case 'X' : // Disable alarm lock
-        if ( line[++char_counter] != 0 ) { return(STATUS_UNSUPPORTED_STATEMENT); }
-        if (sys.state == STATE_ALARM) { 
-          report_feedback_message(MESSAGE_ALARM_UNLOCK);
-          sys.state = STATE_IDLE;
-          // Don't run startup script. Prevents stored moves in startup from causing accidents.
-        }
-        break;               
-      case 'H' : // Perform homing cycle
-        if (bit_istrue(settings.flags,BITFLAG_HOMING_ENABLE)) { 
-          // Only perform homing if Grbl is idle or lost.
-          if ( sys.state==STATE_IDLE || sys.state==STATE_ALARM ) { 
-            mc_go_home(); 
-            if (!sys.abort) { protocol_execute_startup(); } // Execute startup scripts after successful homing.
-          } else { return(STATUS_IDLE_ERROR); }
-        } else { return(STATUS_SETTING_DISABLED); }
-        break;
-//    case 'J' : break;  // Jogging methods
-      // TODO: Here jogging can be placed for execution as a seperate subprogram. It does not need to be 
-      // susceptible to other runtime commands except for e-stop. The jogging function is intended to
-      // be a basic toggle on/off with controlled acceleration and deceleration to prevent skipped 
-      // steps. The user would supply the desired feedrate, axis to move, and direction. Toggle on would
-      // start motion and toggle off would initiate a deceleration to stop. One could 'feather' the
-      // motion by repeatedly toggling to slow the motion to the desired location. Location data would 
-      // need to be updated real-time and supplied to the user through status queries.
-      //   More controlled exact motions can be taken care of by inputting G0 or G1 commands, which are 
-      // handled by the planner. It would be possible for the jog subprogram to insert blocks into the
-      // block buffer without having the planner plan them. It would need to manage de/ac-celerations 
-      // on its own carefully. This approach could be effective and possibly size/memory efficient.
-      case 'N' : // Startup lines. 
-        if ( line[++char_counter] == 0 ) { // Print startup lines
-          for (helper_var=0; helper_var < N_STARTUP_LINE; helper_var++) {
-            if (!(settings_read_startup_line(helper_var, line))) {
-              report_status_message(STATUS_SETTING_READ_FAIL);
-            } else {
-              report_startup_line(helper_var,line);
-            }
-          }
-          break;
-        } else { // Store startup line
-          helper_var = true;  // Set helper_var to flag storing method. 
-          // No break. Continues into default: to read remaining command characters.
-        }
-      default :  // Storing setting methods
-        if(!read_float(line, &char_counter, &parameter)) { return(STATUS_BAD_NUMBER_FORMAT); }
-        if(line[char_counter++] != '=') { return(STATUS_UNSUPPORTED_STATEMENT); }
-        if (helper_var) { // Store startup line
-          // Prepare sending gcode block to gcode parser by shifting all characters
-          helper_var = char_counter; // Set helper variable as counter to start of gcode block
-          do {
-            line[char_counter-helper_var] = line[char_counter];
-          } while (line[char_counter++] != 0);
-          // Execute gcode block to ensure block is valid.
-          helper_var = gc_execute_line(line); // Set helper_var to returned status code.
-          if (helper_var) { return(helper_var); }
-          else { 
-            helper_var = trunc(parameter); // Set helper_var to int value of parameter
-            settings_store_startup_line(helper_var,line);
-          }
-        } else { // Store global setting.
-          if(!read_float(line, &char_counter, &value)) { return(STATUS_BAD_NUMBER_FORMAT); }
-          if(line[char_counter] != 0) { return(STATUS_UNSUPPORTED_STATEMENT); }
-          return(settings_store_global_setting(parameter, value));
-        }
-    }
-    return(STATUS_OK); // If '$' command makes it to here, then everything's ok.
-
-  } else {
-    return(gc_execute_line(line));    // Everything else is gcode
-  }
-}
-
-
-// Process and report status one line of incoming serial data. Performs an initial filtering
-// by removing spaces and comments and capitalizing all letters.
-void protocol_process()
+// Block until all buffered steps are executed or in a cycle state. Works with feed hold
+// during a synchronize call, if it should happen. Also, waits for clean cycle end.
+void protocol_buffer_synchronize()
 {
-  uint8_t c;
-  while((c = serial_read()) != SERIAL_NO_DATA) {
-    if ((c == '\n') || (c == '\r')) { // End of line reached
-
-      // Runtime command check point before executing line. Prevent any furthur line executions.
-      // NOTE: If there is no line, this function should quickly return to the main program when
-      // the buffer empties of non-executable data.
-      protocol_execute_runtime();
-      if (sys.abort) { return; } // Bail to main program upon system abort    
-
-      if (char_counter > 0) {// Line is complete. Then execute!
-        line[char_counter] = 0; // Terminate string
-        report_status_message(protocol_execute_line(line));
-      } else { 
-        // Empty or comment line. Skip block.
-        report_status_message(STATUS_OK); // Send status message for syncing purposes.
-      }
-      char_counter = 0; // Reset line buffer index
-      iscomment = false; // Reset comment flag
-      
-    } else {
-      if (iscomment) {
-        // Throw away all comment characters
-        if (c == ')') {
-          // End of comment. Resume line.
-          iscomment = false;
-        }
-      } else {
-        if (c <= ' ') { 
-          // Throw away whitepace and control characters
-        } else if (c == '/') { 
-          // Block delete not supported. Ignore character.
-        } else if (c == '(') {
-          // Enable comments flag and ignore all characters until ')' or EOL.
-          iscomment = true;
-        } else if (char_counter >= LINE_BUFFER_SIZE-1) {
-          // Throw away any characters beyond the end of the line buffer          
-        } else if (c >= 'a' && c <= 'z') { // Upcase lowercase
-          line[char_counter++] = c-'a'+'A';
-        } else {
-          line[char_counter++] = c;
-        }
-      }
-    }
-  }
+  // Check and set auto start to resume cycle after synchronize and caller completes.
+  if (sys.state == STATE_CYCLE) { sys.auto_start = true; }
+  while (plan_get_current_block() || (sys.state == STATE_CYCLE)) { 
+    protocol_execute_runtime();   // Check and execute run-time commands
+    if (sys.abort) { return; } // Check for system abort
+  }    
 }
+
+
+// Auto-cycle start has two purposes: 1. Resumes a plan_synchronize() call from a function that
+// requires the planner buffer to empty (spindle enable, dwell, etc.) 2. As a user setting that 
+// automatically begins the cycle when a user enters a valid motion command manually. This is 
+// intended as a beginners feature to help new users to understand g-code. It can be disabled
+// as a beginner tool, but (1.) still operates. If disabled, the operation of cycle start is
+// manually issuing a cycle start command whenever the user is ready and there is a valid motion 
+// command in the planner queue.
+// NOTE: This function is called from the main loop and mc_line() only and executes when one of
+// two conditions exist respectively: There are no more blocks sent (i.e. streaming is finished, 
+// single commands), or the planner buffer is full and ready to go.
+void protocol_auto_cycle_start() { if (sys.auto_start) { bit_true_atomic(sys.execute, EXEC_CYCLE_START); } } 
