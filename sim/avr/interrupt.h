@@ -28,12 +28,14 @@
 //#define TIMER1_COMPA_vect
 #define ISR(a) void interrupt_ ## a ()
 
-// Stub of the timer interrupt functions we need
+// Stubs of the hardware interrupt functions we are using
 void interrupt_TIMER0_COMPA_vect();
 void interrupt_TIMER1_COMPA_vect();
 void interrupt_TIMER0_OVF_vect();
 void interrupt_SERIAL_UDRE();
 void interrupt_SERIAL_RX();
+void interrupt_LIMIT_INT_vect();
+void interrupt_WDT_vect();
 
 
 //pseudo-Interrupt vector table  
@@ -41,7 +43,8 @@ typedef void(*isr_fp)(void);
 extern isr_fp compa_vect[6];
 extern isr_fp compb_vect[6];
 extern isr_fp ovf_vect[6];
-
+extern isr_fp wdt_vect;
+extern isr_fp pc_vect; //pin change
 
 // enable interrupts now does something in the simulation environment
 #define SEI 0x80
@@ -50,7 +53,6 @@ void cli();
 
 //simulate timer operation
 void timer_interrupts();
-
 
 
 #endif

@@ -4,7 +4,7 @@
 
   Part of Grbl Simulator
 
-  Copyright (c) 2012 Jens Geisler
+  Copyright (c) 2012-2104 Jens Geisler, Adam Shelly
 
   Grbl is free software: you can redistribute it and/or modify
   it under the terms of the GNU General Public License as published by
@@ -40,7 +40,7 @@ enum {
   SIM_PORT_COUNT
 };
 
-#define SIM_N_TIMERS 6
+#define SIM_N_TIMERS 3 //328p has 3, Mega has 6
 
 
 // dummy register variables
@@ -60,12 +60,14 @@ typedef struct io_sim {
   uint8_t pcmsk[3];
   uint8_t ucsr0[3];
   uint8_t udr[3];
+  uint8_t gpior[3];
+  uint8_t mcusr;
+  uint8_t wdtcsr;
   union hilo16 ubrr0;
 
   uint16_t prescaler; //continuously running
   uint8_t sreg;
 
-				  
 } io_sim_t;
 volatile extern io_sim_t io;
 
@@ -94,6 +96,8 @@ volatile extern io_sim_t io;
 #define DDRG io.ddr[SIM_G]
 #define DDRH io.ddr[SIM_H]
 #define DDRJ io.ddr[SIM_J]
+#define DDRK io.ddr[SIM_K]
+#define DDRL io.ddr[SIM_L]
 
 #define PINA io.pin[SIM_A]
 #define PINB io.pin[SIM_B]
@@ -121,6 +125,7 @@ volatile extern io_sim_t io;
 #define SIM_OCB 2
 #define SIM_OCC 3
 #define SIM_ICI 5
+#define SIM_ROLL 7  //stealing reserved TIFR bit
 
 #define OCIE0A SIM_OCA
 #define OCIE0B SIM_OCB
@@ -148,8 +153,8 @@ volatile extern io_sim_t io;
 #define TCNT1  io.tcnt[1]
 #define TCNT2  io.tcnt[2]
 
-#define TCCR0B io.tccra[0]
-#define TCCR0A io.tccrb[0]
+#define TCCR0A io.tccra[0]
+#define TCCR0B io.tccrb[0]
 #define TCCR1A io.tccra[1]
 #define TCCR1B io.tccrb[1]
 #define TCCR2A io.tccra[2]
@@ -179,6 +184,7 @@ volatile extern io_sim_t io;
 #define PCICR io.pcicr
 #define PCIE0 0
 #define PCIE1 1
+#define PCIE2 2
 
 //serial channel
 #define UCSR0A io.ucsr0[SIM_A]
@@ -195,6 +201,23 @@ volatile extern io_sim_t io;
 #define PCMSK0 io.pcmsk[0]
 #define PCMSK1 io.pcmsk[1]
 #define PCMSK2 io.pcmsk[2]
+
+//GPIO
+#define GPIOR0 io.gpior[0]
+#define GPIOR1 io.gpior[1]
+#define GPIOR2 io.gpior[2]
+
+//MCU Status
+#define MCUSR io.mcusr
+
+#define PORF 0
+#define EXTRF 1
+#define BORF 2
+#define WDRF 3
+#define JTRF 4
+
+//Interrupt Status
+#define SREG io.sreg
 
 
 
