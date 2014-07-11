@@ -1,34 +1,42 @@
-#Grbl
+#Grbl - An embedded g-code interpreter and motion-controller for the Arduino/AVR328 microcontroller
 ------------
 
-This branch serves only as a developmental platform for working on new ideas that may eventually be installed into Grbl's edge branch. Please do not use as there is no guarantee this code base is up-to-date or working.
-
-------------
-
-Grbl is a no-compromise, high performance, low cost alternative to parallel-port-based motion control for CNC milling. It will run on a vanilla Arduino (Duemillanove/Uno) as long as it sports an Atmega 328. (Other AVR CPUs are unofficially supported as well.)
+Grbl is a no-compromise, high performance, low cost alternative to parallel-port-based motion control for CNC milling. It will run on a vanilla Arduino (Duemillanove/Uno) as long as it sports an Atmega 328. 
 
 The controller is written in highly optimized C utilizing every clever feature of the AVR-chips to achieve precise timing and asynchronous operation. It is able to maintain up to 30kHz of stable, jitter free control pulses.
 
-It accepts standards-compliant G-code and has been tested with the output of several CAM tools with no problems. Arcs, circles and helical motion are fully supported, as well as, other basic functional g-code commands. Although canned cycles, functions, and variables are not currently supported (may in the future), GUIs can be built or modified easily to translate to straight g-code for Grbl.
+It accepts standards-compliant G-code and has been tested with the output of several CAM tools with no problems. Arcs, circles and helical motion are fully supported, as well as, other basic functional g-code commands. Functions and variables are not currently supported, but may be included in future releases in a form of a pre-processor.
 
 Grbl includes full acceleration management with look ahead. That means the controller will look up to 18 motions into the future and plan its velocities ahead to deliver smooth acceleration and jerk-free cornering.
 
-##Changelog for v0.9 from v0.8
-  - **ALPHA status: Under heavy development.**
-  - New stepper algorithm:  Complete overhaul of the handling of the stepper driver to simplify and reduce task time per ISR tick. Much smoother operation with the new Adaptive Multi-Axis Step Smoothing (AMASS) algorithm which does what its name implies. Users should audibly hear significant differences in how their machines move and see improved overall performance!
-  - Planner optimizations: Planning computations improved four-fold or more by optimizing end-to-end operations. Changes include streaming optimizations by ignoring already optimized blocks and removing redundant variables and computations and offloading them to the stepper algorithm to compute on an ad-hoc basis.
-  - Planner stability: Previous Grbl planners have all had a corruption issue in rare circumstances that becomes particularly problematic at high step frequencies and when jogging. The new planner is robust and incorruptible, meaning that we can fearlessly drive Grbl to it's highest limits. Combined with the new stepper algorithm and planner optimizations, this means 5x to 10x performance increases in our testing! This is all achieved through the introduction of an intermediary step segment buffer that "checks-out" steps from the planner buffer in real-time. 
-  - Acceleration independence: Each axes may be defined with different acceleration parameters and Grbl will automagically calculate the maximum acceleration through a path depending on the direction traveled. This is very useful for machine that have very different axes properties, like the ShapeOko z-axis.
-  - Maximum velocity independence: As with acceleration, the maximum velocity of individual axes may be defined. All seek/rapids motions will move at these maximum rates, but never exceed any one axes. So, when two or more axes move, the limiting axis will move at its maximum rate, while the other axes are scaled down.
-  - Significantly improved arc performance: Arcs are now defined in terms of chordal tolerance, rather than segment length. Chordal tolerance will automatically scale all arc line segments depending on arc radius, such that the error does not exceed the tolerance value (default: 0.002 mm.) So, for larger radii arcs, Grbl can move faster through them, because the segments are always longer and the planner has more distance to plan with.
-  - Soft limits: Checks if any motion command exceeds workspace limits. Alarms out when found. Another safety feature, but, unlike hard limits, position does not get lost, as it forces a feed hold before erroring out.
-  - CPU pin mapping: In an effort for Grbl to be compatible with other AVR architectures, such as the 1280 or 2560, a new cpu_map.h pin configuration file has been created to allow Grbl to be compiled for them. This is currently user supported, so your mileage may vary. If you run across a bug, please let us know or better send us a fix! Thanks in advance!
-  - New Grbl SIMULATOR by @jgeisler: A completely independent wrapper of the Grbl main source code that may be compiled as an executable on a computer. No Arduino required. Simply simulates the responses of Grbl as if it was on an Arduino. May be used for many things: checking out how Grbl works, pre-process moves for GUI graphics, debugging of new features, etc. Much left to do, but potentially very powerful, as the dummy AVR variables can be written to output anything you need. 
-  - Homing routine updated: Sets workspace volume in all negative space regardless of limit switch position. Common on pro CNCs. Now tied directly into the main planner and stepper modules to reduce flash space and allow maximum speeds during seeking.
-  - Combined limit pins capability: Limit switches can be combined to share the same pins to free up precious I/O pins for other purposes. When combined, users must adjust the homing cycle mask in config.h to not home the axes on a shared pin at the same time. 
-  - Variable spindle speed output: Available only as a compile-time option through the config.h file. Enables PWM output for 'S' g-code commands. Enabling this feature will swap the Z-limit D11 pin and spindle enable D12 pin to access the hardware PWM on pin D12. The Z-limit pin, now on D12, should work just as it did before.
-  - Increased serial baud rate: Default serial baudrate is now 115200, because the new planner and stepper allows much higher processing and execution speeds that 9600 baud was just not cutting it.
-  - Feedrate overrides: (Slated for v1.0 release) The framework to enable feedrate overrides is in-place with v0.9, but the minor details has not yet been installed.
-  - Jogging controls: (Slated for v1.0 release) Methodology needs to be to figured out first. Could be dropped due to flash space concerns.
-  
-_The project was initially inspired by the Arduino GCode Interpreter by Mike Ellery_
+* Note on licensing: The Grbl master branch is licensed under the MIT software license. Currently, the developmental edge branch will remain under GPLv3 until pushed to master, where it will be updated to the MIT-license. Please see the COPYING text for more details.
+
+* For more information and help, check out our **[Wiki pages!](https://github.com/grbl/grbl/wiki)** If you find that the information is out-dated, please to help us keep it updated by editing it or notifying our community! Thanks!
+
+------------
+
+##Update Summary for v0.9 from v0.8
+  - **BETA status: Minor bugs may exist. Under final testing for master release. Please report any issues to administrators so we can push this out quickly!**
+    - **NOTE: Default serial baudrate is now 115200! (Up from 9600)**
+  - **NEW Super Smooth Stepper Algorithm:**  Complete overhaul of the handling of the stepper driver to simplify and reduce task time per ISR tick. Much smoother operation with the new Adaptive Multi-Axis Step Smoothing (AMASS) algorithm which does what its name implies (see stepper.c source for details). Users should immediately see significant improvements in how their machines move and overall performance!
+  - **(x4)+ Faster Planner and Robustness Updates:** Planning computations improved four-fold or more by optimizing end-to-end operations, which included removing logically redundant computations. Also, the planner has be refactored for robustness and incorruptibility by the introduction of an intermediate segment buffer that "checks-out" steps from the planner buffer in real-time. This means we can now fearlessly drive Grbl to it's highest limits. Combined with the new stepper algorithm and planner optimizations, this translated to **5x to 10x** performance increases in our testing!
+  - **G-Code Parser Overhaul:** Completely re-written from the ground-up for 100%-compliance* to the g-code standard. (* Parts of the NIST standard are a bit out-dated and arbitrary, so we altered some minor things to make more sense. Differences are outlined in the source code.) We also took steps to allow us to break up the g-code parser into distinct separate tasks, which is key for some future development ideas and improvements.
+  - **Independent Acceleration and Velocity Settings:** Each axes may be defined with unique acceleration and velocity parameters and Grbl will automagically calculate the maximum acceleration and velocity through a path depending on the direction traveled. This is very useful for machines that have very different axes properties, like the ShapeOko's z-axis.
+  - **Soft Limits:** Checks if any motion command exceeds workspace limits before executing it, and alarms out, if detected. Another safety feature, but, unlike hard limits, position does not get lost, as it forces a feed hold before erroring out. NOTE: This still requires limit switches for homing so Grbl knows where the machine origin is, and the new max axis travel settings configured correctly for the machine.
+  - **Probing:** The G38.2 straight probe and G43.1/49 tool offset g-code commands are now supported. A simple probe switch must be connected to the Uno analog pin 5 (normally-open to ground). Grbl will report the probe position back to the user when the probing cycle detects a pin state change.
+  - **Tool Length Offsets:** Probing doesn't make sense without tool length offsets(TLO), so we added it! The G43.1 dynamic TLO (described by linuxcnc.org) and G49 TLO cancel commands are now supported. G43.1 dynamic TLO works like the normal G43 TLO(NOT SUPPORTED) but requires an additional axis word with the offset value attached. We did this so Grbl does not have to track and maintain a tool offset database in its memory. Perhaps in the future, we will support a tool database, but not for this version.
+  - **Improved Arc Performance:** The larger the arc radius, the faster Grbl will trace it! We are now defining arcs in terms of arc chordal tolerance, rather than a fixed segment length. This automatically scales the arc segment length such that maximum radial error of the segment from the true arc is never more than the chordal tolerance value of a super-accurate default of 0.002 mm. 
+  - **CPU Pin Mapping:** In an effort for Grbl to be compatible with other AVR architectures, such as the 1280 or 2560, a new cpu_map.h pin configuration file has been created to allow Grbl to be compiled for them. This is currently user supported, so your mileage may vary. If you run across a bug, please let us know or better send us a fix! Thanks in advance!
+  - **New Grbl SIMULATOR! (by @jgeisler and @ashelly):** A completely independent wrapper of the Grbl main source code that may be compiled as an executable on a computer. No Arduino required. Simply simulates the responses of Grbl as if it was on an Arduino. May be used for many things: checking out how Grbl works, pre-process moves for GUI graphics, debugging of new features, etc. Much left to do, but potentially very powerful, as the dummy AVR variables can be written to output anything you need. 
+  - **Updated Homing Routine:** Sets workspace volume in all negative space regardless of limit switch position. Common on pro CNCs. Now tied directly into the main planner and stepper modules to reduce flash space and allow maximum speeds during seeking.
+  - **Optional Limit Pin Sharing:** Limit switches can be combined to share the same pins to free up precious I/O pins for other purposes. When combined, users must adjust the homing cycle mask in config.h to not home the axes on a shared pin at the same time. Don't worry; hard limits and the homing cycle still work just like they did before.
+  - **Optional Variable Spindle Speed Output:** Available only as a compile-time option through the config.h file. Enables PWM output for 'S' g-code commands. Enabling this feature will swap the Z-limit D11 pin and spindle enable D12 pin to access the hardware PWM on pin D12. The Z-limit pin, now on D12, should work just as it did before.
+  - **Additional Compile-Time Feature Options:** Line number tracking, real-time feed rate reporting.
+  - **SLATED FOR v1.0 DEVELOPMENT** Jogging controls and feedrate/spindle/coolant overrides. (In v0.9, the framework for feedrate overrides are in-place, only the minor details to complete it have yet to be installed.)
+
+
+-------------
+Grbl is an open-source project and fueled by the free-time of our intrepid administrators and altruistic users. If you'd like to donate, all proceeds will be used to help fund supporting hardware and testing equipment. Thank you!
+
+[![Donate](https://www.paypalobjects.com/en_US/i/btn/btn_donate_LG.gif)](https://www.paypal.com/cgi-bin/webscr?cmd=_s-xclick&hosted_button_id=EBQWAWQAAT878)
+
