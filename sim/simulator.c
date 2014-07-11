@@ -4,7 +4,7 @@
 
   Part of Grbl Simulator
 
-  Copyright (c) 2012 Jens Geisler
+  Copyright (c) 2012-2014 Jens Geisler, Adam Shelly
 
   Grbl is free software: you can redistribute it and/or modify
   it under the terms of the GNU General Public License as published by
@@ -32,7 +32,7 @@
 #include "eeprom.h"
 
 
-int block_position[]= {0,0,0}; //step count after most recently planned block
+int block_position[N_AXIS]= {0}; //step count after most recently planned block
 uint32_t block_number= 0;
 
 sim_vars_t sim={0};
@@ -50,6 +50,11 @@ void init_simulator(float time_multiplier) {
 #ifdef STEP_PULSE_DELAY
   compa_vect[0] = interrupt_TIMER0_COMPA_vect;
 #endif
+#ifdef ENABLE_SOFTWARE_DEBOUNCE
+  wdt_vect = interrupt_WDT_vect;
+#endif
+  pc_vect = interrupt_LIMIT_INT_vect;
+
 
   sim.next_print_time = args.step_time;
   sim.speedup = time_multiplier;
@@ -94,43 +99,43 @@ void sim_loop(){
 
   while (!sim.exit || sys.state>2 ) { //don't quit until idle
 
-	 if (sim.speedup) {
-		//calculate how many ticks to do.
-		uint32_t ns_now = platform_ns();
-		uint32_t ns_elapsed = (ns_now-ns_prev)*sim.speedup; //todo: try multipling nsnow
-		simulated_ticks += F_CPU/1e9*ns_elapsed;
-		ns_prev = ns_now;
-	 }
-	 else {
-		simulated_ticks++;  //as fast as possible
-	 }
-		
-	 while (sim.masterclock < simulated_ticks){
+   if (sim.speedup) {
+    //calculate how many ticks to do.
+    uint32_t ns_now = platform_ns();
+    uint32_t ns_elapsed = (ns_now-ns_prev)*sim.speedup; //todo: try multipling nsnow
+    simulated_ticks += F_CPU/1e9*ns_elapsed;
+    ns_prev = ns_now;
+   }
+   else {
+    simulated_ticks++;  //as fast as possible
+   }
+    
+   while (sim.masterclock < simulated_ticks){
 
-		//only read serial port as fast as the baud rate allows
-		bool read_serial = (sim.masterclock >= next_byte_tick);
+    //only read serial port as fast as the baud rate allows
+    bool read_serial = (sim.masterclock >= next_byte_tick);
 
-		//do low level hardware
-		simulate_hardware(read_serial);
+    //do low level hardware
+    simulate_hardware(read_serial);
 
-		//print the steps. 
-		//For further decoupling, could maintain own counter of STEP_PORT pulses, 
+    //print the steps. 
+    //For further decoupling, could maintain own counter of STEP_PORT pulses, 
       // print that instead of sys.position.
-		print_steps(0);  
-		
-		if (read_serial){
-		  next_byte_tick+=sim.baud_ticks;
-		  //recent block can only change after input, so check here.
-		  printBlock();
-		}
+    print_steps(0);  
+    
+    if (read_serial){
+      next_byte_tick+=sim.baud_ticks;
+      //recent block can only change after input, so check here.
+      printBlock();
+    }
 
-		//TODO:
-		//  set limit pins based on position,
-		//  set probe pin when probing.
-		//  if VARIABLE_SPINDLE, measure pwm pin to report speed?
-	 }
+    //TODO:
+    //  set limit pins based on position,
+    //  set probe pin when probing.
+    //  if VARIABLE_SPINDLE, measure pwm pin to report speed?
+   }
 
-	 platform_sleep(0); //yield
+   platform_sleep(0); //yield
   }
 }
 
@@ -143,22 +148,22 @@ void print_steps(bool force)
 
   if (sim.next_print_time == 0.0) { return; }  //no printing
   if (current_block != printed_block ) {
-	 //new block. 
-	 if (block_number) { //print values from the end of prev block
-		fprintf(args.step_out_file, "%20.15f %d, %d, %d\n", sim.sim_time, sys.position[X_AXIS], sys.position[Y_AXIS], sys.position[Z_AXIS]);
-	 }
-	 printed_block = current_block;
-	 if (current_block == NULL) { return; }
-	 // print header
-	 fprintf(args.step_out_file, "# block number %d\n", block_number++);
+   //new block. 
+   if (block_number) { //print values from the end of prev block
+    fprintf(args.step_out_file, "%20.15f %d, %d, %d\n", sim.sim_time, sys.position[X_AXIS], sys.position[Y_AXIS], sys.position[Z_AXIS]);
+   }
+   printed_block = current_block;
+   if (current_block == NULL) { return; }
+   // print header
+   fprintf(args.step_out_file, "# block number %d\n", block_number++);
   }
   //print at correct interval while executing block
   else if ((current_block && sim.sim_time>=sim.next_print_time) || force ) {
-	 fprintf(args.step_out_file, "%20.15f %d, %d, %d\n", sim.sim_time, sys.position[X_AXIS], sys.position[Y_AXIS], sys.position[Z_AXIS]);
-	 fflush(args.step_out_file);
+   fprintf(args.step_out_file, "%20.15f %d, %d, %d\n", sim.sim_time, sys.position[X_AXIS], sys.position[Y_AXIS], sys.position[Z_AXIS]);
+   fflush(args.step_out_file);
 
-	 //make sure the simulation time doesn't get ahead of next_print_time
-	 while (sim.next_print_time<=sim.sim_time) sim.next_print_time += args.step_time;
+   //make sure the simulation time doesn't get ahead of next_print_time
+   while (sim.next_print_time<=sim.sim_time) sim.next_print_time += args.step_time;
   }
 }
 
@@ -189,15 +194,15 @@ void printBlock() {
 
   b= plan_get_recent_block();
   if(b!=last_block && b!=NULL) {
-	 int i;
-	 for (i=0;i<N_AXIS;i++){
-		if(b->direction_bits & get_direction_mask(i)) block_position[i]-= b->steps[i];
-		else block_position[i]+= b->steps[i];
-		fprintf(args.block_out_file,"%d, ", block_position[i]);
-	 }
-	 fprintf(args.block_out_file,"%f", b->entry_speed_sqr);
-	 fprintf(args.block_out_file,"\n");
-	 fflush(args.block_out_file); //TODO: needed?
+   int i;
+   for (i=0;i<N_AXIS;i++){
+    if(b->direction_bits & get_direction_mask(i)) block_position[i]-= b->steps[i];
+    else block_position[i]+= b->steps[i];
+    fprintf(args.block_out_file,"%d, ", block_position[i]);
+   }
+   fprintf(args.block_out_file,"%f", b->entry_speed_sqr);
+   fprintf(args.block_out_file,"\n");
+   fflush(args.block_out_file); //TODO: needed?
 
     last_block= b;
   }
@@ -212,12 +217,12 @@ void grbl_out(uint8_t data){
 
   buf[len++]=data;
   if(data=='\n' || data=='\r' || len>=127) {
-	 if (args.comment_char && !continuation){
-		fprintf(args.grbl_out_file,"%c ",args.comment_char);
-	 }
-	 buf[len]=0;
-	 fprintf(args.grbl_out_file,"%s",buf);
-	 continuation = (len>=128); //print comment on next line unless we are only printing to avoid buffer overflow)
-	 len=0;
+   if (args.comment_char && !continuation){
+    fprintf(args.grbl_out_file,"%c ",args.comment_char);
+   }
+   buf[len]=0;
+   fprintf(args.grbl_out_file,"%s",buf);
+   continuation = (len>=128); //print comment on next line unless we are only printing to avoid buffer overflow)
+   len=0;
   }
 }
