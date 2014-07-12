@@ -13,6 +13,8 @@ Grbl includes full acceleration management with look ahead. That means the contr
 
 * For more information and help, check out our **[Wiki pages!](https://github.com/grbl/grbl/wiki)** If you find that the information is out-dated, please to help us keep it updated by editing it or notifying our community! Thanks!
 
+* Lead Developers: Sungeun "Sonny" Jeon, Ph.D. (2011-2014) and Simen Svale Skogsrud, a.k.a the O.G. (2009-2011)
+
 ------------
 
 ##Update Summary for v0.9 from v0.8
