@@ -13,6 +13,8 @@ Grbl includes full acceleration management with look ahead. That means the contr
 
 * For more information and help, check out our **[Wiki pages!](https://github.com/grbl/grbl/wiki)** If you find that the information is out-dated, please to help us keep it updated by editing it or notifying our community! Thanks!
 
+* Lead Developers: Sonny Jeon, Ph.D. (2011-2014) and Simen Svale Skogsrud, a.k.a the O.G. (2009-2011)
+ 
 ##Downloads (Right-Click and Save-Link-As):
 _**Master Branch:**_
 * [Grbl v0.8c Atmega328p 16mhz 9600baud](http://bit.ly/SSdCJE) (Last updated: 2014-07-03)
@@ -21,9 +23,18 @@ _**Master Branch:**_
   - 2013-04-05: Line buffer increased and overflow feedback added.
 
 _**Edge/Development Branch:**_
-* [Grbl v0.9a Build 2013-03-19](http://bit.ly/Y0tMHo) : Edge Branch
-  - New experimental stepper algorithm. Smoother. Axes acceleration and maximum velocity limits. Automatic arc segment scaling by tolerance setting, leading to much faster feedrates about them. Updated g-code G10. 30kHz step rate absolute max. CAUTION: Bugs still exist. Settings WILL be over-written. Please let us know of any lingering bugs (except with homing).
-
+* [Grbl v0.9f Build 2014-07-07](http://bit.ly/UcljPG) : Edge Branch
+  - **BETA!** Bugs may exist. Please let us know of any bugs so we can quickly fix them and push this to master!
+  - **IMPORTANT:** Baudrate is now 115200 (Up from 9600). Settings WILL be overwritten. Please make sure you have a backup.
+  - New super smooth stepping algorithm and (4x) planner optimizations and speed.
+  - Stability and robustness updates that allow you now put the pedal to the metal (up to 10x speed.) 
+  - Independent axes settings and dynamic scaling for acceleration, max velocity, and travel.
+  - Automatic arc segment scaling by tolerance setting, leading to much faster feedrates about them.
+  - Completely overhauled g-code parser with 100%* g-code compliance and error checking.
+  - Grbl SIMULATOR: Directly compile a virtual Grbl into an executable that doesn't require an Arduino!
+  - Other stuff: Soft limits, probing, tool length offsets, CPU pin mapping, updated homing routine.
+  - Optional features: Limit pin sharing, variable spindle speed output, line number tracking, real-time feed rate reporting, and more!
+  
   
 _**Archives:**_
 * [Grbl v0.8a Atmega328p 16mhz 9600baud](http://bit.ly/TVCTVv)
