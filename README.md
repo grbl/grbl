@@ -13,6 +13,8 @@ Grbl includes full acceleration management with look ahead. That means the contr
 
 * For more information and help, check out our **[Wiki pages!](https://github.com/grbl/grbl/wiki)** If you find that the information is out-dated, please to help us keep it updated by editing it or notifying our community! Thanks!
 
+* Grbl may now be easily compiled and installed directly through the Arduino IDE! See the Wiki to learn how to do it.
+
 * Lead Developers: Sonny Jeon, Ph.D. (2011-2014) and Simen Svale Skogsrud, a.k.a the O.G. (2009-2011)
  
 ##Downloads (Right-Click and Save-Link-As):

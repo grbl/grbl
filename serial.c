@@ -33,24 +33,24 @@
 #include "motion_control.h"
 #include "protocol.h"
 
-uint8_t rx_buffer[RX_BUFFER_SIZE];
-uint8_t rx_buffer_head = 0;
-volatile uint8_t rx_buffer_tail = 0;
+uint8_t serial_rx_buffer[RX_BUFFER_SIZE];
+uint8_t serial_rx_buffer_head = 0;
+volatile uint8_t serial_rx_buffer_tail = 0;
 
-uint8_t tx_buffer[TX_BUFFER_SIZE];
-uint8_t tx_buffer_head = 0;
-volatile uint8_t tx_buffer_tail = 0;
+uint8_t serial_tx_buffer[RX_BUFFER_SIZE];
+uint8_t serial_tx_buffer_head = 0;
+volatile uint8_t serial_tx_buffer_tail = 0;
 
 #ifdef ENABLE_XONXOFF
   volatile uint8_t flow_ctrl = XON_SENT; // Flow control state variable
   
   // Returns the number of bytes in the RX buffer. This replaces a typical byte counter to prevent
   // the interrupt and main programs from writing to the counter at the same time.
-  static uint8_t get_rx_buffer_count()
+  static uint8_t get_serial_rx_buffer_count()
   {
-    if (rx_buffer_head == rx_buffer_tail) { return(0); }
-    if (rx_buffer_head < rx_buffer_tail) { return(rx_buffer_tail-rx_buffer_head); }
-    return (RX_BUFFER_SIZE - (rx_buffer_head-rx_buffer_tail));
+    if (serial_rx_buffer_head == serial_rx_buffer_tail) { return(0); }
+    if (serial_rx_buffer_head < serial_rx_buffer_tail) { return(serial_rx_buffer_tail-serial_rx_buffer_head); }
+    return (RX_BUFFER_SIZE - (serial_rx_buffer_head-serial_rx_buffer_tail));
   }
 #endif
 
@@ -79,17 +79,17 @@ void serial_init()
 
 void serial_write(uint8_t data) {
   // Calculate next head
-  uint8_t next_head = tx_buffer_head + 1;
+  uint8_t next_head = serial_tx_buffer_head + 1;
   if (next_head == TX_BUFFER_SIZE) { next_head = 0; }
 
   // Wait until there is space in the buffer
-  while (next_head == tx_buffer_tail) { 
+  while (next_head == serial_tx_buffer_tail) { 
     if (sys.execute & EXEC_RESET) { return; } // Only check for abort to avoid an endless loop.
   }
 
   // Store data and advance head
-  tx_buffer[tx_buffer_head] = data;
-  tx_buffer_head = next_head;
+  serial_tx_buffer[serial_tx_buffer_head] = data;
+  serial_tx_buffer_head = next_head;
   
   // Enable Data Register Empty Interrupt to make sure tx-streaming is running
   UCSR0B |=  (1 << UDRIE0); 
@@ -98,8 +98,8 @@ void serial_write(uint8_t data) {
 // Data Register Empty Interrupt handler
 ISR(SERIAL_UDRE)
 {
-  // Temporary tx_buffer_tail (to optimize for volatile)
-  uint8_t tail = tx_buffer_tail;
+  // Temporary serial_tx_buffer_tail (to optimize for volatile)
+  uint8_t tail = serial_tx_buffer_tail;
   
   #ifdef ENABLE_XONXOFF
     if (flow_ctrl == SEND_XOFF) { 
@@ -112,32 +112,32 @@ ISR(SERIAL_UDRE)
   #endif
   { 
     // Send a byte from the buffer	
-    UDR0 = tx_buffer[tail];
+    UDR0 = serial_tx_buffer[tail];
   
     // Update tail position
     tail++;
     if (tail == TX_BUFFER_SIZE) { tail = 0; }
   
-    tx_buffer_tail = tail;
+    serial_tx_buffer_tail = tail;
   }
   
   // Turn off Data Register Empty Interrupt to stop tx-streaming if this concludes the transfer
-  if (tail == tx_buffer_head) { UCSR0B &= ~(1 << UDRIE0); }
+  if (tail == serial_tx_buffer_head) { UCSR0B &= ~(1 << UDRIE0); }
 }
 
 uint8_t serial_read()
 {
-  uint8_t tail = rx_buffer_tail; // Temporary rx_buffer_tail (to optimize for volatile)
-  if (rx_buffer_head == tail) {
+  uint8_t tail = serial_rx_buffer_tail; // Temporary serial_rx_buffer_tail (to optimize for volatile)
+  if (serial_rx_buffer_head == tail) {
     return SERIAL_NO_DATA;
   } else {
-    uint8_t data = rx_buffer[tail];
+    uint8_t data = serial_rx_buffer[tail];
     tail++;
     if (tail == RX_BUFFER_SIZE) { tail = 0; }
-    rx_buffer_tail = tail;
+    serial_rx_buffer_tail = tail;
     
     #ifdef ENABLE_XONXOFF
-      if ((get_rx_buffer_count() < RX_BUFFER_LOW) && flow_ctrl == XOFF_SENT) { 
+      if ((get_serial_rx_buffer_count() < serial_rx_buffer_LOW) && flow_ctrl == XOFF_SENT) { 
         flow_ctrl = SEND_XON;
         UCSR0B |=  (1 << UDRIE0); // Force TX
       }
@@ -160,16 +160,16 @@ ISR(SERIAL_RX)
     case CMD_FEED_HOLD:     sys.execute |= EXEC_FEED_HOLD; break; // Set as true
     case CMD_RESET:         mc_reset(); break; // Call motion control reset routine.
     default: // Write character to buffer    
-      next_head = rx_buffer_head + 1;
+      next_head = serial_rx_buffer_head + 1;
       if (next_head == RX_BUFFER_SIZE) { next_head = 0; }
     
       // Write data to buffer unless it is full.
-      if (next_head != rx_buffer_tail) {
-        rx_buffer[rx_buffer_head] = data;
-        rx_buffer_head = next_head;    
+      if (next_head != serial_rx_buffer_tail) {
+        serial_rx_buffer[serial_rx_buffer_head] = data;
+        serial_rx_buffer_head = next_head;    
         
         #ifdef ENABLE_XONXOFF
-          if ((get_rx_buffer_count() >= RX_BUFFER_FULL) && flow_ctrl == XON_SENT) {
+          if ((get_serial_rx_buffer_count() >= serial_rx_buffer_FULL) && flow_ctrl == XON_SENT) {
             flow_ctrl = SEND_XOFF;
             UCSR0B |=  (1 << UDRIE0); // Force TX
           } 
@@ -181,7 +181,7 @@ ISR(SERIAL_RX)
 
 void serial_reset_read_buffer() 
 {
-  rx_buffer_tail = rx_buffer_head;
+  serial_rx_buffer_tail = serial_rx_buffer_head;
 
   #ifdef ENABLE_XONXOFF
     flow_ctrl = XON_SENT;
