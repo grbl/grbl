@@ -20,6 +20,7 @@
 */
 
 #include "system.h"
+#include "print.h"
 
 
 #define MAX_INT_DIGITS 8 // Maximum number of digits in int32 (and float)
@@ -139,21 +140,5 @@ void delay_us(uint32_t us)
 }
 
 
-// Returns direction mask according to Grbl internal axis indexing.
-uint8_t get_direction_mask(uint8_t axis_idx)
-{
-  uint8_t axis_mask = 0;
-  switch( axis_idx ) {
-    case X_AXIS: axis_mask = (1<<X_DIRECTION_BIT); break;
-    case Y_AXIS: axis_mask = (1<<Y_DIRECTION_BIT); break;
-    case Z_AXIS: axis_mask = (1<<Z_DIRECTION_BIT); break;
-  }
-  return(axis_mask);
-}
-
-
-float hypot_f(float x, float y)
-{
-   return(sqrt(x*x + y*y));
-}
-
+// Simple hypotenuse computation function.
+float hypot_f(float x, float y) { return(sqrt(x*x + y*y)); }

@@ -28,7 +28,7 @@
 // memory space we can invest into here or we re-write the g-code parser not to have this 
 // buffer.
 #ifndef LINE_BUFFER_SIZE
-  #define LINE_BUFFER_SIZE 70
+  #define LINE_BUFFER_SIZE 80
 #endif
 
 // Starts Grbl main loop. It handles all incoming characters from the serial port and executes

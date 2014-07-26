@@ -136,7 +136,7 @@ void protocol_main_loop()
             // everything until the next '%' sign. This will help fix resuming issues with certain
             // functions that empty the planner buffer to execute its task on-time.
 
-          } else if (char_counter >= LINE_BUFFER_SIZE-1) {
+          } else if (char_counter >= (LINE_BUFFER_SIZE-1)) {
             // Detect line buffer overflow. Report error and reset line buffer.
             report_status_message(STATUS_OVERFLOW);
             iscomment = false;

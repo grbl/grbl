@@ -22,15 +22,13 @@
 #ifndef settings_h
 #define settings_h
 
-#include "system.h"
 
-
-#define GRBL_VERSION "0.9f"
-#define GRBL_VERSION_BUILD "20140706"
+#define GRBL_VERSION "0.9g"
+#define GRBL_VERSION_BUILD "20140725"
 
 // Version of the EEPROM data. Will be used to migrate existing data from older versions of Grbl
 // when firmware is upgraded. Always stored in byte 0 of eeprom
-#define SETTINGS_VERSION 8
+#define SETTINGS_VERSION 9
 
 // Define bit flag masks for the boolean settings in settings.flag.
 #define BITFLAG_REPORT_INCHES      bit(0)
@@ -40,6 +38,13 @@
 #define BITFLAG_HOMING_ENABLE      bit(4)
 #define BITFLAG_SOFT_LIMIT_ENABLE  bit(5)
 #define BITFLAG_INVERT_LIMIT_PINS  bit(6)
+#define BITFLAG_INVERT_PROBE_PIN   bit(7)
+
+// Define status reporting boolean enable bit flags in settings.status_report_mask
+#define BITFLAG_RT_STATUS_MACHINE_POSITION  bit(0)
+#define BITFLAG_RT_STATUS_WORK_POSITION     bit(1)
+#define BITFLAG_RT_STATUS_PLANNER_BUFFER    bit(2)
+#define BITFLAG_RT_STATUS_SERIAL_RX         bit(3)
 
 // Define EEPROM memory address location values for Grbl settings and parameters
 // NOTE: The Atmega328p has 1KB EEPROM. The upper half is reserved for parameters and
@@ -58,25 +63,35 @@
 #define SETTING_INDEX_G30    N_COORDINATE_SYSTEM+1  // Home position 2
 // #define SETTING_INDEX_G92    N_COORDINATE_SYSTEM+2  // Coordinate offset (G92.2,G92.3 not supported)
 
+// Define Grbl axis settings numbering scheme. Starts at START_VAL, every INCREMENT, over N_SETTINGS.
+#define AXIS_N_SETTINGS          4
+#define AXIS_SETTINGS_START_VAL  100 // NOTE: Reserving settings values >= 100 for axis settings. Up to 255.
+#define AXIS_SETTINGS_INCREMENT  10  // Must be greater than the number of axis settings
+
 // Global persistent settings (Stored from byte EEPROM_ADDR_GLOBAL onwards)
 typedef struct {
+  // Axis settings
   float steps_per_mm[N_AXIS];
   float max_rate[N_AXIS];
   float acceleration[N_AXIS];
   float max_travel[N_AXIS];
+
+  // Remaining Grbl settings
   uint8_t pulse_microseconds;
   uint8_t step_invert_mask;
   uint8_t dir_invert_mask;
   uint8_t stepper_idle_lock_time; // If max value 255, steppers do not disable.
+  uint8_t status_report_mask; // Mask to indicate desired report data.
   float junction_deviation;
   float arc_tolerance;
+  
   uint8_t flags;  // Contains default boolean settings
+
   uint8_t homing_dir_mask;
   float homing_feed_rate;
   float homing_seek_rate;
   uint16_t homing_debounce_delay;
   float homing_pulloff;
-//  uint8_t status_report_mask; // Mask to indicate desired report data.
 } settings_t;
 extern settings_t settings;
 
@@ -84,7 +99,7 @@ extern settings_t settings;
 void settings_init();
 
 // A helper method to set new settings from command line
-uint8_t settings_store_global_setting(int parameter, float value);
+uint8_t settings_store_global_setting(uint8_t parameter, float value);
 
 // Stores the protocol line variable as a startup line in EEPROM
 void settings_store_startup_line(uint8_t n, char *line);
@@ -92,8 +107,10 @@ void settings_store_startup_line(uint8_t n, char *line);
 // Reads an EEPROM startup line to the protocol line variable
 uint8_t settings_read_startup_line(uint8_t n, char *line);
 
+// Stores build info user-defined string
 void settings_store_build_info(char *line);
 
+// Reads build info user-defined string
 uint8_t settings_read_build_info(char *line);
 
 // Writes selected coordinate data to EEPROM
@@ -101,5 +118,15 @@ void settings_write_coord_data(uint8_t coord_select, float *coord_data);
 
 // Reads selected coordinate data from EEPROM
 uint8_t settings_read_coord_data(uint8_t coord_select, float *coord_data);
+
+// Returns the step pin mask according to Grbl's internal axis numbering
+uint8_t get_step_pin_mask(uint8_t i);
+
+// Returns the direction pin mask according to Grbl's internal axis numbering
+uint8_t get_direction_pin_mask(uint8_t i);
+
+// Returns the limit pin mask according to Grbl's internal axis numbering
+uint8_t get_limit_pin_mask(uint8_t i);
+
 
 #endif

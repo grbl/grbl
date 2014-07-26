@@ -63,8 +63,7 @@ void delay_ms(uint16_t ms);
 // Delays variable-defined microseconds. Compiler compatibility fix for _delay_us().
 void delay_us(uint32_t us);
 
-uint8_t get_direction_mask(uint8_t i);
-
+// Computes hypotenuse, avoiding avr-gcc's bloated version and the extra error checking.
 float hypot_f(float x, float y);
 
 #endif

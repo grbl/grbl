@@ -109,6 +109,10 @@ static volatile uint8_t segment_buffer_tail;
 static uint8_t segment_buffer_head;
 static uint8_t segment_next_head;
 
+// Step and direction port invert masks. 
+static uint8_t step_port_invert_mask;
+static uint8_t dir_port_invert_mask;
+
 // Used to avoid ISR nesting of the "Stepper Driver Interrupt". Should never occur though.
 static volatile uint8_t busy;   
 
@@ -189,8 +193,8 @@ void st_wake_up()
 
   if (sys.state & (STATE_CYCLE | STATE_HOMING)){
     // Initialize stepper output bits
-    st.dir_outbits = settings.dir_invert_mask; 
-    st.step_outbits = settings.step_invert_mask;
+    st.dir_outbits = dir_port_invert_mask; 
+    st.step_outbits = step_port_invert_mask;
     
     // Initialize step pulse timing from settings. Here to ensure updating after re-writing.
     #ifdef STEP_PULSE_DELAY
@@ -330,7 +334,7 @@ ISR(TIMER1_COMPA_vect)
         st.counter_z = st.counter_x;        
       }
 
-      st.dir_outbits = st.exec_block->direction_bits ^ settings.dir_invert_mask; 
+      st.dir_outbits = st.exec_block->direction_bits ^ dir_port_invert_mask; 
 
       #ifdef ADAPTIVE_MULTI_AXIS_STEP_SMOOTHING
         // With AMASS enabled, adjust Bresenham axis increment counters according to AMASS level.
@@ -399,7 +403,7 @@ ISR(TIMER1_COMPA_vect)
     if ( ++segment_buffer_tail == SEGMENT_BUFFER_SIZE) { segment_buffer_tail = 0; }
   }
 
-  st.step_outbits ^= settings.step_invert_mask;  // Apply step port invert mask    
+  st.step_outbits ^= step_port_invert_mask;  // Apply step port invert mask    
   busy = false;
 // SPINDLE_ENABLE_PORT ^= 1<<SPINDLE_ENABLE_BIT; // Debug: Used to time ISR
 }
@@ -419,7 +423,7 @@ ISR(TIMER1_COMPA_vect)
 ISR(TIMER0_OVF_vect)
 {
   // Reset stepping pins (leave the direction pins)
-  STEP_PORT = (STEP_PORT & ~STEP_MASK) | (settings.step_invert_mask & STEP_MASK); 
+  STEP_PORT = (STEP_PORT & ~STEP_MASK) | (step_port_invert_mask & STEP_MASK); 
   TCCR0B = 0; // Disable Timer0 to prevent re-entering this interrupt when it's not needed. 
 }
 #ifdef STEP_PULSE_DELAY
@@ -441,15 +445,28 @@ void st_reset()
   // Initialize stepper driver idle state.
   st_go_idle();
   
+  // Initialize stepper algorithm variables.
   memset(&prep, 0, sizeof(prep));
   memset(&st, 0, sizeof(st));
   st.exec_segment = NULL;
   pl_block = NULL;  // Planner block pointer used by segment buffer
-
   segment_buffer_tail = 0;
   segment_buffer_head = 0; // empty = tail
   segment_next_head = 1;
   busy = false;
+  
+  // Setup step and direction port invert masks.
+  uint8_t idx;
+  step_port_invert_mask = 0;
+  dir_port_invert_mask = 0;
+  for (idx=0; idx<N_AXIS; idx++) {
+    if (bit_istrue(settings.step_invert_mask,bit(idx))) { step_port_invert_mask |= get_step_pin_mask(idx); }
+    if (bit_istrue(settings.dir_invert_mask,bit(idx))) { dir_port_invert_mask |= get_direction_pin_mask(idx); }
+  }
+      
+  // Initialize step and direction port pins.
+  STEP_PORT = (STEP_PORT & ~STEP_MASK) | step_port_invert_mask;
+  DIRECTION_PORT = (DIRECTION_PORT & ~DIRECTION_MASK) | dir_port_invert_mask;
 }
 
 
@@ -458,10 +475,8 @@ void stepper_init()
 {
   // Configure step and direction interface pins
   STEP_DDR |= STEP_MASK;
-  STEP_PORT = (STEP_PORT & ~STEP_MASK) | settings.step_invert_mask;
   STEPPERS_DISABLE_DDR |= 1<<STEPPERS_DISABLE_BIT;
   DIRECTION_DDR |= DIRECTION_MASK;
-  DIRECTION_PORT = (DIRECTION_PORT & ~DIRECTION_MASK) | settings.dir_invert_mask;
 
   // Configure Timer 1: Stepper Driver Interrupt
   TCCR1B &= ~(1<<WGM13); // waveform generation = 0100 = CTC
@@ -815,9 +830,6 @@ void st_prep_buffer()
       }
     }
 
-// int32_t blength = segment_buffer_head - segment_buffer_tail;
-// if (blength < 0) { blength += SEGMENT_BUFFER_SIZE; } 
-// printInteger(blength);
   } 
 }      
 
@@ -827,13 +839,13 @@ void st_prep_buffer()
 // in the segment buffer. It will always be behind by up to the number of segment blocks (-1)
 // divided by the ACCELERATION TICKS PER SECOND in seconds. 
 #ifdef REPORT_REALTIME_RATE
-float st_get_realtime_rate()
-{
-   if (sys.state & (STATE_CYCLE | STATE_HOMING)){
-     return prep.current_speed;
-   }
-  return 0.0f;
-}
+  float st_get_realtime_rate()
+  {
+     if (sys.state & (STATE_CYCLE | STATE_HOMING | STATE_HOLD)){
+       return prep.current_speed;
+     }
+    return 0.0f;
+  }
 #endif
  
 /* 

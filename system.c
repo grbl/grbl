@@ -193,7 +193,7 @@ uint8_t system_execute_line(char *line)
           } else { // Store global setting.
             if(!read_float(line, &char_counter, &value)) { return(STATUS_BAD_NUMBER_FORMAT); }
             if(line[char_counter] != 0) { return(STATUS_INVALID_STATEMENT); }
-            return(settings_store_global_setting(parameter, value));
+            return(settings_store_global_setting((uint8_t)parameter, value));
           }
       }    
   }

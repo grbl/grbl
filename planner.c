@@ -260,9 +260,9 @@ uint8_t plan_check_full_buffer()
    invert_feed_rate is true, or as seek/rapids rate if the feed_rate value is negative (and
    invert_feed_rate always false). */
 #ifdef USE_LINE_NUMBERS   
-void plan_buffer_line(float *target, float feed_rate, uint8_t invert_feed_rate, int32_t line_number) 
+  void plan_buffer_line(float *target, float feed_rate, uint8_t invert_feed_rate, int32_t line_number) 
 #else
-void plan_buffer_line(float *target, float feed_rate, uint8_t invert_feed_rate) 
+  void plan_buffer_line(float *target, float feed_rate, uint8_t invert_feed_rate) 
 #endif
 {
   // Prepare and initialize new block
@@ -295,7 +295,7 @@ void plan_buffer_line(float *target, float feed_rate, uint8_t invert_feed_rate)
     unit_vec[idx] = delta_mm; // Store unit vector numerator. Denominator computed later.
         
     // Set direction bits. Bit enabled always means direction is negative.
-    if (delta_mm < 0 ) { block->direction_bits |= get_direction_mask(idx); }
+    if (delta_mm < 0 ) { block->direction_bits |= get_direction_pin_mask(idx); }
     
     // Incrementally compute total move distance by Euclidean norm. First add square of each term.
     block->millimeters += delta_mm*delta_mm;
@@ -403,6 +403,14 @@ void plan_sync_position()
   for (idx=0; idx<N_AXIS; idx++) {
     pl.position[idx] = sys.position[idx];
   }
+}
+
+
+// Returns the number of active blocks are in the planner buffer.
+uint8_t plan_get_block_buffer_count()
+{
+  if (block_buffer_head >= block_buffer_tail) { return(block_buffer_head-block_buffer_tail); }
+  return(BLOCK_BUFFER_SIZE - (block_buffer_tail-block_buffer_head));
 }
 
 

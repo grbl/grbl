@@ -22,7 +22,6 @@
 #ifndef gcode_h
 #define gcode_h
 
-#include "system.h"
 
 // Define modal group internal numbers for checking multiple command violations and tracking the 
 // type of command that is called in the block. A modal group is a group of g-code commands that are
@@ -128,7 +127,7 @@
 
 // NOTE: When this struct is zeroed, the above defines set the defaults for the system.
 typedef struct {
-  uint8_t motion;        // {G0,G1,G2,G3,G80}
+  uint8_t motion;        // {G0,G1,G2,G3,G38.2,G80}
   uint8_t feed_rate;     // {G93,G94}
   uint8_t units;         // {G20,G21}
   uint8_t distance;      // {G90,G91}
@@ -149,7 +148,7 @@ typedef struct {
   // float q;      // G82 peck drilling
   float r;         // Arc radius
   float s;         // Spindle speed
-  // uint8_t t;    // Tool selection
+  uint8_t t;       // Tool selection
   float xyz[3];    // X,Y,Z Translational axes
 } gc_values_t;
 

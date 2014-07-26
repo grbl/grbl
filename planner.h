@@ -22,7 +22,6 @@
 #ifndef planner_h
 #define planner_h
 
-#include "system.h"
 
 // The number of linear motions that can be in the plan at any give time
 #ifndef BLOCK_BUFFER_SIZE
@@ -65,9 +64,9 @@ void plan_reset();
 // in millimeters. Feed rate specifies the speed of the motion. If feed rate is inverted, the feed
 // rate is taken to mean "frequency" and would complete the operation in 1/feed_rate minutes.
 #ifdef USE_LINE_NUMBERS
-void plan_buffer_line(float *target, float feed_rate, uint8_t invert_feed_rate, int32_t line_number);
+  void plan_buffer_line(float *target, float feed_rate, uint8_t invert_feed_rate, int32_t line_number);
 #else
-void plan_buffer_line(float *target, float feed_rate, uint8_t invert_feed_rate);
+  void plan_buffer_line(float *target, float feed_rate, uint8_t invert_feed_rate);
 #endif
 
 // Called when the current block is no longer needed. Discards the block and makes the memory
@@ -88,6 +87,9 @@ void plan_sync_position();
 
 // Reinitialize plan with a partially completed block
 void plan_cycle_reinitialize();
+
+// Returns the number of active blocks are in the planner buffer.
+uint8_t plan_get_block_buffer_count();
 
 // Returns the status of the block ring buffer. True, if buffer is full.
 uint8_t plan_check_full_buffer();
