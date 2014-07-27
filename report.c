@@ -144,6 +144,7 @@ void report_grbl_help() {
   printPgmString(PSTR("$$ (view Grbl settings)\r\n"
                       "$# (view # parameters)\r\n"
                       "$G (view parser state)\r\n"
+                      "$I (view build info)\r\n"
                       "$N (view startup blocks)\r\n"
                       "$x=value (save Grbl setting)\r\n"
                       "$Nx=line (save startup block)\r\n"
