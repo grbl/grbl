@@ -25,16 +25,16 @@ _**Master Branch:**_
   - 2013-04-05: Line buffer increased and overflow feedback added.
 
 _**Edge/Development Branch:**_
-* [Grbl v0.9f Build 2014-07-07](http://bit.ly/UcljPG) : Edge Branch
+* [Grbl v0.9g Build 2014-07-28](http://bit.ly/UFvD2T) : Edge Branch
   - **BETA!** Bugs may exist. Please let us know of any bugs so we can quickly fix them and push this to master!
-  - **IMPORTANT:** Baudrate is now 115200 (Up from 9600). Settings WILL be overwritten. Please make sure you have a backup.
+  - **IMPORTANT:** Baudrate is now 115200 (Up from 9600). Settings WILL be overwritten. Please make sure you have a backup. Also, settings have been renumbered and some have changed how they work. See our Wiki for details.
   - New super smooth stepping algorithm and (4x) planner optimizations and speed.
   - Stability and robustness updates that allow you now put the pedal to the metal (up to 10x speed.) 
   - Independent axes settings and dynamic scaling for acceleration, max velocity, and travel.
-  - Automatic arc segment scaling by tolerance setting, leading to much faster feedrates about them.
+  - Automatic arc segment scaling by tolerance setting, leading to an order of magnitude faster feedrates about them.
   - Completely overhauled g-code parser with 100%* g-code compliance and error checking.
   - Grbl SIMULATOR: Directly compile a virtual Grbl into an executable that doesn't require an Arduino!
-  - Other stuff: Soft limits, probing, tool length offsets, CPU pin mapping, updated homing routine.
+  - Other stuff: Soft limits, probing, tool length offsets, status reporting mask and new data, CPU pin mapping, updated homing routine.
   - Optional features: Limit pin sharing, variable spindle speed output, line number tracking, real-time feed rate reporting, and more!
   
   
