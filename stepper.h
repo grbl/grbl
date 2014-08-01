@@ -35,6 +35,9 @@ void st_wake_up();
 // Immediately disables steppers
 void st_go_idle();
 
+// Generate the step and direction port invert masks.
+void st_generate_step_dir_invert_masks();
+
 // Reset the stepper subsystem variables       
 void st_reset();
              

@@ -439,6 +439,19 @@ ISR(TIMER0_OVF_vect)
 #endif
 
 
+// Generates the step and direction port invert masks used in the Stepper Interrupt Driver.
+void st_generate_step_dir_invert_masks()
+{  
+  uint8_t idx;
+  step_port_invert_mask = 0;
+  dir_port_invert_mask = 0;
+  for (idx=0; idx<N_AXIS; idx++) {
+    if (bit_istrue(settings.step_invert_mask,bit(idx))) { step_port_invert_mask |= get_step_pin_mask(idx); }
+    if (bit_istrue(settings.dir_invert_mask,bit(idx))) { dir_port_invert_mask |= get_direction_pin_mask(idx); }
+  }
+}
+
+
 // Reset and clear stepper subsystem variables
 void st_reset()
 {
@@ -455,14 +468,7 @@ void st_reset()
   segment_next_head = 1;
   busy = false;
   
-  // Setup step and direction port invert masks.
-  uint8_t idx;
-  step_port_invert_mask = 0;
-  dir_port_invert_mask = 0;
-  for (idx=0; idx<N_AXIS; idx++) {
-    if (bit_istrue(settings.step_invert_mask,bit(idx))) { step_port_invert_mask |= get_step_pin_mask(idx); }
-    if (bit_istrue(settings.dir_invert_mask,bit(idx))) { dir_port_invert_mask |= get_direction_pin_mask(idx); }
-  }
+  st_generate_step_dir_invert_masks();
       
   // Initialize step and direction port pins.
   STEP_PORT = (STEP_PORT & ~STEP_MASK) | step_port_invert_mask;

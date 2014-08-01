@@ -276,7 +276,14 @@ void mc_homing_cycle()
   void mc_probe_cycle(float *target, float feed_rate, uint8_t invert_feed_rate)
 #endif
 { 
-  protocol_buffer_synchronize(); // Finish all queued commands and empty planner buffer.
+  // Finish all queued commands and empty planner buffer before starting probe cycle.
+  protocol_buffer_synchronize();
+  
+  // After syncing, check if probe is already triggered. If so, halt and issue alarm.
+  if (probe_get_state()) { 
+    bit_true_atomic(sys.execute, EXEC_CRIT_EVENT);
+    protocol_execute_runtime();
+  }
   if (sys.abort) { return; } // Return if system reset has been issued.
 
   // Setup and queue probing motion. Auto cycle-start should not start the cycle.

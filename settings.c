@@ -25,6 +25,7 @@
 #include "protocol.h"
 #include "report.h"
 #include "limits.h"
+#include "stepper.h"
 
 settings_t settings;
 
@@ -194,8 +195,14 @@ uint8_t settings_store_global_setting(uint8_t parameter, float value) {
         if (int_value < 3) { return(STATUS_SETTING_STEP_PULSE_MIN); }
         settings.pulse_microseconds = int_value; break;
       case 1: settings.stepper_idle_lock_time = int_value; break;
-      case 2: settings.step_invert_mask = int_value; break;
-      case 3: settings.dir_invert_mask = int_value; break;
+      case 2: 
+        settings.step_invert_mask = int_value; 
+        st_generate_step_dir_invert_masks(); // Regenerate step and direction port invert masks.
+        break;
+      case 3: 
+        settings.dir_invert_mask = int_value; 
+        st_generate_step_dir_invert_masks(); // Regenerate step and direction port invert masks.
+        break;
       case 4: // Reset to ensure change. Immediate re-init may cause problems.
         if (int_value) { settings.flags |= BITFLAG_INVERT_ST_ENABLE; }
         else { settings.flags &= ~BITFLAG_INVERT_ST_ENABLE; }

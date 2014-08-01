@@ -795,10 +795,11 @@ uint8_t gc_execute_line(char *line)
           break;
         case MOTION_MODE_PROBE:
           // [G38 Errors]: Target is same current. No axis words. Cutter compensation is enabled. Feed rate
-          //   is undefined. Probe is triggered.
+          //   is undefined. Probe is triggered. NOTE: Probe check moved to probe cycle. Instead of returning
+          //   an error, it issues an alarm to prevent further motion to the probe. It's also done there to 
+          //   allow the planner buffer to empty and move off the probe trigger before another probing cycle.
           if (!axis_words) { FAIL(STATUS_GCODE_NO_AXIS_WORDS); } // [No axis words]
           if (gc_check_same_position(gc_state.position, gc_block.values.xyz)) { FAIL(STATUS_GCODE_INVALID_TARGET); } // [Invalid target]
-          if (probe_get_state()) { FAIL(STATUS_GCODE_PROBE_TRIGGERED); } // [Probe triggered]
           break;
       } 
     }
