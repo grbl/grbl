@@ -25,7 +25,7 @@ _**Master Branch:**_
   - 2013-04-05: Line buffer increased and overflow feedback added.
 
 _**Edge/Development Branch:**_
-* [Grbl v0.9g Build 2014-08-03](http://bit.ly/1opVkjK) : Edge Branch
+* [Grbl v0.9g Build 2014-08-04](http://bit.ly/1s4lpod) : Edge Branch
   - **BETA!** Bugs may exist. Please let us know of any bugs so we can quickly fix them and push this to master!
   - **IMPORTANT:** Baudrate is now 115200 (Up from 9600). Settings WILL be overwritten. Please make sure you have a backup. Also, settings have been renumbered and some have changed how they work. See our Wiki for details.
   - New super smooth stepping algorithm and (4x) planner optimizations and speed.
