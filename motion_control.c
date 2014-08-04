@@ -317,7 +317,25 @@ void mc_homing_cycle()
   plan_reset(); // Reset planner buffer. Zero planner positions. Ensure probing motion is cleared.
   plan_sync_position(); // Sync planner position to current machine position.
   
-  sys.auto_start = auto_start_state; // Restore run state.
+  // Pull-off triggered probe to the trigger location since we had to decelerate a little beyond
+  // it to stop the machine in a controlled manner. 
+  uint8_t idx;
+  for(idx=0; idx<N_AXIS; idx++){
+    // NOTE: The target[] variable updated here will be sent back and synced with the g-code parser.
+    target[idx] = (float)sys.probe_position[idx]/settings.steps_per_mm[idx];
+  }
+  #ifdef USE_LINE_NUMBERS
+    mc_line(target, feed_rate, invert_feed_rate, line_number);
+  #else
+    mc_line(target, feed_rate, invert_feed_rate);
+  #endif
+
+  // Execute pull-off motion and wait until it completes.
+  bit_true_atomic(sys.execute, EXEC_CYCLE_START);
+  protocol_buffer_synchronize(); 
+  if (sys.abort) { return; } // Return if system reset has been issued.
+
+  sys.auto_start = auto_start_state; // Restore run state before returning
 
   #ifdef MESSAGE_PROBE_COORDINATES
     // All done! Output the probe position as message.
