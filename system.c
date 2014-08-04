@@ -86,6 +86,10 @@ uint8_t system_execute_line(char *line)
   float parameter, value;
   switch( line[char_counter] ) {
     case 0 : report_grbl_help(); break;
+    case '$' : // Prints Grbl settings
+      if ( line[++char_counter] != 0 ) { return(STATUS_INVALID_STATEMENT); }
+      else { report_grbl_settings(); }
+      break;
     case 'G' : // Prints gcode parser state
       if ( line[++char_counter] != 0 ) { return(STATUS_INVALID_STATEMENT); }
       else { report_gcode_modes(); }
@@ -128,10 +132,6 @@ uint8_t system_execute_line(char *line)
       // Block any system command that requires the state as IDLE/ALARM. (i.e. EEPROM, homing)
       if ( !(sys.state == STATE_IDLE || sys.state == STATE_ALARM) ) { return(STATUS_IDLE_ERROR); }
       switch( line[char_counter] ) {
-        case '$' : // Prints Grbl settings [IDLE/ALARM]
-          if ( line[++char_counter] != 0 ) { return(STATUS_INVALID_STATEMENT); }
-          else { report_grbl_settings(); }
-          break;
         case '#' : // Print Grbl NGC parameters
           if ( line[++char_counter] != 0 ) { return(STATUS_INVALID_STATEMENT); }
           else { report_ngc_parameters(); }
