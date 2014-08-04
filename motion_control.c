@@ -276,8 +276,12 @@ void mc_homing_cycle()
   void mc_probe_cycle(float *target, float feed_rate, uint8_t invert_feed_rate)
 #endif
 { 
+  // TODO: Need to update this cycle so it obeys a non-auto cycle start.
+  if (sys.state == STATE_CHECK_MODE) { return; }
+
   // Finish all queued commands and empty planner buffer before starting probe cycle.
   protocol_buffer_synchronize();
+  uint8_t auto_start_state = sys.auto_start; // Store run state
   
   // After syncing, check if probe is already triggered. If so, halt and issue alarm.
   if (probe_get_state()) { 
@@ -292,11 +296,10 @@ void mc_homing_cycle()
   #else
     mc_line(target, feed_rate, invert_feed_rate);
   #endif
-
-  // Activate the probing monitor in the stepper module.
-  // NOTE: Parser error-checking ensures the probe isn't already closed/triggered.
-  sys.probe_state = PROBE_ACTIVE;
   
+  // Activate the probing monitor in the stepper module.
+  sys.probe_state = PROBE_ACTIVE;
+
   // Perform probing cycle. Wait here until probe is triggered or motion completes.
   bit_true_atomic(sys.execute, EXEC_CYCLE_START);
   do {
@@ -304,7 +307,7 @@ void mc_homing_cycle()
     if (sys.abort) { return; } // Check for system abort
   } while ((sys.state != STATE_IDLE) && (sys.state != STATE_QUEUED));
 
-  // If motion completes without probe triggering, error out.
+  // Probing motion complete. If the probe has not been triggered, error out.
   if (sys.probe_state == PROBE_ACTIVE) { bit_true_atomic(sys.execute, EXEC_CRIT_EVENT); }
   protocol_execute_runtime();   // Check and execute run-time commands
   if (sys.abort) { return; } // Check for system abort
@@ -313,24 +316,8 @@ void mc_homing_cycle()
   st_reset(); // Reest step segment buffer.
   plan_reset(); // Reset planner buffer. Zero planner positions. Ensure probing motion is cleared.
   plan_sync_position(); // Sync planner position to current machine position.
-
-  // Probing motion is complete, but we'll pull-off triggered probe to the trigger location since
-  // we had to decelerate a little beyond it to stop the machine in a controlled manner.
-  uint8_t idx;
-  for(idx=0; idx<N_AXIS; idx++){
-    // NOTE: The target[] variable updated here will be sent back and synced with the g-code parser.
-    target[idx] = (float)sys.probe_position[idx]/settings.steps_per_mm[idx];
-  }
-  #ifdef USE_LINE_NUMBERS
-    mc_line(target, feed_rate, invert_feed_rate, line_number);
-  #else
-    mc_line(target, feed_rate, invert_feed_rate);
-  #endif
-
-  // Execute pull-off motion and wait until it completes.
-  bit_true_atomic(sys.execute, EXEC_CYCLE_START);
-  protocol_buffer_synchronize(); 
-  if (sys.abort) { return; } // Return if system reset has been issued.
+  
+  sys.auto_start = auto_start_state; // Restore run state.
 
   #ifdef MESSAGE_PROBE_COORDINATES
     // All done! Output the probe position as message.

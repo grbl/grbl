@@ -33,7 +33,7 @@ settings_t settings;
 // Method to store startup lines into EEPROM
 void settings_store_startup_line(uint8_t n, char *line)
 {
-  uint16_t addr = n*(LINE_BUFFER_SIZE+1)+EEPROM_ADDR_STARTUP_BLOCK;
+  uint32_t addr = n*(LINE_BUFFER_SIZE+1)+EEPROM_ADDR_STARTUP_BLOCK;
   memcpy_to_eeprom_with_checksum(addr,(char*)line, LINE_BUFFER_SIZE);
 }
 
@@ -48,7 +48,7 @@ void settings_store_build_info(char *line)
 // Method to store coord data parameters into EEPROM
 void settings_write_coord_data(uint8_t coord_select, float *coord_data)
 {  
-  uint16_t addr = coord_select*(sizeof(float)*N_AXIS+1) + EEPROM_ADDR_PARAMETERS;
+  uint32_t addr = coord_select*(sizeof(float)*N_AXIS+1) + EEPROM_ADDR_PARAMETERS;
   memcpy_to_eeprom_with_checksum(addr,(char*)coord_data, sizeof(float)*N_AXIS);
 }  
 
@@ -105,15 +105,14 @@ void settings_reset() {
 // Reads startup line from EEPROM. Updated pointed line string data.
 uint8_t settings_read_startup_line(uint8_t n, char *line)
 {
-  uint16_t addr = n*(LINE_BUFFER_SIZE+1)+EEPROM_ADDR_STARTUP_BLOCK;
+  uint32_t addr = n*(LINE_BUFFER_SIZE+1)+EEPROM_ADDR_STARTUP_BLOCK;
   if (!(memcpy_from_eeprom_with_checksum((char*)line, addr, LINE_BUFFER_SIZE))) {
     // Reset line with default value
     line[0] = 0; // Empty line
     settings_store_startup_line(n, line);
     return(false);
-  } else {
-    return(true);
   }
+  return(true);
 }
 
 
@@ -124,25 +123,23 @@ uint8_t settings_read_build_info(char *line)
     // Reset line with default value
     line[0] = 0; // Empty line
     settings_store_build_info(line);
-    return(false);
-  } else {
-    return(true);
+    // No error. Usually only happens once when called for first time.
   }
+  return(true);
 }
 
 
 // Read selected coordinate data from EEPROM. Updates pointed coord_data value.
 uint8_t settings_read_coord_data(uint8_t coord_select, float *coord_data)
 {
-  uint16_t addr = coord_select*(sizeof(float)*N_AXIS+1) + EEPROM_ADDR_PARAMETERS;
+  uint32_t addr = coord_select*(sizeof(float)*N_AXIS+1) + EEPROM_ADDR_PARAMETERS;
   if (!(memcpy_from_eeprom_with_checksum((char*)coord_data, addr, sizeof(float)*N_AXIS))) {
     // Reset with default zero vector
     clear_vector_float(coord_data); 
     settings_write_coord_data(coord_select,coord_data);
     return(false);
-  } else {
-    return(true);
   }
+  return(true);
 }  
 
 

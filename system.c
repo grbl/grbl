@@ -145,11 +145,8 @@ uint8_t system_execute_line(char *line)
           break;
         case 'I' : // Print or store build info. [IDLE/ALARM]
           if ( line[++char_counter] == 0 ) { 
-            if (!(settings_read_build_info(line))) {
-              report_status_message(STATUS_SETTING_READ_FAIL);
-            } else {
-              report_build_info(line);
-            }
+            settings_read_build_info(line);
+            report_build_info(line);
           } else { // Store startup line [IDLE/ALARM]
             if(line[char_counter++] != '=') { return(STATUS_INVALID_STATEMENT); }
             helper_var = char_counter; // Set helper variable as counter to start of user info line.

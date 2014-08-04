@@ -277,6 +277,8 @@ void protocol_execute_runtime()
 // during a synchronize call, if it should happen. Also, waits for clean cycle end.
 void protocol_buffer_synchronize()
 {
+  // If system is queued, ensure cycle resumes if the auto start flag is present.
+  protocol_auto_cycle_start();
   // Check and set auto start to resume cycle after synchronize and caller completes.
   if (sys.state == STATE_CYCLE) { sys.auto_start = true; }
   while (plan_get_current_block() || (sys.state == STATE_CYCLE)) { 
