@@ -167,6 +167,11 @@
 // should not be much greater than zero or to the minimum value necessary for the machine to work.
 #define MINIMUM_JUNCTION_SPEED 0.0 // (mm/min)
 
+// Sets the minimum feed rate the planner will allow. Any value below it will be set to this minimum
+// value. This also ensures that a planned motion always completes and accounts for any floating-point
+// round-off errors. Recommend a value no lower than 1.0.
+#define MINIMUM_FEED_RATE 1.0 // (mm/min)
+
 // Number of arc generation iterations by small angle approximation before exact arc trajectory 
 // correction with expensive sin() and cos() calcualtions. This parameter maybe decreased if there 
 // are issues with the accuracy of the arc generations, or increased if arc execution is getting
