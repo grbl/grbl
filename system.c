@@ -1,6 +1,6 @@
 /*
   system.c - Handles system level commands and real-time processes
-  Part of Grbl
+  Part of Grbl v0.9
 
   Copyright (c) 2014 Sungeun K. Jeon  
 

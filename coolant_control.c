@@ -1,6 +1,6 @@
 /*
   coolant_control.c - coolant control methods
-  Part of Grbl
+  Part of Grbl v0.9
 
   Copyright (c) 2012-2014 Sungeun K. Jeon
 
@@ -16,7 +16,7 @@
 
   You should have received a copy of the GNU General Public License
   along with Grbl.  If not, see <http://www.gnu.org/licenses/>.
-*/
+*/  
 
 #include "system.h"
 #include "coolant_control.h"

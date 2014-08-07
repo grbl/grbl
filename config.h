@@ -1,9 +1,8 @@
 /*
   config.h - compile time configuration
-  Part of Grbl
+  Part of Grbl v0.9
 
-  Copyright (c) 2011-2014 Sungeun K. Jeon
-  Copyright (c) 2009-2011 Simen Svale Skogsrud
+  Copyright (c) 2013-2014 Sungeun K. Jeon
 
   Grbl is free software: you can redistribute it and/or modify
   it under the terms of the GNU General Public License as published by
@@ -18,7 +17,13 @@
   You should have received a copy of the GNU General Public License
   along with Grbl.  If not, see <http://www.gnu.org/licenses/>.
 */
-
+/* 
+  This file is based on work from Grbl v0.8, distributed under the 
+  terms of the MIT-license. See COPYING for more details.  
+    Copyright (c) 2009-2011 Simen Svale Skogsrud
+    Copyright (c) 2011-2013 Sungeun K. Jeon
+*/  
+  
 // This file contains compile-time configurations for Grbl's internal system. For the most part,
 // users will not need to directly modify these, but they are here for specific needs, i.e.
 // performance tuning or adjusting to non-typical machines.
@@ -169,7 +174,7 @@
 
 // Sets the minimum feed rate the planner will allow. Any value below it will be set to this minimum
 // value. This also ensures that a planned motion always completes and accounts for any floating-point
-// round-off errors. Recommend a value no lower than 1.0.
+// round-off errors. A lower value than 1.0 mm/min may work in some cases, but we don't recommend it.
 #define MINIMUM_FEED_RATE 1.0 // (mm/min)
 
 // Number of arc generation iterations by small angle approximation before exact arc trajectory 

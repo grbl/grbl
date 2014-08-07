@@ -9,11 +9,12 @@ It accepts standards-compliant G-code and has been tested with the output of sev
 
 Grbl includes full acceleration management with look ahead. That means the controller will look up to 18 motions into the future and plan its velocities ahead to deliver smooth acceleration and jerk-free cornering.
 
-* Note on licensing: The Grbl master branch is licensed under the MIT software license. Currently, the developmental edge branch will remain under GPLv3 until pushed to master, where it will be updated to the MIT-license. Please see the COPYING text for more details.
+* Note on licensing: All previous Grbl versions (v0.8 and prior) are licensed under the MIT software license. The current and future branches of Grbl (v0.9 and after) will remain under GPLv3 licensing until the next version is pushed, where the obsoleted version will then be updated to the MIT-license. This decision was made to ensure Grbl will always be an open-source project while making the code permissive for others.
 
 * For more information and help, check out our **[Wiki pages!](https://github.com/grbl/grbl/wiki)** If you find that the information is out-dated, please to help us keep it updated by editing it or notifying our community! Thanks!
 
-* Lead Developers: Sonny Jeon, Ph.D. (2011-2014) and Simen Svale Skogsrud, a.k.a the O.G. (2009-2011)
+* Current Lead Developer: Sonny Jeon, Ph.D. (2011-2014)
+* The Originator/Creator/Pioneer/Father of Grbl: Simen Svale Skogsrud (2009-2011)
 
 ------------
 

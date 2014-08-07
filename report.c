@@ -1,6 +1,6 @@
 /*
   report.c - reporting and messaging methods
-  Part of Grbl
+  Part of Grbl v0.9
 
   Copyright (c) 2012-2014 Sungeun K. Jeon  
 
@@ -382,6 +382,11 @@ void report_realtime_status()
   // Report machine position
   if (bit_istrue(settings.status_report_mask,BITFLAG_RT_STATUS_MACHINE_POSITION)) {
     printPgmString(PSTR(",MPos:")); 
+//     print_position[X_AXIS] = 0.5*current_position[X_AXIS]/settings.steps_per_mm[X_AXIS]; 
+//     print_position[Z_AXIS] = 0.5*current_position[Y_AXIS]/settings.steps_per_mm[Y_AXIS]; 
+//     print_position[Y_AXIS] = print_position[X_AXIS]-print_position[Z_AXIS]);
+//     print_position[X_AXIS] -= print_position[Z_AXIS];    
+//     print_position[Z_AXIS] = current_position[Z_AXIS]/settings.steps_per_mm[Z_AXIS];     
     for (i=0; i< N_AXIS; i++) {
       print_position[i] = current_position[i]/settings.steps_per_mm[i];
       printFloat_CoordValue(print_position[i]);

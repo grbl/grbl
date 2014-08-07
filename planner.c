@@ -1,10 +1,8 @@
 /*
   planner.c - buffers movement commands and manages the acceleration profile plan
-  Part of Grbl
+  Part of Grbl v0.9
 
-  Copyright (c) 2011-2014 Sungeun K. Jeon
-  Copyright (c) 2009-2011 Simen Svale Skogsrud
-  Copyright (c) 2011 Jens Geisler  
+  Copyright (c) 2012-2014 Sungeun K. Jeon
   
   Grbl is free software: you can redistribute it and/or modify
   it under the terms of the GNU General Public License as published by
@@ -19,8 +17,13 @@
   You should have received a copy of the GNU General Public License
   along with Grbl.  If not, see <http://www.gnu.org/licenses/>.
 */
-
-/* The ring buffer implementation gleaned from the wiring_serial library by David A. Mellis. */
+/* 
+  This file is based on work from Grbl v0.8, distributed under the 
+  terms of the MIT-license. See COPYING for more details.  
+    Copyright (c) 2009-2011 Simen Svale Skogsrud
+    Copyright (c) 2011-2012 Sungeun K. Jeon
+    Copyright (c) 2011 Jens Geisler
+*/ 
 
 #include "system.h"
 #include "planner.h"

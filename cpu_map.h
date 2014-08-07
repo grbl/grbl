@@ -1,8 +1,8 @@
 /*
   cpu_map.h - CPU and pin mapping configuration file
-  Part of Grbl
+  Part of Grbl v0.9
 
-  Copyright (c) 2013-2014 Sungeun K. Jeon
+  Copyright (c) 2012-2014 Sungeun K. Jeon
 
   Grbl is free software: you can redistribute it and/or modify
   it under the terms of the GNU General Public License as published by

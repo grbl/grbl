@@ -1,6 +1,6 @@
 /*
   defaults.h - defaults settings configuration file
-  Part of Grbl
+  Part of Grbl v0.9
 
   Copyright (c) 2012-2014 Sungeun K. Jeon
 
