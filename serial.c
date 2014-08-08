@@ -153,7 +153,7 @@ uint8_t serial_read()
     serial_rx_buffer_tail = tail;
 
     #ifdef ENABLE_XONXOFF
-      if ((serial_get_serial_rx_buffer_count() < RX_BUFFER_LOW) && flow_ctrl == XOFF_SENT) { 
+      if ((serial_get_rx_buffer_count() < RX_BUFFER_LOW) && flow_ctrl == XOFF_SENT) { 
         flow_ctrl = SEND_XON;
         UCSR0B |=  (1 << UDRIE0); // Force TX
       }
@@ -186,7 +186,7 @@ ISR(SERIAL_RX)
         serial_rx_buffer_head = next_head;    
         
         #ifdef ENABLE_XONXOFF
-          if ((serial_get_serial_rx_buffer_count() >= RX_BUFFER_FULL) && flow_ctrl == XON_SENT) {
+          if ((serial_get_rx_buffer_count() >= RX_BUFFER_FULL) && flow_ctrl == XON_SENT) {
             flow_ctrl = SEND_XOFF;
             UCSR0B |=  (1 << UDRIE0); // Force TX
           } 
