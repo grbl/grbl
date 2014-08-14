@@ -97,6 +97,7 @@ void serial_write(uint8_t data) {
 
   // Wait until there is space in the buffer
   while (next_head == serial_tx_buffer_tail) { 
+    // TODO: Restructure st_prep_buffer() calls to be executed here during a long print.    
     if (sys.execute & EXEC_RESET) { return; } // Only check for abort to avoid an endless loop.
   }
 
