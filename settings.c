@@ -68,6 +68,16 @@ void write_global_settings()
 
 // Method to reset Grbl global settings back to defaults. 
 void settings_reset() {
+  // Clear startup lines and build info user data. Parameters should be ok.
+  // TODO: For next version, remove these clears. Only here because line buffer increased.
+  eeprom_put_char(EEPROM_ADDR_BUILD_INFO , 0);
+  #if N_STARTUP_LINE > 0
+  eeprom_put_char(EEPROM_ADDR_STARTUP_BLOCK, 0);
+  #endif
+  #if N_STARTUP_LINE > 1
+  eeprom_put_char(EEPROM_ADDR_STARTUP_BLOCK+(LINE_BUFFER_SIZE+1), 0);
+  #endif
+    
   settings.pulse_microseconds = DEFAULT_STEP_PULSE_MICROSECONDS;
   settings.stepper_idle_lock_time = DEFAULT_STEPPER_IDLE_LOCK_TIME;
   settings.step_invert_mask = DEFAULT_STEPPING_INVERT_MASK;
