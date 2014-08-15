@@ -29,4 +29,5 @@ $121=15.000 (y accel, mm/sec^2)
 $122=15.000 (z accel, mm/sec^2)
 $130=204.000 (x max travel, mm)
 $131=202.000 (y max travel, mm)
-$132=30.000 (z max travel, mm)
+$132=50.000 (z max travel, mm)
+ok
