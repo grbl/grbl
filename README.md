@@ -1,26 +1,43 @@
 #Grbl - An embedded g-code interpreter and motion-controller for the Arduino/AVR328 microcontroller
-------------
+
+***
 
 Grbl is a no-compromise, high performance, low cost alternative to parallel-port-based motion control for CNC milling. It will run on a vanilla Arduino (Duemillanove/Uno) as long as it sports an Atmega 328. 
 
 The controller is written in highly optimized C utilizing every clever feature of the AVR-chips to achieve precise timing and asynchronous operation. It is able to maintain up to 30kHz of stable, jitter free control pulses.
 
-It accepts standards-compliant G-code and has been tested with the output of several CAM tools with no problems. Arcs, circles and helical motion are fully supported, as well as, other basic functional g-code commands. Functions and variables are not currently supported, but may be included in future releases in a form of a pre-processor.
+It accepts standards-compliant g-code and has been tested with the output of several CAM tools with no problems. Arcs, circles and helical motion are fully supported, as well as, all other primary g-code commands. Macro functions, variables, and most canned cycles are not supported, but we think GUIs can do a much better job at translating them into straight g-code anyhow.
 
 Grbl includes full acceleration management with look ahead. That means the controller will look up to 18 motions into the future and plan its velocities ahead to deliver smooth acceleration and jerk-free cornering.
 
-* Note on licensing: All previous Grbl versions (v0.8 and prior) are licensed under the MIT software license. The current and future branches of Grbl (v0.9 and after) will remain under GPLv3 licensing until the next version is pushed, where the obsoleted version will then be updated to the MIT-license. This decision was made to ensure Grbl will always be an open-source project while making the code permissive for others.
+* [Licensing](https://github.com/grbl/grbl/wiki/Licensing): Grbl v0.9 is free software, released under the GPLv3 license. Obsolete versions of Grbl, v0.8 and prior, are released under the permissive MIT-license. This will ensure Grbl will always be an open-source project while making the code permissive for others. However, we are looking into ways to allow Grbl v0.9 for closed-source commercial use.
 
 * For more information and help, check out our **[Wiki pages!](https://github.com/grbl/grbl/wiki)** If you find that the information is out-dated, please to help us keep it updated by editing it or notifying our community! Thanks!
 
-* Current Lead Developer: Sonny Jeon, Ph.D. (2011-2014)
-* The Originator/Creator/Pioneer/Father of Grbl: Simen Svale Skogsrud (2009-2011)
+* Lead Developer [2011 - Current]: Sonny Jeon, Ph.D. (USA)
 
-------------
+* Lead Developer [2009 - 2011]: Simen Svale Skogsrud (Norway). aka The Originator/Creator/Pioneer/Father of Grbl.
+
+***
+
+_**Master Branch:**_
+* [Grbl v0.9g Atmega328p 16mhz 115200baud](http://bit.ly/1Bfza9D) (Last updated: 2014-08-17)
+  - **IMPORTANT INFO WHEN UPGRADING TO GRBL v0.9g:** 
+    - Baudrate is now 115200 (Up from 9600). 
+    - Settings WILL be overwritten. Please make sure you have a backup. Also, settings have been renumbered and some have changed how they work. See our [Configuring v0.9 Wiki page](https://github.com/grbl/grbl/wiki/Configuring-Grbl-v0.9) for details.
+
+_**Archives:**_
+* [Grbl v0.8c Atmega328p 16mhz 9600baud](http://bit.ly/SSdCJE)
+* [Grbl v0.7d Atmega328p 16mhz 9600baud](http://bit.ly/ZhL15G)
+* [Grbl v0.6b Atmega328p 16mhz 9600baud](http://bit.ly/VD04A5)
+* [Grbl v0.51 Atmega328p 16mhz 9600baud](http://bit.ly/W75BS1)
+* [Grbl v0.6b Atmega168 16mhz 9600baud](http://bit.ly/SScWnE)
+* [Grbl v0.51 Atmega168 16mhz 9600baud](http://bit.ly/VXyrYu)
+
+***
 
 ##Update Summary for v0.9 from v0.8
-  - **_BETA_ status:** Minor bugs may exist. Under final testing for master release. Please report any issues to administrators so we can push this out quickly!
-    - **IMPORTANT: Default serial baudrate is now 115200! (Up from 9600)**
+  - **IMPORTANT: Default serial baudrate is now 115200! (Up from 9600). And your settings will be over-written! Make sure to have a backup.**
   - **_NEW_ Super Smooth Stepper Algorithm:**  Complete overhaul of the handling of the stepper driver to simplify and reduce task time per ISR tick. Much smoother operation with the new Adaptive Multi-Axis Step Smoothing (AMASS) algorithm which does what its name implies (see stepper.c source for details). Users should immediately see significant improvements in how their machines move and overall performance!
   - **Stability and Robustness Updates:** Grbl's overall stability has been focused on for this version. The planner and step-execution interface has been completely re-written for robustness and incorruptibility by the introduction of an intermediate step segment buffer that "checks-out" steps from the planner buffer in real-time. This means we can now fearlessly drive Grbl to it's highest limits. Combined with the new stepper algorithm and planner optimizations, this translated to **5x to 10x** overall performance increases in our testing! Also, stability and robustness tests have been reported to easily take 1.4 million (yes, **million**) line g-code programs like a champ!
   - **(x4)+ Faster Planner:** Planning computations improved four-fold or more by optimizing end-to-end operations, which included streamlining the computations and introducing a planner pointer to locate un-improvable portions of the buffer and not waste cycles recomputing them.

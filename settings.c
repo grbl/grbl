@@ -66,18 +66,8 @@ void write_global_settings()
 }
 
 
-// Method to reset Grbl global settings back to defaults. 
-void settings_reset() {
-  // Clear startup lines and build info user data. Parameters should be ok.
-  // TODO: For next version, remove these clears. Only here because line buffer increased.
-  eeprom_put_char(EEPROM_ADDR_BUILD_INFO , 0);
-  #if N_STARTUP_LINE > 0
-  eeprom_put_char(EEPROM_ADDR_STARTUP_BLOCK, 0);
-  #endif
-  #if N_STARTUP_LINE > 1
-  eeprom_put_char(EEPROM_ADDR_STARTUP_BLOCK+(LINE_BUFFER_SIZE+1), 0);
-  #endif
-    
+// Method to restore EEPROM-saved Grbl global settings back to defaults. 
+void settings_restore_global_settings() {  
   settings.pulse_microseconds = DEFAULT_STEP_PULSE_MICROSECONDS;
   settings.stepper_idle_lock_time = DEFAULT_STEPPER_IDLE_LOCK_TIME;
   settings.step_invert_mask = DEFAULT_STEPPING_INVERT_MASK;
@@ -117,6 +107,30 @@ void settings_reset() {
 }
 
 
+// Helper function to clear the EEPROM space containing parameter data.
+void settings_clear_parameters() {
+  uint8_t idx;
+  float coord_data[3];
+  memset(&coord_data, 0, sizeof(coord_data));
+  for (idx=0; idx < SETTING_INDEX_NCOORD; idx++) { settings_write_coord_data(idx, coord_data); }
+}  
+
+
+// Helper function to clear the EEPROM space containing the startup lines.
+void settings_clear_startup_lines() {
+  #if N_STARTUP_LINE > 0
+  eeprom_put_char(EEPROM_ADDR_STARTUP_BLOCK, 0);
+  #endif
+  #if N_STARTUP_LINE > 1
+  eeprom_put_char(EEPROM_ADDR_STARTUP_BLOCK+(LINE_BUFFER_SIZE+1), 0);
+  #endif
+}
+
+
+// Helper function to clear the EEPROM space containing the user build info string.
+void settings_clear_build_info() { eeprom_put_char(EEPROM_ADDR_BUILD_INFO , 0); }
+
+
 // Reads startup line from EEPROM. Updated pointed line string data.
 uint8_t settings_read_startup_line(uint8_t n, char *line)
 {
@@ -138,7 +152,7 @@ uint8_t settings_read_build_info(char *line)
     // Reset line with default value
     line[0] = 0; // Empty line
     settings_store_build_info(line);
-    // No error. Usually only happens once when called for first time.
+    return(false);
   }
   return(true);
 }
@@ -274,10 +288,18 @@ uint8_t settings_store_global_setting(uint8_t parameter, float value) {
 void settings_init() {
   if(!read_global_settings()) {
     report_status_message(STATUS_SETTING_READ_FAIL);
-    settings_reset();
+
+    settings_restore_global_settings();
+    
+    // Force clear startup lines and build info user data. Parameters should be ok.
+    // TODO: For next version, remove these clears. Only here because line buffer increased.
+    settings_clear_startup_lines();
+    settings_clear_build_info();
+    
     report_grbl_settings();
   }
-  // Read all parameter data into a dummy variable. If error, reset to zero, otherwise do nothing.
+
+  // Check all parameter data into a dummy variable. If error, reset to zero, otherwise do nothing.
   float coord_data[N_AXIS];
   uint8_t i;
   for (i=0; i<=SETTING_INDEX_NCOORD; i++) {
@@ -285,7 +307,8 @@ void settings_init() {
       report_status_message(STATUS_SETTING_READ_FAIL);
     }
   }
-  // NOTE: Startup lines are handled and called by main.c at the end of initialization.
+  // NOTE: Startup lines are checked and executed by protocol_main_loop at the end of initialization.
+  // TODO: Build info should be checked here, but will wait until v1.0 to address this. Ok for now.
 }
 
 
