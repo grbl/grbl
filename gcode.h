@@ -51,6 +51,8 @@
 #define OTHER_INPUT_S 12
 #define OTHER_INPUT_T 13
 
+#define MODAL_GROUP_M70 14 // [M70,M71] Laser control
+
 // Define command actions for within execution-type modal groups (motion, stopping, non-modal). Used
 // internally by the parser to know which command to execute.
 
@@ -113,6 +115,10 @@
 // Modal Group G12: Active work coordinate system
 // N/A: Stores coordinate system value (54-59) to change to.
 
+// Modal Group M700: Laser control
+#define LASER_DISABLE 0 // M70
+#define LASER_ENABLE 1 // M71
+
 #define WORD_F  0
 #define WORD_I  1
 #define WORD_J  2
@@ -142,6 +148,7 @@ typedef struct {
   uint8_t program_flow;  // {M0,M1,M2,M30}
   uint8_t coolant;       // {M7,M8,M9}
   uint8_t spindle;       // {M3,M4,M5}
+  uint8_t laser;         // {M70,M71}
 } gc_modal_t;  
 
 typedef struct {

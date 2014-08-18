@@ -31,9 +31,7 @@
 #include "print.h"
 #include "settings.h"
 #include "gcode.h"
-#include "coolant_control.h"
 #include "planner.h"
-#include "spindle_control.h"
 #include "stepper.h"
 #include "serial.h"
 
@@ -209,10 +207,10 @@ void report_grbl_settings() {
         case Z_AXIS: printPgmString(PSTR("z")); break;
       }
       switch (set_idx) {
-        case 0: printPgmString(PSTR(", step/mm")); break;
-        case 1: printPgmString(PSTR(" max rate, mm/min")); break;
-        case 2: printPgmString(PSTR(" accel, mm/sec^2")); break;
-        case 3: printPgmString(PSTR(" max travel, mm")); break;
+        case 0: printPgmString(PSTR(", step/deg")); break;
+        case 1: printPgmString(PSTR(" max rate, deg/min")); break;
+        case 2: printPgmString(PSTR(" accel, deg/sec^2")); break;
+        case 3: printPgmString(PSTR(" max travel, deg")); break;
       }      
       printPgmString(PSTR(")\r\n"));
     }
@@ -290,7 +288,7 @@ void report_gcode_modes()
   printPgmString(PSTR(" G"));
   print_uint8_base10(gc_state.modal.coord_select+54);
   
-  switch (gc_state.modal.plane_select) {
+  /*switch (gc_state.modal.plane_select) {
     case PLANE_SELECT_XY : printPgmString(PSTR(" G17")); break;
     case PLANE_SELECT_ZX : printPgmString(PSTR(" G18")); break;
     case PLANE_SELECT_YZ : printPgmString(PSTR(" G19")); break;
@@ -324,6 +322,11 @@ void report_gcode_modes()
       case COOLANT_MIST_ENABLE : printPgmString(PSTR(" M7")); break;
     #endif
   }
+
+  switch (gc_state.modal.laser) {
+    case LASER_DISABLE : printPgmString(PSTR(" M70")); break;
+    case LASER_ENABLE : printPgmString(PSTR(" M71")); break;
+  }*/
   
   printPgmString(PSTR(" T"));
   print_uint8_base10(gc_state.tool);

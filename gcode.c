@@ -29,8 +29,6 @@
 #include "protocol.h"
 #include "gcode.h"
 #include "motion_control.h"
-#include "spindle_control.h"
-#include "coolant_control.h"
 #include "probe.h"
 #include "report.h"
 
@@ -155,7 +153,7 @@ uint8_t gc_execute_line(char *line)
       case 'G':
         // Determine 'G' command and its modal group
         switch(int_value) {
-          case 10: case 28: case 30: case 92: 
+          /*case 10: case 28: case 30: case 92: 
             // Check for G10/28/30/92 being called with G0/1/2/3/38 on same block.
             // * G43.1 is also an axis command but is not explicitly defined this way.
             if (mantissa == 0) { // Ignore G28.1, G30.1, and G92.1
@@ -194,15 +192,16 @@ uint8_t gc_execute_line(char *line)
                 mantissa = 0; // Set to zero to indicate valid non-integer G command.
                 break;      
             }
-            break;
-          case 0: case 1: case 2: case 3: case 38: 
+            break;*/
+          //case 0: case 1: case 2: case 3: case 38:
+          case 1:
             // Check for G0/1/2/3/38 being called with G10/28/30/92 on same block.
             // * G43.1 is also an axis command but is not explicitly defined this way.
             if (axis_command) { FAIL(STATUS_GCODE_AXIS_COMMAND_CONFLICT); } // [Axis word/command conflict]
             axis_command = AXIS_COMMAND_MOTION_MODE; 
+            gc_block.modal.motion = MOTION_MODE_LINEAR;
             // No break. Continues to next line.
-          case 80: 
-            word_bit = MODAL_GROUP_G1; 
+          /*word_bit = MODAL_GROUP_G1; 
             switch(int_value) {
               case 0: gc_block.modal.motion = MOTION_MODE_SEEK; break; // G0
               case 1: gc_block.modal.motion = MOTION_MODE_LINEAR; break; // G1
@@ -263,9 +262,10 @@ uint8_t gc_execute_line(char *line)
             // NOTE: G59.x are not supported. (But their int_values would be 60, 61, and 62.)
             word_bit = MODAL_GROUP_G12;
             gc_block.modal.coord_select = int_value-54; // Shift to array indexing.
+            break;*/
             break;
           default: FAIL(STATUS_GCODE_UNSUPPORTED_COMMAND); // [Unsupported G command]
-        }      
+        }  
         if (mantissa > 0) { FAIL(STATUS_GCODE_COMMAND_VALUE_NOT_INTEGER); } // [Unsupported or invalid Gxx.x command]
         // Check for more than one command per modal group violations in the current block
         // NOTE: Variable 'word_bit' is always assigned, if the command is valid.
@@ -286,7 +286,7 @@ uint8_t gc_execute_line(char *line)
               case 2: case 30: gc_block.modal.program_flow = PROGRAM_FLOW_COMPLETED; break; // Program end and reset 
             }
             break;
-          case 3: case 4: case 5: 
+          /*case 3: case 4: case 5: 
             word_bit = MODAL_GROUP_M7; 
             switch(int_value) {
               case 3: gc_block.modal.spindle = SPINDLE_ENABLE_CW; break;
@@ -306,7 +306,15 @@ uint8_t gc_execute_line(char *line)
               case 8: gc_block.modal.coolant = COOLANT_FLOOD_ENABLE; break;
               case 9: gc_block.modal.coolant = COOLANT_DISABLE; break;
             }
+            break;*/
+          case 70: case 71:
+            word_bit = MODAL_GROUP_M70;
+            switch(int_value) {      
+              case 70: gc_block.modal.laser = LASER_DISABLE; break;
+              case 71: gc_block.modal.laser = LASER_ENABLE; break;
+            }
             break;
+
           default: FAIL(STATUS_GCODE_UNSUPPORTED_COMMAND); // [Unsupported M command]
         }            
       
@@ -329,20 +337,20 @@ uint8_t gc_execute_line(char *line)
           // case 'D': // Not supported
           case 'F': word_bit = WORD_F; gc_block.values.f = value; break;
           // case 'H': // Not supported
-          case 'I': word_bit = WORD_I; gc_block.values.ijk[X_AXIS] = value; ijk_words |= (1<<X_AXIS); break;
+          /*case 'I': word_bit = WORD_I; gc_block.values.ijk[X_AXIS] = value; ijk_words |= (1<<X_AXIS); break;
           case 'J': word_bit = WORD_J; gc_block.values.ijk[Y_AXIS] = value; ijk_words |= (1<<Y_AXIS); break;
           case 'K': word_bit = WORD_K; gc_block.values.ijk[Z_AXIS] = value; ijk_words |= (1<<Z_AXIS); break;
           case 'L': word_bit = WORD_L; gc_block.values.l = int_value; break;
           case 'N': word_bit = WORD_N; gc_block.values.n = trunc(value); break;
-          case 'P': word_bit = WORD_P; gc_block.values.p = value; break;
+          case 'P': word_bit = WORD_P; gc_block.values.p = value; break;*/
           // NOTE: For certain commands, P value must be an integer, but none of these commands are supported.
           // case 'Q': // Not supported
-          case 'R': word_bit = WORD_R; gc_block.values.r = value; break;
-          case 'S': word_bit = WORD_S; gc_block.values.s = value; break;
-          case 'T': word_bit = WORD_T; break; // gc.values.t = int_value;
+          /*case 'R': word_bit = WORD_R; gc_block.values.r = value; break;
+          case 'S': word_bit = WORD_S; gc_block.values.s = value; break;*/
+          case 'T': word_bit = WORD_T; gc_block.values.t = int_value; break; // gc.values.t = int_value;
           case 'X': word_bit = WORD_X; gc_block.values.xyz[X_AXIS] = value; axis_words |= (1<<X_AXIS); break;
-          case 'Y': word_bit = WORD_Y; gc_block.values.xyz[Y_AXIS] = value; axis_words |= (1<<Y_AXIS); break;
-          case 'Z': word_bit = WORD_Z; gc_block.values.xyz[Z_AXIS] = value; axis_words |= (1<<Z_AXIS); break;
+          /*case 'Y': word_bit = WORD_Y; gc_block.values.xyz[Y_AXIS] = value; axis_words |= (1<<Y_AXIS); break;
+          case 'Z': word_bit = WORD_Z; gc_block.values.xyz[Z_AXIS] = value; axis_words |= (1<<Z_AXIS); break;*/
           default: FAIL(STATUS_GCODE_UNSUPPORTED_COMMAND);
         } 
         
@@ -835,31 +843,31 @@ uint8_t gc_execute_line(char *line)
   // [3. Set feed rate ]:
   gc_state.feed_rate = gc_block.values.f; // Always copy this value. See feed rate error-checking.
 
-  // [4. Set spindle speed ]:
+  /*// [4. Set spindle speed ]:
   if (gc_state.spindle_speed != gc_block.values.s) { 
     gc_state.spindle_speed = gc_block.values.s; 
     
     // Update running spindle only if not in check mode and not already enabled.
     if (gc_state.modal.spindle != SPINDLE_DISABLE) { spindle_run(gc_state.modal.spindle, gc_state.spindle_speed); }
-  }
+  }*/
     
   // [5. Select tool ]: NOT SUPPORTED. Only tracks tool value.
   gc_state.tool = gc_block.values.t;
 
   // [6. Change tool ]: NOT SUPPORTED
 
-  // [7. Spindle control ]:
+  /*// [7. Spindle control ]:
   if (gc_state.modal.spindle != gc_block.modal.spindle) {
     gc_state.modal.spindle = gc_block.modal.spindle;    
     // Update spindle control and apply spindle speed when enabling it in this block.    
     spindle_run(gc_state.modal.spindle, gc_state.spindle_speed);
-  }
+  }*/
 
-  // [8. Coolant control ]:  
+  /*// [8. Coolant control ]:  
   if (gc_state.modal.coolant != gc_block.modal.coolant) {
     gc_state.modal.coolant = gc_block.modal.coolant;
     coolant_run(gc_state.modal.coolant);
-  }
+  }*/
   
   // [9. Enable/disable feed rate or spindle overrides ]: NOT SUPPORTED
 
@@ -999,6 +1007,10 @@ uint8_t gc_execute_line(char *line)
     if (gc_state.modal.program_flow == PROGRAM_FLOW_COMPLETED) { mc_reset(); }
     else { gc_state.modal.program_flow = PROGRAM_FLOW_RUNNING; }
   }
+
+  // [22. Laser control ]:  
+  gc_state.modal.laser = gc_block.modal.laser;
+  laser_run(gc_block.modal.laser, gc_block.values.t);
     
   // TODO: % to denote start of program. Sets auto cycle start?
   return(STATUS_OK);

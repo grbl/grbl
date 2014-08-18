@@ -28,10 +28,10 @@
 
 void system_init() 
 {
-  PINOUT_DDR &= ~(PINOUT_MASK); // Configure as input pins
+  /*PINOUT_DDR &= ~(PINOUT_MASK); // Configure as input pins
   PINOUT_PORT |= PINOUT_MASK;   // Enable internal pull-up resistors. Normal high operation.
   PINOUT_PCMSK |= PINOUT_MASK;  // Enable specific pins of the Pin Change Interrupt
-  PCICR |= (1 << PINOUT_INT);   // Enable Pin Change Interrupt
+  PCICR |= (1 << PINOUT_INT);   // Enable Pin Change Interrupt*/
 }
 
 
@@ -39,7 +39,7 @@ void system_init()
 // only the runtime command execute variable to have the main program execute these when 
 // its ready. This works exactly like the character-based runtime commands when picked off
 // directly from the incoming serial data stream.
-ISR(PINOUT_INT_vect) 
+/*ISR(PINOUT_INT_vect) 
 {
   // Enter only if any pinout pin is actively low.
   if ((PINOUT_PIN & PINOUT_MASK) ^ PINOUT_MASK) { 
@@ -51,7 +51,7 @@ ISR(PINOUT_INT_vect)
       bit_true(sys.execute, EXEC_CYCLE_START);
     } 
   }
-}
+}*/
 
 
 // Executes user startup script, if stored.
@@ -140,7 +140,7 @@ uint8_t system_execute_line(char *line)
         case 'H' : // Perform homing cycle [IDLE/ALARM]
           if (bit_istrue(settings.flags,BITFLAG_HOMING_ENABLE)) { 
             // Only perform homing if Grbl is idle or lost.
-            mc_homing_cycle(); 
+            /*mc_homing_cycle();*/
             if (!sys.abort) { system_execute_startup(line); } // Execute startup scripts after successful homing.
           } else { return(STATUS_SETTING_DISABLED); }
           break;

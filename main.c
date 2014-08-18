@@ -31,10 +31,7 @@
 #include "gcode.h"
 #include "planner.h"
 #include "stepper.h"
-#include "spindle_control.h"
-#include "coolant_control.h"
 #include "motion_control.h"
-#include "limits.h"
 #include "probe.h"
 #include "report.h"
 
@@ -76,9 +73,7 @@ int main(void)
     // Reset Grbl primary systems.
     serial_reset_read_buffer(); // Clear serial read buffer
     gc_init(); // Set g-code parser to default state
-    spindle_init();
-    coolant_init();
-    limits_init(); 
+    laser_init();
     probe_init();
     plan_reset(); // Clear block buffer and planner variables
     st_reset(); // Clear stepper subsystem variables.

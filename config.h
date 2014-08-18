@@ -36,14 +36,14 @@
 
 
 // Default settings. Used when resetting EEPROM. Change to desired name in defaults.h
-#define DEFAULTS_GENERIC
+#define DEFAULTS_HORUS
 
 // Serial baud rate
 #define BAUD_RATE 115200
 
 // Default cpu mappings. Grbl officially supports the Arduino Uno only. Other processor types
 // may exist from user-supplied templates or directly user-defined in cpu_map.h
-#define CPU_MAP_ATMEGA328P // Arduino Uno CPU
+#define CPU_MAP_ATMEGA328P_HORUS // Arduino Uno CPU for Horus Project
 
 // Define runtime command special characters. These characters are 'picked-off' directly from the
 // serial read data stream and are not passed to the grbl line execution parser. Select characters
@@ -136,7 +136,7 @@
 // NOTE: Changing this value also changes the execution time of a segment in the step segment buffer. 
 // When increasing this value, this stores less overall time in the segment buffer and vice versa. Make
 // certain the step segment buffer is increased/decreased to account for these changes.
-#define ACCELERATION_TICKS_PER_SECOND 100 
+#define ACCELERATION_TICKS_PER_SECOND 200 // 100
 
 // Adaptive Multi-Axis Step Smoothing (AMASS) is an advanced feature that does what its name implies, 
 // smoothing the stepping of multi-axis motions. This feature smooths motion particularly at low step

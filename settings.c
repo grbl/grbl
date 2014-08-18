@@ -29,7 +29,6 @@
 #include "eeprom.h"
 #include "protocol.h"
 #include "report.h"
-#include "limits.h"
 #include "stepper.h"
 
 settings_t settings;
@@ -258,11 +257,11 @@ uint8_t settings_store_global_setting(uint8_t parameter, float value) {
           settings.flags |= BITFLAG_SOFT_LIMIT_ENABLE; 
         } else { settings.flags &= ~BITFLAG_SOFT_LIMIT_ENABLE; }
         break;
-      case 21:
+      /*case 21:
         if (int_value) { settings.flags |= BITFLAG_HARD_LIMIT_ENABLE; }
         else { settings.flags &= ~BITFLAG_HARD_LIMIT_ENABLE; }
         limits_init(); // Re-init to immediately change. NOTE: Nice to have but could be problematic later.
-        break;
+        break;*/
       case 22:
         if (int_value) { settings.flags |= BITFLAG_HOMING_ENABLE; }
         else { 
@@ -315,25 +314,27 @@ void settings_init() {
 // Returns step pin mask according to Grbl internal axis indexing.
 uint8_t get_step_pin_mask(uint8_t axis_idx)
 {
-  if ( axis_idx == X_AXIS ) { return((1<<X_STEP_BIT)); }
+  /*if ( axis_idx == X_AXIS ) { return((1<<X_STEP_BIT)); }
   if ( axis_idx == Y_AXIS ) { return((1<<Y_STEP_BIT)); }
-  return((1<<Z_STEP_BIT));
+  return((1<<Z_STEP_BIT));*/
+  return((1<<X_STEP_BIT));
 }
 
 
 // Returns direction pin mask according to Grbl internal axis indexing.
 uint8_t get_direction_pin_mask(uint8_t axis_idx)
 {
-  if ( axis_idx == X_AXIS ) { return((1<<X_DIRECTION_BIT)); }
+  /*if ( axis_idx == X_AXIS ) { return((1<<X_DIRECTION_BIT)); }
   if ( axis_idx == Y_AXIS ) { return((1<<Y_DIRECTION_BIT)); }
-  return((1<<Z_DIRECTION_BIT));
+  return((1<<Z_DIRECTION_BIT));*/
+  return((1<<X_DIRECTION_BIT));
 }
 
 
-// Returns limit pin mask according to Grbl internal axis indexing.
+/*// Returns limit pin mask according to Grbl internal axis indexing.
 uint8_t get_limit_pin_mask(uint8_t axis_idx)
 {
   if ( axis_idx == X_AXIS ) { return((1<<X_LIMIT_BIT)); }
   if ( axis_idx == Y_AXIS ) { return((1<<Y_LIMIT_BIT)); }
   return((1<<Z_LIMIT_BIT));
-}
+}*/

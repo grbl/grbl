@@ -32,9 +32,6 @@
 #include "planner.h"
 #include "stepper.h"
 #include "motion_control.h"
-#include "spindle_control.h"
-#include "coolant_control.h"
-#include "limits.h"
 #include "probe.h"
 #include "report.h"
 
@@ -52,9 +49,9 @@
   void mc_line(float *target, float feed_rate, uint8_t invert_feed_rate)
 #endif
 {
-  // If enabled, check for soft limit violations. Placed here all line motions are picked up
+  /*// If enabled, check for soft limit violations. Placed here all line motions are picked up
   // from everywhere in Grbl.
-  if (bit_istrue(settings.flags,BITFLAG_SOFT_LIMIT_ENABLE)) { limits_soft_check(target); }    
+  if (bit_istrue(settings.flags,BITFLAG_SOFT_LIMIT_ENABLE)) { limits_soft_check(target); }*/  
       
   // If in check gcode mode, prevent motion by blocking planner. Soft limits still work.
   if (sys.state == STATE_CHECK_MODE) { return; }
@@ -235,7 +232,7 @@ void mc_dwell(float seconds)
 }
 
 
-// Perform homing cycle to locate and set machine zero. Only '$H' executes this command.
+/*// Perform homing cycle to locate and set machine zero. Only '$H' executes this command.
 // NOTE: There should be no motions in the buffer and Grbl must be in an idle state before
 // executing the homing cycle. This prevents incorrect buffered plans after homing.
 void mc_homing_cycle()
@@ -270,7 +267,7 @@ void mc_homing_cycle()
 
   // If hard limits feature enabled, re-enable hard limits pin change register after homing cycle.
   limits_init();
-}
+}*/
 
 
 // Perform tool length probe cycle. Requires probe switch.
@@ -360,9 +357,9 @@ void mc_reset()
   if (bit_isfalse(sys.execute, EXEC_RESET)) {
     bit_true_atomic(sys.execute, EXEC_RESET);
 
-    // Kill spindle and coolant.   
+    /*// Kill spindle and coolant.   
     spindle_stop();
-    coolant_stop();
+    coolant_stop();*/
 
     // Kill steppers only if in any motion state, i.e. cycle, feed hold, homing, or jogging
     // NOTE: If steppers are kept enabled via the step idle delay setting, this also keeps
