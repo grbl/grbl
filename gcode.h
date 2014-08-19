@@ -115,9 +115,13 @@
 // Modal Group G12: Active work coordinate system
 // N/A: Stores coordinate system value (54-59) to change to.
 
-// Modal Group M700: Laser control
+// Modal Group M70: Laser control
 #define LASER_DISABLE 0 // M70
 #define LASER_ENABLE 1 // M71
+
+// Modal Group: Motor control
+#define MOTOR_ENABLE 1 // M17
+#define MOTOR_DISABLE 0 // M18
 
 #define WORD_F  0
 #define WORD_I  1
@@ -149,6 +153,7 @@ typedef struct {
   uint8_t coolant;       // {M7,M8,M9}
   uint8_t spindle;       // {M3,M4,M5}
   uint8_t laser;         // {M70,M71}
+  uint8_t motor;         // {M17,M18}
 } gc_modal_t;  
 
 typedef struct {

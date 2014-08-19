@@ -37,6 +37,9 @@ void stepper_init();
 // Enable steppers, but cycle does not start unless called by motion control or runtime command.
 void st_wake_up();
 
+// Sets a flag to disable/enable motors on st_go_idle() function.
+void st_disable_on_idle(uint8_t);
+
 // Immediately disables steppers
 void st_go_idle();
 

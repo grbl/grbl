@@ -96,7 +96,7 @@ typedef struct {
   
   uint8_t execute_step;     // Flags step execution for each interrupt.
   uint8_t step_pulse_time;  // Step pulse reset time after step rise
-  uint8_t step_outbits;         // The next stepping-bits to be output
+  uint8_t step_outbits;     // The next stepping-bits to be output
   uint8_t dir_outbits;
   #ifdef ADAPTIVE_MULTI_AXIS_STEP_SMOOTHING
     uint32_t steps[N_AXIS];
@@ -119,7 +119,8 @@ static uint8_t step_port_invert_mask;
 static uint8_t dir_port_invert_mask;
 
 // Used to avoid ISR nesting of the "Stepper Driver Interrupt". Should never occur though.
-static volatile uint8_t busy;   
+static volatile uint8_t busy;
+static volatile uint8_t disable_motor;
 
 // Pointers for the step segment being prepped from the planner buffer. Accessed only by the
 // main program. Pointers may be planning segments or planner blocks ahead of what being executed.
@@ -217,6 +218,10 @@ void st_wake_up()
   }
 }
 
+void st_disable_on_idle(uint8_t disable)
+{
+  disable_motor = disable;
+}
 
 // Stepper shutdown
 void st_go_idle() 
@@ -234,9 +239,11 @@ void st_go_idle()
     delay_ms(settings.stepper_idle_lock_time);
     pin_state = true; // Override. Disable steppers.
   }
-  if (bit_istrue(settings.flags,BITFLAG_INVERT_ST_ENABLE)) { pin_state = !pin_state; } // Apply pin invert.
-  if (pin_state) { STEPPERS_DISABLE_PORT |= (1<<STEPPERS_DISABLE_BIT); }
-  else { STEPPERS_DISABLE_PORT &= ~(1<<STEPPERS_DISABLE_BIT); }
+  if (disable_motor) {
+    if (bit_istrue(settings.flags,BITFLAG_INVERT_ST_ENABLE)) { pin_state = !pin_state; } // Apply pin invert.
+    if (pin_state) { STEPPERS_DISABLE_PORT |= (1<<STEPPERS_DISABLE_BIT); }
+    else { STEPPERS_DISABLE_PORT &= ~(1<<STEPPERS_DISABLE_BIT); }
+  }
 }
 
 
@@ -460,6 +467,8 @@ void st_generate_step_dir_invert_masks()
 // Reset and clear stepper subsystem variables
 void st_reset()
 {
+  disable_motor = true;
+
   // Initialize stepper driver idle state.
   st_go_idle();
   

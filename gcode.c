@@ -307,9 +307,11 @@ uint8_t gc_execute_line(char *line)
               case 9: gc_block.modal.coolant = COOLANT_DISABLE; break;
             }
             break;*/
+          case 17: gc_block.modal.motor = MOTOR_ENABLE; break;
+          case 18: gc_block.modal.motor = MOTOR_DISABLE; break;
           case 70: case 71:
             word_bit = MODAL_GROUP_M70;
-            switch(int_value) {      
+            switch(int_value) {
               case 70: gc_block.modal.laser = LASER_DISABLE; break;
               case 71: gc_block.modal.laser = LASER_ENABLE; break;
             }
@@ -1011,6 +1013,17 @@ uint8_t gc_execute_line(char *line)
   // [22. Laser control ]:  
   gc_state.modal.laser = gc_block.modal.laser;
   laser_run(gc_block.modal.laser, gc_block.values.t);
+
+  // [23. Motor control ]:  
+  gc_state.modal.motor = gc_block.modal.motor;
+  if (gc_block.modal.motor == MOTOR_ENABLE) {
+    st_disable_on_idle(false);
+    st_wake_up();
+  }
+  else {
+    st_disable_on_idle(true);
+    st_go_idle();
+  }
     
   // TODO: % to denote start of program. Sets auto cycle start?
   return(STATUS_OK);
