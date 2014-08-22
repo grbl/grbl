@@ -123,6 +123,8 @@ uint8_t gc_execute_line(char *line)
   uint8_t int_value = 0;
   uint8_t mantissa = 0; // NOTE: For mantissa values > 255, variable type must be changed to uint16_t.
 
+  uint8_t returnNone = 0;
+
 
   while (line[char_counter] != 0) { // Loop until no more g-code words in line.
     
@@ -201,7 +203,7 @@ uint8_t gc_execute_line(char *line)
             axis_command = AXIS_COMMAND_MOTION_MODE; 
             gc_block.modal.motion = MOTION_MODE_LINEAR;
             // No break. Continues to next line.
-          /*word_bit = MODAL_GROUP_G1; 
+            /*word_bit = MODAL_GROUP_G1; 
             switch(int_value) {
               case 0: gc_block.modal.motion = MOTION_MODE_SEEK; break; // G0
               case 1: gc_block.modal.motion = MOTION_MODE_LINEAR; break; // G1
@@ -309,13 +311,8 @@ uint8_t gc_execute_line(char *line)
             break;*/
           case 17: gc_block.modal.motor = MOTOR_ENABLE; break;
           case 18: gc_block.modal.motor = MOTOR_DISABLE; break;
-          case 70: case 71:
-            word_bit = MODAL_GROUP_M70;
-            switch(int_value) {
-              case 70: gc_block.modal.laser = LASER_DISABLE; break;
-              case 71: gc_block.modal.laser = LASER_ENABLE; break;
-            }
-            break;
+          case 70: returnNone = 1; gc_block.modal.laser = LASER_DISABLE; break;
+          case 71: returnNone = 1; gc_block.modal.laser = LASER_ENABLE; break;
 
           default: FAIL(STATUS_GCODE_UNSUPPORTED_COMMAND); // [Unsupported M command]
         }            
@@ -617,7 +614,7 @@ uint8_t gc_execute_line(char *line)
           
       // Check remaining non-modal commands for errors.
       switch (gc_block.non_modal_command) {        
-        case NON_MODAL_GO_HOME_0: 
+        case NON_MODAL_GO_HOME_0:
           // [G28 Errors]: Cutter compensation is enabled. 
           // Retreive G28 go-home position data (in machine coordinates) from EEPROM
           if (!axis_words) { axis_command = AXIS_COMMAND_NONE; } // Set to none if no intermediate motion.
@@ -633,7 +630,7 @@ uint8_t gc_execute_line(char *line)
           // [G28.1/30.1 Errors]: Cutter compensation is enabled. 
           // NOTE: If axis words are passed here, they are interpreted as an implicit motion mode.
           break;
-        case NON_MODAL_RESET_COORDINATE_OFFSET: 
+        case NON_MODAL_RESET_COORDINATE_OFFSET:
           // NOTE: If axis words are passed here, they are interpreted as an implicit motion mode.
           break;
         case NON_MODAL_ABSOLUTE_OVERRIDE:
@@ -1026,7 +1023,12 @@ uint8_t gc_execute_line(char *line)
   }
     
   // TODO: % to denote start of program. Sets auto cycle start?
-  return(STATUS_OK);
+  if (returnNone) {
+    return(STATUS_NONE);
+  }
+  else {
+    return(STATUS_OK);
+  }
 }
         
 

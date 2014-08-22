@@ -48,7 +48,8 @@ static void protocol_execute_line(char *line)
 
   if (line[0] == 0) {
     // Empty or comment line. Send status message for syncing purposes.
-    report_status_message(STATUS_OK);
+    //report_status_message(STATUS_OK);
+    report_status_message(STATUS_NONE);
 
   } else if (line[0] == '$') {
     // Grbl '$' system command
@@ -188,7 +189,7 @@ void protocol_execute_runtime()
     // System alarm. Everything has shutdown by something that has gone severely wrong. Report
     // the source of the error to the user. If critical, Grbl disables by entering an infinite
     // loop until system reset/abort.
-    if (rt_exec & (EXEC_ALARM | EXEC_CRIT_EVENT)) {      
+    if (rt_exec & (EXEC_ALARM | EXEC_CRIT_EVENT)) {
       sys.state = STATE_ALARM; // Set system alarm state
 
       // Critical events. Hard/soft limit events identified by both critical event and alarm exec
