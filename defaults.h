@@ -30,17 +30,17 @@
 #ifdef DEFAULTS_HORUS
   // Grbl generic default settings. Should work across different machines.
   #define DEFAULT_X_STEPS_PER_MM 250.0
-  #define DEFAULT_Y_STEPS_PER_MM 0
-  #define DEFAULT_Z_STEPS_PER_MM 0
+  #define DEFAULT_Y_STEPS_PER_MM 250.0
+  #define DEFAULT_Z_STEPS_PER_MM 250.0
   #define DEFAULT_X_MAX_RATE 500.0 // deg/min
-  #define DEFAULT_Y_MAX_RATE 0
-  #define DEFAULT_Z_MAX_RATE 0
+  #define DEFAULT_Y_MAX_RATE 500.0 // deg/min
+  #define DEFAULT_Z_MAX_RATE 500.0 // deg/min
   #define DEFAULT_X_ACCELERATION (10.0*60*60) // 10*60*60 deg/min^2 = 10 deg/sec^2
-  #define DEFAULT_Y_ACCELERATION 0
-  #define DEFAULT_Z_ACCELERATION 0
+  #define DEFAULT_Y_ACCELERATION (10.0*60*60) // 10*60*60 deg/min^2 = 10 deg/sec^2
+  #define DEFAULT_Z_ACCELERATION (10.0*60*60) // 10*60*60 deg/min^2 = 10 deg/sec^2
   #define DEFAULT_X_MAX_TRAVEL 1000.0 // deg
-  #define DEFAULT_Y_MAX_TRAVEL 0
-  #define DEFAULT_Z_MAX_TRAVEL 0
+  #define DEFAULT_Y_MAX_TRAVEL 1000.0 // deg
+  #define DEFAULT_Z_MAX_TRAVEL 1000.0 // deg
   #define DEFAULT_STEP_PULSE_MICROSECONDS 10
   #define DEFAULT_STEPPING_INVERT_MASK 0
   #define DEFAULT_DIRECTION_INVERT_MASK ((1<<Y_AXIS)|(1<<Z_AXIS))
