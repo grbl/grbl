@@ -144,7 +144,7 @@
 
 //----------------------------------------------------------------------------------------
 
-#ifdef CPU_MAP_ATMEGA328P_NEW // (Arduino Uno) New test pinout configuration. Still subject to change!
+#ifdef CPU_MAP_ATMEGA328P_NEW // (Arduino Uno) New test pinout configuration. Still subject to change. Not finalized!
 
   // Define serial port pins and interrupt vectors.
   #define SERIAL_RX     USART_RX_vect
