@@ -246,7 +246,7 @@ uint8_t settings_store_global_setting(uint8_t parameter, float value) {
         if (int_value) { settings.flags |= BITFLAG_INVERT_PROBE_PIN; }
         else { settings.flags &= ~BITFLAG_INVERT_PROBE_PIN; }
         break;
-      case 10: settings.status_report_mask = int_value;
+      case 10: settings.status_report_mask = int_value; break;
       case 11: settings.junction_deviation = value; break;
       case 12: settings.arc_tolerance = value; break;
       case 13:

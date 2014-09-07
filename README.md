@@ -21,8 +21,8 @@ Grbl includes full acceleration management with look ahead. That means the contr
 ***
 
 _**Master Branch:**_
-* [Grbl v0.9g Atmega328p 16mhz 115200baud with generic defaults](http://bit.ly/1m8E1Qa) _(2014-08-22)_
-* [Grbl v0.9g Atmega328p 16mhz 115200baud with ShapeOko2 defaults](http://bit.ly/1kOAzig) _(2014-08-22)_
+* [Grbl v0.9g Atmega328p 16mhz 115200baud with generic defaults](http://bit.ly/1m8E1Qa) _(2014-09-05)_
+* [Grbl v0.9g Atmega328p 16mhz 115200baud with ShapeOko2 defaults](http://bit.ly/1kOAzig) _(2014-09-05)_
   - **IMPORTANT INFO WHEN UPGRADING TO GRBL v0.9g:** 
   - Baudrate is now **115200** (Up from 9600). 
   - Settings WILL be overwritten. Please make sure you have a backup. Also, settings have been renumbered and some have changed how they work. See our [Configuring v0.9 Wiki page](https://github.com/grbl/grbl/wiki/Configuring-Grbl-v0.9) for details.
