@@ -3,6 +3,7 @@
   Part of Grbl v0.9
 
   Copyright (c) 2012-2014 Sungeun K. Jeon
+  Copyright (c) 2014      Bob Beattie
   
   Grbl is free software: you can redistribute it and/or modify
   it under the terms of the GNU General Public License as published by
@@ -126,6 +127,7 @@
 #define WORD_X  10
 #define WORD_Y  11
 #define WORD_Z  12
+#define WORD_C  13  // additional bit definition
 
 
 
@@ -146,7 +148,7 @@ typedef struct {
 
 typedef struct {
   float f;         // Feed
-  float ijk[3];    // I,J,K Axis arc offsets
+  float ijk[4];    // I,J,K Axis arc offsets.  Now 4 array elements.
   uint8_t l;       // G10 or canned cycles parameters
   int32_t n;       // Line number
   float p;         // G10 or dwell parameters
@@ -154,7 +156,7 @@ typedef struct {
   float r;         // Arc radius
   float s;         // Spindle speed
   uint8_t t;       // Tool selection
-  float xyz[3];    // X,Y,Z Translational axes
+  float xyz[4];	   // float xyz[4]; // X,Y,Z,C translational axes.  Now 4 array elements.
 } gc_values_t;
 
 

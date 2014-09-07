@@ -3,6 +3,7 @@
   Part of Grbl v0.9
 
   Copyright (c) 2012-2014 Sungeun K. Jeon
+  Copyright (c) 2014      Bob Beattie
   
   Grbl is free software: you can redistribute it and/or modify
   it under the terms of the GNU General Public License as published by
@@ -89,7 +90,8 @@ typedef struct {
   // Used by the bresenham line algorithm
   uint32_t counter_x,        // Counter variables for the bresenham line tracer
            counter_y, 
-           counter_z;
+           counter_z,
+	       counter_c;        // Additional axis.
   #ifdef STEP_PULSE_DELAY
     uint8_t step_bits;  // Stores out_bits output to complete the step pulse delay
   #endif
@@ -336,7 +338,8 @@ ISR(TIMER1_COMPA_vect)
         // Initialize Bresenham line and distance counters
         st.counter_x = (st.exec_block->step_event_count >> 1);
         st.counter_y = st.counter_x;
-        st.counter_z = st.counter_x;        
+        st.counter_z = st.counter_x;
+	    st.counter_c = st.counter_x;
       }
 
       st.dir_outbits = st.exec_block->direction_bits ^ dir_port_invert_mask; 
@@ -346,6 +349,7 @@ ISR(TIMER1_COMPA_vect)
         st.steps[X_AXIS] = st.exec_block->steps[X_AXIS] >> st.exec_segment->amass_level;
         st.steps[Y_AXIS] = st.exec_block->steps[Y_AXIS] >> st.exec_segment->amass_level;
         st.steps[Z_AXIS] = st.exec_block->steps[Z_AXIS] >> st.exec_segment->amass_level;
+	    st.steps[C_AXIS] = st.exec_block->steps[C_AXIS] >> st.exec_segment->amass_level;
       #endif
       
     } else {
@@ -396,7 +400,18 @@ ISR(TIMER1_COMPA_vect)
     st.counter_z -= st.exec_block->step_event_count;
     if (st.exec_block->direction_bits & (1<<Z_DIRECTION_BIT)) { sys.position[Z_AXIS]--; }
     else { sys.position[Z_AXIS]++; }
-  }  
+  }
+  #ifdef ADAPTIVE_MULTI_AXIS_STEP_SMOOTHING
+    st.counter_c += st.steps[C_AXIS];
+  #else
+    st.counter_c += st.exec_block->steps[C_AXIS];
+  #endif  
+  if (st.counter_c > st.exec_block->step_event_count) {
+    st.step_outbits |= (1<<C_STEP_BIT);
+    st.counter_c -= st.exec_block->step_event_count;
+    if (st.exec_block->direction_bits & (1<<C_DIRECTION_BIT)) { sys.position[C_AXIS]--; }
+    else { sys.position[C_AXIS]++; }
+  }
 
   // During a homing cycle, lock out and prevent desired axes from moving.
   if (sys.state == STATE_HOMING) { st.step_outbits &= sys.homing_axis_lock; }   
@@ -558,6 +573,7 @@ void st_prep_buffer()
           st_prep_block->steps[X_AXIS] = pl_block->steps[X_AXIS];
           st_prep_block->steps[Y_AXIS] = pl_block->steps[Y_AXIS];
           st_prep_block->steps[Z_AXIS] = pl_block->steps[Z_AXIS];
+	      st_prep_block->steps[C_AXIS] = pl_block->steps[C_AXIS];
           st_prep_block->step_event_count = pl_block->step_event_count;
         #else
           // With AMASS enabled, simply bit-shift multiply all Bresenham data by the max AMASS 
@@ -566,6 +582,7 @@ void st_prep_buffer()
           st_prep_block->steps[X_AXIS] = pl_block->steps[X_AXIS] << MAX_AMASS_LEVEL;
           st_prep_block->steps[Y_AXIS] = pl_block->steps[Y_AXIS] << MAX_AMASS_LEVEL;
           st_prep_block->steps[Z_AXIS] = pl_block->steps[Z_AXIS] << MAX_AMASS_LEVEL;
+	      st_prep_block->steps[C_AXIS] = pl_block->steps[C_AXIS] << MAX_AMASS_LEVEL;
           st_prep_block->step_event_count = pl_block->step_event_count << MAX_AMASS_LEVEL;
         #endif
         

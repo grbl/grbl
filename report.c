@@ -3,6 +3,7 @@
   Part of Grbl v0.9
 
   Copyright (c) 2012-2014 Sungeun K. Jeon  
+  Copyright (c) 2014      Bob Beattie
 
   Grbl is free software: you can redistribute it and/or modify
   it under the terms of the GNU General Public License as published by
@@ -207,6 +208,7 @@ void report_grbl_settings() {
         case X_AXIS: printPgmString(PSTR("x")); break;
         case Y_AXIS: printPgmString(PSTR("y")); break;
         case Z_AXIS: printPgmString(PSTR("z")); break;
+    	case C_AXIS: printPgmString(PSTR("c")); break;
       }
       switch (set_idx) {
         case 0: printPgmString(PSTR(", step/mm")); break;
