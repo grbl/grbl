@@ -1,8 +1,8 @@
-#Grbl - An embedded g-code interpreter and motion-controller for the Arduino/AVR328 microcontroller
+#OpenPnP-Grbl - An embedded g-code interpreter and motion-controller for the Arduino/AVR328/Mega2560 microcontroller used with the OpenPnP project.
 
 ***
 
-Grbl is a no-compromise, high performance, low cost alternative to parallel-port-based motion control for CNC milling. It will run on a vanilla Arduino (Duemillanove/Uno) as long as it sports an Atmega 328. 
+Grbl is a no-compromise, high performance, low cost alternative to parallel-port-based motion control for CNC milling. It will run on a vanilla Arduino (Duemillanove/Uno/Mega) as long as it sports an Atmega 328/2560. 
 
 The controller is written in highly optimized C utilizing every clever feature of the AVR-chips to achieve precise timing and asynchronous operation. It is able to maintain up to 30kHz of stable, jitter free control pulses.
 
@@ -12,7 +12,9 @@ Grbl includes full acceleration management with look ahead. That means the contr
 
 * [Licensing](https://github.com/grbl/grbl/wiki/Licensing): Grbl v0.9 is free software, released under the GPLv3 license. Obsolete versions of Grbl, v0.8 and prior, are released under the permissive MIT-license. This will ensure Grbl will always be an open-source project while making the code permissive for others.
 
-* For more information and help, check out our **[Wiki pages!](https://github.com/grbl/grbl/wiki)** If you find that the information is out-dated, please to help us keep it updated by editing it or notifying our community! Thanks!
+* For more information and help, check out our future **[Wiki pages!](https://github.com/maaadbob/openpnp-grbl/wiki)** If you find that the information is out-dated, please help us keep it updated by notifying me! Thanks!
+
+* Happy-go-lucky Developer [_2014_]: Bob Beattie, (United Kingdom)
 
 * Lead Developer [_2011 - Current_]: Sonny Jeon, Ph.D. (USA)
 
@@ -21,8 +23,9 @@ Grbl includes full acceleration management with look ahead. That means the contr
 ***
 
 _**Master Branch:**_
-* [Grbl v0.9g Atmega328p 16mhz 115200baud with generic defaults](http://bit.ly/1m8E1Qa) _(2014-09-05)_
-* [Grbl v0.9g Atmega328p 16mhz 115200baud with ShapeOko2 defaults](http://bit.ly/1kOAzig) _(2014-09-05)_
+* [Grbl v0.97 AtMega2560 16MHz 9600 baud with generic defaults](https://github.com/maaadbob/openpnp-grbl) _(2014-09-07)_
+* [Grbl v0.9g Atmega328p 16mhz 115200baud with generic defaults](http://bit.ly/1m8E1Qa) _(2014-08-22)_
+* [Grbl v0.9g Atmega328p 16mhz 115200baud with ShapeOko2 defaults](http://bit.ly/1kOAzig) _(2014-08-22)_
   - **IMPORTANT INFO WHEN UPGRADING TO GRBL v0.9g:** 
   - Baudrate is now **115200** (Up from 9600). 
   - Settings WILL be overwritten. Please make sure you have a backup. Also, settings have been renumbered and some have changed how they work. See our [Configuring v0.9 Wiki page](https://github.com/grbl/grbl/wiki/Configuring-Grbl-v0.9) for details.
@@ -36,6 +39,8 @@ _**Archives:**_
 * [Grbl v0.51 Atmega168 16mhz 9600baud](http://bit.ly/VXyrYu)
 
 ***
+##Update Summary for OpenPnP
+  - Additional axis 'C' added.
 
 ##Update Summary for v0.9 from v0.8
   - **IMPORTANT: Default serial baudrate is now 115200! (Up from 9600). And your settings will be over-written! Make sure to have a backup.**
@@ -78,4 +83,3 @@ List of Supported G-Codes in Grbl v0.9
 Grbl is an open-source project and fueled by the free-time of our intrepid administrators and altruistic users. If you'd like to donate, all proceeds will be used to help fund supporting hardware and testing equipment. Thank you!
 
 [![Donate](https://www.paypalobjects.com/en_US/i/btn/btn_donate_LG.gif)](https://www.paypal.com/cgi-bin/webscr?cmd=_s-xclick&hosted_button_id=EBQWAWQAAT878)
-
