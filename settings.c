@@ -89,9 +89,9 @@ void settings_restore_global_settings() {
   if (DEFAULT_HARD_LIMIT_ENABLE) { settings.flags |= BITFLAG_HARD_LIMIT_ENABLE; }
   if (DEFAULT_HOMING_ENABLE) { settings.flags |= BITFLAG_HOMING_ENABLE; }
   
-  settings.steps_per_mm[X_AXIS] = DEFAULT_X_STEPS_PER_MM;
-  settings.steps_per_mm[Y_AXIS] = DEFAULT_Y_STEPS_PER_MM;
-  settings.steps_per_mm[Z_AXIS] = DEFAULT_Z_STEPS_PER_MM;
+  settings.steps_per_deg[X_AXIS] = DEFAULT_X_STEPS_PER_DEG;
+  settings.steps_per_deg[Y_AXIS] = DEFAULT_Y_STEPS_PER_DEG;
+  settings.steps_per_deg[Z_AXIS] = DEFAULT_Z_STEPS_PER_DEG;
   settings.max_rate[X_AXIS] = DEFAULT_X_MAX_RATE;
   settings.max_rate[Y_AXIS] = DEFAULT_Y_MAX_RATE;
   settings.max_rate[Z_AXIS] = DEFAULT_Z_MAX_RATE;
@@ -199,9 +199,9 @@ uint8_t settings_store_global_setting(uint8_t parameter, float value) {
       if (parameter < N_AXIS) {
         // Valid axis setting found.
         switch (set_idx) {
-          case 0: settings.steps_per_mm[parameter] = value; break;
-          case 1: settings.max_rate[parameter] = value; break;
-          case 2: settings.acceleration[parameter] = value*60*60; break; // Convert to mm/min^2 for grbl internal use.
+          case 0: settings.steps_per_deg[parameter] = value; break;
+          case 1: settings.max_rate[parameter] = value*60; break; // Convert to deg/min for grbl internal use.
+          case 2: settings.acceleration[parameter] = value*60*60; break; // Convert to deg/min^2 for grbl internal use.
           case 3: settings.max_travel[parameter] = -value; break;  // Store as negative for grbl internal use.
         }
         break; // Exit while-loop after setting has been configured and proceed to the EEPROM write call.

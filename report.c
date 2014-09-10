@@ -174,18 +174,18 @@ void report_grbl_settings() {
   printPgmString(PSTR(" (probe pin invert, bool)\r\n$10=")); print_uint8_base10(settings.status_report_mask);
   printPgmString(PSTR(" (status report mask:")); print_uint8_base2(settings.status_report_mask);
   printPgmString(PSTR(")\r\n$11=")); printFloat_SettingValue(settings.junction_deviation);
-  printPgmString(PSTR(" (junction deviation, mm)\r\n$12=")); printFloat_SettingValue(settings.arc_tolerance);
-  printPgmString(PSTR(" (arc tolerance, mm)\r\n$13=")); print_uint8_base10(bit_istrue(settings.flags,BITFLAG_REPORT_INCHES));
+  printPgmString(PSTR(" (junction deviation, deg)\r\n$12=")); printFloat_SettingValue(settings.arc_tolerance);
+  printPgmString(PSTR(" (arc tolerance, deg)\r\n$13=")); print_uint8_base10(bit_istrue(settings.flags,BITFLAG_REPORT_INCHES));
   printPgmString(PSTR(" (report inches, bool)\r\n$14=")); print_uint8_base10(bit_istrue(settings.flags,BITFLAG_AUTO_START));
   printPgmString(PSTR(" (auto start, bool)\r\n$20=")); print_uint8_base10(bit_istrue(settings.flags,BITFLAG_SOFT_LIMIT_ENABLE));
   printPgmString(PSTR(" (soft limits, bool)\r\n$21=")); print_uint8_base10(bit_istrue(settings.flags,BITFLAG_HARD_LIMIT_ENABLE));
   printPgmString(PSTR(" (hard limits, bool)\r\n$22=")); print_uint8_base10(bit_istrue(settings.flags,BITFLAG_HOMING_ENABLE));
-  printPgmString(PSTR(" (homing cycle, bool)\r\n$23=")); print_uint8_base10(settings.homing_dir_mask);
+  /*printPgmString(PSTR(" (homing cycle, bool)\r\n$23=")); print_uint8_base10(settings.homing_dir_mask);
   printPgmString(PSTR(" (homing dir invert mask:")); print_uint8_base2(settings.homing_dir_mask);  
   printPgmString(PSTR(")\r\n$24=")); printFloat_SettingValue(settings.homing_feed_rate);
   printPgmString(PSTR(" (homing feed, mm/min)\r\n$25=")); printFloat_SettingValue(settings.homing_seek_rate);
   printPgmString(PSTR(" (homing seek, mm/min)\r\n$26=")); print_uint8_base10(settings.homing_debounce_delay);
-  printPgmString(PSTR(" (homing debounce, msec)\r\n$27=")); printFloat_SettingValue(settings.homing_pulloff);
+  printPgmString(PSTR(" (homing debounce, msec)\r\n$27=")); printFloat_SettingValue(settings.homing_pulloff);*/
   printPgmString(PSTR(" (homing pull-off, mm)\r\n"));
 
   // Print axis settings
@@ -197,8 +197,8 @@ void report_grbl_settings() {
       print_uint8_base10(val+idx);
       printPgmString(PSTR("="));
       switch (set_idx) {
-        case 0: printFloat_SettingValue(settings.steps_per_mm[idx]); break;
-        case 1: printFloat_SettingValue(settings.max_rate[idx]); break;
+        case 0: printFloat_SettingValue(settings.steps_per_deg[idx]); break;
+        case 1: printFloat_SettingValue(settings.max_rate[idx]/(60)); break;
         case 2: printFloat_SettingValue(settings.acceleration[idx]/(60*60)); break;
         case 3: printFloat_SettingValue(-settings.max_travel[idx]); break;
       }
@@ -210,7 +210,7 @@ void report_grbl_settings() {
       }
       switch (set_idx) {
         case 0: printPgmString(PSTR(", step/deg")); break;
-        case 1: printPgmString(PSTR(" max rate, deg/min")); break;
+        case 1: printPgmString(PSTR(" max rate, deg/sec")); break;
         case 2: printPgmString(PSTR(" accel, deg/sec^2")); break;
         case 3: printPgmString(PSTR(" max travel, deg")); break;
       }      
@@ -232,7 +232,7 @@ void report_probe_parameters()
   // Report in terms of machine position.
   printPgmString(PSTR("[PRB:")); 
   for (i=0; i< N_AXIS; i++) {
-    print_position[i] = sys.probe_position[i]/settings.steps_per_mm[i];
+    print_position[i] = sys.probe_position[i]/settings.steps_per_deg[i];
     printFloat_CoordValue(print_position[i]);
     if (i < (N_AXIS-1)) { printPgmString(PSTR(",")); }
   }  
@@ -387,13 +387,13 @@ void report_realtime_status()
   // Report machine position
   if (bit_istrue(settings.status_report_mask,BITFLAG_RT_STATUS_MACHINE_POSITION)) {
     printPgmString(PSTR(",MPos:")); 
-//     print_position[X_AXIS] = 0.5*current_position[X_AXIS]/settings.steps_per_mm[X_AXIS]; 
-//     print_position[Z_AXIS] = 0.5*current_position[Y_AXIS]/settings.steps_per_mm[Y_AXIS]; 
+//     print_position[X_AXIS] = 0.5*current_position[X_AXIS]/settings.steps_per_deg[X_AXIS]; 
+//     print_position[Z_AXIS] = 0.5*current_position[Y_AXIS]/settings.steps_per_deg[Y_AXIS]; 
 //     print_position[Y_AXIS] = print_position[X_AXIS]-print_position[Z_AXIS]);
 //     print_position[X_AXIS] -= print_position[Z_AXIS];    
-//     print_position[Z_AXIS] = current_position[Z_AXIS]/settings.steps_per_mm[Z_AXIS];     
+//     print_position[Z_AXIS] = current_position[Z_AXIS]/settings.steps_per_deg[Z_AXIS];     
     for (i=0; i< N_AXIS; i++) {
-      print_position[i] = current_position[i]/settings.steps_per_mm[i];
+      print_position[i] = current_position[i]/settings.steps_per_deg[i];
       printFloat_CoordValue(print_position[i]);
       if (i < (N_AXIS-1)) { printPgmString(PSTR(",")); }
     }

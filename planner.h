@@ -47,13 +47,13 @@ typedef struct {
   uint32_t step_event_count; // The maximum step axis count and number of steps required to complete this block. 
 
   // Fields used by the motion planner to manage acceleration
-  float entry_speed_sqr;         // The current planned entry speed at block junction in (mm/min)^2
+  float entry_speed_sqr;         // The current planned entry speed at block junction in (deg/min)^2
   float max_entry_speed_sqr;     // Maximum allowable entry speed based on the minimum of junction limit and 
-                                 //   neighboring nominal speeds with overrides in (mm/min)^2
-  float max_junction_speed_sqr;  // Junction entry speed limit based on direction vectors in (mm/min)^2
-  float nominal_speed_sqr;       // Axis-limit adjusted nominal speed for this block in (mm/min)^2
-  float acceleration;            // Axis-limit adjusted line acceleration in (mm/min^2)
-  float millimeters;             // The remaining distance for this block to be executed in (mm)
+                                 //   neighboring nominal speeds with overrides in (deg/min)^2
+  float max_junction_speed_sqr;  // Junction entry speed limit based on direction vectors in (deg/min)^2
+  float nominal_speed_sqr;       // Axis-limit adjusted nominal speed for this block in (deg/min)^2
+  float acceleration;            // Axis-limit adjusted line acceleration in (deg/min^2)
+  float degrees;                 // The remaining distance for this block to be executed in (deg)
   // uint8_t max_override;       // Maximum override value based on axis speed limits
 
   #ifdef USE_LINE_NUMBERS

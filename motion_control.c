@@ -324,7 +324,7 @@ void mc_homing_cycle()
   uint8_t idx;
   for(idx=0; idx<N_AXIS; idx++){
     // NOTE: The target[] variable updated here will be sent back and synced with the g-code parser.
-    target[idx] = (float)sys.probe_position[idx]/settings.steps_per_mm[idx];
+    target[idx] = (float)sys.probe_position[idx]/settings.steps_per_deg[idx];
   }
   #ifdef USE_LINE_NUMBERS
     mc_line(target, feed_rate, invert_feed_rate, line_number);

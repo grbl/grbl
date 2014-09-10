@@ -66,7 +66,7 @@ void gc_sync_position()
 {
   uint8_t i;
   for (i=0; i<N_AXIS; i++) {
-    gc_state.position[i] = sys.position[i]/settings.steps_per_mm[i];
+    gc_state.position[i] = sys.position[i]/settings.steps_per_deg[i];
   }
 }
 
@@ -444,7 +444,7 @@ uint8_t gc_execute_line(char *line)
       if (bit_istrue(value_words,bit(WORD_F))) {
         if (gc_block.modal.units == UNITS_MODE_INCHES) { gc_block.values.f *= MM_PER_INCH; }
       } else {
-        gc_block.values.f = gc_state.feed_rate; // Push last state feed rate
+        gc_block.values.f = gc_state.feed_rate/60; // Push last state feed rate. Convert deg/min to deg/sec
       }
     } // Else, switching to G94 from G93, so don't push last state feed rate. Its undefined or the passed F word value.
   } 
@@ -840,7 +840,7 @@ uint8_t gc_execute_line(char *line)
   gc_state.modal.feed_rate = gc_block.modal.feed_rate;
   
   // [3. Set feed rate ]:
-  gc_state.feed_rate = gc_block.values.f; // Always copy this value. See feed rate error-checking.
+  gc_state.feed_rate = gc_block.values.f*60; // Always copy this value. See feed rate error-checking. Convert deg/sec to deg/min
 
   /*// [4. Set spindle speed ]:
   if (gc_state.spindle_speed != gc_block.values.s) { 

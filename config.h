@@ -136,7 +136,7 @@
 // NOTE: Changing this value also changes the execution time of a segment in the step segment buffer. 
 // When increasing this value, this stores less overall time in the segment buffer and vice versa. Make
 // certain the step segment buffer is increased/decreased to account for these changes.
-#define ACCELERATION_TICKS_PER_SECOND 200 // 100
+#define ACCELERATION_TICKS_PER_SECOND 100 // 100
 
 // Adaptive Multi-Axis Step Smoothing (AMASS) is an advanced feature that does what its name implies, 
 // smoothing the stepping of multi-axis motions. This feature smooths motion particularly at low step
@@ -170,12 +170,12 @@
 // limits or angle between neighboring block line move directions. This is useful for machines that can't
 // tolerate the tool dwelling for a split second, i.e. 3d printers or laser cutters. If used, this value
 // should not be much greater than zero or to the minimum value necessary for the machine to work.
-#define MINIMUM_JUNCTION_SPEED 0.0 // (mm/min)
+#define MINIMUM_JUNCTION_SPEED 0.0 // (deg/min)
 
 // Sets the minimum feed rate the planner will allow. Any value below it will be set to this minimum
 // value. This also ensures that a planned motion always completes and accounts for any floating-point
-// round-off errors. A lower value than 1.0 mm/min may work in some cases, but we don't recommend it.
-#define MINIMUM_FEED_RATE 1.0 // (mm/min)
+// round-off errors. A lower value than 1.0 deg/min may work in some cases, but we don't recommend it.
+#define MINIMUM_FEED_RATE 1.0 // (deg/min)
 
 // Number of arc generation iterations by small angle approximation before exact arc trajectory 
 // correction with expensive sin() and cos() calcualtions. This parameter maybe decreased if there 
