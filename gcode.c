@@ -210,11 +210,23 @@ uint8_t gc_execute_line(char *line)
               case 3: gc_block.modal.motion = MOTION_MODE_CCW_ARC; break; // G3
               case 38: 
                 switch(mantissa) {
-                  case 20: gc_block.modal.motion = MOTION_MODE_PROBE; break;  // G38.2
-                  // NOTE: If G38.3+ are enabled, change mantissa variable type to uint16_t.
-                  // case 30: gc_block.modal.motion = MOTION_MODE_PROBE_NO_ERROR; break; // G38.3 Not supported.
-                  // case 40: // Not supported.
-                  // case 50: // Not supported.
+                  case 20:
+                    sys.probe_away = false;
+                    gc_block.modal.motion = MOTION_MODE_PROBE;
+                  break;  // G38.2
+                  case 30:
+                    sys.probe_away = false;
+                    gc_block.modal.motion = MOTION_MODE_PROBE_NO_ERROR;
+                  break;  // G38.3
+                  case 40:
+                    sys.probe_away = true;
+                    gc_block.modal.motion = MOTION_MODE_PROBE;
+                  break;  // G38.4
+                  case 50:
+                    sys.probe_away = true;
+                    gc_block.modal.motion = MOTION_MODE_PROBE_NO_ERROR;
+                  break;  // G38.5
+
                   default: FAIL(STATUS_GCODE_UNSUPPORTED_COMMAND); // [Unsupported G38.x command]
                 }
                 mantissa = 0; // Set to zero to indicate valid non-integer G command.

@@ -289,7 +289,7 @@ void mc_homing_cycle()
   uint8_t auto_start_state = sys.auto_start; // Store run state
   
   // After syncing, check if probe is already triggered. If so, halt and issue alarm.
-  if (probe_get_state()) { 
+  if ((sys.probe_away << PROBE_BIT) ^ probe_get_state()) {
     bit_true_atomic(sys.execute, EXEC_CRIT_EVENT);
     protocol_execute_runtime();
   }

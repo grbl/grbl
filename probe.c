@@ -37,6 +37,8 @@ void probe_init()
     PROBE_PORT |= PROBE_MASK;    // Enable internal pull-up resistors. Normal high operation.
     probe_invert_mask = PROBE_MASK; 
   }
+
+  sys.probe_away = false;
 }
 
 
@@ -49,8 +51,8 @@ uint8_t probe_get_state() { return((PROBE_PIN & PROBE_MASK) ^ probe_invert_mask)
 // NOTE: This function must be extremely efficient as to not bog down the stepper ISR.
 void probe_state_monitor()
 {
-  if (sys.probe_state == PROBE_ACTIVE) { 
-    if (probe_get_state()) {
+  if (sys.probe_state == PROBE_ACTIVE) {
+    if ((sys.probe_away << PROBE_BIT) ^ probe_get_state()) {
       sys.probe_state = PROBE_OFF;
       memcpy(sys.probe_position, sys.position, sizeof(float)*N_AXIS);
       bit_true(sys.execute, EXEC_FEED_HOLD);
