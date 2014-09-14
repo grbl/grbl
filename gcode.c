@@ -982,6 +982,7 @@ uint8_t gc_execute_line(char *line)
           #endif
           break;
         case MOTION_MODE_PROBE:
+        case MOTION_MODE_PROBE_NO_ERROR:
           // NOTE: gc_block.values.xyz is returned from mc_probe_cycle with the updated position value. So
           // upon a successful probing cycle, the machine position and the returned value should be the same.
           #ifdef USE_LINE_NUMBERS
