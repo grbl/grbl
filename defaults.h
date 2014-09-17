@@ -116,21 +116,21 @@
   #define DEFAULT_X_MAX_RATE 4000.0 // mm/min
   #define DEFAULT_Y_MAX_RATE 4000.0 // mm/min
   #define DEFAULT_Z_MAX_RATE 650.0 // mm/min
-  #define DEFAULT_X_ACCELERATION (15.0*60*60) // 15*60*60 mm/min^2 = 15 mm/sec^2
-  #define DEFAULT_Y_ACCELERATION (15.0*60*60) // 15*60*60 mm/min^2 = 15 mm/sec^2
+  #define DEFAULT_X_ACCELERATION (7.0*60*60) // 15*60*60 mm/min^2 = 15 mm/sec^2
+  #define DEFAULT_Y_ACCELERATION (7.0*60*60) // 15*60*60 mm/min^2 = 15 mm/sec^2
   #define DEFAULT_Z_ACCELERATION (15.0*60*60) // 15*60*60 mm/min^2 = 15 mm/sec^2
   #define DEFAULT_X_MAX_TRAVEL 204.0 // mm
-  #define DEFAULT_Y_MAX_TRAVEL 202.0 // mm
-  #define DEFAULT_Z_MAX_TRAVEL 50.0 // mm
+  #define DEFAULT_Y_MAX_TRAVEL 204.0 // mm
+  #define DEFAULT_Z_MAX_TRAVEL 54.0 // mm
   #define DEFAULT_STEP_PULSE_MICROSECONDS 10
   #define DEFAULT_STEPPING_INVERT_MASK 0
   #define DEFAULT_DIRECTION_INVERT_MASK 2  
-  #define DEFAULT_STEPPER_IDLE_LOCK_TIME 255 // msec (0-254, 255 keeps steppers enabled)
+  #define DEFAULT_STEPPER_IDLE_LOCK_TIME 25 // msec (0-254, 255 keeps steppers enabled)
   #define DEFAULT_STATUS_REPORT_MASK ((BITFLAG_RT_STATUS_MACHINE_POSITION)|(BITFLAG_RT_STATUS_WORK_POSITION))
   #define DEFAULT_JUNCTION_DEVIATION 0.05 // mm
   #define DEFAULT_ARC_TOLERANCE 0.002 // mm
   #define DEFAULT_REPORT_INCHES 0 // false
-  #define DEFAULT_AUTO_START 0 // true
+  #define DEFAULT_AUTO_START 1 // true
   #define DEFAULT_INVERT_ST_ENABLE 0 // false
   #define DEFAULT_INVERT_LIMIT_PINS 0 // false  
   #define DEFAULT_SOFT_LIMIT_ENABLE 1 // false
