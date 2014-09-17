@@ -29,7 +29,7 @@
 
 
 #define GRBL_VERSION "0.9g"
-#define GRBL_VERSION_BUILD "20140813"
+#define GRBL_VERSION_BUILD "20140905"
 
 // Version of the EEPROM data. Will be used to migrate existing data from older versions of Grbl
 // when firmware is upgraded. Always stored in byte 0 of eeprom
@@ -102,6 +102,12 @@ extern settings_t settings;
 
 // Initialize the configuration subsystem (load settings from EEPROM)
 void settings_init();
+
+// Helper functions to clear and restore EEPROM defaults
+void settings_restore_global_settings();
+void settings_clear_parameters();
+void settings_clear_startup_line();
+void settings_clear_build_info();
 
 // A helper method to set new settings from command line
 uint8_t settings_store_global_setting(uint8_t parameter, float value);
