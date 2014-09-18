@@ -3,3 +3,4 @@
 *.elf
 *.DS_Store
 *.d
+grbl-sim
