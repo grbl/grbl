@@ -31,7 +31,7 @@
 // IMPORTANT: Any changes here requires a full re-compiling of the source code to propagate them.
 
 #ifndef config_h
-#define config_h
+//#define config_h
 #include "system.h"
 
 
