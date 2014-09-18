@@ -242,7 +242,7 @@ void mc_homing_cycle()
 {
   uint8_t limits_on;
   if (bit_istrue(settings.flags,BITFLAG_INVERT_LIMIT_PINS)) {
-    limits_on = (LIMIT_PIN ^ LIMIT_MASK);
+    limits_on = ((~LIMIT_PIN) & LIMIT_MASK);
   } else {
     limits_on =  (LIMIT_PIN & LIMIT_MASK);
   }
