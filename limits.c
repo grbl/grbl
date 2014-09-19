@@ -32,6 +32,7 @@
 #include "motion_control.h"
 #include "limits.h"
 #include "report.h"
+#include "gcode.h"
 
 // Homing axis search distance multiplier. Computed by this value times the axis max travel.
 #define HOMING_AXIS_SEARCH_SCALAR  1.5 // Must be > 1 to ensure limit switch will be engaged.
@@ -180,9 +181,9 @@ void limits_go_home(uint8_t cycle_mask)
     uint8_t limit_state;
     
     #ifdef USE_LINE_NUMBERS
-      plan_buffer_line(target, homing_rate, false, HOMING_CYCLE_LINE_NUMBER); // Bypass mc_line(). Directly plan homing motion.
+      plan_buffer_line(target, homing_rate, false, 0, SPINDLE_DISABLE, HOMING_CYCLE_LINE_NUMBER); // Bypass mc_line(). Directly plan homing motion.
     #else
-      plan_buffer_line(target, homing_rate, false); // Bypass mc_line(). Directly plan homing motion.
+      plan_buffer_line(target, homing_rate, false, 0, SPINDLE_DISABLE); // Bypass mc_line(). Directly plan homing motion.
     #endif
     
     st_prep_buffer(); // Prep and fill segment buffer from newly planned block.
@@ -247,9 +248,9 @@ void limits_go_home(uint8_t cycle_mask)
   plan_sync_position(); // Sync planner position to current machine position for pull-off move.
   
   #ifdef USE_LINE_NUMBERS
-    plan_buffer_line(target, settings.homing_seek_rate, false, HOMING_CYCLE_LINE_NUMBER); // Bypass mc_line(). Directly plan motion.
+    plan_buffer_line(target, settings.homing_seek_rate, false, 0, SPINDLE_DISABLE, HOMING_CYCLE_LINE_NUMBER); // Bypass mc_line(). Directly plan motion.
   #else
-    plan_buffer_line(target, settings.homing_seek_rate, false); // Bypass mc_line(). Directly plan motion.
+    plan_buffer_line(target, settings.homing_seek_rate, false, 0, SPINDLE_DISABLE); // Bypass mc_line(). Directly plan motion.
   #endif
   
   // Initiate pull-off using main motion control routines. 

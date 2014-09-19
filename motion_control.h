@@ -33,9 +33,9 @@
 // unless invert_feed_rate is true. Then the feed_rate means that the motion should be completed in
 // (1 minute)/feed_rate time.
 #ifdef USE_LINE_NUMBERS
-void mc_line(float *target, float feed_rate, uint8_t invert_feed_rate, int32_t line_number);
+void mc_line(float *target, float feed_rate, uint8_t invert_feed_rate, float rpm,  uint8_t direction, int32_t line_number);
 #else
-void mc_line(float *target, float feed_rate, uint8_t invert_feed_rate);
+void mc_line(float *target, float feed_rate, uint8_t invert_feed_rate, float rpm,  uint8_t direction);
 #endif
 
 // Execute an arc in offset mode format. position == current xyz, target == target xyz, 
@@ -44,10 +44,12 @@ void mc_line(float *target, float feed_rate, uint8_t invert_feed_rate);
 // for vector transformation direction.
 #ifdef USE_LINE_NUMBERS
 void mc_arc(float *position, float *target, float *offset, float radius, float feed_rate, 
-  uint8_t invert_feed_rate, uint8_t axis_0, uint8_t axis_1, uint8_t axis_linear, int32_t line_number);
+  uint8_t invert_feed_rate, uint8_t axis_0, uint8_t axis_1, uint8_t axis_linear,
+  float rpm,  uint8_t direction, int32_t line_number);
 #else
 void mc_arc(float *position, float *target, float *offset, float radius, float feed_rate,
-  uint8_t invert_feed_rate, uint8_t axis_0, uint8_t axis_1, uint8_t axis_linear);
+  uint8_t invert_feed_rate, uint8_t axis_0, uint8_t axis_1, uint8_t axis_linear,
+  float rpm,  uint8_t direction);
 #endif
   
 // Dwell for a specific number of seconds

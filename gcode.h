@@ -161,7 +161,7 @@ typedef struct {
 typedef struct {
   gc_modal_t modal;
   
-  float spindle_speed;          // RPM
+  float spindle_speed;          // RPM 
   float feed_rate;              // Millimeters/min
   uint8_t tool;                 // Tracks tool number. NOT USED.
 
