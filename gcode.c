@@ -840,7 +840,7 @@ uint8_t gc_execute_line(char *line)
     gc_state.spindle_speed = gc_block.values.s; 
     
     // Update running spindle only if not in check mode and not already enabled.
-    if (gc_state.modal.spindle != SPINDLE_DISABLE) { spindle_run(gc_state.modal.spindle, gc_state.spindle_speed); }
+    //if (gc_state.modal.spindle != SPINDLE_DISABLE) { spindle_run(gc_state.modal.spindle, gc_state.spindle_speed); }
   }
     
   // [5. Select tool ]: NOT SUPPORTED. Only tracks tool value.
@@ -852,7 +852,7 @@ uint8_t gc_execute_line(char *line)
   if (gc_state.modal.spindle != gc_block.modal.spindle) {
     gc_state.modal.spindle = gc_block.modal.spindle;    
     // Update spindle control and apply spindle speed when enabling it in this block.    
-    spindle_run(gc_state.modal.spindle, gc_state.spindle_speed);
+    //spindle_run(gc_state.modal.spindle, gc_state.spindle_speed);
   }
 
   // [8. Coolant control ]:  

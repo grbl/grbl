@@ -30,6 +30,8 @@
 #include "settings.h"
 #include "planner.h"
 #include "probe.h"
+#include "gcode.h"
+#include "spindle_control.h"
 
 
 // Some useful constants.
@@ -568,6 +570,9 @@ void st_prep_buffer()
           st_prep_block->steps[Z_AXIS] = pl_block->steps[Z_AXIS] << MAX_AMASS_LEVEL;
           st_prep_block->step_event_count = pl_block->step_event_count << MAX_AMASS_LEVEL;
         #endif
+        
+        // set spindle rpm and status on new block. 
+		spindle_run(pl_block->spindle_direction, pl_block->spindle_speed); 
         
         // Initialize segment buffer data for generating the segments.
         prep.steps_remaining = pl_block->step_event_count;
