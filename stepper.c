@@ -571,8 +571,11 @@ void st_prep_buffer()
           st_prep_block->step_event_count = pl_block->step_event_count << MAX_AMASS_LEVEL;
         #endif
         
-        // set spindle rpm and status on new block. 
-		spindle_run(pl_block->spindle_direction, pl_block->spindle_speed); 
+        // set spindle rpm and status on new block.
+        #ifdef LASER_SPINDLE
+          if (bit_istrue(settings.flags,BITFLAG_LASER)){
+        spindle_run(pl_block->spindle_direction, pl_block->spindle_speed);} 
+        #endif
         
         // Initialize segment buffer data for generating the segments.
         prep.steps_remaining = pl_block->step_event_count;

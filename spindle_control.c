@@ -28,6 +28,7 @@
 #include "spindle_control.h"
 #include "protocol.h"
 #include "gcode.h"
+#include "settings.h"
 
 
 void spindle_init()
@@ -64,10 +65,15 @@ void spindle_run(uint8_t direction, float rpm)
 {
   if (sys.state == STATE_CHECK_MODE) { return; }
   
-  // Empty planner buffer to ensure spindle is set when programmed.
-  //protocol_auto_cycle_start();  //temp fix for M3 lockup
-  //protocol_buffer_synchronize(); 
-
+  // Empty planner buffer to ensure spindle is set when programmed.   
+  #ifdef LASER_SPINDLE
+    if (bit_isfalse(settings.flags,BITFLAG_LASER))
+  #endif
+  protocol_auto_cycle_start();  //temp fix for M3 lockup
+  #ifdef LASER_SPINDLE
+    if (bit_isfalse(settings.flags,BITFLAG_LASER))
+  #endif
+  protocol_buffer_synchronize();   
   // Halt or set spindle direction and rpm. 
   if (direction == SPINDLE_DISABLE) {
 

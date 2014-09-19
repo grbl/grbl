@@ -839,8 +839,11 @@ uint8_t gc_execute_line(char *line)
   if (gc_state.spindle_speed != gc_block.values.s) { 
     gc_state.spindle_speed = gc_block.values.s; 
     
+    #ifdef LASER_SPINDLE
+	  if (bit_isfalse(settings.flags,BITFLAG_LASER))
+    #endif 
     // Update running spindle only if not in check mode and not already enabled.
-    //if (gc_state.modal.spindle != SPINDLE_DISABLE) { spindle_run(gc_state.modal.spindle, gc_state.spindle_speed); }
+    if (gc_state.modal.spindle != SPINDLE_DISABLE) { spindle_run(gc_state.modal.spindle, gc_state.spindle_speed); }
   }
     
   // [5. Select tool ]: NOT SUPPORTED. Only tracks tool value.
@@ -851,8 +854,11 @@ uint8_t gc_execute_line(char *line)
   // [7. Spindle control ]:
   if (gc_state.modal.spindle != gc_block.modal.spindle) {
     gc_state.modal.spindle = gc_block.modal.spindle;    
+    #ifdef LASER_SPINDLE
+      if (bit_isfalse(settings.flags,BITFLAG_LASER))
+    #endif 
     // Update spindle control and apply spindle speed when enabling it in this block.    
-    //spindle_run(gc_state.modal.spindle, gc_state.spindle_speed);
+    spindle_run(gc_state.modal.spindle, gc_state.spindle_speed);
   }
 
   // [8. Coolant control ]:  
