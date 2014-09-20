@@ -67,7 +67,7 @@ typedef struct {
   uint8_t direction_bits;
   uint32_t steps[N_AXIS];
   uint32_t step_event_count;
-  float spindle_speed;        // RPM
+  uint8_t spindle_speed_pwm; // RPM
   uint8_t spindle_direction; // status of the spindle 
 } st_block_t;
 static st_block_t st_block_buffer[SEGMENT_BUFFER_SIZE-1];
@@ -344,9 +344,26 @@ ISR(TIMER1_COMPA_vect)
         // set spindle rpm and status on new block.
         #ifdef LASER_SPINDLE
           if (bit_istrue(settings.flags,BITFLAG_LASER)){
-        // BLOCK_HAS_MOTION is used to indacte this is called while in motion
-        spindle_run(st.exec_block->spindle_direction, st.exec_block->spindle_speed,BLOCK_HAS_MOTION);}  
-        #endif      
+            if (st.exec_block->spindle_direction == SPINDLE_DISABLE) {
+              spindle_stop();
+            } else {
+              if (st.exec_block->spindle_direction == SPINDLE_ENABLE_CW) {
+                SPINDLE_DIRECTION_PORT &= ~(1<<SPINDLE_DIRECTION_BIT);
+              } else {
+                SPINDLE_DIRECTION_PORT |= (1<<SPINDLE_DIRECTION_BIT);
+              }
+              #ifdef VARIABLE_SPINDLE
+                 spindle_start();
+                 spindle_rpm_update(st.exec_block->spindle_speed_pwm);
+                #ifndef CPU_MAP_ATMEGA328P // On the Uno, spindle enable and PWM are shared.
+                  SPINDLE_ENABLE_PORT |= (1<<SPINDLE_ENABLE_BIT);
+                #endif
+              #else
+                SPINDLE_ENABLE_PORT |= (1<<SPINDLE_ENABLE_BIT);
+              #endif
+            }
+          }
+          #endif
       }
 
       st.dir_outbits = st.exec_block->direction_bits ^ dir_port_invert_mask; 
@@ -389,7 +406,7 @@ ISR(TIMER1_COMPA_vect)
     st.counter_y += st.steps[Y_AXIS];
   #else
     st.counter_y += st.exec_block->steps[Y_AXIS];
-  #endif    
+  #endif
   if (st.counter_y > st.exec_block->step_event_count) {
     st.step_outbits |= (1<<Y_STEP_BIT);
     st.counter_y -= st.exec_block->step_event_count;
@@ -582,7 +599,7 @@ void st_prep_buffer()
         // Laser Spindle aka real time spindle 
         #ifdef LASER_SPINDLE
           st_prep_block->spindle_direction = pl_block->spindle_direction;
-          st_prep_block->spindle_speed = pl_block->spindle_speed;
+          st_prep_block->spindle_speed_pwm = calculate_pwm_from_rpm(pl_block->spindle_speed);
         #endif
         
         // Initialize segment buffer data for generating the segments.
