@@ -854,6 +854,7 @@ uint8_t gc_execute_line(char *line)
   // [7. Spindle control ]:
   if (gc_state.modal.spindle != gc_block.modal.spindle) {
     gc_state.modal.spindle = gc_block.modal.spindle;    
+    //TODO: M3 and M5 command needs to work without planer block....
     #ifdef LASER_SPINDLE
       if (bit_isfalse(settings.flags,BITFLAG_LASER))
     #endif 
