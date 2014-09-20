@@ -296,7 +296,7 @@ ISR(TIMER1_COMPA_vect)
 {        
 // SPINDLE_ENABLE_PORT ^= 1<<SPINDLE_ENABLE_BIT; // Debug: Used to time ISR
   if (busy) { return; } // The busy-flag is used to avoid reentering this interrupt
-  
+
   // Set the direction pins a couple of nanoseconds before we step the steppers
   DIRECTION_PORT = (DIRECTION_PORT & ~DIRECTION_MASK) | (st.dir_outbits & DIRECTION_MASK);
 
@@ -345,22 +345,22 @@ ISR(TIMER1_COMPA_vect)
         #ifdef LASER_SPINDLE
           if (bit_istrue(settings.flags,BITFLAG_LASER)){
             if (st.exec_block->spindle_direction == SPINDLE_DISABLE) {
-              spindle_stop();
+              //spindle_stop();
             } else {
-              if (st.exec_block->spindle_direction == SPINDLE_ENABLE_CW) {
-                SPINDLE_DIRECTION_PORT &= ~(1<<SPINDLE_DIRECTION_BIT);
-              } else {
-                SPINDLE_DIRECTION_PORT |= (1<<SPINDLE_DIRECTION_BIT);
-              }
-              #ifdef VARIABLE_SPINDLE
-                 spindle_start();
+              //#ifdef VARIABLE_SPINDLE
+                 //spindle_start();
                  spindle_rpm_update(st.exec_block->spindle_speed_pwm);
-                #ifndef CPU_MAP_ATMEGA328P // On the Uno, spindle enable and PWM are shared.
-                  SPINDLE_ENABLE_PORT |= (1<<SPINDLE_ENABLE_BIT);
-                #endif
-              #else
-                SPINDLE_ENABLE_PORT |= (1<<SPINDLE_ENABLE_BIT);
-              #endif
+                //#ifndef CPU_MAP_ATMEGA328P // On the Uno, spindle enable and PWM are shared.
+                  //SPINDLE_ENABLE_PORT |= (1<<SPINDLE_ENABLE_BIT);
+                //#endif
+              //#else
+                //SPINDLE_ENABLE_PORT |= (1<<SPINDLE_ENABLE_BIT);
+              //#endif
+              //if (st.exec_block->spindle_direction == SPINDLE_ENABLE_CW) {
+                //SPINDLE_DIRECTION_PORT &= ~(1<<SPINDLE_DIRECTION_BIT);
+              //} else {
+                //SPINDLE_DIRECTION_PORT |= (1<<SPINDLE_DIRECTION_BIT);
+              //}
             }
           }
           #endif
@@ -380,7 +380,8 @@ ISR(TIMER1_COMPA_vect)
       st_go_idle();
       bit_true_atomic(sys.execute,EXEC_CYCLE_STOP); // Flag main program for cycle end
       return; // Nothing to do but exit.
-    }  
+    }
+      //if (st.exec_segment != NULL && st.exec_block->spindle_direction != SPINDLE_DISABLE)spindle_rpm_update(st.exec_block->spindle_speed_pwm);  
   }
   
   
