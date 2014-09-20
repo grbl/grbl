@@ -67,6 +67,8 @@ typedef struct {
   uint8_t direction_bits;
   uint32_t steps[N_AXIS];
   uint32_t step_event_count;
+  float spindle_speed;        // RPM
+  uint8_t spindle_direction; // status of the spindle 
 } st_block_t;
 static st_block_t st_block_buffer[SEGMENT_BUFFER_SIZE-1];
 
@@ -339,6 +341,11 @@ ISR(TIMER1_COMPA_vect)
         st.counter_x = (st.exec_block->step_event_count >> 1);
         st.counter_y = st.counter_x;
         st.counter_z = st.counter_x;        
+        // set spindle rpm and status on new block.
+        #ifdef LASER_SPINDLE
+          if (bit_istrue(settings.flags,BITFLAG_LASER)){
+        spindle_run(st.exec_block->spindle_direction, st.exec_block->spindle_speed);} 
+        #endif      
       }
 
       st.dir_outbits = st.exec_block->direction_bits ^ dir_port_invert_mask; 
@@ -571,10 +578,10 @@ void st_prep_buffer()
           st_prep_block->step_event_count = pl_block->step_event_count << MAX_AMASS_LEVEL;
         #endif
         
-        // set spindle rpm and status on new block.
+        // Laser Spindle aka real time spindle 
         #ifdef LASER_SPINDLE
-          if (bit_istrue(settings.flags,BITFLAG_LASER)){
-        spindle_run(pl_block->spindle_direction, pl_block->spindle_speed);} 
+          st_prep_block->spindle_direction = pl_block->spindle_direction;
+          st_prep_block->spindle_speed = pl_block->spindle_speed;
         #endif
         
         // Initialize segment buffer data for generating the segments.
