@@ -70,14 +70,9 @@ void plan_reset();
 // Add a new linear movement to the buffer. target[N_AXIS] is the signed, absolute target position 
 // in millimeters. Feed rate specifies the speed of the motion. If feed rate is inverted, the feed
 // rate is taken to mean "frequency" and would complete the operation in 1/feed_rate minutes.
-#if defined(LASER_SPINDLE) && defined(USE_LINE_NUMBERS)
+#ifdef USE_LINE_NUMBERS
   void plan_buffer_line(float *target, float feed_rate, uint8_t invert_feed_rate, float rpm,  uint8_t direction, int32_t line_number);
-#elif defined(LASER_SPINDLE)
-  void plan_buffer_line(float *target, float feed_rate, uint8_t invert_feed_rate, float rpm,  uint8_t direction);
-#elif defined(USE_LINE_NUMBERS)
-  void plan_buffer_line(float *target, float feed_rate, uint8_t invert_feed_rate, int32_t line_number);
 #else
-  //void plan_buffer_line(float *target, float feed_rate, uint8_t invert_feed_rate);
   void plan_buffer_line(float *target, float feed_rate, uint8_t invert_feed_rate, float rpm,  uint8_t direction);
 #endif
 
