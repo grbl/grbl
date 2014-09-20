@@ -344,7 +344,8 @@ ISR(TIMER1_COMPA_vect)
         // set spindle rpm and status on new block.
         #ifdef LASER_SPINDLE
           if (bit_istrue(settings.flags,BITFLAG_LASER)){
-        spindle_run(st.exec_block->spindle_direction, st.exec_block->spindle_speed);} 
+        // BLOCK_HAS_MOTION is used to indacte this is called while in motion
+        spindle_run(st.exec_block->spindle_direction, st.exec_block->spindle_speed,BLOCK_HAS_MOTION);}  
         #endif      
       }
 

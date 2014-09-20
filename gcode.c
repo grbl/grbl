@@ -204,10 +204,26 @@ uint8_t gc_execute_line(char *line)
           case 80: 
             word_bit = MODAL_GROUP_G1; 
             switch(int_value) {
-              case 0: gc_block.modal.motion = MOTION_MODE_SEEK; break; // G0
-              case 1: gc_block.modal.motion = MOTION_MODE_LINEAR; break; // G1
-              case 2: gc_block.modal.motion = MOTION_MODE_CW_ARC; break; // G2
-              case 3: gc_block.modal.motion = MOTION_MODE_CCW_ARC; break; // G3
+              case 0: gc_block.modal.motion = MOTION_MODE_SEEK; // G0
+              #ifdef LASER_SPINDLE 
+                gc_block.motion = BLOCK_HAS_MOTION; 
+              #endif 
+              break; // G0
+              case 1: gc_block.modal.motion = MOTION_MODE_LINEAR;  // G1
+              #ifdef LASER_SPINDLE 
+                gc_block.motion = BLOCK_HAS_MOTION; 
+              #endif 
+              break; // G1
+              case 2: gc_block.modal.motion = MOTION_MODE_CW_ARC;  // G2
+              #ifdef LASER_SPINDLE 
+                gc_block.motion = BLOCK_HAS_MOTION; 
+              #endif 
+              break; // G2
+              case 3: gc_block.modal.motion = MOTION_MODE_CCW_ARC; // G3
+              #ifdef LASER_SPINDLE 
+                gc_block.motion = BLOCK_HAS_MOTION; 
+              #endif 
+              break; // G3
               case 38: 
                 switch(mantissa) {
                   case 20: gc_block.modal.motion = MOTION_MODE_PROBE; break;  // G38.2
@@ -220,6 +236,10 @@ uint8_t gc_execute_line(char *line)
                 mantissa = 0; // Set to zero to indicate valid non-integer G command.
                 break;
               case 80: gc_block.modal.motion = MOTION_MODE_NONE; break; // G80
+              #ifdef LASER_SPINDLE
+              //I don't know any other way to find out that there is no motion in g code block.
+              default: gc_block.motion = BLOCK_HAS_NO_MOTION; break; 
+              #endif 
             }            
             break;
           case 17: case 18: case 19: 
@@ -838,12 +858,13 @@ uint8_t gc_execute_line(char *line)
   // [4. Set spindle speed ]:
   if (gc_state.spindle_speed != gc_block.values.s) { 
     gc_state.spindle_speed = gc_block.values.s; 
-    
+    //S value changes needs to work without planer block too. If there is motion
+    //it will update in real time. However if there is not we need to take care.
     #ifdef LASER_SPINDLE
-	  if (bit_isfalse(settings.flags,BITFLAG_LASER))
+	  if (bit_isfalse(settings.flags,BITFLAG_LASER)|| gc_block.motion == BLOCK_HAS_NO_MOTION)
     #endif 
     // Update running spindle only if not in check mode and not already enabled.
-    if (gc_state.modal.spindle != SPINDLE_DISABLE) { spindle_run(gc_state.modal.spindle, gc_state.spindle_speed); }
+    if (gc_state.modal.spindle != SPINDLE_DISABLE) { spindle_run(gc_state.modal.spindle, gc_state.spindle_speed, BLOCK_HAS_NO_MOTION); }
   }
     
   // [5. Select tool ]: NOT SUPPORTED. Only tracks tool value.
@@ -854,12 +875,13 @@ uint8_t gc_execute_line(char *line)
   // [7. Spindle control ]:
   if (gc_state.modal.spindle != gc_block.modal.spindle) {
     gc_state.modal.spindle = gc_block.modal.spindle;    
-    //TODO: M3 and M5 command needs to work without planer block....
+    //M3, M4 and M5 command needs to work without planer block too. If there is motion
+    //it will updated in real time. However if there is not we need to take care.
     #ifdef LASER_SPINDLE
-      if (bit_isfalse(settings.flags,BITFLAG_LASER))
+      if (bit_isfalse(settings.flags,BITFLAG_LASER) || gc_block.motion == BLOCK_HAS_NO_MOTION)
     #endif 
     // Update spindle control and apply spindle speed when enabling it in this block.    
-    spindle_run(gc_state.modal.spindle, gc_state.spindle_speed);
+    spindle_run(gc_state.modal.spindle, gc_state.spindle_speed, BLOCK_HAS_NO_MOTION);
   }
 
   // [8. Coolant control ]:  

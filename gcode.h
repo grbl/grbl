@@ -127,7 +127,11 @@
 #define WORD_Y  11
 #define WORD_Z  12
 
-
+#ifdef LASER_SPINDLE
+  // Status of the g code block
+  #define BLOCK_HAS_NO_MOTION 0  // (Default: Must be zero)
+  #define BLOCK_HAS_MOTION 1     // no motion in gcode
+#endif
 
 
 // NOTE: When this struct is zeroed, the above defines set the defaults for the system.
@@ -178,7 +182,9 @@ extern parser_state_t gc_state;
 typedef struct {
 //   uint16_t command_words;  // NOTE: If this bitflag variable fills, G and M words can be separated.
 //   uint16_t value_words;
-
+  #ifdef LASER_SPINDLE
+    uint8_t motion;
+  #endif  
   uint8_t non_modal_command;
   gc_modal_t modal;
   gc_values_t values;

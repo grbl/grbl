@@ -61,17 +61,19 @@ void spindle_stop()
 }
 
 
-void spindle_run(uint8_t direction, float rpm) 
+void spindle_run(uint8_t direction, float rpm, uint8_t motion) 
 {
   if (sys.state == STATE_CHECK_MODE) { return; }
   
-  // Empty planner buffer to ensure spindle is set when programmed.   
+  // Empty planner buffer to ensure spindle is set when programmed.
+  // Only do this without real time spindle control or if there was
+  // a block without motion.  
   #ifdef LASER_SPINDLE
-    if (bit_isfalse(settings.flags,BITFLAG_LASER))
+    if (bit_isfalse(settings.flags,BITFLAG_LASER) || motion == BLOCK_HAS_NO_MOTION)
   #endif
   protocol_auto_cycle_start();  //temp fix for M3 lockup
   #ifdef LASER_SPINDLE
-    if (bit_isfalse(settings.flags,BITFLAG_LASER))
+    if (bit_isfalse(settings.flags,BITFLAG_LASER) || motion == BLOCK_HAS_NO_MOTION)
   #endif
   protocol_buffer_synchronize();   
   // Halt or set spindle direction and rpm. 

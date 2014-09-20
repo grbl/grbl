@@ -77,7 +77,8 @@ void plan_reset();
 #elif defined(USE_LINE_NUMBERS)
   void plan_buffer_line(float *target, float feed_rate, uint8_t invert_feed_rate, int32_t line_number);
 #else
-  void plan_buffer_line(float *target, float feed_rate, uint8_t invert_feed_rate);
+  //void plan_buffer_line(float *target, float feed_rate, uint8_t invert_feed_rate);
+  void plan_buffer_line(float *target, float feed_rate, uint8_t invert_feed_rate, float rpm,  uint8_t direction);
 #endif
 
 // Called when the current block is no longer needed. Discards the block and makes the memory
