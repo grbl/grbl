@@ -50,6 +50,12 @@ uint8_t probe_errors_enabled(uint8_t mode) {
   return !(mode & PROBE_NO_ERROR);
 }
 
+void probe_finalize() {
+  sys.probe_state = PROBE_OFF;
+  memcpy(sys.probe_position, sys.position, sizeof(float)*N_AXIS);
+  bit_true(sys.execute, EXEC_FEED_HOLD);
+}
+
 // Monitors probe pin state and records the system position when detected. Called by the
 // stepper ISR per ISR tick.
 // NOTE: This function must be extremely efficient as to not bog down the stepper ISR.
@@ -57,9 +63,7 @@ void probe_state_monitor()
 {
   if (sys.probe_state != PROBE_OFF) {
     if (probe_get_state(sys.probe_state)) {
-      sys.probe_state = PROBE_OFF;
-      memcpy(sys.probe_position, sys.position, sizeof(float)*N_AXIS);
-      bit_true(sys.execute, EXEC_FEED_HOLD);
+      probe_finalize();
     }
   }
 }

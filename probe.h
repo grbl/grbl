@@ -40,6 +40,8 @@ uint8_t probe_get_state(uint8_t mode);
 
 uint8_t probe_errors_enabled(uint8_t mode);
 
+void probe_finalize();
+
 // Monitors probe pin state and records the system position when detected. Called by the
 // stepper ISR per ISR tick.
 void probe_state_monitor();
