@@ -838,7 +838,14 @@ uint8_t gc_execute_line(char *line)
   // [4. Set spindle speed ]:
   if (gc_state.spindle_speed != gc_block.values.s) { 
     gc_state.spindle_speed = gc_block.values.s; 
-    
+    //S value changes needs to work without planer block too. If there is motion
+    //it will update in real time. However if there is not we need to take care.
+    // This statment tells that the block has no motion:
+    // !((gc_state.modal.motion != MOTION_MODE_NONE)&&(axis_command == AXIS_COMMAND_MOTION_MODE))
+    // This if only calls spindle run when LASER SPINDLE and LASER mode ON and block has no motion: 
+    #ifdef LASER_SPINDLE
+	  if (bit_isfalse(settings.flags,BITFLAG_LASER)|| !((gc_state.modal.motion != MOTION_MODE_NONE)&&(axis_command == AXIS_COMMAND_MOTION_MODE)))
+    #endif 
     // Update running spindle only if not in check mode and not already enabled.
     if (gc_state.modal.spindle != SPINDLE_DISABLE) { spindle_run(gc_state.modal.spindle, gc_state.spindle_speed); }
   }
@@ -851,6 +858,11 @@ uint8_t gc_execute_line(char *line)
   // [7. Spindle control ]:
   if (gc_state.modal.spindle != gc_block.modal.spindle) {
     gc_state.modal.spindle = gc_block.modal.spindle;    
+    //M3, M4 and M5 command needs to work without planer block too. If there is motion
+    //it will updated in real time. However if there is not we need to take care.
+    #ifdef LASER_SPINDLE
+      if (bit_isfalse(settings.flags,BITFLAG_LASER) || !((gc_state.modal.motion != MOTION_MODE_NONE)&&(axis_command == AXIS_COMMAND_MOTION_MODE)))
+    #endif 
     // Update spindle control and apply spindle speed when enabling it in this block.    
     spindle_run(gc_state.modal.spindle, gc_state.spindle_speed);
   }
@@ -912,15 +924,15 @@ uint8_t gc_execute_line(char *line)
       // and absolute and incremental modes.
       if (axis_command) {
         #ifdef USE_LINE_NUMBERS
-          mc_line(gc_block.values.xyz, -1.0, false, gc_block.values.n);
+          mc_line(gc_block.values.xyz, -1.0, false, gc_state.spindle_speed, gc_state.modal.spindle, gc_block.values.n);
         #else
-          mc_line(gc_block.values.xyz, -1.0, false);
+          mc_line(gc_block.values.xyz, -1.0, false, gc_state.spindle_speed, gc_state.modal.spindle);
         #endif
       }
       #ifdef USE_LINE_NUMBERS
-        mc_line(parameter_data, -1.0, false, gc_block.values.n); 
+        mc_line(parameter_data, -1.0, false, gc_state.spindle_speed, gc_state.modal.spindle, gc_block.values.n); 
       #else
-        mc_line(parameter_data, -1.0, false); 
+        mc_line(parameter_data, -1.0, false, gc_state.spindle_speed, gc_state.modal.spindle); 
       #endif
       memcpy(gc_state.position, parameter_data, sizeof(parameter_data));
       break;
@@ -948,25 +960,27 @@ uint8_t gc_execute_line(char *line)
       switch (gc_state.modal.motion) {
         case MOTION_MODE_SEEK:
           #ifdef USE_LINE_NUMBERS
-            mc_line(gc_block.values.xyz, -1.0, false, gc_block.values.n);
+            mc_line(gc_block.values.xyz, -1.0, false, gc_state.spindle_speed, gc_state.modal.spindle, gc_block.values.n);
           #else
-            mc_line(gc_block.values.xyz, -1.0, false);
+            mc_line(gc_block.values.xyz, -1.0, false, gc_state.spindle_speed, gc_state.modal.spindle);
           #endif
           break;
         case MOTION_MODE_LINEAR:
           #ifdef USE_LINE_NUMBERS
-            mc_line(gc_block.values.xyz, gc_state.feed_rate, gc_state.modal.feed_rate, gc_block.values.n);
+            mc_line(gc_block.values.xyz, gc_state.feed_rate, gc_state.modal.feed_rate, gc_state.spindle_speed, gc_state.modal.spindle, gc_block.values.n);
           #else
-            mc_line(gc_block.values.xyz, gc_state.feed_rate, gc_state.modal.feed_rate);
+            mc_line(gc_block.values.xyz, gc_state.feed_rate, gc_state.modal.feed_rate, gc_state.spindle_speed, gc_state.modal.spindle);
           #endif
           break;
         case MOTION_MODE_CW_ARC: case MOTION_MODE_CCW_ARC:
           #ifdef USE_LINE_NUMBERS
             mc_arc(gc_state.position, gc_block.values.xyz, gc_block.values.ijk, gc_block.values.r, 
-              gc_state.feed_rate, gc_state.modal.feed_rate, axis_0, axis_1, axis_linear, gc_block.values.n);  
+              gc_state.feed_rate, gc_state.modal.feed_rate, axis_0, axis_1, axis_linear, 
+              gc_state.spindle_speed, gc_state.modal.spindle, gc_block.values.n);  
           #else
             mc_arc(gc_state.position, gc_block.values.xyz, gc_block.values.ijk, gc_block.values.r, 
-              gc_state.feed_rate, gc_state.modal.feed_rate, axis_0, axis_1, axis_linear); 
+              gc_state.feed_rate, gc_state.modal.feed_rate, axis_0, axis_1, axis_linear,
+              gc_state.spindle_speed, gc_state.modal.spindle); 
           #endif
           break;
         case MOTION_MODE_PROBE:

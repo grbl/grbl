@@ -29,7 +29,7 @@
 
 
 #define GRBL_VERSION "0.9g"
-#define GRBL_VERSION_BUILD "20140905"
+#define GRBL_VERSION_BUILD "20140917"
 
 // Version of the EEPROM data. Will be used to migrate existing data from older versions of Grbl
 // when firmware is upgraded. Always stored in byte 0 of eeprom
@@ -44,6 +44,7 @@
 #define BITFLAG_SOFT_LIMIT_ENABLE  bit(5)
 #define BITFLAG_INVERT_LIMIT_PINS  bit(6)
 #define BITFLAG_INVERT_PROBE_PIN   bit(7)
+#define BITFLAG_LASER              bit(8)
 
 // Define status reporting boolean enable bit flags in settings.status_report_mask
 #define BITFLAG_RT_STATUS_MACHINE_POSITION  bit(0)
@@ -90,7 +91,7 @@ typedef struct {
   float junction_deviation;
   float arc_tolerance;
   
-  uint8_t flags;  // Contains default boolean settings
+  uint16_t flags;  // Contains default boolean settings
 
   uint8_t homing_dir_mask;
   float homing_feed_rate;

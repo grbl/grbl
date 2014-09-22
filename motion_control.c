@@ -47,9 +47,9 @@
 // mc_line and plan_buffer_line is done primarily to place non-planner-type functions from being
 // in the planner and to let backlash compensation or canned cycle integration simple and direct.
 #ifdef USE_LINE_NUMBERS
-  void mc_line(float *target, float feed_rate, uint8_t invert_feed_rate, int32_t line_number)
+  void mc_line(float *target, float feed_rate, uint8_t invert_feed_rate, float rpm,  uint8_t direction, int32_t line_number)
 #else
-  void mc_line(float *target, float feed_rate, uint8_t invert_feed_rate)
+  void mc_line(float *target, float feed_rate, uint8_t invert_feed_rate, float rpm,  uint8_t direction)
 #endif
 {
   // If enabled, check for soft limit violations. Placed here all line motions are picked up
@@ -83,9 +83,9 @@
   } while (1);
 
   #ifdef USE_LINE_NUMBERS
-    plan_buffer_line(target, feed_rate, invert_feed_rate, line_number);
+    plan_buffer_line(target, feed_rate, invert_feed_rate, rpm, direction, line_number);
   #else
-    plan_buffer_line(target, feed_rate, invert_feed_rate);
+    plan_buffer_line(target, feed_rate, invert_feed_rate, rpm, direction);
   #endif
   
   // If idle, indicate to the system there is now a planned block in the buffer ready to cycle 
@@ -103,10 +103,12 @@
 // distance from segment to the circle when the end points both lie on the circle.
 #ifdef USE_LINE_NUMBERS
   void mc_arc(float *position, float *target, float *offset, float radius, float feed_rate, 
-    uint8_t invert_feed_rate, uint8_t axis_0, uint8_t axis_1, uint8_t axis_linear, int32_t line_number)
+    uint8_t invert_feed_rate, uint8_t axis_0, uint8_t axis_1, uint8_t axis_linear,
+    float rpm,  uint8_t direction, int32_t line_number)
 #else
   void mc_arc(float *position, float *target, float *offset, float radius, float feed_rate,
-    uint8_t invert_feed_rate, uint8_t axis_0, uint8_t axis_1, uint8_t axis_linear)
+    uint8_t invert_feed_rate, uint8_t axis_0, uint8_t axis_1, uint8_t axis_linear, 
+    float rpm,  uint8_t direction)
 #endif
 {
   float center_axis0 = position[axis_0] + offset[axis_0];
@@ -200,9 +202,9 @@
       position[axis_linear] += linear_per_segment;
       
       #ifdef USE_LINE_NUMBERS
-        mc_line(position, feed_rate, invert_feed_rate, line_number);
+        mc_line(position, feed_rate, invert_feed_rate, rpm, direction, line_number);
       #else
-        mc_line(position, feed_rate, invert_feed_rate);
+        mc_line(position, feed_rate, invert_feed_rate, rpm, direction);
       #endif
       
       // Bail mid-circle on system abort. Runtime command check already performed by mc_line.
@@ -211,9 +213,9 @@
   }
   // Ensure last segment arrives at target location.
   #ifdef USE_LINE_NUMBERS
-    mc_line(target, feed_rate, invert_feed_rate, line_number);
+    mc_line(target, feed_rate, invert_feed_rate, rpm, direction, line_number);
   #else
-    mc_line(target, feed_rate, invert_feed_rate);
+    mc_line(target, feed_rate, invert_feed_rate, rpm, direction);
   #endif
 }
 
@@ -308,9 +310,9 @@ void mc_homing_cycle()
 
   // Setup and queue probing motion. Auto cycle-start should not start the cycle.
   #ifdef USE_LINE_NUMBERS
-    mc_line(target, feed_rate, invert_feed_rate, line_number);
+    mc_line(target, feed_rate, invert_feed_rate, 0, SPINDLE_DISABLE, line_number);
   #else
-    mc_line(target, feed_rate, invert_feed_rate);
+    mc_line(target, feed_rate, invert_feed_rate, 0, SPINDLE_DISABLE);
   #endif
   
   // Activate the probing monitor in the stepper module.
@@ -341,9 +343,9 @@ void mc_homing_cycle()
     target[idx] = (float)sys.probe_position[idx]/settings.steps_per_mm[idx];
   }
   #ifdef USE_LINE_NUMBERS
-    mc_line(target, feed_rate, invert_feed_rate, line_number);
+    mc_line(target, feed_rate, invert_feed_rate, 0, SPINDLE_DISABLE, line_number);
   #else
-    mc_line(target, feed_rate, invert_feed_rate);
+    mc_line(target, feed_rate, invert_feed_rate, 0, SPINDLE_DISABLE);
   #endif
 
   // Execute pull-off motion and wait until it completes.

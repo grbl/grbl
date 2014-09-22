@@ -31,10 +31,25 @@
 // Initializes spindle pins and hardware PWM, if enabled.
 void spindle_init();
 
-// Sets spindle direction and spindle rpm via PWM, if enabled.
-void spindle_run(uint8_t direction, float rpm);
-
 // Kills spindle.
 void spindle_stop();
+
+// Sets direction of the spindle
+void spindle_set_direction(uint8_t direction);
+
+#ifdef VARIABLE_SPINDLE
+  // calaculates the RPM for the spindle, takes the value 
+  // from S gcode and calculates the PWM duty cycle
+  uint8_t calculate_pwm_from_rpm(float rpm);
+  
+  // Starts spindle.
+  void spindle_start();
+  
+  // writes new precalulated value to register
+  void spindle_rpm_update(uint8_t pwm);
+#endif
+
+// Sets spindle direction and spindle rpm via PWM, if enabled.
+void spindle_run(uint8_t direction, float rpm);
 
 #endif
