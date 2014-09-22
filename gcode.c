@@ -123,7 +123,7 @@ uint8_t gc_execute_line(char *line)
   char letter;
   float value;
   uint8_t int_value = 0;
-  uint8_t mantissa = 0; // NOTE: For mantissa values > 255, variable type must be changed to uint16_t.
+  uint16_t mantissa = 0; // NOTE: For mantissa values > 255, variable type must be changed to uint16_t.
   uint8_t probe_mode = 0;
 
   while (line[char_counter] != 0) { // Loop until no more g-code words in line.
