@@ -46,6 +46,10 @@ uint8_t probe_get_state(uint8_t mode) {
   return mode ^ ((PROBE_PIN & PROBE_MASK) ^ probe_invert_mask);
 }
 
+uint8_t probe_errors_enabled(uint8_t mode) {
+  return !(mode & PROBE_NO_ERROR);
+}
+
 // Monitors probe pin state and records the system position when detected. Called by the
 // stepper ISR per ISR tick.
 // NOTE: This function must be extremely efficient as to not bog down the stepper ISR.
