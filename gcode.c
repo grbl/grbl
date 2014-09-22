@@ -124,7 +124,7 @@ uint8_t gc_execute_line(char *line)
   float value;
   uint8_t int_value = 0;
   uint8_t mantissa = 0; // NOTE: For mantissa values > 255, variable type must be changed to uint16_t.
-
+  uint8_t probe_mode = 0;
 
   while (line[char_counter] != 0) { // Loop until no more g-code words in line.
     
@@ -210,22 +210,21 @@ uint8_t gc_execute_line(char *line)
               case 3: gc_block.modal.motion = MOTION_MODE_CCW_ARC; break; // G3
               case 38: 
                 switch(mantissa) {
-                  case 20:
-                    sys.probe_away = false;
+                  case 20:  // G38.2
                     gc_block.modal.motion = MOTION_MODE_PROBE;
-                  break;  // G38.2
-                  case 30:
-                    sys.probe_away = false;
-                    gc_block.modal.motion = MOTION_MODE_PROBE_NO_ERROR;
-                  break;  // G38.3
-                  case 40:
-                    sys.probe_away = true;
+                    break;
+                  case 30:  // G38.3
                     gc_block.modal.motion = MOTION_MODE_PROBE;
-                  break;  // G38.4
-                  case 50:
-                    sys.probe_away = true;
-                    gc_block.modal.motion = MOTION_MODE_PROBE_NO_ERROR;
-                  break;  // G38.5
+                    probe_mode = PROBE_NO_ERROR;
+                    break;
+                  case 40:  // G38.4
+                    gc_block.modal.motion = MOTION_MODE_PROBE;
+                    probe_mode = PROBE_AWAY;
+                    break;
+                  case 50:  // G38.5
+                    gc_block.modal.motion = MOTION_MODE_PROBE;
+                    probe_mode = PROBE_AWAY | PROBE_NO_ERROR;
+                    break;
 
                   default: FAIL(STATUS_GCODE_UNSUPPORTED_COMMAND); // [Unsupported G38.x command]
                 }
@@ -982,13 +981,12 @@ uint8_t gc_execute_line(char *line)
           #endif
           break;
         case MOTION_MODE_PROBE:
-        case MOTION_MODE_PROBE_NO_ERROR:
           // NOTE: gc_block.values.xyz is returned from mc_probe_cycle with the updated position value. So
           // upon a successful probing cycle, the machine position and the returned value should be the same.
           #ifdef USE_LINE_NUMBERS
-            mc_probe_cycle(gc_block.values.xyz, gc_state.feed_rate, gc_state.modal.feed_rate, gc_block.values.n);
+            mc_probe_cycle(gc_block.values.xyz, gc_state.feed_rate, gc_state.modal.feed_rate, probe_mode, gc_block.values.n);
           #else
-            mc_probe_cycle(gc_block.values.xyz, gc_state.feed_rate, gc_state.modal.feed_rate);
+            mc_probe_cycle(gc_block.values.xyz, gc_state.feed_rate, gc_state.modal.feed_rate, probe_mode);
           #endif
       }
     

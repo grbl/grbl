@@ -276,9 +276,9 @@ void mc_homing_cycle()
 // Perform tool length probe cycle. Requires probe switch.
 // NOTE: Upon probe failure, the program will be stopped and placed into ALARM state.
 #ifdef USE_LINE_NUMBERS
-  void mc_probe_cycle(float *target, float feed_rate, uint8_t invert_feed_rate, int32_t line_number)
+  void mc_probe_cycle(float *target, float feed_rate, uint8_t invert_feed_rate, uint8_t mode, int32_t line_number)
 #else
-  void mc_probe_cycle(float *target, float feed_rate, uint8_t invert_feed_rate)
+  void mc_probe_cycle(float *target, float feed_rate, uint8_t invert_feed_rate, uint8_t mode)
 #endif
 { 
   // TODO: Need to update this cycle so it obeys a non-auto cycle start.
@@ -289,7 +289,7 @@ void mc_homing_cycle()
   uint8_t auto_start_state = sys.auto_start; // Store run state
   
   // After syncing, check if probe is already triggered. If so, halt and issue alarm.
-  if ((sys.probe_away << PROBE_BIT) ^ probe_get_state()) {
+  if (probe_get_state(mode)) {
     bit_true_atomic(sys.execute, EXEC_CRIT_EVENT);
     protocol_execute_runtime();
   }
@@ -303,7 +303,7 @@ void mc_homing_cycle()
   #endif
   
   // Activate the probing monitor in the stepper module.
-  sys.probe_state = PROBE_ACTIVE;
+  sys.probe_state = PROBE_ACTIVE | mode;
 
   // Perform probing cycle. Wait here until probe is triggered or motion completes.
   bit_true_atomic(sys.execute, EXEC_CYCLE_START);
@@ -314,6 +314,7 @@ void mc_homing_cycle()
 
   // Probing motion complete. If the probe has not been triggered, error out.
   if (sys.probe_state == PROBE_ACTIVE) { bit_true_atomic(sys.execute, EXEC_CRIT_EVENT); }
+  if (sys.probe_state & PROBE_ACTIVE) { bit_true_atomic(sys.execute, EXEC_CRIT_EVENT); }
   protocol_execute_runtime();   // Check and execute run-time commands
   if (sys.abort) { return; } // Check for system abort
 

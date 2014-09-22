@@ -25,12 +25,18 @@
 #define PROBE_OFF     0 // No probing. (Must be zero.)
 #define PROBE_ACTIVE  1 // Actively watching the input pin.
 
+// Probe direction and error modes
+#define PROBE_AWAY 2 // G38.4, G38.5
+#define PROBE_NO_ERROR 4 // G38.3, G38.5
+
+#define PROBE_AWAY_BIT 1
+#define PROBE_NO_ERROR_BIT 2
 
 // Probe pin initialization routine.
 void probe_init();
 
 // Returns probe pin state.
-uint8_t probe_get_state();
+uint8_t probe_get_state(uint8_t mode);
 
 // Monitors probe pin state and records the system position when detected. Called by the
 // stepper ISR per ISR tick.
