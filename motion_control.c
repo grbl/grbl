@@ -313,7 +313,6 @@ void mc_homing_cycle()
   } while ((sys.state != STATE_IDLE) && (sys.state != STATE_QUEUED));
 
   // Probing motion complete. If the probe has not been triggered, error out.
-  if (sys.probe_state == PROBE_ACTIVE) { bit_true_atomic(sys.execute, EXEC_CRIT_EVENT); }
   if (sys.probe_state & PROBE_ACTIVE) { bit_true_atomic(sys.execute, EXEC_CRIT_EVENT); }
   protocol_execute_runtime();   // Check and execute run-time commands
   if (sys.abort) { return; } // Check for system abort
