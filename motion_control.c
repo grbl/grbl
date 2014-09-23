@@ -320,7 +320,7 @@ void mc_homing_cycle()
       bit_true_atomic(sys.execute, EXEC_CRIT_EVENT);
     } else {
       perform_pull_off = 0;
-      probe_finalize();
+      probe_finalize(0);
     }
   }
   protocol_execute_runtime();   // Check and execute run-time commands

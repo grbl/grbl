@@ -50,8 +50,9 @@ uint8_t probe_errors_enabled(uint8_t mode) {
   return !(mode & PROBE_NO_ERROR);
 }
 
-void probe_finalize() {
+void probe_finalize(uint8_t probe_succeeded) {
   sys.probe_state = PROBE_OFF;
+  sys.probe_succeeded = probe_succeeded;
   memcpy(sys.probe_position, sys.position, sizeof(float)*N_AXIS);
   bit_true(sys.execute, EXEC_FEED_HOLD);
 }
@@ -63,7 +64,7 @@ void probe_state_monitor()
 {
   if (sys.probe_state != PROBE_OFF) {
     if (probe_get_state(sys.probe_state)) {
-      probe_finalize();
+      probe_finalize(1);
     }
   }
 }
