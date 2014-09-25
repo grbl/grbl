@@ -240,6 +240,17 @@ void mc_dwell(float seconds)
 // executing the homing cycle. This prevents incorrect buffered plans after homing.
 void mc_homing_cycle()
 {
+  // Check and abort homing cycle, if hard limits are already enabled. Helps prevent problems
+  // with machines with limits wired on both ends of travel to one limit pin.
+  // TODO: Move the pin-specific LIMIT_PIN call to limits.c as a function.
+  uint8_t limit_state = (LIMIT_PIN & LIMIT_MASK);
+  if (bit_isfalse(settings.flags,BITFLAG_INVERT_LIMIT_PINS)) { limit_state ^= LIMIT_MASK; }
+  if (limit_state) { 
+    mc_reset(); // Issue system reset and ensure spindle and coolant are shutdown.
+    bit_true_atomic(sys.execute, (EXEC_ALARM | EXEC_CRIT_EVENT)); // Indicate homing limit critical event
+    return;
+  }
+ 
   sys.state = STATE_HOMING; // Set system state variable
   limits_disable(); // Disable hard limits pin change register for cycle duration
     

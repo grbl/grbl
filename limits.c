@@ -122,6 +122,7 @@ void limits_disable()
 // mask, which prevents the stepper algorithm from executing step pulses. Homing motions typically 
 // circumvent the processes for executing motions in normal operation.
 // NOTE: Only the abort runtime command can interrupt this process.
+// TODO: Move limit pin-specific calls to a general function for portability.
 void limits_go_home(uint8_t cycle_mask) 
 {
   if (sys.abort) { return; } // Block if system reset has been issued.

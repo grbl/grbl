@@ -330,6 +330,11 @@ void report_gcode_modes()
   
   printPgmString(PSTR(" F"));
   printFloat_RateValue(gc_state.feed_rate);
+  
+  #ifdef VARIABLE_SPINDLE
+    printPgmString(PSTR(" S"));
+    printFloat_RateValue(gc_state.spindle_speed);
+  #endif
 
   printPgmString(PSTR("]\r\n"));
 }
