@@ -41,19 +41,30 @@ void probe_init()
 
 
 // Returns the probe pin state. Triggered = true. Called by gcode parser and probe state monitor.
-uint8_t probe_get_state() { return((PROBE_PIN & PROBE_MASK) ^ probe_invert_mask); }
+uint8_t probe_get_state(uint8_t mode) {
+  mode = ((mode >> PROBE_AWAY_BIT) & 1) << PROBE_BIT;
+  return mode ^ ((PROBE_PIN & PROBE_MASK) ^ probe_invert_mask);
+}
 
+uint8_t probe_errors_enabled(uint8_t mode) {
+  return !(mode & PROBE_NO_ERROR);
+}
+
+void probe_finalize(uint8_t probe_succeeded) {
+  sys.probe_state = PROBE_OFF;
+  sys.probe_succeeded = probe_succeeded;
+  memcpy(sys.probe_position, sys.position, sizeof(float)*N_AXIS);
+  bit_true(sys.execute, EXEC_FEED_HOLD);
+}
 
 // Monitors probe pin state and records the system position when detected. Called by the
 // stepper ISR per ISR tick.
 // NOTE: This function must be extremely efficient as to not bog down the stepper ISR.
 void probe_state_monitor()
 {
-  if (sys.probe_state == PROBE_ACTIVE) { 
-    if (probe_get_state()) {
-      sys.probe_state = PROBE_OFF;
-      memcpy(sys.probe_position, sys.position, sizeof(float)*N_AXIS);
-      bit_true(sys.execute, EXEC_FEED_HOLD);
+  if (sys.probe_state != PROBE_OFF) {
+    if (probe_get_state(sys.probe_state)) {
+      probe_finalize(1);
     }
   }
 }

@@ -235,7 +235,9 @@ void report_probe_parameters()
     print_position[i] = sys.probe_position[i]/settings.steps_per_mm[i];
     printFloat_CoordValue(print_position[i]);
     if (i < (N_AXIS-1)) { printPgmString(PSTR(",")); }
-  }  
+  }
+  printPgmString(PSTR(":"));
+  print_uint8_base10(sys.probe_succeeded);
   printPgmString(PSTR("]\r\n"));
 }
 
