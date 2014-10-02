@@ -71,8 +71,11 @@
 #define MOTION_MODE_LINEAR 1 // G1
 #define MOTION_MODE_CW_ARC 2  // G2
 #define MOTION_MODE_CCW_ARC 3  // G3
-#define MOTION_MODE_PROBE 4 // G38.2, G38.3, G38.4, G38.5
-#define MOTION_MODE_NONE 5 // G80
+#define MOTION_MODE_PROBE_TOWARD 4 // G38.2
+#define MOTION_MODE_PROBE_TOWARD_NO_ERROR 5 // G38.3
+#define MOTION_MODE_PROBE_AWAY 6 // G38.4
+#define MOTION_MODE_PROBE_AWAY_NO_ERROR 7 // G38.5
+#define MOTION_MODE_NONE 8 // G80
 
 // Modal Group G2: Plane select
 #define PLANE_SELECT_XY 0 // G17 (Default: Must be zero)
@@ -164,7 +167,7 @@ typedef struct {
   float spindle_speed;          // RPM
   float feed_rate;              // Millimeters/min
   uint8_t tool;                 // Tracks tool number. NOT USED.
-//   int32_t line_number;          // Last line number sent
+  int32_t line_number;          // Last line number sent
 
   float position[N_AXIS];       // Where the interpreter considers the tool to be at this point in the code
 

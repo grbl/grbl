@@ -95,7 +95,7 @@
 
 
 // Execute an arc in offset mode format. position == current xyz, target == target xyz, 
-// offset == offset from current xyz, axis_XXX defines circle plane in tool space, axis_linear is
+// offset == offset from current xyz, axis_X defines circle plane in tool space, axis_linear is
 // the direction of helical travel, radius == circle radius, isclockwise boolean. Used
 // for vector transformation direction.
 // The arc is approximated by generating a huge number of tiny, linear segments. The chordal tolerance
@@ -103,10 +103,10 @@
 // distance from segment to the circle when the end points both lie on the circle.
 #ifdef USE_LINE_NUMBERS
   void mc_arc(float *position, float *target, float *offset, float radius, float feed_rate, 
-    uint8_t invert_feed_rate, uint8_t axis_0, uint8_t axis_1, uint8_t axis_linear, int32_t line_number)
+    uint8_t invert_feed_rate, uint8_t axis_0, uint8_t axis_1, uint8_t axis_linear, uint8_t is_clockwise_arc, int32_t line_number)
 #else
   void mc_arc(float *position, float *target, float *offset, float radius, float feed_rate,
-    uint8_t invert_feed_rate, uint8_t axis_0, uint8_t axis_1, uint8_t axis_linear)
+    uint8_t invert_feed_rate, uint8_t axis_0, uint8_t axis_1, uint8_t axis_linear, uint8_t is_clockwise_arc)
 #endif
 {
   float center_axis0 = position[axis_0] + offset[axis_0];
@@ -118,7 +118,7 @@
   
   // CCW angle between position and target from circle center. Only one atan2() trig computation required.
   float angular_travel = atan2(r_axis0*rt_axis1-r_axis1*rt_axis0, r_axis0*rt_axis0+r_axis1*rt_axis1);
-  if (gc_state.modal.motion == MOTION_MODE_CW_ARC) { // Correct atan2 output per direction
+  if (is_clockwise_arc) { // Correct atan2 output per direction
     if (angular_travel >= 0) { angular_travel -= 2*M_PI; }
   } else {
     if (angular_travel <= 0) { angular_travel += 2*M_PI; }
@@ -287,9 +287,11 @@ void mc_homing_cycle()
 // Perform tool length probe cycle. Requires probe switch.
 // NOTE: Upon probe failure, the program will be stopped and placed into ALARM state.
 #ifdef USE_LINE_NUMBERS
-  void mc_probe_cycle(float *target, float feed_rate, uint8_t invert_feed_rate, uint8_t mode, int32_t line_number)
+  void mc_probe_cycle(float *target, float feed_rate, uint8_t invert_feed_rate, uint8_t is_probe_away, 
+    uint8_t is_no_error, int32_t line_number)
 #else
-  void mc_probe_cycle(float *target, float feed_rate, uint8_t invert_feed_rate, uint8_t mode)
+  void mc_probe_cycle(float *target, float feed_rate, uint8_t invert_feed_rate, uint8_t is_probe_away,
+    uint8_t is_no_error)
 #endif
 { 
   // TODO: Need to update this cycle so it obeys a non-auto cycle start.
@@ -298,10 +300,14 @@ void mc_homing_cycle()
   // Finish all queued commands and empty planner buffer before starting probe cycle.
   protocol_buffer_synchronize();
   uint8_t auto_start_state = sys.auto_start; // Store run state
-  uint8_t perform_pull_off = 1;
 
+  // Initialize probing control variables
+  sys.probe_succeeded = false; // Re-initialize probe history before beginning cycle.  
+  probe_configure_invert_mask(is_probe_away);
+  
   // After syncing, check if probe is already triggered. If so, halt and issue alarm.
-  if (probe_get_state(mode) && probe_errors_enabled(mode)) {
+  // NOTE: This probe initialization error applies to all probing cycles.
+  if ( probe_get_state() ) { // Check probe pin state.
     bit_true_atomic(sys.execute, EXEC_CRIT_EVENT);
     protocol_execute_runtime();
   }
@@ -314,8 +320,8 @@ void mc_homing_cycle()
     mc_line(target, feed_rate, invert_feed_rate);
   #endif
   
-  // Activate the probing monitor in the stepper module.
-  sys.probe_state = PROBE_ACTIVE | mode;
+  // Activate the probing state monitor in the stepper module.
+  sys.probe_state = PROBE_ACTIVE;
 
   // Perform probing cycle. Wait here until probe is triggered or motion completes.
   bit_true_atomic(sys.execute, EXEC_CYCLE_START);
@@ -323,17 +329,17 @@ void mc_homing_cycle()
     protocol_execute_runtime(); 
     if (sys.abort) { return; } // Check for system abort
   } while ((sys.state != STATE_IDLE) && (sys.state != STATE_QUEUED));
-
-  // Probing motion complete. If the probe has not been triggered, error out.
-  if (sys.probe_state & PROBE_ACTIVE) {
-
-    if (probe_errors_enabled(mode)) {
-      bit_true_atomic(sys.execute, EXEC_CRIT_EVENT);
-    } else {
-      perform_pull_off = 0;
-      probe_finalize(0);
-    }
+  
+  // Probing cycle complete!
+  
+  // Set state variables and error out, if the probe failed and cycle with error is enabled.
+  if (sys.probe_state == PROBE_ACTIVE) {
+    if (is_no_error) { memcpy(sys.probe_position, sys.position, sizeof(float)*N_AXIS); }
+    else { bit_true_atomic(sys.execute, EXEC_CRIT_EVENT); }
+  } else { 
+    sys.probe_succeeded = true; // Indicate to system the probing cycle completed successfully.
   }
+  sys.probe_state = PROBE_OFF; // Ensure probe state monitor is disabled.
   protocol_execute_runtime();   // Check and execute run-time commands
   if (sys.abort) { return; } // Check for system abort
 
@@ -342,24 +348,11 @@ void mc_homing_cycle()
   plan_reset(); // Reset planner buffer. Zero planner positions. Ensure probing motion is cleared.
   plan_sync_position(); // Sync planner position to current machine position.
 
-  if (perform_pull_off) {
-    // Pull-off triggered probe to the trigger location since we had to decelerate a little beyond
-    // it to stop the machine in a controlled manner.
-    uint8_t idx;
-    for(idx=0; idx<N_AXIS; idx++){
-      // NOTE: The target[] variable updated here will be sent back and synced with the g-code parser.
-      target[idx] = (float)sys.probe_position[idx]/settings.steps_per_mm[idx];
-    }
-    #ifdef USE_LINE_NUMBERS
-      mc_line(target, feed_rate, invert_feed_rate, line_number);
-    #else
-      mc_line(target, feed_rate, invert_feed_rate);
-    #endif
-
-    // Execute pull-off motion and wait until it completes.
-    bit_true_atomic(sys.execute, EXEC_CYCLE_START);
-    protocol_buffer_synchronize();
-    if (sys.abort) { return; } // Return if system reset has been issued.
+  // TODO: Update the g-code parser code to not require this target calculation but uses a gc_sync_position() call.
+  uint8_t idx;
+  for(idx=0; idx<N_AXIS; idx++){
+    // NOTE: The target[] variable updated here will be sent back and synced with the g-code parser.
+    target[idx] = (float)sys.position[idx]/settings.steps_per_mm[idx];
   }
 
   sys.auto_start = auto_start_state; // Restore run state before returning

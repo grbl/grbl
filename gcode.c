@@ -123,8 +123,7 @@ uint8_t gc_execute_line(char *line)
   char letter;
   float value;
   uint8_t int_value = 0;
-  uint16_t mantissa = 0; // NOTE: For mantissa values > 255, variable type must be changed to uint16_t.
-  uint8_t probe_mode = 0;
+  uint16_t mantissa = 0;
 
   while (line[char_counter] != 0) { // Loop until no more g-code words in line.
     
@@ -210,22 +209,10 @@ uint8_t gc_execute_line(char *line)
               case 3: gc_block.modal.motion = MOTION_MODE_CCW_ARC; break; // G3
               case 38: 
                 switch(mantissa) {
-                  case 20:  // G38.2
-                    gc_block.modal.motion = MOTION_MODE_PROBE;
-                    break;
-                  case 30:  // G38.3
-                    gc_block.modal.motion = MOTION_MODE_PROBE;
-                    probe_mode = PROBE_NO_ERROR;
-                    break;
-                  case 40:  // G38.4
-                    gc_block.modal.motion = MOTION_MODE_PROBE;
-                    probe_mode = PROBE_AWAY;
-                    break;
-                  case 50:  // G38.5
-                    gc_block.modal.motion = MOTION_MODE_PROBE;
-                    probe_mode = PROBE_AWAY | PROBE_NO_ERROR;
-                    break;
-
+                  case 20: gc_block.modal.motion = MOTION_MODE_PROBE_TOWARD; break; // G38.2
+                  case 30: gc_block.modal.motion = MOTION_MODE_PROBE_TOWARD_NO_ERROR; break; // G38.3
+                  case 40: gc_block.modal.motion = MOTION_MODE_PROBE_AWAY; break; // G38.4
+                  case 50: gc_block.modal.motion = MOTION_MODE_PROBE_AWAY_NO_ERROR; break; // G38.5
                   default: FAIL(STATUS_GCODE_UNSUPPORTED_COMMAND); // [Unsupported G38.x command]
                 }
                 mantissa = 0; // Set to zero to indicate valid non-integer G command.
@@ -811,7 +798,8 @@ uint8_t gc_execute_line(char *line)
             }
           }
           break;
-        case MOTION_MODE_PROBE:
+        case MOTION_MODE_PROBE_TOWARD: case MOTION_MODE_PROBE_TOWARD_NO_ERROR:
+        case MOTION_MODE_PROBE_AWAY: case MOTION_MODE_PROBE_AWAY_NO_ERROR:
           // [G38 Errors]: Target is same current. No axis words. Cutter compensation is enabled. Feed rate
           //   is undefined. Probe is triggered. NOTE: Probe check moved to probe cycle. Instead of returning
           //   an error, it issues an alarm to prevent further motion to the probe. It's also done there to 
@@ -837,6 +825,9 @@ uint8_t gc_execute_line(char *line)
      Assumes that all error-checking has been completed and no failure modes exist. We just
      need to update the state and execute the block according to the order-of-execution.
   */ 
+  
+  // [0. Non-specific/common error-checks and miscellaneous setup]: 
+  gc_state.line_number = gc_block.values.n;
   
   // [1. Comments feedback ]:  NOT SUPPORTED
   
@@ -923,13 +914,13 @@ uint8_t gc_execute_line(char *line)
       // and absolute and incremental modes.
       if (axis_command) {
         #ifdef USE_LINE_NUMBERS
-          mc_line(gc_block.values.xyz, -1.0, false, gc_block.values.n);
+          mc_line(gc_block.values.xyz, -1.0, false, gc_state.line_number);
         #else
           mc_line(gc_block.values.xyz, -1.0, false);
         #endif
       }
       #ifdef USE_LINE_NUMBERS
-        mc_line(parameter_data, -1.0, false, gc_block.values.n); 
+        mc_line(parameter_data, -1.0, false, gc_state.line_number); 
       #else
         mc_line(parameter_data, -1.0, false); 
       #endif
@@ -959,41 +950,71 @@ uint8_t gc_execute_line(char *line)
       switch (gc_state.modal.motion) {
         case MOTION_MODE_SEEK:
           #ifdef USE_LINE_NUMBERS
-            mc_line(gc_block.values.xyz, -1.0, false, gc_block.values.n);
+            mc_line(gc_block.values.xyz, -1.0, false, gc_state.line_number);
           #else
             mc_line(gc_block.values.xyz, -1.0, false);
           #endif
           break;
         case MOTION_MODE_LINEAR:
           #ifdef USE_LINE_NUMBERS
-            mc_line(gc_block.values.xyz, gc_state.feed_rate, gc_state.modal.feed_rate, gc_block.values.n);
+            mc_line(gc_block.values.xyz, gc_state.feed_rate, gc_state.modal.feed_rate, gc_state.line_number);
           #else
             mc_line(gc_block.values.xyz, gc_state.feed_rate, gc_state.modal.feed_rate);
           #endif
           break;
-        case MOTION_MODE_CW_ARC: case MOTION_MODE_CCW_ARC:
+        case MOTION_MODE_CW_ARC: 
           #ifdef USE_LINE_NUMBERS
             mc_arc(gc_state.position, gc_block.values.xyz, gc_block.values.ijk, gc_block.values.r, 
-              gc_state.feed_rate, gc_state.modal.feed_rate, axis_0, axis_1, axis_linear, gc_block.values.n);  
+              gc_state.feed_rate, gc_state.modal.feed_rate, axis_0, axis_1, axis_linear, true, gc_state.line_number);  
           #else
             mc_arc(gc_state.position, gc_block.values.xyz, gc_block.values.ijk, gc_block.values.r, 
-              gc_state.feed_rate, gc_state.modal.feed_rate, axis_0, axis_1, axis_linear); 
+              gc_state.feed_rate, gc_state.modal.feed_rate, axis_0, axis_1, axis_linear, true); 
+          #endif
+          break;        
+        case MOTION_MODE_CCW_ARC:
+          #ifdef USE_LINE_NUMBERS
+            mc_arc(gc_state.position, gc_block.values.xyz, gc_block.values.ijk, gc_block.values.r, 
+              gc_state.feed_rate, gc_state.modal.feed_rate, axis_0, axis_1, axis_linear, false, gc_state.line_number);  
+          #else
+            mc_arc(gc_state.position, gc_block.values.xyz, gc_block.values.ijk, gc_block.values.r, 
+              gc_state.feed_rate, gc_state.modal.feed_rate, axis_0, axis_1, axis_linear, false); 
           #endif
           break;
-        case MOTION_MODE_PROBE:
+        case MOTION_MODE_PROBE_TOWARD: 
           // NOTE: gc_block.values.xyz is returned from mc_probe_cycle with the updated position value. So
           // upon a successful probing cycle, the machine position and the returned value should be the same.
           #ifdef USE_LINE_NUMBERS
-            mc_probe_cycle(gc_block.values.xyz, gc_state.feed_rate, gc_state.modal.feed_rate, probe_mode, gc_block.values.n);
+            mc_probe_cycle(gc_block.values.xyz, gc_state.feed_rate, gc_state.modal.feed_rate, false, false, gc_state.line_number);
           #else
-            mc_probe_cycle(gc_block.values.xyz, gc_state.feed_rate, gc_state.modal.feed_rate, probe_mode);
+            mc_probe_cycle(gc_block.values.xyz, gc_state.feed_rate, gc_state.modal.feed_rate, false, false);
+          #endif
+          break;
+        case MOTION_MODE_PROBE_TOWARD_NO_ERROR:
+          #ifdef USE_LINE_NUMBERS
+            mc_probe_cycle(gc_block.values.xyz, gc_state.feed_rate, gc_state.modal.feed_rate, false, true, gc_state.line_number);
+          #else
+            mc_probe_cycle(gc_block.values.xyz, gc_state.feed_rate, gc_state.modal.feed_rate, false, true);
+          #endif
+          break;
+        case MOTION_MODE_PROBE_AWAY:
+          #ifdef USE_LINE_NUMBERS
+            mc_probe_cycle(gc_block.values.xyz, gc_state.feed_rate, gc_state.modal.feed_rate, true, false, gc_state.line_number);
+          #else
+            mc_probe_cycle(gc_block.values.xyz, gc_state.feed_rate, gc_state.modal.feed_rate, true, false);
+          #endif
+          break;
+        case MOTION_MODE_PROBE_AWAY_NO_ERROR:
+          #ifdef USE_LINE_NUMBERS
+            mc_probe_cycle(gc_block.values.xyz, gc_state.feed_rate, gc_state.modal.feed_rate, true, true, gc_state.line_number);
+          #else        
+            mc_probe_cycle(gc_block.values.xyz, gc_state.feed_rate, gc_state.modal.feed_rate, true, true);
           #endif
       }
     
       // As far as the parser is concerned, the position is now == target. In reality the
       // motion control system might still be processing the action and the real tool position
       // in any intermediate location.
-      memcpy(gc_state.position, gc_block.values.xyz, sizeof(gc_block.values.xyz)); // gc.position[] = target[];
+      memcpy(gc_state.position, gc_block.values.xyz, sizeof(gc_block.values.xyz)); // gc_state.position[] = gc_block.values.xyz[]
     }
   }
   

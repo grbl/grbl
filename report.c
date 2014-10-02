@@ -281,12 +281,18 @@ void report_ngc_parameters()
 // Print current gcode parser mode state
 void report_gcode_modes()
 {
+  printPgmString(PSTR("["));
+  
   switch (gc_state.modal.motion) {
-    case MOTION_MODE_SEEK : printPgmString(PSTR("[G0")); break;
-    case MOTION_MODE_LINEAR : printPgmString(PSTR("[G1")); break;
-    case MOTION_MODE_CW_ARC : printPgmString(PSTR("[G2")); break;
-    case MOTION_MODE_CCW_ARC : printPgmString(PSTR("[G3")); break;
-    case MOTION_MODE_NONE : printPgmString(PSTR("[G80")); break;
+    case MOTION_MODE_SEEK : printPgmString(PSTR("G0")); break;
+    case MOTION_MODE_LINEAR : printPgmString(PSTR("G1")); break;
+    case MOTION_MODE_CW_ARC : printPgmString(PSTR("G2")); break;
+    case MOTION_MODE_CCW_ARC : printPgmString(PSTR("G3")); break;
+    case MOTION_MODE_PROBE_TOWARD : printPgmString(PSTR("G38.2")); break;    
+    case MOTION_MODE_PROBE_TOWARD_NO_ERROR : printPgmString(PSTR("G38.3")); break;    
+    case MOTION_MODE_PROBE_AWAY : printPgmString(PSTR("G38.4")); break;    
+    case MOTION_MODE_PROBE_AWAY_NO_ERROR : printPgmString(PSTR("G38.5")); break;    
+    case MOTION_MODE_NONE : printPgmString(PSTR("G80")); break;
   }
 
   printPgmString(PSTR(" G"));

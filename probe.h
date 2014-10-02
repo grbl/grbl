@@ -22,25 +22,19 @@
 #define probe_h 
 
 // Values that define the probing state machine.  
-#define PROBE_OFF     0 // No probing. (Must be zero.)
+#define PROBE_OFF     0 // Probing disabled or not in use. (Must be zero.)
 #define PROBE_ACTIVE  1 // Actively watching the input pin.
-
-// Probe direction and error modes
-#define PROBE_AWAY 2 // G38.4, G38.5
-#define PROBE_NO_ERROR 4 // G38.3, G38.5
-
-#define PROBE_AWAY_BIT 1
-#define PROBE_NO_ERROR_BIT 2
 
 // Probe pin initialization routine.
 void probe_init();
 
-// Returns probe pin state.
-uint8_t probe_get_state(uint8_t mode);
+// Called by probe_init() and the mc_probe() routines. Sets up the probe pin invert mask to 
+// appropriately set the pin logic according to setting for normal-high/normal-low operation 
+// and the probing cycle modes for toward-workpiece/away-from-workpiece. 
+void probe_configure_invert_mask(uint8_t is_probe_away);
 
-uint8_t probe_errors_enabled(uint8_t mode);
-
-void probe_finalize(uint8_t probe_succeeded);
+// Returns probe pin state. Triggered = true. Called by gcode parser and probe state monitor.
+uint8_t probe_get_state();
 
 // Monitors probe pin state and records the system position when detected. Called by the
 // stepper ISR per ISR tick.

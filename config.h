@@ -156,13 +156,19 @@
 // The hardware PWM output on pin D11 is required for variable spindle output voltages.
 // #define VARIABLE_SPINDLE // Default disabled. Uncomment to enable.
 
-// Use by the variable spindle output only. These parameters set the maximum and minimum spindle speed
+// Used by the variable spindle output only. These parameters set the maximum and minimum spindle speed
 // "S" g-code values to correspond to the maximum and minimum pin voltages. There are 256 discrete and 
 // equally divided voltage bins between the maximum and minimum spindle speeds. So for a 5V pin, 1000
 // max rpm, and 250 min rpm, the spindle output voltage would be set for the following "S" commands: 
 // "S1000" @ 5V, "S250" @ 0.02V, and "S625" @ 2.5V (mid-range). The pin outputs 0V when disabled.
 #define SPINDLE_MAX_RPM 1000.0 // Max spindle RPM. This value is equal to 100% duty cycle on the PWM.
 #define SPINDLE_MIN_RPM 0.0    // Min spindle RPM. This value is equal to (1/256) duty cycle on the PWM.
+
+// Used by variable spindle output only. This forces the PWM output to a minimum duty cycle when enabled.
+// When disabled, the PWM pin will still read 0V. Most users will not need this option, but it may be 
+// useful in certain scenarios. This setting does not update the minimum spindle RPM calculations. Any
+// spindle RPM output lower than this value will be set to this value.
+// #define MINIMUM_SPINDLE_PWM 5 // Default disabled. Uncomment to enable. Integer (0-255)
 
 // Minimum planner junction speed. Sets the default minimum junction speed the planner plans to at
 // every buffer block junction, except for starting from rest and end of the buffer, which are always
