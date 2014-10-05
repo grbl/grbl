@@ -705,7 +705,7 @@ uint8_t gc_execute_line(char *line)
 
   // [22. Laser control ]:  
   gc_state.modal.laser = gc_block.modal.laser;
-  laser_run(gc_block.modal.laser, gc_block.values.t);
+  laser_run(gc_block.values.t, gc_block.modal.laser);
 
   // [23. Motor control ]:  
   gc_state.modal.motor = gc_block.modal.motor;
