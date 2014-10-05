@@ -28,12 +28,12 @@
 #define settings_h
 
 
-#define GRBL_VERSION "0.9g"
-#define GRBL_VERSION_BUILD "20140817"
+#define HORUS_VERSION "0.1"
+#define HORUS_VERSION_BUILD "20141005"
 
-// Version of the EEPROM data. Will be used to migrate existing data from older versions of Grbl
+// Version of the EEPROM data. Will be used to migrate existing data from older versions of Horus
 // when firmware is upgraded. Always stored in byte 0 of eeprom
-#define SETTINGS_VERSION 9  // NOTE: Check settings_reset() when moving to next version.
+#define SETTINGS_VERSION 1  // NOTE: Check settings_reset() when moving to next version.
 
 // Define bit flag masks for the boolean settings in settings.flag.
 #define BITFLAG_REPORT_INCHES      bit(0)
@@ -51,7 +51,7 @@
 #define BITFLAG_RT_STATUS_PLANNER_BUFFER    bit(2)
 #define BITFLAG_RT_STATUS_SERIAL_RX         bit(3)
 
-// Define EEPROM memory address location values for Grbl settings and parameters
+// Define EEPROM memory address location values for Horus settings and parameters
 // NOTE: The Atmega328p has 1KB EEPROM. The upper half is reserved for parameters and
 // the startup script. The lower half contains the global settings and space for future 
 // developments.

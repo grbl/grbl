@@ -48,7 +48,7 @@ void report_status_message(uint8_t status_code)
 {
   if (status_code != STATUS_NONE) {
     if (status_code == STATUS_OK) {
-      printPgmString(PSTR("\r\n")); //ok
+      printPgmString(PSTR("ok\r\n"));
     } else {
       printPgmString(PSTR("error: "));
       switch(status_code) {          
@@ -136,7 +136,7 @@ void report_feedback_message(uint8_t message_code)
 // Welcome message
 void report_init_message()
 {
-  printPgmString(PSTR("\r\nGrbl " GRBL_VERSION " ['$' for help]\r\n"));
+  printPgmString(PSTR("\r\nHorus " HORUS_VERSION " ['$' for help]\r\n"));
 }
 
 // Grbl help message
@@ -351,7 +351,7 @@ void report_startup_line(uint8_t n, char *line)
 // Prints build info line
 void report_build_info(char *line)
 {
-  printPgmString(PSTR("[" GRBL_VERSION "." GRBL_VERSION_BUILD ":"));
+  printPgmString(PSTR("[" HORUS_VERSION "." HORUS_VERSION_BUILD ":"));
   printString(line);
   printPgmString(PSTR("]\r\n"));
 }

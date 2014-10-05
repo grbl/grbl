@@ -104,7 +104,6 @@ uint8_t gc_execute_line(char *line)
   
   // Initialize bitflag tracking variables for axis indices compatible operations.
   uint8_t axis_words = 0; // XYZ tracking
-  uint8_t ijk_words = 0; // IJK tracking 
 
   // Initialize command and value words variables. Tracks words contained in this block.
   uint16_t command_words = 0; // G and M command words. Also used for modal group violations.
@@ -122,8 +121,6 @@ uint8_t gc_execute_line(char *line)
   float value;
   uint8_t int_value = 0;
   uint8_t mantissa = 0; // NOTE: For mantissa values > 255, variable type must be changed to uint16_t.
-
-  uint8_t returnNone = 0;
 
 
   while (line[char_counter] != 0) { // Loop until no more g-code words in line.
@@ -155,116 +152,12 @@ uint8_t gc_execute_line(char *line)
       case 'G':
         // Determine 'G' command and its modal group
         switch(int_value) {
-          /*case 10: case 28: case 30: case 92: 
-            // Check for G10/28/30/92 being called with G0/1/2/3/38 on same block.
-            // * G43.1 is also an axis command but is not explicitly defined this way.
-            if (mantissa == 0) { // Ignore G28.1, G30.1, and G92.1
-              if (axis_command) { FAIL(STATUS_GCODE_AXIS_COMMAND_CONFLICT); } // [Axis word/command conflict]
-              axis_command = AXIS_COMMAND_NON_MODAL;
-            }
-            // No break. Continues to next line.
-          case 4: case 53: 
-            word_bit = MODAL_GROUP_G0; 
-            switch(int_value) {
-              case 4: gc_block.non_modal_command = NON_MODAL_DWELL; break; // G4
-              case 10: gc_block.non_modal_command = NON_MODAL_SET_COORDINATE_DATA; break; // G10
-              case 28:
-                switch(mantissa) {
-                  case 0: gc_block.non_modal_command = NON_MODAL_GO_HOME_0; break;  // G28
-                  case 10: gc_block.non_modal_command = NON_MODAL_SET_HOME_0; break; // G28.1
-                  default: FAIL(STATUS_GCODE_UNSUPPORTED_COMMAND); // [Unsupported G28.x command]
-                }
-                mantissa = 0; // Set to zero to indicate valid non-integer G command.
-                break;
-              case 30: 
-                switch(mantissa) {
-                  case 0: gc_block.non_modal_command = NON_MODAL_GO_HOME_1; break;  // G30
-                  case 10: gc_block.non_modal_command = NON_MODAL_SET_HOME_1; break; // G30.1
-                  default: FAIL(STATUS_GCODE_UNSUPPORTED_COMMAND); // [Unsupported G30.x command]
-                }
-                mantissa = 0; // Set to zero to indicate valid non-integer G command.
-                break;
-              case 53: gc_block.non_modal_command = NON_MODAL_ABSOLUTE_OVERRIDE; break; // G53
-              case 92: 
-                switch(mantissa) {
-                  case 0: gc_block.non_modal_command = NON_MODAL_SET_COORDINATE_OFFSET; break; // G92
-                  case 10: gc_block.non_modal_command = NON_MODAL_RESET_COORDINATE_OFFSET; break; // G92.1
-                  default: FAIL(STATUS_GCODE_UNSUPPORTED_COMMAND); // [Unsupported G92.x command]
-                }
-                mantissa = 0; // Set to zero to indicate valid non-integer G command.
-                break;      
-            }
-            break;*/
-          //case 0: case 1: case 2: case 3: case 38:
           case 1:
-            // Check for G0/1/2/3/38 being called with G10/28/30/92 on same block.
-            // * G43.1 is also an axis command but is not explicitly defined this way.
             if (axis_command) { FAIL(STATUS_GCODE_AXIS_COMMAND_CONFLICT); } // [Axis word/command conflict]
             axis_command = AXIS_COMMAND_MOTION_MODE; 
             gc_block.modal.motion = MOTION_MODE_LINEAR;
-            // No break. Continues to next line.
-            /*word_bit = MODAL_GROUP_G1; 
-            switch(int_value) {
-              case 0: gc_block.modal.motion = MOTION_MODE_SEEK; break; // G0
-              case 1: gc_block.modal.motion = MOTION_MODE_LINEAR; break; // G1
-              case 2: gc_block.modal.motion = MOTION_MODE_CW_ARC; break; // G2
-              case 3: gc_block.modal.motion = MOTION_MODE_CCW_ARC; break; // G3
-              case 38: 
-                switch(mantissa) {
-                  case 20: gc_block.modal.motion = MOTION_MODE_PROBE; break;  // G38.2
-                  // NOTE: If G38.3+ are enabled, change mantissa variable type to uint16_t.
-                  // case 30: gc_block.modal.motion = MOTION_MODE_PROBE_NO_ERROR; break; // G38.3 Not supported.
-                  // case 40: // Not supported.
-                  // case 50: // Not supported.
-                  default: FAIL(STATUS_GCODE_UNSUPPORTED_COMMAND); // [Unsupported G38.x command]
-                }
-                mantissa = 0; // Set to zero to indicate valid non-integer G command.
-                break;
-              case 80: gc_block.modal.motion = MOTION_MODE_NONE; break; // G80
-            }            
-            break;
-          case 17: case 18: case 19: 
-            word_bit = MODAL_GROUP_G2; 
-            switch(int_value) {
-              case 17: gc_block.modal.plane_select = PLANE_SELECT_XY; break;
-              case 18: gc_block.modal.plane_select = PLANE_SELECT_ZX; break;
-              case 19: gc_block.modal.plane_select = PLANE_SELECT_YZ; break;
-            }
-            break;
-          case 90: case 91: 
-            word_bit = MODAL_GROUP_G3; 
-            if (int_value == 90) { gc_block.modal.distance = DISTANCE_MODE_ABSOLUTE; } // G90
-            else { gc_block.modal.distance = DISTANCE_MODE_INCREMENTAL; } // G91            
-            break;
-          case 93: case 94: 
-            word_bit = MODAL_GROUP_G5; 
-            if (int_value == 93) { gc_block.modal.feed_rate = FEED_RATE_MODE_INVERSE_TIME; } // G93
-            else { gc_block.modal.feed_rate = FEED_RATE_MODE_UNITS_PER_MIN; } // G94
-            break;
-          case 20: case 21: 
-            word_bit = MODAL_GROUP_G6; 
-            if (int_value == 20) { gc_block.modal.units = UNITS_MODE_INCHES; }  // G20
-            else { gc_block.modal.units = UNITS_MODE_MM; } // G21
-            break;
-          case 43: case 49:
-            word_bit = MODAL_GROUP_G8;
-            // NOTE: The NIST g-code standard vaguely states that when a tool length offset is changed,
-            // there cannot be any axis motion or coordinate offsets updated. Meaning G43, G43.1, and G49
-            // all are explicit axis commands, regardless if they require axis words or not. 
-            if (axis_command) { FAIL(STATUS_GCODE_AXIS_COMMAND_CONFLICT); } // [Axis word/command conflict] }
-            axis_command = AXIS_COMMAND_TOOL_LENGTH_OFFSET;
-            if (int_value == 49) { // G49
-              gc_block.modal.tool_length = TOOL_LENGTH_OFFSET_CANCEL; 
-            } else if (mantissa == 10) { // G43.1
-              gc_block.modal.tool_length = TOOL_LENGTH_OFFSET_ENABLE_DYNAMIC;
-            } else { FAIL(STATUS_GCODE_UNSUPPORTED_COMMAND); } // [Unsupported G43.x command]
-            mantissa = 0; // Set to zero to indicate valid non-integer G command.
-            break;
-          case 54: case 55: case 56: case 57: case 58: case 59: 
-            // NOTE: G59.x are not supported. (But their int_values would be 60, 61, and 62.)
-            word_bit = MODAL_GROUP_G12;
-            gc_block.modal.coord_select = int_value-54; // Shift to array indexing.
-            break;*/
+            word_bit = MODAL_GROUP_G1; 
+
             break;
           default: FAIL(STATUS_GCODE_UNSUPPORTED_COMMAND); // [Unsupported G command]
         }  
@@ -276,7 +169,6 @@ uint8_t gc_execute_line(char *line)
         break;
         
       case 'M':
-      
         // Determine 'M' command and its modal group
         if (mantissa > 0) { FAIL(STATUS_GCODE_COMMAND_VALUE_NOT_INTEGER); } // [No Mxx.x commands]
         switch(int_value) {
@@ -288,31 +180,10 @@ uint8_t gc_execute_line(char *line)
               case 2: case 30: gc_block.modal.program_flow = PROGRAM_FLOW_COMPLETED; break; // Program end and reset 
             }
             break;
-          /*case 3: case 4: case 5: 
-            word_bit = MODAL_GROUP_M7; 
-            switch(int_value) {
-              case 3: gc_block.modal.spindle = SPINDLE_ENABLE_CW; break;
-              case 4: gc_block.modal.spindle = SPINDLE_ENABLE_CCW; break;
-              case 5: gc_block.modal.spindle = SPINDLE_DISABLE; break;
-            }
-            break;            
-         #ifdef ENABLE_M7  
-          case 7:
-         #endif
-          case 8: case 9:
-            word_bit = MODAL_GROUP_M8; 
-            switch(int_value) {      
-             #ifdef ENABLE_M7
-              case 7: gc_block.modal.coolant = COOLANT_MIST_ENABLE; break;
-             #endif
-              case 8: gc_block.modal.coolant = COOLANT_FLOOD_ENABLE; break;
-              case 9: gc_block.modal.coolant = COOLANT_DISABLE; break;
-            }
-            break;*/
           case 17: gc_block.modal.motor = MOTOR_ENABLE; break;
           case 18: gc_block.modal.motor = MOTOR_DISABLE; break;
-          case 70: returnNone = 1; gc_block.modal.laser = LASER_DISABLE; break;
-          case 71: returnNone = 1; gc_block.modal.laser = LASER_ENABLE; break;
+          case 70: gc_block.modal.laser = LASER_DISABLE; break;
+          case 71: gc_block.modal.laser = LASER_ENABLE; break;
 
           default: FAIL(STATUS_GCODE_UNSUPPORTED_COMMAND); // [Unsupported M command]
         }            
@@ -330,22 +201,7 @@ uint8_t gc_execute_line(char *line)
            legal g-code words and stores their value. Error-checking is performed later since some
            words (I,J,K,L,P,R) have multiple connotations and/or depend on the issued commands. */
         switch(letter){
-          // case 'A': // Not supported
-          // case 'B': // Not supported
-          // case 'C': // Not supported
-          // case 'D': // Not supported
           case 'F': word_bit = WORD_F; gc_block.values.f = value; break;
-          // case 'H': // Not supported
-          /*case 'I': word_bit = WORD_I; gc_block.values.ijk[X_AXIS] = value; ijk_words |= (1<<X_AXIS); break;
-          case 'J': word_bit = WORD_J; gc_block.values.ijk[Y_AXIS] = value; ijk_words |= (1<<Y_AXIS); break;
-          case 'K': word_bit = WORD_K; gc_block.values.ijk[Z_AXIS] = value; ijk_words |= (1<<Z_AXIS); break;
-          case 'L': word_bit = WORD_L; gc_block.values.l = int_value; break;
-          case 'N': word_bit = WORD_N; gc_block.values.n = trunc(value); break;
-          case 'P': word_bit = WORD_P; gc_block.values.p = value; break;*/
-          // NOTE: For certain commands, P value must be an integer, but none of these commands are supported.
-          // case 'Q': // Not supported
-          /*case 'R': word_bit = WORD_R; gc_block.values.r = value; break;
-          case 'S': word_bit = WORD_S; gc_block.values.s = value; break;*/
           case 'T': word_bit = WORD_T; gc_block.values.t = int_value; break; // gc.values.t = int_value;
           case 'X': word_bit = WORD_X; gc_block.values.xyz[X_AXIS] = value; axis_words |= (1<<X_AXIS); break;
           /*case 'Y': word_bit = WORD_Y; gc_block.values.xyz[Y_AXIS] = value; axis_words |= (1<<Y_AXIS); break;
@@ -672,141 +528,6 @@ uint8_t gc_execute_line(char *line)
           if (!axis_words) { axis_command = AXIS_COMMAND_NONE; }
 
           break;
-        case MOTION_MODE_CW_ARC: case MOTION_MODE_CCW_ARC:
-          // [G2/3 Errors All-Modes]: Feed rate undefined.
-          // [G2/3 Radius-Mode Errors]: No axis words in selected plane. Target point is same as current.
-          // [G2/3 Offset-Mode Errors]: No axis words and/or offsets in selected plane. The radius to the current 
-          //   point and the radius to the target point differs more than 0.002mm (EMC def. 0.5mm OR 0.005mm and 0.1% radius).   
-          // [G2/3 Full-Circle-Mode Errors]: NOT SUPPORTED. Axis words exist. No offsets programmed. P must be an integer.        
-          // NOTE: Both radius and offsets are required for arc tracing and are pre-computed with the error-checking.
-        
-          if (!axis_words) { FAIL(STATUS_GCODE_NO_AXIS_WORDS); } // [No axis words]
-          if (!(axis_words & (bit(axis_0)|bit(axis_1)))) { FAIL(STATUS_GCODE_NO_AXIS_WORDS_IN_PLANE); } // [No axis words in plane]
-        
-          // Calculate the change in position along each selected axis
-          float x,y;
-          x = gc_block.values.xyz[axis_0]-gc_state.position[axis_0]; // Delta x between current position and target
-          y = gc_block.values.xyz[axis_1]-gc_state.position[axis_1]; // Delta y between current position and target
-
-          if (value_words & bit(WORD_R)) { // Arc Radius Mode  
-            bit_false(value_words,bit(WORD_R));
-            if (gc_check_same_position(gc_state.position, gc_block.values.xyz)) { FAIL(STATUS_GCODE_INVALID_TARGET); } // [Invalid target]
-          
-            // Convert radius value to proper units.
-            if (gc_block.modal.units == UNITS_MODE_INCHES) { gc_block.values.r *= MM_PER_INCH; }
-            /*  We need to calculate the center of the circle that has the designated radius and passes
-                through both the current position and the target position. This method calculates the following
-                set of equations where [x,y] is the vector from current to target position, d == magnitude of 
-                that vector, h == hypotenuse of the triangle formed by the radius of the circle, the distance to
-                the center of the travel vector. A vector perpendicular to the travel vector [-y,x] is scaled to the 
-                length of h [-y/d*h, x/d*h] and added to the center of the travel vector [x/2,y/2] to form the new point 
-                [i,j] at [x/2-y/d*h, y/2+x/d*h] which will be the center of our arc.
-    
-                d^2 == x^2 + y^2
-                h^2 == r^2 - (d/2)^2
-                i == x/2 - y/d*h
-                j == y/2 + x/d*h
-    
-                                                                     O <- [i,j]
-                                                                  -  |
-                                                        r      -     |
-                                                            -        |
-                                                         -           | h
-                                                      -              |
-                                        [0,0] ->  C -----------------+--------------- T  <- [x,y]
-                                                  | <------ d/2 ---->|
-              
-                C - Current position
-                T - Target position
-                O - center of circle that pass through both C and T
-                d - distance from C to T
-                r - designated radius
-                h - distance from center of CT to O
-    
-                Expanding the equations:
- 
-                d -> sqrt(x^2 + y^2)
-                h -> sqrt(4 * r^2 - x^2 - y^2)/2
-                i -> (x - (y * sqrt(4 * r^2 - x^2 - y^2)) / sqrt(x^2 + y^2)) / 2 
-                j -> (y + (x * sqrt(4 * r^2 - x^2 - y^2)) / sqrt(x^2 + y^2)) / 2
-   
-                Which can be written:
-    
-                i -> (x - (y * sqrt(4 * r^2 - x^2 - y^2))/sqrt(x^2 + y^2))/2
-                j -> (y + (x * sqrt(4 * r^2 - x^2 - y^2))/sqrt(x^2 + y^2))/2
-    
-                Which we for size and speed reasons optimize to:
- 
-                h_x2_div_d = sqrt(4 * r^2 - x^2 - y^2)/sqrt(x^2 + y^2)
-                i = (x - (y * h_x2_div_d))/2
-                j = (y + (x * h_x2_div_d))/2       
-            */      
-
-            // First, use h_x2_div_d to compute 4*h^2 to check if it is negative or r is smaller
-            // than d. If so, the sqrt of a negative number is complex and error out.
-            float h_x2_div_d = 4.0 * gc_block.values.r*gc_block.values.r - x*x - y*y;
-
-            if (h_x2_div_d < 0) { FAIL(STATUS_GCODE_ARC_RADIUS_ERROR); } // [Arc radius error]
-    
-            // Finish computing h_x2_div_d.
-            h_x2_div_d = -sqrt(h_x2_div_d)/hypot_f(x,y); // == -(h * 2 / d)
-            // Invert the sign of h_x2_div_d if the circle is counter clockwise (see sketch below)
-            if (gc_block.modal.motion == MOTION_MODE_CCW_ARC) { h_x2_div_d = -h_x2_div_d; }  
-
-            /* The counter clockwise circle lies to the left of the target direction. When offset is positive,
-               the left hand circle will be generated - when it is negative the right hand circle is generated.
-          
-                                                                   T  <-- Target position
-                                                   
-                                                                   ^ 
-                        Clockwise circles with this center         |          Clockwise circles with this center will have
-                        will have > 180 deg of angular travel      |          < 180 deg of angular travel, which is a good thing!
-                                                         \         |          /   
-            center of arc when h_x2_div_d is positive ->  x <----- | -----> x <- center of arc when h_x2_div_d is negative
-                                                                   |
-                                                                   |
-                                                   
-                                                                   C  <-- Current position                                
-            */  
-            // Negative R is g-code-alese for "I want a circle with more than 180 degrees of travel" (go figure!), 
-            // even though it is advised against ever generating such circles in a single line of g-code. By 
-            // inverting the sign of h_x2_div_d the center of the circles is placed on the opposite side of the line of
-            // travel and thus we get the unadvisably long arcs as prescribed.
-            if (gc_block.values.r < 0) { 
-                h_x2_div_d = -h_x2_div_d; 
-                gc_block.values.r = -gc_block.values.r; // Finished with r. Set to positive for mc_arc
-            }        
-            // Complete the operation by calculating the actual center of the arc
-            gc_block.values.ijk[axis_0] = 0.5*(x-(y*h_x2_div_d));
-            gc_block.values.ijk[axis_1] = 0.5*(y+(x*h_x2_div_d));
-          
-          } else { // Arc Center Format Offset Mode  
-            if (!(ijk_words & (bit(axis_0)|bit(axis_1)))) { FAIL(STATUS_GCODE_NO_OFFSETS_IN_PLANE); } // [No offsets in plane]
-            bit_false(value_words,(bit(WORD_I)|bit(WORD_J)|bit(WORD_K)));  
-          
-            // Convert IJK values to proper units.
-            if (gc_block.modal.units == UNITS_MODE_INCHES) {
-              for (idx=0; idx<N_AXIS; idx++) { // Axes indices are consistent, so loop may be used to save flash space.
-                if (ijk_words & bit(idx)) { gc_block.values.ijk[idx] *= MM_PER_INCH; }
-              }
-            }         
-
-            // Arc radius from center to target
-            x -= gc_block.values.ijk[axis_0]; // Delta x between circle center and target
-            y -= gc_block.values.ijk[axis_1]; // Delta y between circle center and target
-            float target_r = hypot_f(x,y); 
-
-            // Compute arc radius for mc_arc. Defined from current location to center.
-            gc_block.values.r = hypot_f(gc_block.values.ijk[axis_0], gc_block.values.ijk[axis_1]); 
-            
-            // Compute difference between current location and target radii for final error-checks.
-            float delta_r = fabs(target_r-gc_block.values.r);
-            if (delta_r > 0.005) { 
-              if (delta_r > 0.5) { FAIL(STATUS_GCODE_INVALID_TARGET); } // [Arc definition error] > 0.5mm
-              if (delta_r > (0.001*gc_block.values.r)) { FAIL(STATUS_GCODE_INVALID_TARGET); } // [Arc definition error] > 0.005mm AND 0.1% radius
-            }
-          }
-          break;
         case MOTION_MODE_PROBE:
           // [G38 Errors]: Target is same current. No axis words. Cutter compensation is enabled. Feed rate
           //   is undefined. Probe is triggered. NOTE: Probe check moved to probe cycle. Instead of returning
@@ -821,7 +542,7 @@ uint8_t gc_execute_line(char *line)
   
   // [21. Program flow ]: No error checks required.
 
-  // [0. Non-specific error-checks]: Complete unused value words check, i.e. IJK used when in arc
+  // [0. Non-specific error-checks]: Complete unused value words check,
   // radius mode, or axis words that aren't used in the block.  
   bit_false(value_words,(bit(WORD_N)|bit(WORD_F)|bit(WORD_S)|bit(WORD_T))); // Remove single-meaning value words. 
   if (axis_command) { bit_false(value_words,(bit(WORD_X)|bit(WORD_Y)|bit(WORD_Z))); } // Remove axis words. 
@@ -854,20 +575,8 @@ uint8_t gc_execute_line(char *line)
   gc_state.tool = gc_block.values.t;
 
   // [6. Change tool ]: NOT SUPPORTED
-
-  /*// [7. Spindle control ]:
-  if (gc_state.modal.spindle != gc_block.modal.spindle) {
-    gc_state.modal.spindle = gc_block.modal.spindle;    
-    // Update spindle control and apply spindle speed when enabling it in this block.    
-    spindle_run(gc_state.modal.spindle, gc_state.spindle_speed);
-  }*/
-
-  /*// [8. Coolant control ]:  
-  if (gc_state.modal.coolant != gc_block.modal.coolant) {
-    gc_state.modal.coolant = gc_block.modal.coolant;
-    coolant_run(gc_state.modal.coolant);
-  }*/
-  
+  // [7. Spindle control ]: NOT SUPPORTED
+  // [8. Coolant control ]: NOT SUPPORTED
   // [9. Enable/disable feed rate or spindle overrides ]: NOT SUPPORTED
 
   // [10. Dwell ]:
@@ -876,9 +585,7 @@ uint8_t gc_execute_line(char *line)
   // [11. Set active plane ]:
   gc_state.modal.plane_select = gc_block.modal.plane_select;  
 
-  // [12. Set length units ]:
-  gc_state.modal.units = gc_block.modal.units;
-
+  // [12. Set length units ]: NOT SUPPORTED
   // [13. Cutter radius compensation ]: NOT SUPPORTED
 
   // [14. Cutter length compensation ]: G43.1 and G49 supported. G43 NOT SUPPORTED.
@@ -950,7 +657,6 @@ uint8_t gc_execute_line(char *line)
   // NOTE: Commands G10,G28,G30,G92 lock out and prevent axis words from use in motion modes. 
   // Enter motion modes only if there are axis words or a motion mode command word in the block.
   gc_state.modal.motion = gc_block.modal.motion;
-  if (gc_state.modal.motion != MOTION_MODE_NONE) {
     if (axis_command == AXIS_COMMAND_MOTION_MODE) {
       switch (gc_state.modal.motion) {
         case MOTION_MODE_SEEK:
@@ -965,15 +671,6 @@ uint8_t gc_execute_line(char *line)
             mc_line(gc_block.values.xyz, gc_state.feed_rate, gc_state.modal.feed_rate, gc_block.values.n);
           #else
             mc_line(gc_block.values.xyz, gc_state.feed_rate, gc_state.modal.feed_rate);
-          #endif
-          break;
-        case MOTION_MODE_CW_ARC: case MOTION_MODE_CCW_ARC:
-          #ifdef USE_LINE_NUMBERS
-            mc_arc(gc_state.position, gc_block.values.xyz, gc_block.values.ijk, gc_block.values.r, 
-              gc_state.feed_rate, gc_state.modal.feed_rate, axis_0, axis_1, axis_linear, gc_block.values.n);  
-          #else
-            mc_arc(gc_state.position, gc_block.values.xyz, gc_block.values.ijk, gc_block.values.r, 
-              gc_state.feed_rate, gc_state.modal.feed_rate, axis_0, axis_1, axis_linear); 
           #endif
           break;
         case MOTION_MODE_PROBE:
@@ -991,7 +688,6 @@ uint8_t gc_execute_line(char *line)
       // in any intermediate location.
       memcpy(gc_state.position, gc_block.values.xyz, sizeof(gc_block.values.xyz)); // gc.position[] = target[];
     }
-  }
   
   // [21. Program flow ]:
   // M0,M1,M2,M30: Perform non-running program flow actions. During a program pause, the buffer may 
@@ -1023,12 +719,7 @@ uint8_t gc_execute_line(char *line)
   }
     
   // TODO: % to denote start of program. Sets auto cycle start?
-  if (returnNone) {
-    return(STATUS_NONE);
-  }
-  else {
-    return(STATUS_OK);
-  }
+  return(STATUS_OK);
 }
         
 
