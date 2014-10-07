@@ -34,6 +34,7 @@
 #include "motion_control.h"
 #include "spindle_control.h"
 #include "coolant_control.h"
+#include "dio_control.h"
 #include "limits.h"
 #include "probe.h"
 #include "report.h"
@@ -360,9 +361,10 @@ void mc_reset()
   if (bit_isfalse(sys.execute, EXEC_RESET)) {
     bit_true_atomic(sys.execute, EXEC_RESET);
 
-    // Kill spindle and coolant.   
+    // Kill spindle and coolant and any digital i/o control.
     spindle_stop();
     coolant_stop();
+    dio_stop();
 
     // Kill steppers only if in any motion state, i.e. cycle, feed hold, homing, or jogging
     // NOTE: If steppers are kept enabled via the step idle delay setting, this also keeps
