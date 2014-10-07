@@ -22,7 +22,7 @@
 #include "settings.h"
 #include "probe.h"
 
-// Inverts the probe pin state depending on user settings.
+// Inverts the probe pin state depending on user settings and probing cycle mode.
 uint8_t probe_invert_mask;
 
 
@@ -32,11 +32,21 @@ void probe_init()
   PROBE_DDR &= ~(PROBE_MASK); // Configure as input pins
   if (bit_istrue(settings.flags,BITFLAG_INVERT_PROBE_PIN)) { 
     PROBE_PORT &= ~(PROBE_MASK); // Normal low operation. Requires external pull-down.
-    probe_invert_mask = 0;
   } else {
     PROBE_PORT |= PROBE_MASK;    // Enable internal pull-up resistors. Normal high operation.
-    probe_invert_mask = PROBE_MASK; 
-  }
+  }  
+  // probe_configure_invert_mask(false); // Initialize invert mask. Not required. Updated when in-use.
+}
+
+
+// Called by probe_init() and the mc_probe() routines. Sets up the probe pin invert mask to 
+// appropriately set the pin logic according to setting for normal-high/normal-low operation 
+// and the probing cycle modes for toward-workpiece/away-from-workpiece. 
+void probe_configure_invert_mask(uint8_t is_probe_away)
+{
+  probe_invert_mask = 0; // Initialize as zero.
+  if (bit_isfalse(settings.flags,BITFLAG_INVERT_PROBE_PIN)) { probe_invert_mask ^= PROBE_MASK; }
+  if (is_probe_away) { probe_invert_mask ^= PROBE_MASK; }
 }
 
 
@@ -49,7 +59,7 @@ uint8_t probe_get_state() { return((PROBE_PIN & PROBE_MASK) ^ probe_invert_mask)
 // NOTE: This function must be extremely efficient as to not bog down the stepper ISR.
 void probe_state_monitor()
 {
-  if (sys.probe_state == PROBE_ACTIVE) { 
+  if (sys.probe_state == PROBE_ACTIVE) {
     if (probe_get_state()) {
       sys.probe_state = PROBE_OFF;
       memcpy(sys.probe_position, sys.position, sizeof(float)*N_AXIS);

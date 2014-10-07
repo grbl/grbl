@@ -37,12 +37,11 @@
 
 static char line[LINE_BUFFER_SIZE]; // Line to be executed. Zero-terminated.
 
-
 // Directs and executes one line of formatted input from protocol_process. While mostly
 // incoming streaming g-code blocks, this also directs and executes Grbl internal commands,
 // such as settings, initiating the homing cycle, and toggling switch states.
-static void protocol_execute_line(char *line) 
-{      
+static void protocol_execute_line(char *line)
+{
   protocol_execute_runtime(); // Runtime command check point.
   if (sys.abort) { return; } // Bail to calling function upon system abort  
 
@@ -119,8 +118,8 @@ void protocol_main_loop()
             iscomment = false;
           }
         } else {
-          if (c <= ' ') { 
-            // Throw away whitepace and control characters  
+          if (c <= ' ') {
+            // Throw away whitepace and control characters
           } else if (c == '/') { 
             // Block delete NOT SUPPORTED. Ignore character.
             // NOTE: If supported, would simply need to check the system if block delete is enabled.

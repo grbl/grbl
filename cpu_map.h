@@ -206,11 +206,11 @@
   // a later date if flash and memory space allows.
   #define COOLANT_FLOOD_DDR   DDRC
   #define COOLANT_FLOOD_PORT  PORTC
-  #define COOLANT_FLOOD_BIT   4  // Uno Analog Pin 3
+  #define COOLANT_FLOOD_BIT   1  // Uno Analog Pin 1
   #ifdef ENABLE_M7 // Mist coolant disabled by default. See config.h to enable/disable.
     #define COOLANT_MIST_DDR   DDRC
     #define COOLANT_MIST_PORT  PORTC
-    #define COOLANT_MIST_BIT   5 // Uno Analog Pin 4
+    #define COOLANT_MIST_BIT   2 // Uno Analog Pin 2
   #endif  
 
   // Define user-control pinouts (cycle start, reset, feed hold) input pins.
@@ -218,9 +218,9 @@
   #define PINOUT_DDR       DDRC
   #define PINOUT_PIN       PINC
   #define PINOUT_PORT      PORTC
-  #define PIN_RESET        1  // Uno Analog Pin 1
-  #define PIN_FEED_HOLD    2  // Uno Analog Pin 2
-  #define PIN_CYCLE_START  3  // Uno Analog Pin 3
+  #define PIN_RESET        3  // Uno Analog Pin 3
+  #define PIN_FEED_HOLD    4  // Uno Analog Pin 4
+  #define PIN_CYCLE_START  5  // Uno Analog Pin 5
   #define PINOUT_INT       PCIE1  // Pin change interrupt enable pin
   #define PINOUT_INT_vect  PCINT1_vect
   #define PINOUT_PCMSK     PCMSK1 // Pin change interrupt register
@@ -362,6 +362,15 @@
     #define SPINDLE_PWM_PORT    PORTH
     #define SPINDLE_PWM_BIT		6 // MEGA2560 Digital Pin 9
   #endif // End of VARIABLE_SPINDLE
+
+  #ifdef DIO_CONTROL
+    #define DIGITAL_IO_DDR DDRC
+    #define DIGITAL_IO_PORT PORTC
+    #define DIGITAL_IO_BIT0 0 // MEGA2560 Digital Pin 37
+    #define DIGITAL_IO_BIT1 1 // MEGA2560 Digital Pin 36
+    #define DIGITAL_IO_BIT2 2 // MEGA2560 Digital Pin 35
+    #define DIGITAL_IO_BIT3 3 // MEGA2560 Digital Pin 34
+  #endif
 
 #endif
 

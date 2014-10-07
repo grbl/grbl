@@ -86,10 +86,16 @@ void spindle_run(uint8_t direction, float rpm)
       #define SPINDLE_RPM_RANGE (SPINDLE_MAX_RPM-SPINDLE_MIN_RPM)
       TCCRA_REGISTER = (1<<COMB_BIT) | (1<<WAVE1_REGISTER) | (1<<WAVE0_REGISTER);
       TCCRB_REGISTER = (TCCRB_REGISTER & 0b11111000) | 0x02; // set to 1/8 Prescaler
-      rpm -= SPINDLE_MIN_RPM;
-      if ( rpm > SPINDLE_RPM_RANGE ) { rpm = SPINDLE_RPM_RANGE; } // Prevent uint8 overflow
+      if ( rpm < SPINDLE_MIN_RPM ) { rpm = 0; } 
+      else { 
+        rpm -= SPINDLE_MIN_RPM; 
+        if ( rpm > SPINDLE_RPM_RANGE ) { rpm = SPINDLE_RPM_RANGE; } // Prevent uint8 overflow
+      }
       uint8_t current_pwm = floor( rpm*(255.0/SPINDLE_RPM_RANGE) + 0.5);
-      OCR_REGISTER = current_pwm;
+      #ifdef MINIMUM_SPINDLE_PWM
+        if (current_pwm < MINIMUM_SPINDLE_PWM) { current_pwm = MINIMUM_SPINDLE_PWM; }
+      #endif
+      OCR_REGISTER = current_pwm; // Set PWM pin output
     
       #ifndef CPU_MAP_ATMEGA328P // On the Uno, spindle enable and PWM are shared.
         SPINDLE_ENABLE_PORT |= (1<<SPINDLE_ENABLE_BIT);

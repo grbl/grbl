@@ -32,6 +32,7 @@
 #include "settings.h"
 #include "gcode.h"
 #include "coolant_control.h"
+#include "dio_control.h"
 #include "planner.h"
 #include "spindle_control.h"
 #include "stepper.h"
@@ -48,6 +49,7 @@
 // TODO: Install silent mode to return only numeric values, primarily for GUIs.
 void report_status_message(uint8_t status_code) 
 {
+
   if (status_code == 0) { // STATUS_OK
     printPgmString(PSTR("ok\r\n"));
   } else {
@@ -77,6 +79,8 @@ void report_status_message(uint8_t status_code)
       printPgmString(PSTR("Line overflow")); break; 
       
       // Common g-code parser errors.
+      case STATUS_GCODE_UNUSED_WORDS:
+      printPgmString(PSTR("Unused Words")); break;
       case STATUS_GCODE_MODAL_GROUP_VIOLATION:
       printPgmString(PSTR("Modal group violation")); break;
       case STATUS_GCODE_UNSUPPORTED_COMMAND:
@@ -85,7 +89,7 @@ void report_status_message(uint8_t status_code)
       printPgmString(PSTR("Undefined feed rate")); break;
       default:
         // Remaining g-code parser errors with error codes
-        printPgmString(PSTR("Invalid gcode ID:"));
+        printPgmString(PSTR("Invalid gcode ID: "));
         print_uint8_base10(status_code); // Print error code for user reference
     }
     printPgmString(PSTR("\r\n"));
@@ -235,7 +239,9 @@ void report_probe_parameters()
     print_position[i] = sys.probe_position[i]/settings.steps_per_mm[i];
     printFloat_CoordValue(print_position[i]);
     if (i < (N_AXIS-1)) { printPgmString(PSTR(",")); }
-  }  
+  }
+  printPgmString(PSTR(":"));
+  print_uint8_base10(sys.probe_succeeded);
   printPgmString(PSTR("]\r\n"));
 }
 
@@ -279,12 +285,18 @@ void report_ngc_parameters()
 // Print current gcode parser mode state
 void report_gcode_modes()
 {
+  printPgmString(PSTR("["));
+  
   switch (gc_state.modal.motion) {
-    case MOTION_MODE_SEEK : printPgmString(PSTR("[G0")); break;
-    case MOTION_MODE_LINEAR : printPgmString(PSTR("[G1")); break;
-    case MOTION_MODE_CW_ARC : printPgmString(PSTR("[G2")); break;
-    case MOTION_MODE_CCW_ARC : printPgmString(PSTR("[G3")); break;
-    case MOTION_MODE_NONE : printPgmString(PSTR("[G80")); break;
+    case MOTION_MODE_SEEK : printPgmString(PSTR("G0")); break;
+    case MOTION_MODE_LINEAR : printPgmString(PSTR("G1")); break;
+    case MOTION_MODE_CW_ARC : printPgmString(PSTR("G2")); break;
+    case MOTION_MODE_CCW_ARC : printPgmString(PSTR("G3")); break;
+    case MOTION_MODE_PROBE_TOWARD : printPgmString(PSTR("G38.2")); break;    
+    case MOTION_MODE_PROBE_TOWARD_NO_ERROR : printPgmString(PSTR("G38.3")); break;    
+    case MOTION_MODE_PROBE_AWAY : printPgmString(PSTR("G38.4")); break;    
+    case MOTION_MODE_PROBE_AWAY_NO_ERROR : printPgmString(PSTR("G38.5")); break;    
+    case MOTION_MODE_NONE : printPgmString(PSTR("G80")); break;
   }
 
   printPgmString(PSTR(" G"));
@@ -330,6 +342,11 @@ void report_gcode_modes()
   
   printPgmString(PSTR(" F"));
   printFloat_RateValue(gc_state.feed_rate);
+  
+  #ifdef VARIABLE_SPINDLE
+    printPgmString(PSTR(" S"));
+    printFloat_RateValue(gc_state.spindle_speed);
+  #endif
 
   printPgmString(PSTR("]\r\n"));
 }
