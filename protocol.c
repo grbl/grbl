@@ -36,13 +36,15 @@
 
 
 static char line[LINE_BUFFER_SIZE]; // Line to be executed. Zero-terminated.
-
+static char nice_line[LINE_BUFFER_SIZE]; // Verbatim copy of input. Zero-terminated.
 
 // Directs and executes one line of formatted input from protocol_process. While mostly
 // incoming streaming g-code blocks, this also directs and executes Grbl internal commands,
 // such as settings, initiating the homing cycle, and toggling switch states.
-static void protocol_execute_line(char *line) 
-{      
+static void protocol_execute_line(char *line, char *nice_line) 
+{
+  printString(nice_line);
+
   protocol_execute_runtime(); // Runtime command check point.
   if (sys.abort) { return; } // Bail to calling function upon system abort  
 
@@ -92,6 +94,7 @@ void protocol_main_loop()
   
   uint8_t iscomment = false;
   uint8_t char_counter = 0;
+  uint8_t nice_char_counter = 0;
   uint8_t c;
   for (;;) {
 
@@ -108,9 +111,10 @@ void protocol_main_loop()
     while((c = serial_read()) != SERIAL_NO_DATA) {
       if ((c == '\n') || (c == '\r')) { // End of line reached
         line[char_counter] = 0; // Set string termination character.
-        protocol_execute_line(line); // Line is complete. Execute it!
+        nice_line[nice_char_counter] = 0;
+        protocol_execute_line(line, nice_line); // Line is complete. Execute it!
         iscomment = false;
-        char_counter = 0;
+        char_counter = nice_char_counter = 0;
       } else {
         if (iscomment) {
           // Throw away all comment characters
@@ -119,8 +123,9 @@ void protocol_main_loop()
             iscomment = false;
           }
         } else {
-          if (c <= ' ') { 
-            // Throw away whitepace and control characters  
+          if (c <= ' ') {
+            // Throw away whitepace and control characters in parsed line
+            nice_line[nice_char_counter++] = c;
           } else if (c == '/') { 
             // Block delete NOT SUPPORTED. Ignore character.
             // NOTE: If supported, would simply need to check the system if block delete is enabled.
@@ -145,11 +150,11 @@ void protocol_main_loop()
             // Detect line buffer overflow. Report error and reset line buffer.
             report_status_message(STATUS_OVERFLOW);
             iscomment = false;
-            char_counter = 0;
+            char_counter = nice_char_counter = 0;
           } else if (c >= 'a' && c <= 'z') { // Upcase lowercase
-            line[char_counter++] = c-'a'+'A';
+            nice_line[nice_char_counter++] = line[char_counter++] = c-'a'+'A';
           } else {
-            line[char_counter++] = c;
+            nice_line[nice_char_counter++] = line[char_counter++] = c;
           }
         }
       }

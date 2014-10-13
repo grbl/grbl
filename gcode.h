@@ -46,10 +46,11 @@
 #define MODAL_GROUP_M4 8  // [M0,M1,M2,M30] Stopping
 #define MODAL_GROUP_M7 9  // [M3,M4,M5] Spindle turning
 #define MODAL_GROUP_M8 10 // [M7,M8,M9] Coolant control
+#define MODAL_GROUP_M9 11 // [M64,M65] Immediate Digital Output Control
 
-#define OTHER_INPUT_F 11
-#define OTHER_INPUT_S 12
-#define OTHER_INPUT_T 13
+#define OTHER_INPUT_F 12
+#define OTHER_INPUT_S 13
+#define OTHER_INPUT_T 14
 
 // Define command actions for within execution-type modal groups (motion, stopping, non-modal). Used
 // internally by the parser to know which command to execute.
@@ -110,6 +111,10 @@
 #define TOOL_LENGTH_OFFSET_CANCEL 0 // G49 (Default: Must be zero)
 #define TOOL_LENGTH_OFFSET_ENABLE_DYNAMIC 1 // G43.1
 
+// Modal Group M9: Immediate Digital Output Control
+#define DIGITAL_OUTPUT_IMMEDIATE_DISABLE 0
+#define DIGITAL_OUTPUT_IMMEDIATE_ENABLE 1
+
 // Modal Group G12: Active work coordinate system
 // N/A: Stores coordinate system value (54-59) to change to.
 
@@ -142,6 +147,7 @@ typedef struct {
   uint8_t program_flow;  // {M0,M1,M2,M30}
   uint8_t coolant;       // {M7,M8,M9}
   uint8_t spindle;       // {M3,M4,M5}
+  uint8_t dio_immediate; // {M64,M65}
 } gc_modal_t;  
 
 typedef struct {
