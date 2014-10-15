@@ -50,9 +50,6 @@ void dio_immediate_run(uint8_t mode, uint8_t pin)
   #ifdef DIO_CONTROL
     if (sys.state == STATE_CHECK_MODE) { return; }
 
-    protocol_auto_cycle_start();   //temp fix for M8 lockup
-    protocol_buffer_synchronize(); // Ensure digital i/o turns on when specified in program.
-
     uint8_t bit;
     switch (pin) {
       #ifdef DIGITAL_IO_BIT0
@@ -69,14 +66,14 @@ void dio_immediate_run(uint8_t mode, uint8_t pin)
       #endif
       #ifdef DIGITAL_IO_BIT3
       case 3:
+        bit = DIGITAL_IO_BIT3; break;
       #endif
       default:
-        #ifdef DIGITAL_IO_BIT3
-        bit = DIGITAL_IO_BIT3; break;
-        #else
         return;
-        #endif
     }
+
+    protocol_auto_cycle_start();   //temp fix for M8 lockup
+    protocol_buffer_synchronize(); // Ensure digital i/o turns on when specified in program.
 
     if (mode == DIGITAL_OUTPUT_IMMEDIATE_ENABLE) {
       DIGITAL_IO_PORT |= (1 << bit);
