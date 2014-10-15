@@ -28,6 +28,7 @@
 #include "spindle_control.h"
 #include "protocol.h"
 #include "gcode.h"
+#include "settings.h"
 
 
 void spindle_init()
@@ -59,50 +60,62 @@ void spindle_stop()
   #endif  
 }
 
+void spindle_set_direction(uint8_t direction)
+{
+	if (direction != SPINDLE_DISABLE){
+		if (direction == SPINDLE_ENABLE_CW) {
+		  SPINDLE_DIRECTION_PORT &= ~(1<<SPINDLE_DIRECTION_BIT);
+		} else {
+		  SPINDLE_DIRECTION_PORT |= (1<<SPINDLE_DIRECTION_BIT);
+		}
+	}
+}
+
+#ifdef VARIABLE_SPINDLE
+  void spindle_start()
+  {
+    // TODO: Install the optional capability for frequency-based output for servos.
+    TCCRA_REGISTER = (1<<COMB_BIT) | (1<<WAVE1_REGISTER) | (1<<WAVE0_REGISTER);
+    TCCRB_REGISTER = (TCCRB_REGISTER & 0b11111000) | 0x02; // set to 1/8 Prescaler
+  }
+
+  void spindle_rpm_update(uint8_t pwm)
+  {
+    // TODO: Install the optional capability for frequency-based output for servos.
+    OCR_REGISTER = pwm;
+  }
+
+  uint8_t calculate_pwm_from_rpm(float rpm)
+  {
+     // TODO: Install the optional capability for frequency-based output for servos.
+     #define SPINDLE_RPM_RANGE (SPINDLE_MAX_RPM-SPINDLE_MIN_RPM)
+     rpm -= SPINDLE_MIN_RPM;
+     if ( rpm > SPINDLE_RPM_RANGE ) { rpm = SPINDLE_RPM_RANGE; } // Prevent uint8 overflow
+     return (uint8_t) floor( rpm*(255.0/SPINDLE_RPM_RANGE) + 0.5);
+  }
+#endif
 
 void spindle_run(uint8_t direction, float rpm) 
 {
   if (sys.state == STATE_CHECK_MODE) { return; }
-  
   // Empty planner buffer to ensure spindle is set when programmed.
+  // Only do this without real time spindle control or if there was
+  // a block without motion.  
   protocol_auto_cycle_start();  //temp fix for M3 lockup
-  protocol_buffer_synchronize(); 
-
+  protocol_buffer_synchronize();   
   // Halt or set spindle direction and rpm. 
   if (direction == SPINDLE_DISABLE) {
-
     spindle_stop();
-
   } else {
-
-    if (direction == SPINDLE_ENABLE_CW) {
-      SPINDLE_DIRECTION_PORT &= ~(1<<SPINDLE_DIRECTION_BIT);
-    } else {
-      SPINDLE_DIRECTION_PORT |= (1<<SPINDLE_DIRECTION_BIT);
-    }
-
+    spindle_set_direction(direction);
     #ifdef VARIABLE_SPINDLE
-      // TODO: Install the optional capability for frequency-based output for servos.
-      #define SPINDLE_RPM_RANGE (SPINDLE_MAX_RPM-SPINDLE_MIN_RPM)
-      TCCRA_REGISTER = (1<<COMB_BIT) | (1<<WAVE1_REGISTER) | (1<<WAVE0_REGISTER);
-      TCCRB_REGISTER = (TCCRB_REGISTER & 0b11111000) | 0x02; // set to 1/8 Prescaler
-      if ( rpm < SPINDLE_MIN_RPM ) { rpm = 0; } 
-      else { 
-        rpm -= SPINDLE_MIN_RPM; 
-        if ( rpm > SPINDLE_RPM_RANGE ) { rpm = SPINDLE_RPM_RANGE; } // Prevent uint8 overflow
-      }
-      uint8_t current_pwm = floor( rpm*(255.0/SPINDLE_RPM_RANGE) + 0.5);
-      #ifdef MINIMUM_SPINDLE_PWM
-        if (current_pwm < MINIMUM_SPINDLE_PWM) { current_pwm = MINIMUM_SPINDLE_PWM; }
-      #endif
-      OCR_REGISTER = current_pwm; // Set PWM pin output
-    
+       spindle_start();
+       spindle_rpm_update(calculate_pwm_from_rpm(rpm));
       #ifndef CPU_MAP_ATMEGA328P // On the Uno, spindle enable and PWM are shared.
         SPINDLE_ENABLE_PORT |= (1<<SPINDLE_ENABLE_BIT);
       #endif
     #else   
       SPINDLE_ENABLE_PORT |= (1<<SPINDLE_ENABLE_BIT);
     #endif
-
   }
 }
