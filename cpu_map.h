@@ -363,6 +363,15 @@
     #define SPINDLE_PWM_BIT		6 // MEGA2560 Digital Pin 9
   #endif // End of VARIABLE_SPINDLE
 
+  #ifdef DIO_CONTROL
+    #define DIGITAL_IO_DDR DDRC
+    #define DIGITAL_IO_PORT PORTC
+    #define DIGITAL_IO_BIT0 0 // MEGA2560 Digital Pin 37
+    #define DIGITAL_IO_BIT1 1 // MEGA2560 Digital Pin 36
+    #define DIGITAL_IO_BIT2 2 // MEGA2560 Digital Pin 35
+    #define DIGITAL_IO_BIT3 3 // MEGA2560 Digital Pin 34
+  #endif
+
 #endif
 
 //----------------------------------------------------------------------------------------
