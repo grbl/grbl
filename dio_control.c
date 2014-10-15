@@ -27,10 +27,18 @@
 void dio_init()
 {
   #ifdef DIO_CONTROL
+    #ifdef DIGITAL_IO_BIT0
     DIGITAL_IO_DDR |= (1 << DIGITAL_IO_BIT0);
+    #endif
+    #ifdef DIGITAL_IO_BIT1
     DIGITAL_IO_DDR |= (1 << DIGITAL_IO_BIT1);
+    #endif
+    #ifdef DIGITAL_IO_BIT2
     DIGITAL_IO_DDR |= (1 << DIGITAL_IO_BIT2);
+    #endif
+    #ifdef DIGITAL_IO_BIT3
     DIGITAL_IO_DDR |= (1 << DIGITAL_IO_BIT3);
+    #endif
     dio_stop();
   #endif
 }
@@ -38,10 +46,18 @@ void dio_init()
 void dio_stop()
 {
   #ifdef DIO_CONTROL
+    #ifdef DIGITAL_IO_BIT0
     DIGITAL_IO_PORT &= ~(1 << DIGITAL_IO_BIT0);
+    #endif
+    #ifdef DIGITAL_IO_BIT1
     DIGITAL_IO_PORT &= ~(1 << DIGITAL_IO_BIT1);
+    #endif
+    #ifdef DIGITAL_IO_BIT2
     DIGITAL_IO_PORT &= ~(1 << DIGITAL_IO_BIT2);
+    #endif
+    #ifdef DIGITAL_IO_BIT3
     DIGITAL_IO_PORT &= ~(1 << DIGITAL_IO_BIT3);
+    #endif
   #endif
 }
 
