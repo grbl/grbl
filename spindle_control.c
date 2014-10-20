@@ -91,7 +91,7 @@ void spindle_run(uint8_t direction, float rpm)
         rpm -= SPINDLE_MIN_RPM; 
         if ( rpm > SPINDLE_RPM_RANGE ) { rpm = SPINDLE_RPM_RANGE; } // Prevent uint8 overflow
       }
-      uint8_t current_pwm = floor( rpm*(255.0/SPINDLE_RPM_RANGE) + 0.5);
+      uint8_t current_pwm = floor( rpm*(PWM_MAX/SPINDLE_RPM_RANGE) + 0.5);
       #ifdef MINIMUM_SPINDLE_PWM
         if (current_pwm < MINIMUM_SPINDLE_PWM) { current_pwm = MINIMUM_SPINDLE_PWM; }
       #endif
