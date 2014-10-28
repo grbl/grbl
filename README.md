@@ -18,6 +18,13 @@ Grbl includes full acceleration management with look ahead. That means the contr
 
 * Lead Developer [_2009 - 2011_]: Simen Svale Skogsrud (Norway). aka The Originator/Creator/Pioneer/Father of Grbl.
 
+-------------
+_Grbl is an open-source project and fueled by the free-time of our intrepid administrators and altruistic users. If you'd like to donate, all proceeds will be used to help keep this project sustainable and to fund supporting equipment. Thank you!_
+
+| _One-Time Donation_ | _Recurring Donations_ |
+|:--:|:--:|
+|[![Donate](https://www.paypalobjects.com/en_US/i/btn/btn_donate_LG.gif)](https://www.paypal.com/cgi-bin/webscr?cmd=_s-xclick&hosted_button_id=EBQWAWQAAT878)| [![Support via Gratipay](https://cdn.rawgit.com/gratipay/gratipay-badge/2.1.3/dist/gratipay.png)](https://gratipay.com/chamnit/) |
+
 ***
 
 _**Master Branch:**_
@@ -73,9 +80,3 @@ List of Supported G-Codes in Grbl v0.9
   - Coolant Control: M7*, M8, M9
   - Spindle Control: M3, M4, M5
 ```
-
--------------
-Grbl is an open-source project and fueled by the free-time of our intrepid administrators and altruistic users. If you'd like to donate, all proceeds will be used to help fund supporting hardware and testing equipment. Thank you!
-
-[![Donate](https://www.paypalobjects.com/en_US/i/btn/btn_donate_LG.gif)](https://www.paypal.com/cgi-bin/webscr?cmd=_s-xclick&hosted_button_id=EBQWAWQAAT878)
-
