@@ -84,16 +84,25 @@ void spindle_run(uint8_t direction, float rpm)
     #ifdef VARIABLE_SPINDLE
       // TODO: Install the optional capability for frequency-based output for servos.
       #define SPINDLE_RPM_RANGE (SPINDLE_MAX_RPM-SPINDLE_MIN_RPM)
-      TCCRA_REGISTER = (1<<COMB_BIT) | (1<<WAVE1_REGISTER) | (1<<WAVE0_REGISTER);
-      TCCRB_REGISTER = (TCCRB_REGISTER & 0b11111000) | 0x02; // set to 1/8 Prescaler
+      
       if ( rpm < SPINDLE_MIN_RPM ) { rpm = 0; } 
       else { 
         rpm -= SPINDLE_MIN_RPM; 
         if ( rpm > SPINDLE_RPM_RANGE ) { rpm = SPINDLE_RPM_RANGE; } // Prevent uint8 overflow
       }
-      #ifndef CPU_MAP_ATMEGA328P 
+      #ifdef CPU_MAP_ATMEGA2560
+      	TCCRA_REGISTER = (1<<COMB_BIT) | (1<<WAVE1_REGISTER) | (1<<WAVE0_REGISTER);
+        TCCRB_REGISTER = (TCCRB_REGISTER & 0b11111000) | 0x02 | (1<<WAVE2_REGISTER) | (1<<WAVE3_REGISTER); // set to 1/8 Prescaler
+        
+        OCR4A = 65535; // set the top vale to 0xFFFF for 16bit
+        
         uint16_t current_pwm = floor( rpm*(PWM_MAX/SPINDLE_RPM_RANGE) + 0.5);
+        
+        SPINDLE_ENABLE_PORT |= (1<<SPINDLE_ENABLE_BIT);
       #else
+        TCCRA_REGISTER = (1<<COMB_BIT) | (1<<WAVE1_REGISTER) | (1<<WAVE0_REGISTER);
+        TCCRB_REGISTER = (TCCRB_REGISTER & 0b11111000) | 0x02; // set to 1/8 Prescaler
+              
         uint8_t current_pwm = floor( rpm*(PWM_MAX/SPINDLE_RPM_RANGE) + 0.5);
       #endif
       
@@ -102,9 +111,6 @@ void spindle_run(uint8_t direction, float rpm)
       #endif
       OCR_REGISTER = current_pwm; // Set PWM pin output
     
-      #ifndef CPU_MAP_ATMEGA328P // On the Uno, spindle enable and PWM are shared.
-        SPINDLE_ENABLE_PORT |= (1<<SPINDLE_ENABLE_BIT);
-      #endif
     #else   
       SPINDLE_ENABLE_PORT |= (1<<SPINDLE_ENABLE_BIT);
     #endif
