@@ -148,16 +148,16 @@ typedef struct {
 } gc_modal_t;  
 
 typedef struct {
-  float f;         // Feed
-  float ijk[3];    // I,J,K Axis arc offsets
-  uint8_t l;       // G10 or canned cycles parameters
-  int32_t n;       // Line number
-  float p;         // G10 or dwell parameters
-  // float q;      // G82 peck drilling
-  float r;         // Arc radius
-  float s;         // Spindle speed
-  uint8_t t;       // Tool selection
-  float xyz[3];    // X,Y,Z Translational axes
+  float f;          // Feed
+  float ijk[3];     // I,J,K Axis arc offsets
+  uint8_t l;        // G10 or canned cycles parameters
+  int32_t n;        // Line number
+  float p;          // G10 or dwell parameters
+  // float q;       // G82 peck drilling
+  float r;          // Arc radius
+  float s;          // Spindle speed
+  uint8_t t;        // Tool selection
+  float xyz[N_AXIS];// X,Y,Z Translational axes
 } gc_values_t;
 
 

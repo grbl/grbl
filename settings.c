@@ -110,7 +110,7 @@ void settings_restore_global_settings() {
 // Helper function to clear the EEPROM space containing parameter data.
 void settings_clear_parameters() {
   uint8_t idx;
-  float coord_data[3];
+  float coord_data[N_AXIS];
   memset(&coord_data, 0, sizeof(coord_data));
   for (idx=0; idx < SETTING_INDEX_NCOORD; idx++) { settings_write_coord_data(idx, coord_data); }
 }  
