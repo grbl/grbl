@@ -97,7 +97,7 @@ ISR(TIMER2_COMPA_vect)
     uint8_t i;
     for (i = 0; i < 4; i++) {
       if (laser[i]) laser_timer[i]++;
-      if (laser_timer[i] == 10) // Laser i disabled after 10 seconds max
+      if (laser_timer[i] == 255) // Laser i disabled after 255 seconds max
         laser_set(i, LASER_DISABLE);
     }
   }
