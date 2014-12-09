@@ -41,11 +41,11 @@ void limits_init()
 {
   LIMIT_DDR &= ~(LIMIT_MASK); // Set as input pins
 
-  if (bit_istrue(settings.flags,BITFLAG_INVERT_LIMIT_PINS)) {
-    LIMIT_PORT &= ~(LIMIT_MASK); // Normal low operation. Requires external pull-down.
-  } else {
-    LIMIT_PORT |= (LIMIT_MASK);  // Enable internal pull-up resistors. Normal high operation.
-  }
+#ifdef ENABLE_LIMIT_PULLUPS
+    LIMIT_PORT |= (LIMIT_MASK);
+#else
+    LIMIT_PORT &= ~(LIMIT_MASK);
+#endif
 
   if (bit_istrue(settings.flags,BITFLAG_HARD_LIMIT_ENABLE)) {
     LIMIT_PCMSK |= LIMIT_MASK; // Enable specific pins of the Pin Change Interrupt
