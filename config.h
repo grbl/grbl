@@ -255,6 +255,26 @@
 // work well and are cheap to find) and wire in a low-pass circuit into each limit pin.
 // #define ENABLE_SOFTWARE_DEBOUNCE // Default disabled. Uncomment to enable.
 
+
+// Enable the internal pullup resistors on the limit pin inputs. These
+// allow wiring up limit switches directly to ground and these inputs,
+// without the pin value floating when the switch is opened. These
+// pullups can be used with both normally-open and normally-closed limit
+// switches (but when using normally-closed switches, remember to enable
+// the invert limit switches configuration at runtime).
+// These internal pullups are fairly big (20kΩ - 50kΩ for Arduino Uno),
+// which can cause problems in some environments. To solve this, an
+// extra (smaller) external pullup can be added. There is no need to
+// disable the internal pullups then, both will contribute to the
+// pulling up of the signal). Disabling the internal pullups should only
+// be needed in non-standard configurations that do not any pullup or
+// require a pulldown register.
+// In grbl 0.9 and before, these internal pullups were disabled
+// automatically when the invert limit switches runtime configuration
+// was enabled, but there wasn't really any point to that, so these two
+// got separated.
+#define ENABLE_LIMIT_PULLUPS
+
 // ---------------------------------------------------------------------------------------
 
 // TODO: Install compile-time option to send numeric status codes rather than strings.
