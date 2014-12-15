@@ -30,11 +30,9 @@
 #define false 0
 #define true 1
 
-#define N_AXIS 3 // Number of axes
+#define N_AXIS 2 // Number of axes
 #define X_AXIS 0 // Axis indexing value. Must start with 0 and be continuous.
 #define Y_AXIS 1
-#define Z_AXIS 2
-// #define A_AXIS 3
 
 #define MM_PER_INCH (25.40)
 #define INCH_PER_MM (0.0393701)

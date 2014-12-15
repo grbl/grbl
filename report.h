@@ -86,9 +86,6 @@ void report_grbl_settings();
 // Prints realtime status report
 void report_realtime_status();
 
-// Prints recorded probe position
-void report_probe_parameters();
-
 // Prints Grbl NGC parameters (coordinate offsets, probe)
 void report_ngc_parameters();
 

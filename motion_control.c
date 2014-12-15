@@ -284,86 +284,6 @@ void mc_homing_cycle()
 }
 
 
-// Perform tool length probe cycle. Requires probe switch.
-// NOTE: Upon probe failure, the program will be stopped and placed into ALARM state.
-#ifdef USE_LINE_NUMBERS
-  void mc_probe_cycle(float *target, float feed_rate, uint8_t invert_feed_rate, uint8_t is_probe_away, 
-    uint8_t is_no_error, int32_t line_number)
-#else
-  void mc_probe_cycle(float *target, float feed_rate, uint8_t invert_feed_rate, uint8_t is_probe_away,
-    uint8_t is_no_error)
-#endif
-{ 
-  // TODO: Need to update this cycle so it obeys a non-auto cycle start.
-  if (sys.state == STATE_CHECK_MODE) { return; }
-
-  // Finish all queued commands and empty planner buffer before starting probe cycle.
-  protocol_buffer_synchronize();
-  uint8_t auto_start_state = sys.auto_start; // Store run state
-
-  // Initialize probing control variables
-  sys.probe_succeeded = false; // Re-initialize probe history before beginning cycle.  
-  probe_configure_invert_mask(is_probe_away);
-  
-  // After syncing, check if probe is already triggered. If so, halt and issue alarm.
-  // NOTE: This probe initialization error applies to all probing cycles.
-  if ( probe_get_state() ) { // Check probe pin state.
-    bit_true_atomic(sys.execute, EXEC_CRIT_EVENT);
-    protocol_execute_runtime();
-  }
-  if (sys.abort) { return; } // Return if system reset has been issued.
-
-  // Setup and queue probing motion. Auto cycle-start should not start the cycle.
-  #ifdef USE_LINE_NUMBERS
-    mc_line(target, feed_rate, invert_feed_rate, line_number);
-  #else
-    mc_line(target, feed_rate, invert_feed_rate);
-  #endif
-  
-  // Activate the probing state monitor in the stepper module.
-  sys.probe_state = PROBE_ACTIVE;
-
-  // Perform probing cycle. Wait here until probe is triggered or motion completes.
-  bit_true_atomic(sys.execute, EXEC_CYCLE_START);
-  do {
-    protocol_execute_runtime(); 
-    if (sys.abort) { return; } // Check for system abort
-  } while ((sys.state != STATE_IDLE) && (sys.state != STATE_QUEUED));
-  
-  // Probing cycle complete!
-  
-  // Set state variables and error out, if the probe failed and cycle with error is enabled.
-  if (sys.probe_state == PROBE_ACTIVE) {
-    if (is_no_error) { memcpy(sys.probe_position, sys.position, sizeof(float)*N_AXIS); }
-    else { bit_true_atomic(sys.execute, EXEC_CRIT_EVENT); }
-  } else { 
-    sys.probe_succeeded = true; // Indicate to system the probing cycle completed successfully.
-  }
-  sys.probe_state = PROBE_OFF; // Ensure probe state monitor is disabled.
-  protocol_execute_runtime();   // Check and execute run-time commands
-  if (sys.abort) { return; } // Check for system abort
-
-  // Reset the stepper and planner buffers to remove the remainder of the probe motion.
-  st_reset(); // Reest step segment buffer.
-  plan_reset(); // Reset planner buffer. Zero planner positions. Ensure probing motion is cleared.
-  plan_sync_position(); // Sync planner position to current machine position.
-
-  // TODO: Update the g-code parser code to not require this target calculation but uses a gc_sync_position() call.
-  uint8_t idx;
-  for(idx=0; idx<N_AXIS; idx++){
-    // NOTE: The target[] variable updated here will be sent back and synced with the g-code parser.
-    target[idx] = (float)sys.position[idx]/settings.steps_per_mm[idx];
-  }
-
-  sys.auto_start = auto_start_state; // Restore run state before returning
-
-  #ifdef MESSAGE_PROBE_COORDINATES
-    // All done! Output the probe position as message.
-    report_probe_parameters();
-  #endif
-}
-
-
 // Method to ready the system to reset by setting the runtime reset command and killing any
 // active processes in the system. This also checks if a system reset is issued while Grbl
 // is in a motion state. If so, kills the steppers and sets the system alarm to flag position
@@ -375,9 +295,8 @@ void mc_reset()
   if (bit_isfalse(sys.execute, EXEC_RESET)) {
     bit_true_atomic(sys.execute, EXEC_RESET);
 
-    // Kill spindle and coolant.   
+    // Kill spindle.
     spindle_stop();
-    coolant_stop();
 
     // Kill steppers only if in any motion state, i.e. cycle, feed hold, homing, or jogging
     // NOTE: If steppers are kept enabled via the step idle delay setting, this also keeps

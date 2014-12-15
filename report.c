@@ -206,7 +206,6 @@ void report_grbl_settings() {
       switch (idx) {
         case X_AXIS: printPgmString(PSTR("x")); break;
         case Y_AXIS: printPgmString(PSTR("y")); break;
-        case Z_AXIS: printPgmString(PSTR("z")); break;
       }
       switch (set_idx) {
         case 0: printPgmString(PSTR(", step/mm")); break;
@@ -220,26 +219,6 @@ void report_grbl_settings() {
   }  
 }
 
-
-// Prints current probe parameters. Upon a probe command, these parameters are updated upon a
-// successful probe or upon a failed probe with the G38.3 without errors command (if supported). 
-// These values are retained until Grbl is power-cycled, whereby they will be re-zeroed.
-void report_probe_parameters()
-{
-  uint8_t i;
-  float print_position[N_AXIS];
- 
-  // Report in terms of machine position.
-  printPgmString(PSTR("[PRB:")); 
-  for (i=0; i< N_AXIS; i++) {
-    print_position[i] = sys.probe_position[i]/settings.steps_per_mm[i];
-    printFloat_CoordValue(print_position[i]);
-    if (i < (N_AXIS-1)) { printPgmString(PSTR(",")); }
-  }
-  printPgmString(PSTR(":"));
-  print_uint8_base10(sys.probe_succeeded);
-  printPgmString(PSTR("]\r\n"));
-}
 
 
 // Prints Grbl NGC parameters (coordinate offsets, probing)
@@ -271,10 +250,6 @@ void report_ngc_parameters()
     if (i < (N_AXIS-1)) { printPgmString(PSTR(",")); }
     else { printPgmString(PSTR("]\r\n")); }
   } 
-  printPgmString(PSTR("[TLO:")); // Print tool length offset value
-  printFloat_CoordValue(gc_state.tool_length_offset);
-  printPgmString(PSTR("]\r\n"));
-  report_probe_parameters(); // Print probe parameters. Not persistent in memory.
 }
 
 
@@ -298,11 +273,8 @@ void report_gcode_modes()
   printPgmString(PSTR(" G"));
   print_uint8_base10(gc_state.modal.coord_select+54);
   
-  switch (gc_state.modal.plane_select) {
-    case PLANE_SELECT_XY : printPgmString(PSTR(" G17")); break;
-    case PLANE_SELECT_ZX : printPgmString(PSTR(" G18")); break;
-    case PLANE_SELECT_YZ : printPgmString(PSTR(" G19")); break;
-  }
+
+  printPgmString(PSTR(" G17"));
   
   if (gc_state.modal.units == UNITS_MODE_MM) { printPgmString(PSTR(" G21")); }
   else { printPgmString(PSTR(" G20")); }
@@ -324,15 +296,8 @@ void report_gcode_modes()
     case SPINDLE_ENABLE_CCW : printPgmString(PSTR(" M4")); break;
     case SPINDLE_DISABLE : printPgmString(PSTR(" M5")); break;
   }
-  
-  switch (gc_state.modal.coolant) {
-    case COOLANT_DISABLE : printPgmString(PSTR(" M9")); break;
-    case COOLANT_FLOOD_ENABLE : printPgmString(PSTR(" M8")); break;
-    #ifdef ENABLE_M7
-      case COOLANT_MIST_ENABLE : printPgmString(PSTR(" M7")); break;
-    #endif
-  }
-  
+
+
   printPgmString(PSTR(" T"));
   print_uint8_base10(gc_state.tool);
   
@@ -417,7 +382,6 @@ void report_realtime_status()
     for (i=0; i< N_AXIS; i++) {
       // Apply work coordinate offsets and tool length offset to current position.
       print_position[i] -= gc_state.coord_system[i]+gc_state.coord_offset[i];
-      if (i == TOOL_LENGTH_OFFSET_AXIS) { print_position[i] -= gc_state.tool_length_offset; }    
       printFloat_CoordValue(print_position[i]);
       if (i < (N_AXIS-1)) { printPgmString(PSTR(",")); }
     }

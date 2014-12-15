@@ -30,7 +30,6 @@
 #include "gcode.h"
 #include "motion_control.h"
 #include "spindle_control.h"
-#include "coolant_control.h"
 #include "probe.h"
 #include "report.h"
 
@@ -223,9 +222,9 @@ uint8_t gc_execute_line(char *line)
           case 17: case 18: case 19: 
             word_bit = MODAL_GROUP_G2; 
             switch(int_value) {
-              case 17: gc_block.modal.plane_select = PLANE_SELECT_XY; break;
-              case 18: gc_block.modal.plane_select = PLANE_SELECT_ZX; break;
-              case 19: gc_block.modal.plane_select = PLANE_SELECT_YZ; break;
+              case 17: break;
+            case 18: break; /* TODO: error out on unsupported G18, G19 */
+              case 19: break;
             }
             break;
           case 90: case 91: 
@@ -251,10 +250,7 @@ uint8_t gc_execute_line(char *line)
             if (axis_command) { FAIL(STATUS_GCODE_AXIS_COMMAND_CONFLICT); } // [Axis word/command conflict] }
             axis_command = AXIS_COMMAND_TOOL_LENGTH_OFFSET;
             if (int_value == 49) { // G49
-              gc_block.modal.tool_length = TOOL_LENGTH_OFFSET_CANCEL; 
-            } else if (mantissa == 10) { // G43.1
-              gc_block.modal.tool_length = TOOL_LENGTH_OFFSET_ENABLE_DYNAMIC;
-            } else { FAIL(STATUS_GCODE_UNSUPPORTED_COMMAND); } // [Unsupported G43.x command]
+              FAIL(STATUS_GCODE_UNSUPPORTED_COMMAND); } // [Unsupported G43.x command]
             mantissa = 0; // Set to zero to indicate valid non-integer G command.
             break;
           case 54: case 55: case 56: case 57: case 58: case 59: 
@@ -292,19 +288,6 @@ uint8_t gc_execute_line(char *line)
               case 5: gc_block.modal.spindle = SPINDLE_DISABLE; break;
             }
             break;            
-         #ifdef ENABLE_M7  
-          case 7:
-         #endif
-          case 8: case 9:
-            word_bit = MODAL_GROUP_M8; 
-            switch(int_value) {      
-             #ifdef ENABLE_M7
-              case 7: gc_block.modal.coolant = COOLANT_MIST_ENABLE; break;
-             #endif
-              case 8: gc_block.modal.coolant = COOLANT_FLOOD_ENABLE; break;
-              case 9: gc_block.modal.coolant = COOLANT_DISABLE; break;
-            }
-            break;
           default: FAIL(STATUS_GCODE_UNSUPPORTED_COMMAND); // [Unsupported M command]
         }            
       
@@ -329,7 +312,6 @@ uint8_t gc_execute_line(char *line)
           // case 'H': // Not supported
           case 'I': word_bit = WORD_I; gc_block.values.ijk[X_AXIS] = value; ijk_words |= (1<<X_AXIS); break;
           case 'J': word_bit = WORD_J; gc_block.values.ijk[Y_AXIS] = value; ijk_words |= (1<<Y_AXIS); break;
-          case 'K': word_bit = WORD_K; gc_block.values.ijk[Z_AXIS] = value; ijk_words |= (1<<Z_AXIS); break;
           case 'L': word_bit = WORD_L; gc_block.values.l = int_value; break;
           case 'N': word_bit = WORD_N; gc_block.values.n = trunc(value); break;
           case 'P': word_bit = WORD_P; gc_block.values.p = value; break;
@@ -340,7 +322,6 @@ uint8_t gc_execute_line(char *line)
           case 'T': word_bit = WORD_T; break; // gc.values.t = int_value;
           case 'X': word_bit = WORD_X; gc_block.values.xyz[X_AXIS] = value; axis_words |= (1<<X_AXIS); break;
           case 'Y': word_bit = WORD_Y; gc_block.values.xyz[Y_AXIS] = value; axis_words |= (1<<Y_AXIS); break;
-          case 'Z': word_bit = WORD_Z; gc_block.values.xyz[Z_AXIS] = value; axis_words |= (1<<Z_AXIS); break;
           default: FAIL(STATUS_GCODE_UNSUPPORTED_COMMAND);
         } 
         
@@ -460,23 +441,9 @@ uint8_t gc_execute_line(char *line)
   }
   
   // [11. Set active plane ]: N/A
-  switch (gc_block.modal.plane_select) {
-    case PLANE_SELECT_XY:
-      axis_0 = X_AXIS;
-      axis_1 = Y_AXIS;
-      axis_linear = Z_AXIS;
-      break;
-    case PLANE_SELECT_ZX:
-      axis_0 = Z_AXIS;
-      axis_1 = X_AXIS;
-      axis_linear = Y_AXIS;
-      break;
-    default: // case PLANE_SELECT_YZ:
-      axis_0 = Y_AXIS;
-      axis_1 = Z_AXIS;
-      axis_linear = X_AXIS;
-  }   
-            
+  axis_0 = X_AXIS;
+  axis_1 = Y_AXIS;
+
   // [12. Set length units ]: N/A
   // Pre-convert XYZ coordinate values to millimeters, if applicable.
   uint8_t idx;
@@ -492,13 +459,9 @@ uint8_t gc_execute_line(char *line)
   
   // [14. Cutter length compensation ]: G43 NOT SUPPORTED, but G43.1 and G49 are. 
   // [G43.1 Errors]: Motion command in same line. 
-  //   NOTE: Although not explicitly stated so, G43.1 should be applied to only one valid 
-  //   axis that is configured (in config.h). There should be an error if the configured axis
-  //   is absent or if any of the other axis words are present.
-  if (axis_command == AXIS_COMMAND_TOOL_LENGTH_OFFSET ) { // Indicates called in block.
-    if (gc_block.modal.tool_length == TOOL_LENGTH_OFFSET_ENABLE_DYNAMIC) {
-      if (axis_words ^ (1<<TOOL_LENGTH_OFFSET_AXIS)) { FAIL(STATUS_GCODE_G43_DYNAMIC_AXIS_ERROR); }
-    }
+  // NOT SUPPORTED FOR STEPDUINO
+  if (axis_command == AXIS_COMMAND_TOOL_LENGTH_OFFSET) {
+    FAIL(STATUS_GCODE_G43_DYNAMIC_AXIS_ERROR);
   }
   
   // [15. Coordinate system selection ]: *N/A. Error, if cutter radius comp is active.
@@ -551,7 +514,6 @@ uint8_t gc_execute_line(char *line)
           if (gc_block.values.l == 20) {
             // L20: Update coordinate system axis at current position (with modifiers) with programmed value
             parameter_data[idx] = gc_state.position[idx]-gc_state.coord_offset[idx]-gc_block.values.xyz[idx];
-            if (idx == TOOL_LENGTH_OFFSET_AXIS) { parameter_data[idx] -= gc_state.tool_length_offset; }
           } else {
             // L2: Update coordinate system axis to programmed value.
             parameter_data[idx] = gc_block.values.xyz[idx]; 
@@ -568,7 +530,6 @@ uint8_t gc_execute_line(char *line)
       for (idx=0; idx<N_AXIS; idx++) { // Axes indices are consistent, so loop may be used.
         if (bit_istrue(axis_words,bit(idx)) ) {
           gc_block.values.xyz[idx] = gc_state.position[idx]-coordinate_data[idx]-gc_block.values.xyz[idx];
-          if (idx == TOOL_LENGTH_OFFSET_AXIS) { gc_block.values.xyz[idx] -= gc_state.tool_length_offset; }
         } else {
           gc_block.values.xyz[idx] = gc_state.coord_offset[idx];
         }
@@ -593,7 +554,6 @@ uint8_t gc_execute_line(char *line)
                 // Apply coordinate offsets based on distance mode.
                 if (gc_block.modal.distance == DISTANCE_MODE_ABSOLUTE) {
                   gc_block.values.xyz[idx] += coordinate_data[idx] + gc_state.coord_offset[idx];
-                  if (idx == TOOL_LENGTH_OFFSET_AXIS) { gc_block.values.xyz[idx] += gc_state.tool_length_offset; }
                 } else {  // Incremental mode
                   gc_block.values.xyz[idx] += gc_state.position[idx];
                 }
@@ -857,19 +817,13 @@ uint8_t gc_execute_line(char *line)
     spindle_run(gc_state.modal.spindle, gc_state.spindle_speed);
   }
 
-  // [8. Coolant control ]:  
-  if (gc_state.modal.coolant != gc_block.modal.coolant) {
-    gc_state.modal.coolant = gc_block.modal.coolant;
-    coolant_run(gc_state.modal.coolant);
-  }
-  
   // [9. Enable/disable feed rate or spindle overrides ]: NOT SUPPORTED
 
   // [10. Dwell ]:
   if (gc_block.non_modal_command == NON_MODAL_DWELL) { mc_dwell(gc_block.values.p); }
   
   // [11. Set active plane ]:
-  gc_state.modal.plane_select = gc_block.modal.plane_select;  
+  // No longer needed, plane is XY always
 
   // [12. Set length units ]:
   gc_state.modal.units = gc_block.modal.units;
@@ -880,15 +834,7 @@ uint8_t gc_execute_line(char *line)
   // NOTE: If G43 were supported, its operation wouldn't be any different from G43.1 in terms
   // of execution. The error-checking step would simply load the offset value into the correct
   // axis of the block XYZ value array. 
-  if (axis_command == AXIS_COMMAND_TOOL_LENGTH_OFFSET ) { // Indicates a change.
-    gc_state.modal.tool_length = gc_block.modal.tool_length;
-    if (gc_state.modal.tool_length == TOOL_LENGTH_OFFSET_ENABLE_DYNAMIC) { // G43.1
-      gc_state.tool_length_offset = gc_block.values.xyz[TOOL_LENGTH_OFFSET_AXIS];
-    } else { // G49
-      gc_state.tool_length_offset = 0.0;
-    }
-  }
-  
+
   // [15. Coordinate system selection ]:
   if (gc_state.modal.coord_select != gc_block.modal.coord_select) {
     gc_state.modal.coord_select = gc_block.modal.coord_select;
@@ -980,37 +926,8 @@ uint8_t gc_execute_line(char *line)
               gc_state.feed_rate, gc_state.modal.feed_rate, axis_0, axis_1, axis_linear, false); 
           #endif
           break;
-        case MOTION_MODE_PROBE_TOWARD: 
-          // NOTE: gc_block.values.xyz is returned from mc_probe_cycle with the updated position value. So
-          // upon a successful probing cycle, the machine position and the returned value should be the same.
-          #ifdef USE_LINE_NUMBERS
-            mc_probe_cycle(gc_block.values.xyz, gc_state.feed_rate, gc_state.modal.feed_rate, false, false, gc_state.line_number);
-          #else
-            mc_probe_cycle(gc_block.values.xyz, gc_state.feed_rate, gc_state.modal.feed_rate, false, false);
-          #endif
-          break;
-        case MOTION_MODE_PROBE_TOWARD_NO_ERROR:
-          #ifdef USE_LINE_NUMBERS
-            mc_probe_cycle(gc_block.values.xyz, gc_state.feed_rate, gc_state.modal.feed_rate, false, true, gc_state.line_number);
-          #else
-            mc_probe_cycle(gc_block.values.xyz, gc_state.feed_rate, gc_state.modal.feed_rate, false, true);
-          #endif
-          break;
-        case MOTION_MODE_PROBE_AWAY:
-          #ifdef USE_LINE_NUMBERS
-            mc_probe_cycle(gc_block.values.xyz, gc_state.feed_rate, gc_state.modal.feed_rate, true, false, gc_state.line_number);
-          #else
-            mc_probe_cycle(gc_block.values.xyz, gc_state.feed_rate, gc_state.modal.feed_rate, true, false);
-          #endif
-          break;
-        case MOTION_MODE_PROBE_AWAY_NO_ERROR:
-          #ifdef USE_LINE_NUMBERS
-            mc_probe_cycle(gc_block.values.xyz, gc_state.feed_rate, gc_state.modal.feed_rate, true, true, gc_state.line_number);
-          #else        
-            mc_probe_cycle(gc_block.values.xyz, gc_state.feed_rate, gc_state.modal.feed_rate, true, true);
-          #endif
       }
-    
+
       // As far as the parser is concerned, the position is now == target. In reality the
       // motion control system might still be processing the action and the real tool position
       // in any intermediate location.
