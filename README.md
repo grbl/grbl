@@ -1,3 +1,28 @@
+# This is a custom fork of Grbl
+
+This is a custom modified of Grbl "v0.9+edge branch", specifically for the Freetronics StepDuino.
+
+The StepDuino is different enough to the official Grbl hardware that it requires some non-trivial code modifications.
+
+**PLEASE DIRECT ALL SUPPORT QUERIES OR BUG REPORTS TO FREETRONICS, NOT TO THE Grbl DEVELOPERS. THIS IS NOT AN OFFICIAL GRBL RELEASE.**
+
+## Changes compared to standard GRBL:
+
+* Functions removed when not supported by StepDuino (Z-axis, tool probing, coolant flow).
+* LCD functions added for StepDuino onboard LCD.
+
+## Pin Assignments
+
+* "Stepper 1" is X-axis
+* "Stepper 2" is Y-axis
+* "Servo1/D10" is spindle direction (controlled with M03/M04).
+* "Servo2/D11" is spindle (controlled with M03/M04 to turn on, M05 to turn off), spindle speed can be set as a PWM output using the S parameter.
+* "A1" is X-axis homing/stop input (can be edited in cpu_map.h).
+* "A2" is Y-axis homing/stop input (can be edited in cpu_map.h).
+* "A0","A3" currently unused.
+
+The original Grbl README follows:
+
 #Grbl - An embedded g-code interpreter and motion-controller for the Arduino/AVR328 microcontroller
 
 ***
