@@ -98,4 +98,8 @@ void report_startup_line(uint8_t n, char *line);
 // Prints build info and user info
 void report_build_info(char *line);
 
+// Returns PSTR pointer to string representing current mode
+const char *gcode_mode_to_pstr();
+const char *machine_state_to_pstr();
+
 #endif

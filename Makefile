@@ -34,7 +34,7 @@ PORT ?= /dev/ttyACM0
 PROGRAMMER ?= -c arduino -P $(PORT)
 OBJECTS    = main.o motion_control.o gcode.o spindle_control.o serial.o \
              protocol.o stepper.o eeprom.o settings.o planner.o nuts_bolts.o limits.o \
-             print.o report.o system.o
+             print.o report.o system.o lcd.o
 # FUSES      = -U hfuse:w:0xd9:m -U lfuse:w:0x24:m
 FUSES      = -U hfuse:w:0xd2:m -U lfuse:w:0xff:m
 

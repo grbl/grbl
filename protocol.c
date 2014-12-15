@@ -33,6 +33,7 @@
 #include "stepper.h"
 #include "motion_control.h"
 #include "report.h"
+#include "lcd.h"
 
 
 static char line[LINE_BUFFER_SIZE]; // Line to be executed. Zero-terminated.
@@ -109,6 +110,7 @@ void protocol_main_loop()
       if ((c == '\n') || (c == '\r')) { // End of line reached
         line[char_counter] = 0; // Set string termination character.
         protocol_execute_line(line); // Line is complete. Execute it!
+        lcd_latestCommand(line);
         iscomment = false;
         char_counter = 0;
       } else {
@@ -162,7 +164,7 @@ void protocol_main_loop()
 
     protocol_execute_runtime();  // Runtime command check point.
     if (sys.abort) { return; } // Bail to main() program loop to reset system.
-              
+    lcd_updateAxes();
   }
   
   return; /* Never reached */

@@ -108,7 +108,7 @@
 
 // Allows GRBL to track and report gcode line numbers.  Enabling this means that the planning buffer
 // goes from 18 or 16 to make room for the additional line number data in the plan_block_t struct
-// #define USE_LINE_NUMBERS // Disabled by default. Uncomment to enable.
+#define USE_LINE_NUMBERS // Disabled by default. Uncomment to enable.
 
 // Allows GRBL to report the real-time feed rate.  Enabling this means that GRBL will be reporting more 
 // data with each status update.
@@ -148,7 +148,7 @@
 // enable pin will output 5V for maximum RPM with 256 intermediate levels and 0V when disabled.
 // NOTE: IMPORTANT for Arduino Unos! When enabled, the Z-limit pin D11 and spindle enable pin D12 switch!
 // The hardware PWM output on pin D11 is required for variable spindle output voltages.
-// #define VARIABLE_SPINDLE // Default disabled. Uncomment to enable.
+#define VARIABLE_SPINDLE // Default disabled. Uncomment to enable.
 
 // Used by the variable spindle output only. These parameters set the maximum and minimum spindle speed
 // "S" g-code values to correspond to the maximum and minimum pin voltages. There are 256 discrete and 

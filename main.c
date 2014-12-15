@@ -37,6 +37,7 @@
 #include "limits.h"
 #include "probe.h"
 #include "report.h"
+#include "lcd.h"
 
 
 // Declare system global variable structure
@@ -80,6 +81,7 @@ int main(void)
     limits_init(); 
     plan_reset(); // Clear block buffer and planner variables
     st_reset(); // Clear stepper subsystem variables.
+    lcd_init();
 
     // Sync cleared gcode and planner positions to current system position.
     plan_sync_position();

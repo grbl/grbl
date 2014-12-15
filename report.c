@@ -252,12 +252,27 @@ void report_ngc_parameters()
   } 
 }
 
+const char *gcode_mode_to_pstr()
+{
+  switch (gc_state.modal.motion) {
+  case MOTION_MODE_SEEK : return PSTR("G0");
+  case MOTION_MODE_LINEAR : return PSTR("G1");
+  case MOTION_MODE_CW_ARC : return PSTR("G2");
+  case MOTION_MODE_CCW_ARC : return PSTR("G3");
+  case MOTION_MODE_PROBE_TOWARD : return PSTR("G38.2");
+  case MOTION_MODE_PROBE_TOWARD_NO_ERROR : return PSTR("G38.3");
+  case MOTION_MODE_PROBE_AWAY : return PSTR("G38.4");
+  case MOTION_MODE_PROBE_AWAY_NO_ERROR : return PSTR("G38.5");
+  case MOTION_MODE_NONE : return PSTR("G80");
+  }
+  return PSTR("??");
+}
 
 // Print current gcode parser mode state
 void report_gcode_modes()
 {
   printPgmString(PSTR("["));
-  
+
   switch (gc_state.modal.motion) {
     case MOTION_MODE_SEEK : printPgmString(PSTR("G0")); break;
     case MOTION_MODE_LINEAR : printPgmString(PSTR("G1")); break;
@@ -329,6 +344,19 @@ void report_build_info(char *line)
   printPgmString(PSTR("]\r\n"));
 }
 
+const char *machine_state_to_pstr()
+{
+  switch (sys.state) {
+  case STATE_IDLE: return PSTR("<Idle");
+  case STATE_QUEUED: return PSTR("<Queue");
+  case STATE_CYCLE: return PSTR("<Run");
+  case STATE_HOLD: return PSTR("<Hold");
+  case STATE_HOMING: return PSTR("<Home");
+  case STATE_ALARM: return PSTR("<Alarm");
+  case STATE_CHECK_MODE: return PSTR("<Check");
+  }
+  return PSTR("<????");
+}
 
  // Prints real-time data. This function grabs a real-time snapshot of the stepper subprogram 
  // and the actual location of the CNC machine. Users may change the following function to their
@@ -347,16 +375,8 @@ void report_realtime_status()
   float print_position[N_AXIS];
  
   // Report current machine state
-  switch (sys.state) {
-    case STATE_IDLE: printPgmString(PSTR("<Idle")); break;
-    case STATE_QUEUED: printPgmString(PSTR("<Queue")); break;
-    case STATE_CYCLE: printPgmString(PSTR("<Run")); break;
-    case STATE_HOLD: printPgmString(PSTR("<Hold")); break;
-    case STATE_HOMING: printPgmString(PSTR("<Home")); break;
-    case STATE_ALARM: printPgmString(PSTR("<Alarm")); break;
-    case STATE_CHECK_MODE: printPgmString(PSTR("<Check")); break;
-  }
- 
+  printPgmString(machine_state_to_pstr());
+  
   // If reporting a position, convert the current step count (current_position) to millimeters.
   if (bit_istrue(settings.status_report_mask,(BITFLAG_RT_STATUS_MACHINE_POSITION | BITFLAG_RT_STATUS_WORK_POSITION))) {
     for (i=0; i< N_AXIS; i++) { print_position[i] = current_position[i]/settings.steps_per_mm[i]; }
