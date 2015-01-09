@@ -187,7 +187,11 @@ void report_grbl_settings() {
   printPgmString(PSTR(" (homing seek, mm/min)\r\n$26=")); print_uint8_base10(settings.homing_debounce_delay);
   printPgmString(PSTR(" (homing debounce, msec)\r\n$27=")); printFloat_SettingValue(settings.homing_pulloff);
   printPgmString(PSTR(" (homing pull-off, mm)\r\n"));
-
+  #ifdef LASER_SPINDLE
+    printPgmString(PSTR("$40=")); 
+    print_uint8_base10(bit_istrue(settings.flags,BITFLAG_LASER));
+    printPgmString(PSTR(" (turn Laser mode on, bool)\r\n"));
+  #endif
   // Print axis settings
   uint8_t idx, set_idx;
   uint8_t val = AXIS_SETTINGS_START_VAL;
@@ -330,6 +334,11 @@ void report_gcode_modes()
   
   printPgmString(PSTR(" F"));
   printFloat_RateValue(gc_state.feed_rate);
+  
+  #ifdef VARIABLE_SPINDLE
+    printPgmString(PSTR(" S"));
+    printFloat_RateValue(gc_state.spindle_speed);
+  #endif
 
   printPgmString(PSTR("]\r\n"));
 }
