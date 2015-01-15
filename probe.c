@@ -2,7 +2,7 @@
   probe.c - code pertaining to probing methods
   Part of Grbl v0.9
 
-  Copyright (c) 2014 Sungeun K. Jeon
+  Copyright (c) 2014-2015 Sungeun K. Jeon
 
   Grbl is free software: you can redistribute it and/or modify
   it under the terms of the GNU General Public License as published by
@@ -63,7 +63,7 @@ void probe_state_monitor()
     if (probe_get_state()) {
       sys.probe_state = PROBE_OFF;
       memcpy(sys.probe_position, sys.position, sizeof(float)*N_AXIS);
-      bit_true(sys.execute, EXEC_FEED_HOLD);
+      bit_true(sys.rt_exec_state, EXEC_FEED_HOLD);
     }
   }
 }

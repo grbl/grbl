@@ -2,7 +2,7 @@
   report.h - reporting and messaging methods
   Part of Grbl v0.9
 
-  Copyright (c) 2012-2014 Sungeun K. Jeon
+  Copyright (c) 2012-2015 Sungeun K. Jeon
 
   Grbl is free software: you can redistribute it and/or modify
   it under the terms of the GNU General Public License as published by
@@ -54,9 +54,10 @@
 #define STATUS_GCODE_G43_DYNAMIC_AXIS_ERROR 37
 
 // Define Grbl alarm codes. Less than zero to distinguish alarm error from status error.
-#define ALARM_LIMIT_ERROR -1
-#define ALARM_ABORT_CYCLE -2
-#define ALARM_PROBE_FAIL -3
+#define ALARM_HARD_LIMIT_ERROR -1
+#define ALARM_SOFT_LIMIT_ERROR -2
+#define ALARM_ABORT_CYCLE -3
+#define ALARM_PROBE_FAIL -4
 
 // Define Grbl feedback message codes.
 #define MESSAGE_CRITICAL_EVENT 1

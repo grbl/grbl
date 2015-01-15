@@ -2,7 +2,7 @@
   coolant_control.c - coolant control methods
   Part of Grbl v0.9
 
-  Copyright (c) 2012-2014 Sungeun K. Jeon
+  Copyright (c) 2012-2015 Sungeun K. Jeon
 
   Grbl is free software: you can redistribute it and/or modify
   it under the terms of the GNU General Public License as published by
@@ -43,12 +43,8 @@ void coolant_stop()
 }
 
 
-void coolant_run(uint8_t mode)
+void coolant_set_state(uint8_t mode)
 {
-  if (sys.state == STATE_CHECK_MODE) { return; }
-
-  protocol_auto_cycle_start();   //temp fix for M8 lockup
-  protocol_buffer_synchronize(); // Ensure coolant turns on when specified in program.
   if (mode == COOLANT_FLOOD_ENABLE) {
     COOLANT_FLOOD_PORT |= (1 << COOLANT_FLOOD_BIT);
 
@@ -60,4 +56,12 @@ void coolant_run(uint8_t mode)
   } else {
     coolant_stop();
   }
+}
+
+
+void coolant_run(uint8_t mode)
+{
+  if (sys.state == STATE_CHECK_MODE) { return; }
+  protocol_buffer_synchronize(); // Ensure coolant turns on when specified in program.  
+  coolant_set_state(mode);
 }

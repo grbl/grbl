@@ -2,7 +2,7 @@
   probe.h - code pertaining to probing methods
   Part of Grbl v0.9
 
-  Copyright (c) 2014 Sungeun K. Jeon
+  Copyright (c) 2014-2015 Sungeun K. Jeon
 
   Grbl is free software: you can redistribute it and/or modify
   it under the terms of the GNU General Public License as published by

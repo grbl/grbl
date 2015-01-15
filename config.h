@@ -2,7 +2,7 @@
   config.h - compile time configuration
   Part of Grbl v0.9
 
-  Copyright (c) 2013-2014 Sungeun K. Jeon
+  Copyright (c) 2013-2015 Sungeun K. Jeon
 
   Grbl is free software: you can redistribute it and/or modify
   it under the terms of the GNU General Public License as published by
@@ -43,9 +43,9 @@
 
 // Default cpu mappings. Grbl officially supports the Arduino Uno only. Other processor types
 // may exist from user-supplied templates or directly user-defined in cpu_map.h
-#define CPU_MAP_ATMEGA328P_TRADITIONAL // Arduino Uno CPU
+#define CPU_MAP_ATMEGA328P // Arduino Uno CPU
 
-// Define runtime command special characters. These characters are 'picked-off' directly from the
+// Define realtime command special characters. These characters are 'picked-off' directly from the
 // serial read data stream and are not passed to the grbl line execution parser. Select characters
 // that do not and must not exist in the streamed g-code program. ASCII control characters may be 
 // used, if they are available per user setup. Also, extended ASCII codes (>127), which are never in 
@@ -107,6 +107,14 @@
 #define N_DECIMAL_RATEVALUE_MM    0 // Rate or velocity value in mm/min
 #define N_DECIMAL_SETTINGVALUE    3 // Decimals for floating point setting values
 
+// If your machine has two limits switches wired in parallel to one axis, you will need to enable
+// this feature. Since the two switches are sharing a single pin, there is no way for Grbl to tell
+// which one is enabled. This option only effects homing, where if a limit is engaged, Grbl will 
+// alarm out and force the user to manually disengage the limit switch. Otherwise, if you have one
+// limit switch for each axis, don't enable this option. By keeping it disabled, you can homing while
+// on the limit switch and not have to move the machine off of it.
+// #define LIMITS_TWO_SWITCHES_ON_AXES
+
 // Allows GRBL to track and report gcode line numbers.  Enabling this means that the planning buffer
 // goes from 18 or 16 to make room for the additional line number data in the plan_block_t struct
 // #define USE_LINE_NUMBERS // Disabled by default. Uncomment to enable.
@@ -125,6 +133,15 @@
 // analog pin 5. Only use this option if you require a second coolant control pin.
 // NOTE: The M8 flood coolant control pin on analog pin 4 will still be functional regardless.
 // #define ENABLE_M7 // Disabled by default. Uncomment to enable.
+
+// Enable CoreXY kinematics. Use ONLY with CoreXY machines. 
+// IMPORTANT: If homing is enabled, you must reconfigure the homing cycle #defines above to 
+// #define HOMING_CYCLE_0 (1<<X_AXIS) and #define HOMING_CYCLE_1 (1<<Y_AXIS)
+// NOTE: This configuration option alters the motion of the X and Y axes to principle of operation
+// defined at (http://corexy.com/theory.html). Motors are assumed to positioned and wired exactly as
+// described, if not, motions may move in strange directions. Grbl assumes the CoreXY A and B motors
+// have the same steps per mm internally.
+// #define COREXY // Default disabled. Uncomment to enable.
 
 // ---------------------------------------------------------------------------------------
 // ADVANCED CONFIGURATION OPTIONS:
@@ -268,9 +285,7 @@
 // ---------------------------------------------------------------------------------------
 // COMPILE-TIME ERROR CHECKING OF DEFINE VALUES:
 
-// #if (ISR_TICKS_PER_ACCELERATION_TICK > 255)
-// #error Parameters ACCELERATION_TICKS / ISR_TICKS must be < 256 to prevent integer overflow.
-// #endif
+
 
 // ---------------------------------------------------------------------------------------
 

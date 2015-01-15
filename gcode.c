@@ -2,7 +2,7 @@
   gcode.c - rs274/ngc parser.
   Part of Grbl v0.9
 
-  Copyright (c) 2012-2014 Sungeun K. Jeon
+  Copyright (c) 2012-2015 Sungeun K. Jeon
   
   Grbl is free software: you can redistribute it and/or modify
   it under the terms of the GNU General Public License as published by
@@ -66,10 +66,7 @@ void gc_init()
 // limit pull-off routines.
 void gc_sync_position() 
 {
-  uint8_t i;
-  for (i=0; i<N_AXIS; i++) {
-    gc_state.position[i] = sys.position[i]/settings.steps_per_mm[i];
-  }
+  system_convert_array_steps_to_mpos(gc_state.position,sys.position);
 }
 
 
@@ -243,6 +240,12 @@ uint8_t gc_execute_line(char *line)
             if (int_value == 20) { gc_block.modal.units = UNITS_MODE_INCHES; }  // G20
             else { gc_block.modal.units = UNITS_MODE_MM; } // G21
             break;
+          case 40:
+            word_bit = MODAL_GROUP_G7;
+            // NOTE: Not required since cutter radius compensation is always disabled. Only here
+            // to support G40 commands that often appear in g-code program headers to setup defaults.
+            // gc_block.modal.cutter_comp = CUTTER_COMP_DISABLE; // G40
+            break;
           case 43: case 49:
             word_bit = MODAL_GROUP_G8;
             // NOTE: The NIST g-code standard vaguely states that when a tool length offset is changed,
@@ -306,7 +309,7 @@ uint8_t gc_execute_line(char *line)
             }
             break;
           default: FAIL(STATUS_GCODE_UNSUPPORTED_COMMAND); // [Unsupported M command]
-        }            
+        }
       
         // Check for more than one command per modal group violations in the current block
         // NOTE: Variable 'word_bit' is always assigned, if the command is valid.
@@ -488,7 +491,10 @@ uint8_t gc_execute_line(char *line)
     }
   }
   
-  // [13. Cutter radius compensation ]: NOT SUPPORTED. Error, if G53 is active.
+  // [13. Cutter radius compensation ]: G41/42 NOT SUPPORTED. Error, if enabled while G53 is active.
+  // [G40 Errors]: G2/3 arc is programmed after a G40. The linear move after disabling is less than tool diameter.
+  //   NOTE: Since cutter radius compensation is never enabled, these G40 errors don't apply. Grbl supports G40 
+  //   only for the purpose to not error when G40 is sent with a g-code program header to setup the default modes.
   
   // [14. Cutter length compensation ]: G43 NOT SUPPORTED, but G43.1 and G49 are. 
   // [G43.1 Errors]: Motion command in same line. 
@@ -839,10 +845,9 @@ uint8_t gc_execute_line(char *line)
 
   // [4. Set spindle speed ]:
   if (gc_state.spindle_speed != gc_block.values.s) { 
-    gc_state.spindle_speed = gc_block.values.s; 
-    
     // Update running spindle only if not in check mode and not already enabled.
-    if (gc_state.modal.spindle != SPINDLE_DISABLE) { spindle_run(gc_state.modal.spindle, gc_state.spindle_speed); }
+    if (gc_state.modal.spindle != SPINDLE_DISABLE) { spindle_run(gc_state.modal.spindle, gc_block.values.s); }
+    gc_state.spindle_speed = gc_block.values.s; 
   }
     
   // [5. Select tool ]: NOT SUPPORTED. Only tracks tool value.
@@ -852,15 +857,15 @@ uint8_t gc_execute_line(char *line)
 
   // [7. Spindle control ]:
   if (gc_state.modal.spindle != gc_block.modal.spindle) {
-    gc_state.modal.spindle = gc_block.modal.spindle;    
     // Update spindle control and apply spindle speed when enabling it in this block.    
-    spindle_run(gc_state.modal.spindle, gc_state.spindle_speed);
+    spindle_run(gc_block.modal.spindle, gc_state.spindle_speed);
+    gc_state.modal.spindle = gc_block.modal.spindle;    
   }
 
   // [8. Coolant control ]:  
   if (gc_state.modal.coolant != gc_block.modal.coolant) {
+    coolant_run(gc_block.modal.coolant);
     gc_state.modal.coolant = gc_block.modal.coolant;
-    coolant_run(gc_state.modal.coolant);
   }
   
   // [9. Enable/disable feed rate or spindle overrides ]: NOT SUPPORTED
@@ -874,7 +879,8 @@ uint8_t gc_execute_line(char *line)
   // [12. Set length units ]:
   gc_state.modal.units = gc_block.modal.units;
 
-  // [13. Cutter radius compensation ]: NOT SUPPORTED
+  // [13. Cutter radius compensation ]: G41/42 NOT SUPPORTED
+  // gc_state.modal.cutter_comp = gc_block.modal.cutter_comp; // NOTE: Not needed since always disabled.
 
   // [14. Cutter length compensation ]: G43.1 and G49 supported. G43 NOT SUPPORTED.
   // NOTE: If G43 were supported, its operation wouldn't be any different from G43.1 in terms

@@ -2,7 +2,7 @@
   system.c - Handles system level commands and real-time processes
   Part of Grbl v0.9
 
-  Copyright (c) 2014 Sungeun K. Jeon  
+  Copyright (c) 2014-2015 Sungeun K. Jeon  
 
   Grbl is free software: you can redistribute it and/or modify
   it under the terms of the GNU General Public License as published by
@@ -20,8 +20,10 @@
 
 #include "system.h"
 #include "settings.h"
+#include "protocol.h"
 #include "gcode.h"
 #include "motion_control.h"
+#include "stepper.h"
 #include "report.h"
 #include "print.h"
 
@@ -36,8 +38,8 @@ void system_init()
 
 
 // Pin change interrupt for pin-out commands, i.e. cycle start, feed hold, and reset. Sets
-// only the runtime command execute variable to have the main program execute these when 
-// its ready. This works exactly like the character-based runtime commands when picked off
+// only the realtime command execute variable to have the main program execute these when 
+// its ready. This works exactly like the character-based realtime commands when picked off
 // directly from the incoming serial data stream.
 ISR(PINOUT_INT_vect) 
 {
@@ -46,9 +48,9 @@ ISR(PINOUT_INT_vect)
     if (bit_isfalse(PINOUT_PIN,bit(PIN_RESET))) {
       mc_reset();
     } else if (bit_isfalse(PINOUT_PIN,bit(PIN_FEED_HOLD))) {
-      bit_true(sys.execute, EXEC_FEED_HOLD); 
+      bit_true(sys.rt_exec_state, EXEC_FEED_HOLD); 
     } else if (bit_isfalse(PINOUT_PIN,bit(PIN_CYCLE_START))) {
-      bit_true(sys.execute, EXEC_CYCLE_START);
+      bit_true(sys.rt_exec_state, EXEC_CYCLE_START);
     } 
   }
 }
@@ -74,7 +76,7 @@ void system_execute_startup(char *line)
 // Directs and executes one line of formatted input from protocol_process. While mostly
 // incoming streaming g-code blocks, this also executes Grbl internal commands, such as 
 // settings, initiating the homing cycle, and toggling switch states. This differs from
-// the runtime command module by being susceptible to when Grbl is ready to execute the 
+// the realtime command module by being susceptible to when Grbl is ready to execute the 
 // next line during a cycle, so for switches like block delete, the switch only effects
 // the lines that are processed afterward, not necessarily real-time during a cycle, 
 // since there are motions already stored in the buffer. However, this 'lag' should not
@@ -118,17 +120,17 @@ uint8_t system_execute_line(char *line)
       } // Otherwise, no effect.
       break;               
 //  case 'J' : break;  // Jogging methods
-    // TODO: Here jogging can be placed for execution as a seperate subprogram. It does not need to be 
-    // susceptible to other runtime commands except for e-stop. The jogging function is intended to
-    // be a basic toggle on/off with controlled acceleration and deceleration to prevent skipped 
-    // steps. The user would supply the desired feedrate, axis to move, and direction. Toggle on would
-    // start motion and toggle off would initiate a deceleration to stop. One could 'feather' the
-    // motion by repeatedly toggling to slow the motion to the desired location. Location data would 
-    // need to be updated real-time and supplied to the user through status queries.
-    //   More controlled exact motions can be taken care of by inputting G0 or G1 commands, which are 
-    // handled by the planner. It would be possible for the jog subprogram to insert blocks into the
-    // block buffer without having the planner plan them. It would need to manage de/ac-celerations 
-    // on its own carefully. This approach could be effective and possibly size/memory efficient.        
+      // TODO: Here jogging can be placed for execution as a seperate subprogram. It does not need to be 
+      // susceptible to other realtime commands except for e-stop. The jogging function is intended to
+      // be a basic toggle on/off with controlled acceleration and deceleration to prevent skipped 
+      // steps. The user would supply the desired feedrate, axis to move, and direction. Toggle on would
+      // start motion and toggle off would initiate a deceleration to stop. One could 'feather' the
+      // motion by repeatedly toggling to slow the motion to the desired location. Location data would 
+      // need to be updated real-time and supplied to the user through status queries.
+      //   More controlled exact motions can be taken care of by inputting G0 or G1 commands, which are 
+      // handled by the planner. It would be possible for the jog subprogram to insert blocks into the
+      // block buffer without having the planner plan them. It would need to manage de/ac-celerations 
+      // on its own carefully. This approach could be effective and possibly size/memory efficient.        
     default : 
       // Block any system command that requires the state as IDLE/ALARM. (i.e. EEPROM, homing)
       if ( !(sys.state == STATE_IDLE || sys.state == STATE_ALARM) ) { return(STATUS_IDLE_ERROR); }
@@ -139,9 +141,14 @@ uint8_t system_execute_line(char *line)
           break;          
         case 'H' : // Perform homing cycle [IDLE/ALARM]
           if (bit_istrue(settings.flags,BITFLAG_HOMING_ENABLE)) { 
+            sys.state = STATE_HOMING; // Set system state variable
             // Only perform homing if Grbl is idle or lost.
             mc_homing_cycle(); 
-            if (!sys.abort) { system_execute_startup(line); } // Execute startup scripts after successful homing.
+            if (!sys.abort) {  // Execute startup scripts after successful homing.
+              sys.state = STATE_IDLE; // Set to IDLE when complete.
+              st_go_idle(); // Set steppers to the settings idle state before returning.
+              system_execute_startup(line); 
+            }
           } else { return(STATUS_SETTING_DISABLED); }
           break;
         case 'I' : // Print or store build info. [IDLE/ALARM]
@@ -196,4 +203,28 @@ uint8_t system_execute_line(char *line)
       }    
   }
   return(STATUS_OK); // If '$' command makes it to here, then everything's ok.
+}
+
+
+float system_convert_axis_steps_to_mpos(int32_t *steps, uint8_t idx)
+{
+  #ifdef COREXY
+    if (idx==A_MOTOR) { 
+      return((0.5*(steps[A_MOTOR] + steps[B_MOTOR]))/settings.steps_per_mm[idx]);
+    } else if (idx==B_MOTOR) { 
+      return((0.5*(steps[A_MOTOR] - steps[B_MOTOR]))/settings.steps_per_mm[idx]);
+    }
+  #else
+    return((float)steps[idx]/settings.steps_per_mm[idx]);
+  #endif
+}
+  
+
+void system_convert_array_steps_to_mpos(float *position, int32_t *steps)
+{
+  uint8_t idx;
+  for (idx=0; idx<N_AXIS; idx++) {
+    position[idx] = system_convert_axis_steps_to_mpos(steps, idx);
+  }
+  return;
 }

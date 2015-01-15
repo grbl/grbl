@@ -2,7 +2,7 @@
   spindle_control.c - spindle control methods
   Part of Grbl v0.9
 
-  Copyright (c) 2012-2014 Sungeun K. Jeon
+  Copyright (c) 2012-2015 Sungeun K. Jeon
 
   Grbl is free software: you can redistribute it and/or modify
   it under the terms of the GNU General Public License as published by
@@ -60,22 +60,16 @@ void spindle_stop()
 }
 
 
-void spindle_run(uint8_t direction, float rpm) 
+void spindle_set_state(uint8_t state, float rpm)
 {
-  if (sys.state == STATE_CHECK_MODE) { return; }
-  
-  // Empty planner buffer to ensure spindle is set when programmed.
-  protocol_auto_cycle_start();  //temp fix for M3 lockup
-  protocol_buffer_synchronize(); 
-
   // Halt or set spindle direction and rpm. 
-  if (direction == SPINDLE_DISABLE) {
+  if (state == SPINDLE_DISABLE) {
 
     spindle_stop();
 
   } else {
 
-    if (direction == SPINDLE_ENABLE_CW) {
+    if (state == SPINDLE_ENABLE_CW) {
       SPINDLE_DIRECTION_PORT &= ~(1<<SPINDLE_DIRECTION_BIT);
     } else {
       SPINDLE_DIRECTION_PORT |= (1<<SPINDLE_DIRECTION_BIT);
@@ -83,21 +77,30 @@ void spindle_run(uint8_t direction, float rpm)
 
     #ifdef VARIABLE_SPINDLE
       // TODO: Install the optional capability for frequency-based output for servos.
+      #ifdef CPU_MAP_ATMEGA2560
+      	TCCRA_REGISTER = (1<<COMB_BIT) | (1<<WAVE1_REGISTER) | (1<<WAVE0_REGISTER);
+        TCCRB_REGISTER = (TCCRB_REGISTER & 0b11111000) | 0x02 | (1<<WAVE2_REGISTER) | (1<<WAVE3_REGISTER); // set to 1/8 Prescaler
+        OCR4A = 0xFFFF; // set the top 16bit value
+        uint16_t current_pwm;
+      #else
+        TCCRA_REGISTER = (1<<COMB_BIT) | (1<<WAVE1_REGISTER) | (1<<WAVE0_REGISTER);
+        TCCRB_REGISTER = (TCCRB_REGISTER & 0b11111000) | 0x02; // set to 1/8 Prescaler
+        uint8_t current_pwm;
+      #endif
+
       #define SPINDLE_RPM_RANGE (SPINDLE_MAX_RPM-SPINDLE_MIN_RPM)
-      TCCRA_REGISTER = (1<<COMB_BIT) | (1<<WAVE1_REGISTER) | (1<<WAVE0_REGISTER);
-      TCCRB_REGISTER = (TCCRB_REGISTER & 0b11111000) | 0x02; // set to 1/8 Prescaler
       if ( rpm < SPINDLE_MIN_RPM ) { rpm = 0; } 
       else { 
         rpm -= SPINDLE_MIN_RPM; 
-        if ( rpm > SPINDLE_RPM_RANGE ) { rpm = SPINDLE_RPM_RANGE; } // Prevent uint8 overflow
+        if ( rpm > SPINDLE_RPM_RANGE ) { rpm = SPINDLE_RPM_RANGE; } // Prevent integer overflow
       }
-      uint8_t current_pwm = floor( rpm*(255.0/SPINDLE_RPM_RANGE) + 0.5);
+      current_pwm = floor( rpm*(PWM_MAX_VALUE/SPINDLE_RPM_RANGE) + 0.5);
       #ifdef MINIMUM_SPINDLE_PWM
         if (current_pwm < MINIMUM_SPINDLE_PWM) { current_pwm = MINIMUM_SPINDLE_PWM; }
       #endif
       OCR_REGISTER = current_pwm; // Set PWM pin output
     
-      #ifndef CPU_MAP_ATMEGA328P // On the Uno, spindle enable and PWM are shared.
+      #ifdef CPU_MAP_ATMEGA2560 // On the Uno, spindle enable and PWM are shared.
         SPINDLE_ENABLE_PORT |= (1<<SPINDLE_ENABLE_BIT);
       #endif
     #else   
@@ -105,4 +108,12 @@ void spindle_run(uint8_t direction, float rpm)
     #endif
 
   }
+}
+
+
+void spindle_run(uint8_t state, float rpm)
+{
+  if (sys.state != STATE_CHECK_MODE) { return; }
+  protocol_buffer_synchronize(); // Empty planner buffer to ensure spindle is set when programmed.  
+  spindle_set_state(state, rpm);
 }

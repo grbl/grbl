@@ -2,7 +2,7 @@
   protocol.h - controls Grbl execution protocol and procedures
   Part of Grbl v0.9
 
-  Copyright (c) 2012-2014 Sungeun K. Jeon
+  Copyright (c) 2012-2015 Sungeun K. Jeon
 
   Grbl is free software: you can redistribute it and/or modify
   it under the terms of the GNU General Public License as published by
@@ -41,8 +41,8 @@
 // them as they complete. It is also responsible for finishing the initialization procedures.
 void protocol_main_loop();
 
-// Checks and executes a runtime command at various stop points in main program
-void protocol_execute_runtime();
+// Checks and executes a realtime command at various stop points in main program
+void protocol_execute_realtime();
 
 // Notify the stepper subsystem to start executing the g-code program in buffer.
 // void protocol_cycle_start();
