@@ -28,6 +28,8 @@
 #define gcode_h
 
 
+#include "ldr.h"
+
 // Define modal group internal numbers for checking multiple command violations and tracking the 
 // type of command that is called in the block. A modal group is a group of g-code commands that are
 // mutually exclusive, or cannot exist on the same line, because they each toggle a state or execute
@@ -123,6 +125,9 @@
 #define MOTOR_ENABLE 1 // M17
 #define MOTOR_DISABLE 0 // M18
 
+// Modal Group: LDR
+#define LDR_READ 1
+
 #define WORD_F  0
 #define WORD_I  1
 #define WORD_J  2
@@ -154,6 +159,7 @@ typedef struct {
   uint8_t spindle;       // {M3,M4,M5}
   uint8_t laser;         // {M70,M71}
   uint8_t motor;         // {M17,M18}
+  uint8_t ldr;            // {M50}
 } gc_modal_t;  
 
 typedef struct {

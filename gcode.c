@@ -140,8 +140,7 @@ uint8_t gc_execute_line(char *line)
     // Maybe update this later. 
     int_value = trunc(value);
     mantissa =  round(100*(value - int_value)); // Compute mantissa for Gxx.x commands.
-        // NOTE: Rounding must be used to catch small floating point errors. 
-
+    // NOTE: Rounding must be used to catch small floating point errors. 
     // Check if the g-code word is supported or errors due to modal group violations or has
     // been repeated in the g-code block. If ok, update the command or record its value.
     switch(letter) {
@@ -184,6 +183,8 @@ uint8_t gc_execute_line(char *line)
           case 18: gc_block.modal.motor = MOTOR_DISABLE; break;
           case 70: gc_block.modal.laser = LASER_DISABLE; break;
           case 71: gc_block.modal.laser = LASER_ENABLE; break;
+
+          case 50: gc_block.modal.ldr = LDR_READ; break;
 
           default: FAIL(STATUS_GCODE_UNSUPPORTED_COMMAND); // [Unsupported M command]
         }            
@@ -717,7 +718,11 @@ uint8_t gc_execute_line(char *line)
     st_disable_on_idle(true);
     st_go_idle();
   }
-    
+  // [23. LDR read ]:
+  if (gc_block.modal.ldr == LDR_READ){
+      print_ldr(gc_block.values.t);
+  }
+
   // TODO: % to denote start of program. Sets auto cycle start?
   return(STATUS_OK);
 }
@@ -746,4 +751,5 @@ uint8_t gc_execute_line(char *line)
    group 9 = {M48, M49} enable/disable feed and speed override switches
    group 10 = {G98, G99} return mode canned cycles
    group 13 = {G61, G61.1, G64} path control mode
+   group 14 = {M50} LDR read
 */
