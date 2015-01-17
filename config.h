@@ -143,6 +143,11 @@
 // have the same steps per mm internally.
 // #define COREXY // Default disabled. Uncomment to enable.
 
+// Inverts pin logic of the control command pins. This essentially means when this option is enabled
+// you can use normally-closed switches, rather than the default normally-open switches.
+// NOTE: Will eventually be added to Grbl settings in v1.0.
+// #define INVERT_CONTROL_PIN // Default disabled. Uncomment to enable.
+
 // ---------------------------------------------------------------------------------------
 // ADVANCED CONFIGURATION OPTIONS:
 
@@ -161,6 +166,22 @@
 // noise and shake your machine. At even lower step frequencies, AMASS adapts and provides even better
 // step smoothing. See stepper.c for more details on the AMASS system works.
 #define ADAPTIVE_MULTI_AXIS_STEP_SMOOTHING  // Default enabled. Comment to disable.
+
+// By default, Grbl sets all input pins to normal-high operation with their internal pull-up resistors
+// enabled. This simplifies the wiring for users by requiring only a switch connected to ground, 
+// although its recommended that users take the extra step of wiring in low-pass filter to reduce
+// electrical noise detected by the pin. If the user inverts the pin in Grbl settings, this just flips
+// which high or low reading indicates an active signal. In normal operation, this means the user 
+// needs to connect a normal-open switch, but if inverted, this means the user should connect a 
+// normal-closed switch. 
+// The following options disable the internal pull-up resistors, sets the pins to a normal-low 
+// operation, and switches much be now connect to Vcc instead of ground. This also flips the meaning 
+// of the invert pin Grbl setting, where an inverted setting now means the user should connect a 
+// normal-open switch and vice versa.
+// WARNING: When the pull-ups are disabled, this requires additional wiring with pull-down resistors!
+//#define DISABLE_LIMIT_PIN_PULL_UP
+//#define DISABLE_PROBE_PIN_PULL_UP
+//#define DISABLE_CONTROL_PIN_PULL_UP
 
 // Sets which axis the tool length offset is applied. Assumes the spindle is always parallel with 
 // the selected axis with the tool oriented toward the negative direction. In other words, a positive

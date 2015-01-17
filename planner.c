@@ -371,7 +371,7 @@ uint8_t plan_check_full_buffer()
        colinear with the circle center. The circular segment joining the two paths represents the 
        path of centripetal acceleration. Solve for max velocity based on max acceleration about the
        radius of the circle, defined indirectly by junction deviation. This may be also viewed as 
-       path width or max_jerk in the previous grbl version. This approach does not actually deviate 
+       path width or max_jerk in the previous Grbl version. This approach does not actually deviate 
        from path, but used as a robust way to compute cornering speeds, as it takes into account the
        nonlinearities of both the junction angle and junction velocity.
 

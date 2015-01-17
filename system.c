@@ -30,10 +30,14 @@
 
 void system_init() 
 {
-  PINOUT_DDR &= ~(PINOUT_MASK); // Configure as input pins
-  PINOUT_PORT |= PINOUT_MASK;   // Enable internal pull-up resistors. Normal high operation.
-  PINOUT_PCMSK |= PINOUT_MASK;  // Enable specific pins of the Pin Change Interrupt
-  PCICR |= (1 << PINOUT_INT);   // Enable Pin Change Interrupt
+  CONTROL_DDR &= ~(CONTROL_MASK); // Configure as input pins
+  #ifdef DISABLE_CONTROL_PIN_PULL_UP
+    CONTROL_PORT &= ~(CONTROL_MASK); // Normal low operation. Requires external pull-down.
+  #else
+    CONTROL_PORT |= CONTROL_MASK;   // Enable internal pull-up resistors. Normal high operation.
+  #endif
+  CONTROL_PCMSK |= CONTROL_MASK;  // Enable specific pins of the Pin Change Interrupt
+  PCICR |= (1 << CONTROL_INT);   // Enable Pin Change Interrupt
 }
 
 
@@ -41,15 +45,19 @@ void system_init()
 // only the realtime command execute variable to have the main program execute these when 
 // its ready. This works exactly like the character-based realtime commands when picked off
 // directly from the incoming serial data stream.
-ISR(PINOUT_INT_vect) 
+ISR(CONTROL_INT_vect) 
 {
-  // Enter only if any pinout pin is actively low.
-  if ((PINOUT_PIN & PINOUT_MASK) ^ PINOUT_MASK) { 
-    if (bit_isfalse(PINOUT_PIN,bit(PIN_RESET))) {
+  uint8_t pin = (CONTROL_PIN & CONTROL_MASK);
+  #ifndef INVERT_CONTROL_PIN
+    pin ^= CONTROL_MASK;
+  #endif
+  // Enter only if any CONTROL pin is detected as active.
+  if (pin) { 
+    if (bit_istrue(pin,bit(RESET_BIT))) {
       mc_reset();
-    } else if (bit_isfalse(PINOUT_PIN,bit(PIN_FEED_HOLD))) {
+    } else if (bit_istrue(pin,bit(FEED_HOLD_BIT))) {
       bit_true(sys.rt_exec_state, EXEC_FEED_HOLD); 
-    } else if (bit_isfalse(PINOUT_PIN,bit(PIN_CYCLE_START))) {
+    } else if (bit_istrue(pin,bit(CYCLE_START_BIT))) {
       bit_true(sys.rt_exec_state, EXEC_CYCLE_START);
     } 
   }
@@ -208,15 +216,17 @@ uint8_t system_execute_line(char *line)
 
 float system_convert_axis_steps_to_mpos(int32_t *steps, uint8_t idx)
 {
+  float pos;
   #ifdef COREXY
     if (idx==A_MOTOR) { 
-      return((0.5*(steps[A_MOTOR] + steps[B_MOTOR]))/settings.steps_per_mm[idx]);
-    } else if (idx==B_MOTOR) { 
-      return((0.5*(steps[A_MOTOR] - steps[B_MOTOR]))/settings.steps_per_mm[idx]);
+      pos = 0.5*((steps[A_MOTOR] + steps[B_MOTOR])/settings.steps_per_mm[idx]);
+    } else { // (idx==B_MOTOR)
+      pos = 0.5*((steps[A_MOTOR] - steps[B_MOTOR])/settings.steps_per_mm[idx]);
     }
   #else
-    return((float)steps[idx]/settings.steps_per_mm[idx]);
+    pos = steps[idx]/settings.steps_per_mm[idx];
   #endif
+  return(pos);
 }
   
 

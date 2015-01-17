@@ -41,11 +41,11 @@ void limits_init()
 {
   LIMIT_DDR &= ~(LIMIT_MASK); // Set as input pins
 
-  if (bit_istrue(settings.flags,BITFLAG_INVERT_LIMIT_PINS)) {
+  #ifdef DISABLE_LIMIT_PIN_PULL_UP
     LIMIT_PORT &= ~(LIMIT_MASK); // Normal low operation. Requires external pull-down.
-  } else {
+  #else
     LIMIT_PORT |= (LIMIT_MASK);  // Enable internal pull-up resistors. Normal high operation.
-  }
+  #endif
 
   if (bit_istrue(settings.flags,BITFLAG_HARD_LIMIT_ENABLE)) {
     LIMIT_PCMSK |= LIMIT_MASK; // Enable specific pins of the Pin Change Interrupt
@@ -224,7 +224,7 @@ void limits_go_home(uint8_t cycle_mask)
   } while (n_cycle-- > 0);
     
   // The active cycle axes should now be homed and machine limits have been located. By 
-  // default, grbl defines machine space as all negative, as do most CNCs. Since limit switches
+  // default, Grbl defines machine space as all negative, as do most CNCs. Since limit switches
   // can be on either side of an axes, check and set axes machine zero appropriately. Also,
   // set up pull-off maneuver from axes limit switches that have been homed. This provides
   // some initial clearance off the switches and should also help prevent them from falsely

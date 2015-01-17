@@ -60,7 +60,7 @@
   #define STEPPERS_DISABLE_MASK   (1<<STEPPERS_DISABLE_BIT)
 
   // Define homing/hard limit switch input pins and limit interrupt vectors. 
-  // NOTE: All limit bit pins must be on the same port, but not on a port with other input pins (pinout).
+  // NOTE: All limit bit pins must be on the same port, but not on a port with other input pins (CONTROL).
   #define LIMIT_DDR        DDRB
   #define LIMIT_PIN        PINB
   #define LIMIT_PORT       PORTB
@@ -100,18 +100,18 @@
     #define COOLANT_MIST_BIT   4 // Uno Analog Pin 4
   #endif  
 
-  // Define user-control pinouts (cycle start, reset, feed hold) input pins.
-  // NOTE: All pinouts pins must be on the same port and not on a port with other input pins (limits).
-  #define PINOUT_DDR       DDRC
-  #define PINOUT_PIN       PINC
-  #define PINOUT_PORT      PORTC
-  #define PIN_RESET        0  // Uno Analog Pin 0
-  #define PIN_FEED_HOLD    1  // Uno Analog Pin 1
-  #define PIN_CYCLE_START  2  // Uno Analog Pin 2
-  #define PINOUT_INT       PCIE1  // Pin change interrupt enable pin
-  #define PINOUT_INT_vect  PCINT1_vect
-  #define PINOUT_PCMSK     PCMSK1 // Pin change interrupt register
-  #define PINOUT_MASK ((1<<PIN_RESET)|(1<<PIN_FEED_HOLD)|(1<<PIN_CYCLE_START))
+  // Define user-control controls (cycle start, reset, feed hold) input pins.
+  // NOTE: All CONTROLs pins must be on the same port and not on a port with other input pins (limits).
+  #define CONTROL_DDR       DDRC
+  #define CONTROL_PIN       PINC
+  #define CONTROL_PORT      PORTC
+  #define RESET_BIT         0  // Uno Analog Pin 0
+  #define FEED_HOLD_BIT     1  // Uno Analog Pin 1
+  #define CYCLE_START_BIT   2  // Uno Analog Pin 2
+  #define CONTROL_INT       PCIE1  // Pin change interrupt enable pin
+  #define CONTROL_INT_vect  PCINT1_vect
+  #define CONTROL_PCMSK     PCMSK1 // Pin change interrupt register
+  #define CONTROL_MASK ((1<<RESET_BIT)|(1<<FEED_HOLD_BIT)|(1<<CYCLE_START_BIT))
   
   // Define probe switch input pin.
   #define PROBE_DDR       DDRC
@@ -213,18 +213,18 @@
     #define COOLANT_MIST_BIT    6 // MEGA2560 Digital Pin 9
   #endif  
 
-  // Define user-control pinouts (cycle start, reset, feed hold) input pins.
-  // NOTE: All pinouts pins must be on the same port and not on a port with other input pins (limits).
-  #define PINOUT_DDR       DDRK
-  #define PINOUT_PIN       PINK
-  #define PINOUT_PORT      PORTK
-  #define PIN_RESET        0  // MEGA2560 Analog Pin 8
-  #define PIN_FEED_HOLD    1  // MEGA2560 Analog Pin 9
-  #define PIN_CYCLE_START  2  // MEGA2560 Analog Pin 10
-  #define PINOUT_INT       PCIE2  // Pin change interrupt enable pin
-  #define PINOUT_INT_vect  PCINT2_vect
-  #define PINOUT_PCMSK     PCMSK2 // Pin change interrupt register
-  #define PINOUT_MASK ((1<<PIN_RESET)|(1<<PIN_FEED_HOLD)|(1<<PIN_CYCLE_START))
+  // Define user-control CONTROLs (cycle start, reset, feed hold) input pins.
+  // NOTE: All CONTROLs pins must be on the same port and not on a port with other input pins (limits).
+  #define CONTROL_DDR       DDRK
+  #define CONTROL_PIN       PINK
+  #define CONTROL_PORT      PORTK
+  #define RESET_BIT         0  // MEGA2560 Analog Pin 8
+  #define FEED_HOLD_BIT     1  // MEGA2560 Analog Pin 9
+  #define CYCLE_START_BIT   2  // MEGA2560 Analog Pin 10
+  #define CONTROL_INT       PCIE2  // Pin change interrupt enable pin
+  #define CONTROL_INT_vect  PCINT2_vect
+  #define CONTROL_PCMSK     PCMSK2 // Pin change interrupt register
+  #define CONTROL_MASK ((1<<RESET_BIT)|(1<<FEED_HOLD_BIT)|(1<<CYCLE_START_BIT))
 
   // Define probe switch input pin.
   #define PROBE_DDR       DDRK
