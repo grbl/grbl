@@ -2,7 +2,7 @@
   system.h - Header for system level commands and real-time processes
   Part of Grbl v0.9
 
-  Copyright (c) 2014 Sungeun K. Jeon  
+  Copyright (c) 2014-2015 Sungeun K. Jeon  
 
   Grbl is free software: you can redistribute it and/or modify
   it under the terms of the GNU General Public License as published by
@@ -41,19 +41,26 @@
 #include "nuts_bolts.h"
 
 
-// Define system executor bit map. Used internally by runtime protocol as runtime command flags, 
-// which notifies the main program to execute the specified runtime command asynchronously.
+// Define system executor bit map. Used internally by realtime protocol as realtime command flags, 
+// which notifies the main program to execute the specified realtime command asynchronously.
 // NOTE: The system executor uses an unsigned 8-bit volatile variable (8 flag limit.) The default
-// flags are always false, so the runtime protocol only needs to check for a non-zero value to 
-// know when there is a runtime command to execute.
+// flags are always false, so the realtime protocol only needs to check for a non-zero value to 
+// know when there is a realtime command to execute.
 #define EXEC_STATUS_REPORT  bit(0) // bitmask 00000001
 #define EXEC_CYCLE_START    bit(1) // bitmask 00000010
 #define EXEC_CYCLE_STOP     bit(2) // bitmask 00000100
 #define EXEC_FEED_HOLD      bit(3) // bitmask 00001000
 #define EXEC_RESET          bit(4) // bitmask 00010000
-#define EXEC_ALARM          bit(5) // bitmask 00100000
-#define EXEC_CRIT_EVENT     bit(6) // bitmask 01000000
-// #define                  bit(7) // bitmask 10000000
+
+// Alarm executor bit map.
+// NOTE: EXEC_CRITICAL_EVENT is an optional flag that must be set with an alarm flag. When enabled,
+// this halts Grbl into an infinite loop until the user aknowledges the problem and issues a soft-
+// reset command. For example, a hard limit event needs this type of halt and aknowledgement.
+#define EXEC_CRITICAL_EVENT     bit(0) // bitmask 00000001 (SPECIAL FLAG. See NOTE:)
+#define EXEC_ALARM_HARD_LIMIT   bit(0) // bitmask 00000010
+#define EXEC_ALARM_SOFT_LIMIT   bit(1) // bitmask 00000100
+#define EXEC_ALARM_ABORT_CYCLE  bit(2) // bitmask 00001000
+#define EXEC_ALARM_PROBE_FAIL   bit(3) // bitmask 00010000
 
 // Define system state bit map. The state variable primarily tracks the individual functions
 // of Grbl to manage each without overlapping. It is also used as a messaging flag for
@@ -72,7 +79,9 @@
 typedef struct {
   uint8_t abort;                 // System abort flag. Forces exit back to main loop for reset.
   uint8_t state;                 // Tracks the current state of Grbl.
-  volatile uint8_t execute;      // Global system runtime executor bitflag variable. See EXEC bitmasks.
+
+  volatile uint8_t rt_exec_state;  // Global realtime executor bitflag variable for state management. See EXEC bitmasks.
+  volatile uint8_t rt_exec_alarm;  // Global realtime executor bitflag variable for setting various alarms.
 
   int32_t position[N_AXIS];      // Real-time machine (aka home) position vector in steps. 
                                  // NOTE: This may need to be a volatile variable, if problems arise.                             
@@ -92,10 +101,13 @@ void system_init();
 // Executes an internal system command, defined as a string starting with a '$'
 uint8_t system_execute_line(char *line);
 
-// Checks and executes a runtime command at various stop points in main program
-void system_execute_runtime();
-
 // Execute the startup script lines stored in EEPROM upon initialization
 void system_execute_startup(char *line);
+
+// Returns machine position of axis 'idx'. Must be sent a 'step' array.
+float system_convert_axis_steps_to_mpos(int32_t *steps, uint8_t idx);
+
+// Updates a machine 'position' array based on the 'step' array sent.
+void system_convert_array_steps_to_mpos(float *position, int32_t *steps);
 
 #endif

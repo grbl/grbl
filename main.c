@@ -2,7 +2,7 @@
   main.c - An embedded CNC Controller with rs274/ngc (g-code) support
   Part of Grbl v0.9
   
-  Copyright (c) 2012-2014 Sungeun K. Jeon
+  Copyright (c) 2012-2015 Sungeun K. Jeon
 
   Grbl is free software: you can redistribute it and/or modify
   it under the terms of the GNU General Public License as published by
@@ -47,7 +47,7 @@ int main(void)
 {
   // Initialize system upon power-up.
   serial_init();   // Setup serial baud rate and interrupts
-  settings_init(); // Load grbl settings from EEPROM
+  settings_init(); // Load Grbl settings from EEPROM
   stepper_init();  // Configure stepper pins and interrupt timers
   system_init();   // Configure pinout pins and pin-change interrupt
   
@@ -89,7 +89,8 @@ int main(void)
 
     // Reset system variables.
     sys.abort = false;
-    sys.execute = 0;
+    sys.rt_exec_state = 0;
+    sys.rt_exec_alarm = 0;
     if (bit_istrue(settings.flags,BITFLAG_AUTO_START)) { sys.auto_start = true; }
     else { sys.auto_start = false; }
           

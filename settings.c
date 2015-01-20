@@ -2,7 +2,7 @@
   settings.c - eeprom configuration handling 
   Part of Grbl v0.9
 
-  Copyright (c) 2012-2014 Sungeun K. Jeon  
+  Copyright (c) 2012-2015 Sungeun K. Jeon  
 
   Grbl is free software: you can redistribute it and/or modify
   it under the terms of the GNU General Public License as published by
@@ -111,7 +111,7 @@ void settings_restore_global_settings() {
 // Helper function to clear the EEPROM space containing parameter data.
 void settings_clear_parameters() {
   uint8_t idx;
-  float coord_data[3];
+  float coord_data[N_AXIS];
   memset(&coord_data, 0, sizeof(coord_data));
   for (idx=0; idx < SETTING_INDEX_NCOORD; idx++) { settings_write_coord_data(idx, coord_data); }
 }  

@@ -2,7 +2,7 @@
   coolant_control.h - spindle control methods
   Part of Grbl v0.9
 
-  Copyright (c) 2012-2014 Sungeun K. Jeon
+  Copyright (c) 2012-2015 Sungeun K. Jeon
 
   Grbl is free software: you can redistribute it and/or modify
   it under the terms of the GNU General Public License as published by
@@ -24,6 +24,7 @@
 
 void coolant_init();
 void coolant_stop();
+void coolant_set_state(uint8_t mode);
 void coolant_run(uint8_t mode);
 
 #endif

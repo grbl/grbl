@@ -2,7 +2,7 @@
   gcode.h - rs274/ngc parser.
   Part of Grbl v0.9
 
-  Copyright (c) 2012-2014 Sungeun K. Jeon
+  Copyright (c) 2012-2015 Sungeun K. Jeon
   
   Grbl is free software: you can redistribute it and/or modify
   it under the terms of the GNU General Public License as published by
@@ -40,16 +40,17 @@
 #define MODAL_GROUP_G3 3 // [G90,G91] Distance mode
 #define MODAL_GROUP_G5 4 // [G93,G94] Feed rate mode
 #define MODAL_GROUP_G6 5 // [G20,G21] Units
-#define MODAL_GROUP_G8 6 // [G43,G43.1,G49] Tool length offset
-#define MODAL_GROUP_G12 7 // [G54,G55,G56,G57,G58,G59] Coordinate system selection
+#define MODAL_GROUP_G7 6 // [G40] Cutter radius compensation mode. G41/42 NOT SUPPORTED.
+#define MODAL_GROUP_G8 7 // [G43,G43.1,G49] Tool length offset
+#define MODAL_GROUP_G12 8 // [G54,G55,G56,G57,G58,G59] Coordinate system selection
 
-#define MODAL_GROUP_M4 8  // [M0,M1,M2,M30] Stopping
-#define MODAL_GROUP_M7 9  // [M3,M4,M5] Spindle turning
-#define MODAL_GROUP_M8 10 // [M7,M8,M9] Coolant control
+#define MODAL_GROUP_M4 9  // [M0,M1,M2,M30] Stopping
+#define MODAL_GROUP_M7 10 // [M3,M4,M5] Spindle turning
+#define MODAL_GROUP_M8 11 // [M7,M8,M9] Coolant control
 
-#define OTHER_INPUT_F 11
-#define OTHER_INPUT_S 12
-#define OTHER_INPUT_T 13
+#define OTHER_INPUT_F 12
+#define OTHER_INPUT_S 13
+#define OTHER_INPUT_T 14
 
 // Define command actions for within execution-type modal groups (motion, stopping, non-modal). Used
 // internally by the parser to know which command to execute.
@@ -99,6 +100,9 @@
 #define UNITS_MODE_MM 0 // G21 (Default: Must be zero)
 #define UNITS_MODE_INCHES 1 // G20
 
+// Modal Group G7: Cutter radius compensation mode
+#define CUTTER_COMP_DISABLE 0 // G40 (Default: Must be zero)
+
 // Modal Group M7: Spindle control
 #define SPINDLE_DISABLE 0 // M5 (Default: Must be zero)
 #define SPINDLE_ENABLE_CW 1 // M3
@@ -135,16 +139,17 @@
 
 // NOTE: When this struct is zeroed, the above defines set the defaults for the system.
 typedef struct {
-  uint8_t motion;        // {G0,G1,G2,G3,G38.2,G80}
-  uint8_t feed_rate;     // {G93,G94}
-  uint8_t units;         // {G20,G21}
-  uint8_t distance;      // {G90,G91}
-  uint8_t plane_select;  // {G17,G18,G19}
-  uint8_t tool_length;   // {G43.1,G49}
-  uint8_t coord_select;  // {G54,G55,G56,G57,G58,G59}
-  uint8_t program_flow;  // {M0,M1,M2,M30}
-  uint8_t coolant;       // {M7,M8,M9}
-  uint8_t spindle;       // {M3,M4,M5}
+  uint8_t motion;          // {G0,G1,G2,G3,G38.2,G80}
+  uint8_t feed_rate;       // {G93,G94}
+  uint8_t units;           // {G20,G21}
+  uint8_t distance;        // {G90,G91}
+  uint8_t plane_select;    // {G17,G18,G19}
+  // uint8_t cutter_comp;  // {G40} NOTE: Don't need to track since it's always disabled.
+  uint8_t tool_length;     // {G43.1,G49}
+  uint8_t coord_select;    // {G54,G55,G56,G57,G58,G59}
+  uint8_t program_flow;    // {M0,M1,M2,M30}
+  uint8_t coolant;         // {M7,M8,M9}
+  uint8_t spindle;         // {M3,M4,M5}
 } gc_modal_t;  
 
 typedef struct {

@@ -2,7 +2,7 @@
   spindle_control.h - spindle control methods
   Part of Grbl v0.9
 
-  Copyright (c) 2012-2014 Sungeun K. Jeon
+  Copyright (c) 2012-2015 Sungeun K. Jeon
 
   Grbl is free software: you can redistribute it and/or modify
   it under the terms of the GNU General Public License as published by
@@ -30,6 +30,8 @@
 
 // Initializes spindle pins and hardware PWM, if enabled.
 void spindle_init();
+
+void spindle_set_state(uint8_t state, float rpm);
 
 // Kills spindle.
 void spindle_stop();

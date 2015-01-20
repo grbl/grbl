@@ -2,7 +2,7 @@
   stepper.c - stepper motor driver: executes motion plans using stepper motors
   Part of Grbl v0.9
 
-  Copyright (c) 2012-2014 Sungeun K. Jeon
+  Copyright (c) 2012-2015 Sungeun K. Jeon
   
   Grbl is free software: you can redistribute it and/or modify
   it under the terms of the GNU General Public License as published by
@@ -232,7 +232,7 @@ void st_go_idle()
   
   // Set stepper driver idle state, disabled or enabled, depending on settings and circumstances.
   bool pin_state = false; // Keep enabled.
-  if (((settings.stepper_idle_lock_time != 0xff) || bit_istrue(sys.execute,EXEC_ALARM)) && sys.state != STATE_HOMING) {
+  if (((settings.stepper_idle_lock_time != 0xff) || sys.rt_exec_alarm) && sys.state != STATE_HOMING) {
     // Force stepper dwell to lock axes for a defined amount of time to ensure the axes come to a complete
     // stop and not drift from residual inertial forces at the end of the last movement.
     delay_ms(settings.stepper_idle_lock_time);
@@ -374,7 +374,7 @@ ISR(TIMER1_COMPA_vect)
     } else {
       // Segment buffer empty. Shutdown.
       st_go_idle();
-      bit_true_atomic(sys.execute,EXEC_CYCLE_STOP); // Flag main program for cycle end
+      bit_true_atomic(sys.rt_exec_state,EXEC_CYCLE_STOP); // Flag main program for cycle end
       return; // Nothing to do but exit.
     }  
   }
@@ -874,7 +874,7 @@ void st_prep_buffer()
 }      
 
 
-// Called by runtime status reporting to fetch the current speed being executed. This value
+// Called by realtime status reporting to fetch the current speed being executed. This value
 // however is not exactly the current speed, but the speed computed in the last step segment
 // in the segment buffer. It will always be behind by up to the number of segment blocks (-1)
 // divided by the ACCELERATION TICKS PER SECOND in seconds. 

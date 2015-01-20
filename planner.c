@@ -2,7 +2,7 @@
   planner.c - buffers movement commands and manages the acceleration profile plan
   Part of Grbl v0.9
 
-  Copyright (c) 2012-2014 Sungeun K. Jeon
+  Copyright (c) 2012-2015 Sungeun K. Jeon
   
   Grbl is free software: you can redistribute it and/or modify
   it under the terms of the GNU General Public License as published by
@@ -286,17 +286,36 @@ uint8_t plan_check_full_buffer()
   int32_t target_steps[N_AXIS];
   float unit_vec[N_AXIS], delta_mm;
   uint8_t idx;
+  #ifdef COREXY
+    target_steps[A_MOTOR] = lround(target[A_MOTOR]*settings.steps_per_mm[A_MOTOR]);
+    target_steps[B_MOTOR] = lround(target[B_MOTOR]*settings.steps_per_mm[B_MOTOR]);
+    block->steps[A_MOTOR] = labs((target_steps[X_AXIS]-pl.position[X_AXIS]) - (target_steps[Y_AXIS]-pl.position[Y_AXIS]));
+    block->steps[B_MOTOR] = labs((target_steps[X_AXIS]-pl.position[X_AXIS]) + (target_steps[Y_AXIS]-pl.position[Y_AXIS]));
+  #endif
+
   for (idx=0; idx<N_AXIS; idx++) {
-    // Calculate target position in absolute steps. This conversion should be consistent throughout.
-    target_steps[idx] = lround(target[idx]*settings.steps_per_mm[idx]);
-  
-    // Number of steps for each axis and determine max step events
-    block->steps[idx] = labs(target_steps[idx]-pl.position[idx]);
-    block->step_event_count = max(block->step_event_count, block->steps[idx]);
-    
-    // Compute individual axes distance for move and prep unit vector calculations.
+    // Calculate target position in absolute steps, number of steps for each axis, and determine max step events.
+    // Also, compute individual axes distance for move and prep unit vector calculations.
     // NOTE: Computes true distance from converted step values.
-    delta_mm = (target_steps[idx] - pl.position[idx])/settings.steps_per_mm[idx];
+    #ifdef COREXY
+      if ( !(idx == A_MOTOR) && !(idx == B_MOTOR) ) {
+        target_steps[idx] = lround(target[idx]*settings.steps_per_mm[idx]);
+        block->steps[idx] = labs(target_steps[idx]-pl.position[idx]);
+      }
+      block->step_event_count = max(block->step_event_count, block->steps[idx]);
+      if (idx == A_MOTOR) {
+        delta_mm = ((target_steps[X_AXIS]-pl.position[X_AXIS]) - (target_steps[Y_AXIS]-pl.position[Y_AXIS]))/settings.steps_per_mm[idx];
+      } else if (idx == B_MOTOR) {
+        delta_mm = ((target_steps[X_AXIS]-pl.position[X_AXIS]) + (target_steps[Y_AXIS]-pl.position[Y_AXIS]))/settings.steps_per_mm[idx];
+      } else {
+        delta_mm = (target_steps[idx] - pl.position[idx])/settings.steps_per_mm[idx];
+      }
+    #else
+      target_steps[idx] = lround(target[idx]*settings.steps_per_mm[idx]);
+      block->steps[idx] = labs(target_steps[idx]-pl.position[idx]);
+      block->step_event_count = max(block->step_event_count, block->steps[idx]);
+      delta_mm = (target_steps[idx] - pl.position[idx])/settings.steps_per_mm[idx];
+    #endif
     unit_vec[idx] = delta_mm; // Store unit vector numerator. Denominator computed later.
         
     // Set direction bits. Bit enabled always means direction is negative.
@@ -354,7 +373,7 @@ uint8_t plan_check_full_buffer()
        colinear with the circle center. The circular segment joining the two paths represents the 
        path of centripetal acceleration. Solve for max velocity based on max acceleration about the
        radius of the circle, defined indirectly by junction deviation. This may be also viewed as 
-       path width or max_jerk in the previous grbl version. This approach does not actually deviate 
+       path width or max_jerk in the previous Grbl version. This approach does not actually deviate 
        from path, but used as a robust way to compute cornering speeds, as it takes into account the
        nonlinearities of both the junction angle and junction velocity.
 
@@ -405,9 +424,21 @@ uint8_t plan_check_full_buffer()
 // Reset the planner position vectors. Called by the system abort/initialization routine.
 void plan_sync_position()
 {
+  // TODO: For motor configurations not in the same coordinate frame as the machine position,
+  // this function needs to be updated to accomodate the difference. 
   uint8_t idx;
   for (idx=0; idx<N_AXIS; idx++) {
-    pl.position[idx] = sys.position[idx];
+    #ifdef COREXY
+     if (idx==A_MOTOR) { 
+        pl.position[idx] = (sys.position[A_MOTOR] + sys.position[B_MOTOR])/2;
+      } else if (idx==B_MOTOR) { 
+        pl.position[idx] = (sys.position[A_MOTOR] - sys.position[B_MOTOR])/2;
+      } else {
+        pl.position[idx] = sys.position[idx];
+      }
+    #else
+      pl.position[idx] = sys.position[idx];
+    #endif
   }
 }
 

@@ -2,7 +2,7 @@
   probe.c - code pertaining to probing methods
   Part of Grbl v0.9
 
-  Copyright (c) 2014 Sungeun K. Jeon
+  Copyright (c) 2014-2015 Sungeun K. Jeon
 
   Grbl is free software: you can redistribute it and/or modify
   it under the terms of the GNU General Public License as published by
@@ -30,11 +30,11 @@ uint8_t probe_invert_mask;
 void probe_init() 
 {
   PROBE_DDR &= ~(PROBE_MASK); // Configure as input pins
-  if (bit_istrue(settings.flags,BITFLAG_INVERT_PROBE_PIN)) { 
+  #ifdef DISABLE_PROBE_PIN_PULL_UP
     PROBE_PORT &= ~(PROBE_MASK); // Normal low operation. Requires external pull-down.
-  } else {
+  #else
     PROBE_PORT |= PROBE_MASK;    // Enable internal pull-up resistors. Normal high operation.
-  }  
+  #endif
   // probe_configure_invert_mask(false); // Initialize invert mask. Not required. Updated when in-use.
 }
 
@@ -63,7 +63,7 @@ void probe_state_monitor()
     if (probe_get_state()) {
       sys.probe_state = PROBE_OFF;
       memcpy(sys.probe_position, sys.position, sizeof(float)*N_AXIS);
-      bit_true(sys.execute, EXEC_FEED_HOLD);
+      bit_true(sys.rt_exec_state, EXEC_FEED_HOLD);
     }
   }
 }

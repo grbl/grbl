@@ -2,7 +2,7 @@
   report.c - reporting and messaging methods
   Part of Grbl v0.9
 
-  Copyright (c) 2012-2014 Sungeun K. Jeon  
+  Copyright (c) 2012-2015 Sungeun K. Jeon  
 
   Grbl is free software: you can redistribute it and/or modify
   it under the terms of the GNU General Public License as published by
@@ -97,8 +97,10 @@ void report_alarm_message(int8_t alarm_code)
 {
   printPgmString(PSTR("ALARM: "));
   switch (alarm_code) {
-    case ALARM_LIMIT_ERROR: 
-    printPgmString(PSTR("Hard/soft limit")); break;
+    case ALARM_HARD_LIMIT_ERROR: 
+    printPgmString(PSTR("Hard limit")); break;
+    case ALARM_SOFT_LIMIT_ERROR:
+    printPgmString(PSTR("Soft limit")); break;
     case ALARM_ABORT_CYCLE: 
     printPgmString(PSTR("Abort during cycle")); break;
     case ALARM_PROBE_FAIL:
@@ -234,9 +236,9 @@ void report_probe_parameters()
   float print_position[N_AXIS];
  
   // Report in terms of machine position.
-  printPgmString(PSTR("[PRB:")); 
+  printPgmString(PSTR("[PRB:"));
   for (i=0; i< N_AXIS; i++) {
-    print_position[i] = sys.probe_position[i]/settings.steps_per_mm[i];
+    print_position[i] = system_convert_axis_steps_to_mpos(sys.probe_position,i);
     printFloat_CoordValue(print_position[i]);
     if (i < (N_AXIS-1)) { printPgmString(PSTR(",")); }
   }
@@ -398,17 +400,12 @@ void report_realtime_status()
  
   // If reporting a position, convert the current step count (current_position) to millimeters.
   if (bit_istrue(settings.status_report_mask,(BITFLAG_RT_STATUS_MACHINE_POSITION | BITFLAG_RT_STATUS_WORK_POSITION))) {
-    for (i=0; i< N_AXIS; i++) { print_position[i] = current_position[i]/settings.steps_per_mm[i]; }
+    system_convert_array_steps_to_mpos(print_position,current_position);
   }
   
   // Report machine position
   if (bit_istrue(settings.status_report_mask,BITFLAG_RT_STATUS_MACHINE_POSITION)) {
     printPgmString(PSTR(",MPos:")); 
-//     print_position[X_AXIS] = 0.5*current_position[X_AXIS]/settings.steps_per_mm[X_AXIS]; 
-//     print_position[Z_AXIS] = 0.5*current_position[Y_AXIS]/settings.steps_per_mm[Y_AXIS]; 
-//     print_position[Y_AXIS] = print_position[X_AXIS]-print_position[Z_AXIS]);
-//     print_position[X_AXIS] -= print_position[Z_AXIS];    
-//     print_position[Z_AXIS] = current_position[Z_AXIS]/settings.steps_per_mm[Z_AXIS];     
     for (i=0; i< N_AXIS; i++) {
       printFloat_CoordValue(print_position[i]);
       if (i < (N_AXIS-1)) { printPgmString(PSTR(",")); }
