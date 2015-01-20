@@ -870,7 +870,7 @@ uint8_t gc_execute_line(char *line)
     //M3, M4 and M5 command needs to work without planer block too. If there is motion
     //it will updated in real time. However if there is not we need to take care.
     #ifdef LASER_SPINDLE
-      if (bit_isfalse(settings.flags,BITFLAG_LASER) || !((gc_state.modal.motion != MOTION_MODE_NONE)&&(axis_command == AXIS_COMMAND_MOTION_MODE)))
+      //if (bit_isfalse(settings.flags,BITFLAG_LASER) || !((gc_state.modal.motion != MOTION_MODE_NONE)&&(axis_command == AXIS_COMMAND_MOTION_MODE)))
     #endif 
     // Update spindle control and apply spindle speed when enabling it in this block.    
     spindle_run(gc_block.modal.spindle, gc_state.spindle_speed);

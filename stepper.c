@@ -345,17 +345,18 @@ ISR(TIMER1_COMPA_vect)
         #ifdef LASER_SPINDLE
           if (bit_istrue(settings.flags,BITFLAG_LASER)){
             if (st.exec_block->spindle_direction == SPINDLE_DISABLE) {
-              spindle_stop();
+              //spindle_stop();
             } else {
               #ifdef VARIABLE_SPINDLE
-			     spindle_set_direction(st.exec_block->spindle_direction);
-                 spindle_start();
-                 spindle_rpm_update(st.exec_block->spindle_speed_pwm);
+			     //spindle_set_direction(st.exec_block->spindle_direction);
+                 //spindle_start();
+                 //spindle_rpm_update(st.exec_block->spindle_speed_pwm);
+                 OCR_REGISTER = st.exec_block->spindle_speed_pwm;
                 #ifndef CPU_MAP_ATMEGA328P // On the Uno, spindle enable and PWM are shared.
-                  SPINDLE_ENABLE_PORT |= (1<<SPINDLE_ENABLE_BIT);
+                  //SPINDLE_ENABLE_PORT |= (1<<SPINDLE_ENABLE_BIT);
                 #endif
               #else
-                SPINDLE_ENABLE_PORT |= (1<<SPINDLE_ENABLE_BIT);
+                //SPINDLE_ENABLE_PORT |= (1<<SPINDLE_ENABLE_BIT);
               #endif
             }
           }
