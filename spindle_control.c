@@ -95,32 +95,6 @@ void spindle_set_direction(uint8_t direction)
   }
 #endif
 
-//void spindle_run(uint8_t direction, float rpm) 
-//{
-  //if (sys.state == STATE_CHECK_MODE) { return; }
-  //// Empty planner buffer to ensure spindle is set when programmed.
-  //// Only do this without real time spindle control or if there was
-  //// a block without motion.  
-  //protocol_auto_cycle_start();  //temp fix for M3 lockup
-  //protocol_buffer_synchronize();   
-  //// Halt or set spindle direction and rpm. 
-  //if (direction == SPINDLE_DISABLE) {
-    //spindle_stop();
-  //} else {
-    //spindle_set_direction(direction);
-    //#ifdef VARIABLE_SPINDLE
-       //spindle_start();
-       //spindle_rpm_update(calculate_pwm_from_rpm(rpm));
-      //#ifndef CPU_MAP_ATMEGA328P // On the Uno, spindle enable and PWM are shared.
-        //SPINDLE_ENABLE_PORT |= (1<<SPINDLE_ENABLE_BIT);
-      //#endif
-    //#else   
-      //SPINDLE_ENABLE_PORT |= (1<<SPINDLE_ENABLE_BIT);
-    //#endif
-  //}
-//}
-
-
 void spindle_run(uint8_t state, float rpm)
 {
   if (sys.state == STATE_CHECK_MODE) { return; }
