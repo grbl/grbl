@@ -1,21 +1,26 @@
 /*
   defaults.h - defaults settings configuration file
-  Part of Grbl v0.9
+  Part of Horus Firmware
 
-  Copyright (c) 2012-2014 Sungeun K. Jeon
+  Copyright (c) 2014-2015 Mundo Reader S.L.
 
-  Grbl is free software: you can redistribute it and/or modify
+  Horus Firmware is free software: you can redistribute it and/or modify
   it under the terms of the GNU General Public License as published by
   the Free Software Foundation, either version 3 of the License, or
   (at your option) any later version.
 
-  Grbl is distributed in the hope that it will be useful,
+  Horus Firmware is distributed in the hope that it will be useful,
   but WITHOUT ANY WARRANTY; without even the implied warranty of
   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
   GNU General Public License for more details.
 
   You should have received a copy of the GNU General Public License
-  along with Grbl.  If not, see <http://www.gnu.org/licenses/>.
+  along with Horus Firmware.  If not, see <http://www.gnu.org/licenses/>.
+*/
+/* 
+  This file is based on work from Grbl v0.9, distributed under the 
+  terms of the GPLv3. See COPYING for more details.
+    Copyright (c) 2012-2014 Sungeun K. Jeon
 */
 
 /* The defaults.h file serves as a central default settings file for different machine

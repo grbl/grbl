@@ -1,8 +1,8 @@
 /*
-  laser.c - laser control methods
-  Part of Horus Project
+  laser_control.c - laser control methods
+  Part of Horus Firmware
 
-  Copyright (c) 2014 Jesus Arroyo (Mundo Reader S.L.)
+  Copyright (c) 2014-2105 Jesus Arroyo (Mundo Reader S.L.)
 
   Horus is free software: you can redistribute it and/or modify
   it under the terms of the GNU General Public License as published by

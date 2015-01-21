@@ -1,8 +1,8 @@
 /*
   ldr.h - analog read methods
-  Part of Horus Project
+  Part of Horus Firmware
 
-  Copyright (c) 2014 Irene Sanz (Mundo Reader S.L.)
+  Copyright (c) 2015 Irene Sanz (Mundo Reader S.L.)
 
   Horus is free software: you can redistribute it and/or modify
   it under the terms of the GNU General Public License as published by
