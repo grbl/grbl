@@ -67,8 +67,6 @@ typedef struct {
   uint8_t direction_bits;
   uint32_t steps[N_AXIS];
   uint32_t step_event_count;
-  uint8_t spindle_speed_pwm; // RPM
-  uint8_t spindle_direction; // status of the spindle 
 } st_block_t;
 static st_block_t st_block_buffer[SEGMENT_BUFFER_SIZE-1];
 
@@ -303,11 +301,10 @@ ISR(TIMER1_COMPA_vect)
   DIRECTION_PORT = (DIRECTION_PORT & ~DIRECTION_MASK) | (st.dir_outbits & DIRECTION_MASK);
 
 //LASER
-  if (st.set_rpm == true && st.exec_block != NULL && bit_istrue(settings.flags,BITFLAG_LASER) && (st.exec_block->spindle_direction != SPINDLE_DISABLE) && (OCR_REGISTER != st.exec_block->spindle_speed_pwm))      
-  //if (st.set_rpm == true && st.exec_segment != NULL && bit_istrue(settings.flags,BITFLAG_LASER) && (st.exec_segment->spindle_direction != SPINDLE_DISABLE) && (OCR_REGISTER != st.exec_segment->spindle_speed_pwm)) 
-  {
-	OCR_REGISTER = st.exec_block->spindle_speed_pwm;
-	//OCR_REGISTER = st.exec_segment->spindle_speed_pwm;
+  if (st.set_rpm == true) {
+	OCR_REGISTER = st.exec_segment->spindle_speed_pwm;
+	st.set_rpm = false;
+	return; // I think this is needed to give the laser a good start, it takes time for the laser to change.
   }
     
 
@@ -334,12 +331,13 @@ ISR(TIMER1_COMPA_vect)
     if (segment_buffer_head != segment_buffer_tail) {
       // Initialize new step segment and load number of steps to execute
       st.exec_segment = &segment_buffer[segment_buffer_tail];
-      st.set_rpm = true;
+      if(st.exec_segment != NULL && bit_istrue(settings.flags,BITFLAG_LASER) && (st.exec_segment->spindle_direction != SPINDLE_DISABLE) && (OCR_REGISTER != st.exec_segment->spindle_speed_pwm)) {
+        st.set_rpm = true;
+      }
       #ifndef ADAPTIVE_MULTI_AXIS_STEP_SMOOTHING
         // With AMASS is disabled, set timer prescaler for segments with slow step frequencies (< 250Hz).
         TCCR1B = (TCCR1B & ~(0x07<<CS10)) | (st.exec_segment->prescaler<<CS10);
       #endif
-
       // Initialize step segment timing per step and load number of steps to execute.
       OCR1A = st.exec_segment->cycles_per_tick;
       st.step_count = st.exec_segment->n_step; // NOTE: Can sometimes be zero when moving slow.
@@ -353,11 +351,6 @@ ISR(TIMER1_COMPA_vect)
         st.counter_x = (st.exec_block->step_event_count >> 1);
         st.counter_y = st.counter_x;
         st.counter_z = st.counter_x;        
-        // set spindle rpm and status on new block.
-        
-//LASER       
-       //if (st.exec_block != NULL && bit_istrue(settings.flags,BITFLAG_LASER) && (st.exec_block->spindle_direction != SPINDLE_DISABLE) && (OCR_REGISTER != st.exec_block->spindle_speed_pwm)) OCR_REGISTER = st.exec_block->spindle_speed_pwm;
-      
       }
 
       st.dir_outbits = st.exec_block->direction_bits ^ dir_port_invert_mask; 
@@ -589,11 +582,6 @@ void st_prep_buffer()
           st_prep_block->step_event_count = pl_block->step_event_count << MAX_AMASS_LEVEL;
         #endif
         
-// Laser Spindle aka real time spindle 
-        #ifdef LASER_SPINDLE
-          st_prep_block->spindle_direction = pl_block->spindle_direction;
-          st_prep_block->spindle_speed_pwm = calculate_pwm_from_rpm(pl_block->spindle_speed);
-        #endif
         // Initialize segment buffer data for generating the segments.
         prep.steps_remaining = pl_block->step_event_count;
         prep.step_per_mm = prep.steps_remaining/pl_block->millimeters;
