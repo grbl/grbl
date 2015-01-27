@@ -171,20 +171,18 @@ uint8_t gc_execute_line(char *line)
         // Determine 'M' command and its modal group
         if (mantissa > 0) { FAIL(STATUS_GCODE_COMMAND_VALUE_NOT_INTEGER); } // [No Mxx.x commands]
         switch(int_value) {
-          case 0: case 1: case 2: case 30: 
+          case 0: case 2:
             word_bit = MODAL_GROUP_M4; 
             switch(int_value) {
               case 0: gc_block.modal.program_flow = PROGRAM_FLOW_PAUSED; break; // Program pause
-              case 1: break; // Optional stop not supported. Ignore.
-              case 2: case 30: gc_block.modal.program_flow = PROGRAM_FLOW_COMPLETED; break; // Program end and reset 
+              case 2: gc_block.modal.program_flow = PROGRAM_FLOW_COMPLETED; break; // Program end and reset 
             }
             break;
           case 17: gc_block.modal.motor = MOTOR_ENABLE; break;
           case 18: gc_block.modal.motor = MOTOR_DISABLE; break;
+          case 50: gc_block.modal.ldr = LDR_READ; break;
           case 70: gc_block.modal.laser = LASER_DISABLE; break;
           case 71: gc_block.modal.laser = LASER_ENABLE; break;
-
-          case 50: gc_block.modal.ldr = LDR_READ; break;
 
           default: FAIL(STATUS_GCODE_UNSUPPORTED_COMMAND); // [Unsupported M command]
         }            
@@ -691,7 +689,7 @@ uint8_t gc_execute_line(char *line)
     }
   
   // [21. Program flow ]:
-  // M0,M1,M2,M30: Perform non-running program flow actions. During a program pause, the buffer may 
+  // M0,M2: Perform non-running program flow actions. During a program pause, the buffer may 
   // refill and can only be resumed by the cycle start run-time command.
   gc_state.modal.program_flow = gc_block.modal.program_flow;
   if (gc_state.modal.program_flow) { 

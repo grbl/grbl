@@ -1,5 +1,5 @@
 /*
-  main.c - An embedded CNC Controller with rs274/ngc (g-code) support
+  main.c - Firmware for 3D Scanners using g-codes
   Part of Horus Firmware
 
   Copyright (c) 2014-2015 Mundo Reader S.L.

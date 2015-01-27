@@ -146,20 +146,19 @@ void report_init_message()
 
 // Grbl help message
 void report_grbl_help() {
-  printPgmString(PSTR("$$ (view Grbl settings)\r\n"
+  printPgmString(PSTR("$$ (view settings)\r\n"
                       "$# (view # parameters)\r\n"
                       "$G (view parser state)\r\n"
                       "$I (view build info)\r\n"
                       "$N (view startup blocks)\r\n"
-                      "$x=value (save Grbl setting)\r\n"
+                      "$x=value (save setting)\r\n"
                       "$Nx=line (save startup block)\r\n"
                       "$C (check gcode mode)\r\n"
                       "$X (kill alarm lock)\r\n"
-                      "$H (run homing cycle)\r\n"
                       "~ (cycle start)\r\n"
                       "! (feed hold)\r\n"
                       "? (current status)\r\n"
-                      "ctrl-x (reset Grbl)\r\n"));
+                      "ctrl-x (reset)\r\n"));
 }
 
 
