@@ -1,21 +1,24 @@
-#  Part of Grbl
+#  Part of Horus Firmware
 #
-#  Copyright (c) 2009-2011 Simen Svale Skogsrud
-#  Copyright (c) 2012 Sungeun K. Jeon
+#  Copyright (c) 2014-2015 Mundo Reader S.L.
 #
-#  Grbl is free software: you can redistribute it and/or modify
+#  Horus Firmware is free software: you can redistribute it and/or modify
 #  it under the terms of the GNU General Public License as published by
 #  the Free Software Foundation, either version 3 of the License, or
 #  (at your option) any later version.
 #
-#  Grbl is distributed in the hope that it will be useful,
+#  Horus Firmware is distributed in the hope that it will be useful,
 #  but WITHOUT ANY WARRANTY; without even the implied warranty of
 #  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 #  GNU General Public License for more details.
 #
 #  You should have received a copy of the GNU General Public License
-#  along with Grbl.  If not, see <http://www.gnu.org/licenses/>.
+#  along with Horus Firmware.  If not, see <http://www.gnu.org/licenses/>.
 
+#  This file is based on work from Grbl v0.9, distributed under the 
+#  terms of the GPLv3. See COPYING for more details.
+#    Copyright (c) 2009-2011 Simen Svale Skogsrud
+#    Copyright (c) 2011-2014 Sungeun K. Jeon
 
 # This is a prototype Makefile. Modify it according to your needs.
 # You should at least check the settings for
@@ -31,8 +34,8 @@
 DEVICE     ?= atmega328p
 CLOCK      = 16000000
 PROGRAMMER ?= -c avrisp2 -P usb
-OBJECTS    = main.o motion_control.o gcode.o spindle_control.o coolant_control.o serial.o \
-             protocol.o stepper.o eeprom.o settings.o planner.o nuts_bolts.o limits.o \
+OBJECTS    = main.o motion_control.o gcode.o serial.o laser_control.o ldr.o \
+             protocol.o stepper.o eeprom.o settings.o planner.o nuts_bolts.o \
              print.o probe.o report.o system.o
 # FUSES      = -U hfuse:w:0xd9:m -U lfuse:w:0x24:m
 FUSES      = -U hfuse:w:0xd2:m -U lfuse:w:0xff:m
@@ -45,7 +48,7 @@ AVRDUDE = avrdude $(PROGRAMMER) -p $(DEVICE) -B 10 -F
 COMPILE = avr-gcc -Wall -Os -DF_CPU=$(CLOCK) -mmcu=$(DEVICE) -I. -ffunction-sections
 
 # symbolic targets:
-all:	grbl.hex
+all:	horus-fw.hex
 
 .c.o:
 	$(COMPILE) -c $< -o $@
@@ -62,7 +65,7 @@ all:	grbl.hex
 	$(COMPILE) -S $< -o $@
 
 flash:	all
-	$(AVRDUDE) -U flash:w:grbl.hex:i
+	$(AVRDUDE) -U flash:w:horus-fw.hex:i
 
 fuse:
 	$(AVRDUDE) $(FUSES)
@@ -72,18 +75,18 @@ install: flash fuse
 
 # if you use a bootloader, change the command below appropriately:
 load: all
-	bootloadHID grbl.hex
+	bootloadHID horus-fw.hex
 
 clean:
-	rm -f grbl.hex main.elf $(OBJECTS) $(OBJECTS:.o=.d)
+	rm -f horus-fw.hex main.elf $(OBJECTS) $(OBJECTS:.o=.d)
 
 # file targets:
 main.elf: $(OBJECTS)
 	$(COMPILE) -o main.elf $(OBJECTS) -lm -Wl,--gc-sections
 
-grbl.hex: main.elf
-	rm -f grbl.hex
-	avr-objcopy -j .text -j .data -O ihex main.elf grbl.hex
+horus-fw.hex: main.elf
+	rm -f horus-fw.hex
+	avr-objcopy -j .text -j .data -O ihex main.elf horus-fw.hex
 	avr-size --format=berkeley main.elf
 # If you have an EEPROM section, you must also create a hex file for the
 # EEPROM and add it to the "flash" target.
