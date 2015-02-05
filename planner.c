@@ -388,6 +388,7 @@ uint8_t plan_check_full_buffer()
        change the overall maximum entry speed conditions of all blocks.
     */
     // NOTE: Computed without any expensive trig, sin() or acos(), by trig half angle identity of cos(theta).
+    junction_cos_theta = min(junction_cos_theta, 1.0); // Check for numerical round-off.
     float sin_theta_d2 = sqrt(0.5*(1.0-junction_cos_theta)); // Trig half angle identity. Always positive.
 
     // TODO: Technically, the acceleration used in calculation needs to be limited by the minimum of the
