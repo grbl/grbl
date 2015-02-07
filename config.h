@@ -148,6 +148,12 @@
 // NOTE: Will eventually be added to Grbl settings in v1.0.
 // #define INVERT_CONTROL_PIN // Default disabled. Uncomment to enable.
 
+// Enable input pin states feedback in status reports. The data is presented as a binary value with
+// the bits in the appropriate input pin ports being 0(low) or 1(high). Useful for setting up a new
+// CNC machine, but do not recommend keeping this option by default, as it will consume CPU resources
+// with little to no benefit during normal operation.
+// #define REPORT_INPUT_PIN_STATES // Default disabled. Uncomment to enable.
+
 // ---------------------------------------------------------------------------------------
 // ADVANCED CONFIGURATION OPTIONS:
 
@@ -166,6 +172,11 @@
 // noise and shake your machine. At even lower step frequencies, AMASS adapts and provides even better
 // step smoothing. See stepper.c for more details on the AMASS system works.
 #define ADAPTIVE_MULTI_AXIS_STEP_SMOOTHING  // Default enabled. Comment to disable.
+
+// Sets the maximum step rate allowed to be written as a Grbl setting. This value is strictly limited
+// by the CPU speed and will change if something other than an AVR running at 16MHz is used.
+// NOTE: For now disabled, will enable if flash space permits.
+// #define MAX_STEP_RATE_HZ 30000 // Hz
 
 // By default, Grbl sets all input pins to normal-high operation with their internal pull-up resistors
 // enabled. This simplifies the wiring for users by requiring only a switch connected to ground, 

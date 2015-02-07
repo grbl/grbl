@@ -75,6 +75,8 @@ void report_status_message(uint8_t status_code)
       printPgmString(PSTR("Homing not enabled")); break;
       case STATUS_OVERFLOW:
       printPgmString(PSTR("Line overflow")); break; 
+      // case STATUS_MAX_STEP_RATE_EXCEEDED: 
+      // printPgmString(PSTR("Step rate > 30kHz")); break;
       
       // Common g-code parser errors.
       case STATUS_GCODE_MODAL_GROUP_VIOLATION:
@@ -448,6 +450,13 @@ void report_realtime_status()
     printPgmString(PSTR(",F:")); 
     printFloat_RateValue(st_get_realtime_rate());
   #endif    
+  
+  #ifdef REPORT_INPUT_PIN_STATES
+    printPgmString(PSTR(",Lim:"));
+    print_uint8_base2(LIMIT_PIN & LIMIT_MASK);  
+    printPgmString(PSTR(",Ctl:"));
+    print_uint8_base2(CONTROL_PIN & CONTROL_MASK);
+  #endif
   
   printPgmString(PSTR(">\r\n"));
 }
