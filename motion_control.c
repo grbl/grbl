@@ -25,18 +25,7 @@
     Copyright (c) 2011 Jens Geisler
 */  
 
-#include "system.h"
-#include "settings.h"
-#include "protocol.h"
-#include "gcode.h"
-#include "planner.h"
-#include "stepper.h"
-#include "motion_control.h"
-#include "spindle_control.h"
-#include "coolant_control.h"
-#include "limits.h"
-#include "probe.h"
-#include "report.h"
+#include "grbl.h"
 
 
 // Execute linear motion in absolute millimeter coordinates. Feed rate given in millimeters/second

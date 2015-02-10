@@ -18,14 +18,7 @@
   along with Grbl.  If not, see <http://www.gnu.org/licenses/>.
 */
 
-#include "system.h"
-#include "settings.h"
-#include "protocol.h"
-#include "gcode.h"
-#include "motion_control.h"
-#include "stepper.h"
-#include "report.h"
-#include "print.h"
+#include "grbl.h"
 
 
 void system_init() 

@@ -18,10 +18,7 @@
   along with Grbl.  If not, see <http://www.gnu.org/licenses/>.
 */  
 
-#include "system.h"
-#include "coolant_control.h"
-#include "protocol.h"
-#include "gcode.h"
+#include "grbl.h"
 
 
 void coolant_init()

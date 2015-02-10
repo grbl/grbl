@@ -24,8 +24,7 @@
     Copyright (c) 2011-2012 Sungeun K. Jeon
 */ 
 
-#include "system.h"
-#include "print.h"
+#include "grbl.h"
 
 
 #define MAX_INT_DIGITS 8 // Maximum number of digits in int32 (and float)

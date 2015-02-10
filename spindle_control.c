@@ -24,10 +24,7 @@
     Copyright (c) 2012 Sungeun K. Jeon
 */ 
 
-#include "system.h"
-#include "spindle_control.h"
-#include "protocol.h"
-#include "gcode.h"
+#include "grbl.h"
 
 
 void spindle_init()

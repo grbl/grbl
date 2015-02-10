@@ -24,13 +24,7 @@
     Copyright (c) 2011-2012 Sungeun K. Jeon
 */ 
 
-#include "system.h"
-#include "settings.h"
-#include "eeprom.h"
-#include "protocol.h"
-#include "report.h"
-#include "limits.h"
-#include "stepper.h"
+#include "grbl.h"
 
 settings_t settings;
 

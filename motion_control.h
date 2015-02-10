@@ -26,7 +26,7 @@
 
 #ifndef motion_control_h
 #define motion_control_h
-#include "gcode.h"
+
 
 #define HOMING_CYCLE_LINE_NUMBER -1
 

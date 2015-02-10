@@ -21,25 +21,7 @@
 #ifndef system_h
 #define system_h
 
-// Define system header files and standard libraries used by Grbl
-#include <avr/io.h>
-#include <avr/pgmspace.h>
-#include <avr/interrupt.h>
-#include <avr/wdt.h>
-#include <util/delay.h>
-#include <math.h>
-#include <inttypes.h>    
-#include <string.h>
-#include <stdlib.h>
-#include <stdint.h>
-#include <stdbool.h>
-
-// Define Grbl configuration and shared header files
-#include "config.h"
-#include "defaults.h"
-#include "cpu_map.h"
-#include "nuts_bolts.h"
-
+#include "grbl.h"
 
 // Define system executor bit map. Used internally by realtime protocol as realtime command flags, 
 // which notifies the main program to execute the specified realtime command asynchronously.

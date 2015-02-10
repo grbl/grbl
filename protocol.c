@@ -24,15 +24,7 @@
     Copyright (c) 2011-2012 Sungeun K. Jeon
 */ 
 
-#include "system.h"
-#include "serial.h"
-#include "settings.h"
-#include "protocol.h"
-#include "gcode.h"
-#include "planner.h"
-#include "stepper.h"
-#include "motion_control.h"
-#include "report.h"
+#include "grbl.h"
 
 
 static char line[LINE_BUFFER_SIZE]; // Line to be executed. Zero-terminated.

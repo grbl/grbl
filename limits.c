@@ -24,14 +24,8 @@
     Copyright (c) 2012 Sungeun K. Jeon
 */  
   
-#include "system.h"
-#include "settings.h"
-#include "protocol.h"
-#include "planner.h"
-#include "stepper.h"
-#include "motion_control.h"
-#include "limits.h"
-#include "report.h"
+#include "grbl.h"
+
 
 // Homing axis search distance multiplier. Computed by this value times the axis max travel.
 #define HOMING_AXIS_SEARCH_SCALAR  1.5 // Must be > 1 to ensure limit switch will be engaged.

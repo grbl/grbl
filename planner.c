@@ -25,12 +25,7 @@
     Copyright (c) 2011 Jens Geisler
 */ 
 
-#include "system.h"
-#include "planner.h"
-#include "protocol.h"
-#include "stepper.h"
-#include "settings.h"
-
+#include "grbl.h"
 
 #define SOME_LARGE_VALUE 1.0E+38 // Used by rapids and acceleration maximization calculations. Just needs
                                  // to be larger than any feasible (mm/min)^2 or mm/sec^2 value.
@@ -388,13 +383,19 @@ uint8_t plan_check_full_buffer()
        change the overall maximum entry speed conditions of all blocks.
     */
     // NOTE: Computed without any expensive trig, sin() or acos(), by trig half angle identity of cos(theta).
-    junction_cos_theta = min(junction_cos_theta, 1.0); // Check for numerical round-off.
-    float sin_theta_d2 = sqrt(0.5*(1.0-junction_cos_theta)); // Trig half angle identity. Always positive.
+    if (junction_cos_theta > 0.99) {
+      //  For a 0 degree acute junction, just set minimum junction speed. 
+      block->max_junction_speed_sqr = MINIMUM_JUNCTION_SPEED*MINIMUM_JUNCTION_SPEED;
+    } else {
+      junction_cos_theta = max(junction_cos_theta,-0.99); // Check for numerical round-off to avoid divide by zero.
+      float sin_theta_d2 = sqrt(0.5*(1.0-junction_cos_theta)); // Trig half angle identity. Always positive.
 
-    // TODO: Technically, the acceleration used in calculation needs to be limited by the minimum of the
-    // two junctions. However, this shouldn't be a significant problem except in extreme circumstances.
-    block->max_junction_speed_sqr = max( MINIMUM_JUNCTION_SPEED*MINIMUM_JUNCTION_SPEED,
-                                 (block->acceleration * settings.junction_deviation * sin_theta_d2)/(1.0-sin_theta_d2) );
+      // TODO: Technically, the acceleration used in calculation needs to be limited by the minimum of the
+      // two junctions. However, this shouldn't be a significant problem except in extreme circumstances.
+      block->max_junction_speed_sqr = max( MINIMUM_JUNCTION_SPEED*MINIMUM_JUNCTION_SPEED,
+                                   (block->acceleration * settings.junction_deviation * sin_theta_d2)/(1.0-sin_theta_d2) );
+
+    }
   }
 
   // Store block nominal speed

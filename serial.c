@@ -24,11 +24,7 @@
     Copyright (c) 2011-2012 Sungeun K. Jeon
 */ 
 
-#include <avr/interrupt.h>
-#include "system.h"
-#include "serial.h"
-#include "motion_control.h"
-#include "protocol.h"
+#include "grbl.h"
 
 
 uint8_t serial_rx_buffer[RX_BUFFER_SIZE];

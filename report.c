@@ -26,16 +26,7 @@
   methods to accomodate their needs.
 */
 
-#include "system.h"
-#include "report.h"
-#include "print.h"
-#include "settings.h"
-#include "gcode.h"
-#include "coolant_control.h"
-#include "planner.h"
-#include "spindle_control.h"
-#include "stepper.h"
-#include "serial.h"
+#include "grbl.h"
 
 
 // Handles the primary confirmation protocol response for streaming interfaces and human-feedback.

@@ -32,7 +32,6 @@
 
 #ifndef config_h
 #define config_h
-#include "system.h"
 
 
 // Default settings. Used when resetting EEPROM. Change to desired name in defaults.h

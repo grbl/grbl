@@ -24,12 +24,7 @@
     Copyright (c) 2011-2012 Sungeun K. Jeon
 */ 
 
-#include "system.h"
-#include "nuts_bolts.h"
-#include "stepper.h"
-#include "settings.h"
-#include "planner.h"
-#include "probe.h"
+#include "grbl.h"
 
 
 // Some useful constants.
