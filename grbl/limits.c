@@ -161,14 +161,14 @@ void limits_go_home(uint8_t cycle_mask)
       // Set target location for active axes and setup computation for homing rate.
       if (bit_istrue(cycle_mask,bit(idx))) { 
         n_active_axis++;
-        if (!approach) {
-          // Set target direction based on cycle mask
-          if (bit_istrue(settings.homing_dir_mask,bit(idx))) { target[idx] += max_travel; }
-          else { target[idx] -= max_travel; }
-        } else { 
+        if (approach) {
           // Set target direction based on cycle mask
           if (bit_istrue(settings.homing_dir_mask,bit(idx))) { target[idx] -= max_travel; }
           else { target[idx] += max_travel; }
+        } else { 
+          // Set target direction based on cycle mask
+          if (bit_istrue(settings.homing_dir_mask,bit(idx))) { target[idx] += max_travel; }
+          else { target[idx] -= max_travel; }
         }
       }
 

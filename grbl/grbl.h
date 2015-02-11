@@ -1,5 +1,5 @@
 /*
-  grbl.h - include file
+  grbl.h - main Grbl include file
   Part of Grbl v0.9
 
   Copyright (c) 2015 Sungeun K. Jeon
@@ -18,13 +18,10 @@
   along with Grbl.  If not, see <http://www.gnu.org/licenses/>.
 */
 
-// NOTE: This is not used by the 'make' compiling method. This is currently only used for
-// simplifying compiling through the Arduino IDE at the moment. However, it may eventually
-// turn into a central include file for the overall system.
-
 #ifndef grbl_h
 #define grbl_h
 
+// Grbl versioning system
 #define GRBL_VERSION "0.9h"
 #define GRBL_VERSION_BUILD "20150210"
 
@@ -41,7 +38,7 @@
 #include <stdint.h>
 #include <stdbool.h>
 
-// Define the Grbl system include files.
+// Define the Grbl system include files. NOTE: Do not alter organization.
 #include "config.h"
 #include "nuts_bolts.h"
 #include "settings.h"

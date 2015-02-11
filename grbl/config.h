@@ -185,9 +185,10 @@
 // needs to connect a normal-open switch, but if inverted, this means the user should connect a 
 // normal-closed switch. 
 // The following options disable the internal pull-up resistors, sets the pins to a normal-low 
-// operation, and switches much be now connect to Vcc instead of ground. This also flips the meaning 
+// operation, and switches must be now connect to Vcc instead of ground. This also flips the meaning 
 // of the invert pin Grbl setting, where an inverted setting now means the user should connect a 
 // normal-open switch and vice versa.
+// NOTE: All pins associated with the feature are disabled, i.e. XYZ limit pins, not individual axes.
 // WARNING: When the pull-ups are disabled, this requires additional wiring with pull-down resistors!
 //#define DISABLE_LIMIT_PIN_PULL_UP
 //#define DISABLE_PROBE_PIN_PULL_UP
@@ -202,7 +203,7 @@
 // enable pin will output 5V for maximum RPM with 256 intermediate levels and 0V when disabled.
 // NOTE: IMPORTANT for Arduino Unos! When enabled, the Z-limit pin D11 and spindle enable pin D12 switch!
 // The hardware PWM output on pin D11 is required for variable spindle output voltages.
-// #define VARIABLE_SPINDLE // Default disabled. Uncomment to enable.
+#define VARIABLE_SPINDLE // Default disabled. Uncomment to enable.
 
 // Used by the variable spindle output only. These parameters set the maximum and minimum spindle speed
 // "S" g-code values to correspond to the maximum and minimum pin voltages. There are 256 discrete and 
