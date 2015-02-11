@@ -77,7 +77,7 @@ load: all
 	bootloadHID grbl.hex
 
 clean:
-	rm -f grbl.hex $(BUILDDIR)/*
+	rm -f grbl.hex $(BUILDDIR)/*.o $(BUILDDIR)/*.d $(BUILDDIR)/*.elf
 
 # file targets:
 $(BUILDDIR)/main.elf: $(OBJECTS)
