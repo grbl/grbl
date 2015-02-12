@@ -48,12 +48,32 @@ ISR(CONTROL_INT_vect)
   if (pin) { 
     if (bit_istrue(pin,bit(RESET_BIT))) {
       mc_reset();
-    } else if (bit_istrue(pin,bit(FEED_HOLD_BIT))) {
-      bit_true(sys.rt_exec_state, EXEC_FEED_HOLD); 
     } else if (bit_istrue(pin,bit(CYCLE_START_BIT))) {
       bit_true(sys.rt_exec_state, EXEC_CYCLE_START);
+    #ifndef ENABLE_SAFETY_DOOR_INPUT_PIN
+      } else if (bit_istrue(pin,bit(FEED_HOLD_BIT))) {
+        bit_true(sys.rt_exec_state, EXEC_FEED_HOLD); 
+    #else
+      } else if (bit_istrue(pin,bit(SAFETY_DOOR_BIT))) {
+        bit_true(sys.rt_exec_state, EXEC_SAFETY_DOOR);
+    #endif
     } 
   }
+}
+
+
+// Returns if safety door is ajar(T) or closed(F), based on pin state.
+uint8_t system_check_safety_door_ajar()
+{
+  #ifdef ENABLE_SAFETY_DOOR_INPUT_PIN
+    #ifdef INVERT_CONTROL_PIN
+      return(bit_istrue(CONTROL_PIN,bit(SAFETY_DOOR_BIT)));
+    #else
+      return(bit_isfalse(CONTROL_PIN,bit(SAFETY_DOOR_BIT)));
+    #endif
+  #else
+    return(false); // Input pin not enabled, so just return that it's closed.
+  #endif
 }
 
 
@@ -95,6 +115,7 @@ uint8_t system_execute_line(char *line)
       else { report_grbl_settings(); }
       break;
     case 'G' : // Prints gcode parser state
+      // TODO: Move this to realtime commands for GUIs to request this data during suspend-state.
       if ( line[++char_counter] != 0 ) { return(STATUS_INVALID_STATEMENT); }
       else { report_gcode_modes(); }
       break;   
@@ -118,6 +139,10 @@ uint8_t system_execute_line(char *line)
         report_feedback_message(MESSAGE_ALARM_UNLOCK);
         sys.state = STATE_IDLE;
         // Don't run startup script. Prevents stored moves in startup from causing accidents.
+        if (system_check_safety_door_ajar()) { // Check safety door switch before returning.
+          bit_true(sys.rt_exec_state, EXEC_SAFETY_DOOR);
+          protocol_execute_realtime(); // Enter safety door mode.
+        }
       } // Otherwise, no effect.
       break;               
 //  case 'J' : break;  // Jogging methods
@@ -144,6 +169,14 @@ uint8_t system_execute_line(char *line)
           if (bit_istrue(settings.flags,BITFLAG_HOMING_ENABLE)) { 
             sys.state = STATE_HOMING; // Set system state variable
             // Only perform homing if Grbl is idle or lost.
+            
+            // TODO: Likely not required.
+            if (system_check_safety_door_ajar()) { // Check safety door switch before homing.
+              bit_true(sys.rt_exec_state, EXEC_SAFETY_DOOR);
+              protocol_execute_realtime(); // Enter safety door mode.
+            }
+            
+            
             mc_homing_cycle(); 
             if (!sys.abort) {  // Execute startup scripts after successful homing.
               sys.state = STATE_IDLE; // Set to IDLE when complete.

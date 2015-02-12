@@ -79,8 +79,7 @@ int main(void)
     sys.abort = false;
     sys.rt_exec_state = 0;
     sys.rt_exec_alarm = 0;
-    if (bit_istrue(settings.flags,BITFLAG_AUTO_START)) { sys.auto_start = true; }
-    else { sys.auto_start = false; }
+    sys.suspend = false;
           
     // Start Grbl main loop. Processes program inputs and executes them.
     protocol_main_loop();

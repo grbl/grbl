@@ -77,10 +77,6 @@
   #else
     plan_buffer_line(target, feed_rate, invert_feed_rate);
   #endif
-  
-  // If idle, indicate to the system there is now a planned block in the buffer ready to cycle 
-  // start. Otherwise ignore and continue on.
-  if (!sys.state) { sys.state = STATE_QUEUED; }
 }
 
 
@@ -286,7 +282,6 @@ void mc_homing_cycle()
 
   // Finish all queued commands and empty planner buffer before starting probe cycle.
   protocol_buffer_synchronize();
-  uint8_t auto_start_state = sys.auto_start; // Store run state
 
   // Initialize probing control variables
   sys.probe_succeeded = false; // Re-initialize probe history before beginning cycle.  
@@ -315,7 +310,7 @@ void mc_homing_cycle()
   do {
     protocol_execute_realtime(); 
     if (sys.abort) { return; } // Check for system abort
-  } while ((sys.state != STATE_IDLE) && (sys.state != STATE_QUEUED));
+  } while (sys.state != STATE_IDLE);
   
   // Probing cycle complete!
   
@@ -339,9 +334,6 @@ void mc_homing_cycle()
   // NOTE: The target[] variable updated here will be sent back and synced with the g-code parser.
   system_convert_array_steps_to_mpos(target, sys.position);
 
-  // Restore run state before returning
-  sys.auto_start = auto_start_state;
-
   #ifdef MESSAGE_PROBE_COORDINATES
     // All done! Output the probe position as message.
     report_probe_parameters();
@@ -364,11 +356,11 @@ void mc_reset()
     spindle_stop();
     coolant_stop();
 
-    // Kill steppers only if in any motion state, i.e. cycle, feed hold, homing, or jogging
+    // Kill steppers only if in any motion state, i.e. cycle, actively holding, or homing.
     // NOTE: If steppers are kept enabled via the step idle delay setting, this also keeps
     // the steppers enabled by avoiding the go_idle call altogether, unless the motion state is
     // violated, by which, all bets are off.
-    if (sys.state & (STATE_CYCLE | STATE_HOLD | STATE_HOMING)) {
+    if ((sys.state & (STATE_CYCLE | STATE_HOMING)) || (sys.suspend == SUSPEND_ENABLE_HOLD)) {
       bit_true_atomic(sys.rt_exec_alarm, EXEC_ALARM_ABORT_CYCLE);
       st_go_idle(); // Force kill steppers. Position has likely been lost.
     }

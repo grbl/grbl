@@ -1022,12 +1022,14 @@ uint8_t gc_execute_line(char *line)
   gc_state.modal.program_flow = gc_block.modal.program_flow;
   if (gc_state.modal.program_flow) { 
     protocol_buffer_synchronize(); // Finish all remaining buffered motions. Program paused when complete.
-    sys.auto_start = false; // Disable auto cycle start. Forces pause until cycle start issued.
+
+    sys.suspend = true;
+    protocol_execute_realtime(); // Suspend execution. For both program pause or program end.
   
     // If complete, reset to reload defaults (G92.2,G54,G17,G90,G94,M48,G40,M5,M9). Otherwise,
     // re-enable program flow after pause complete, where cycle start will resume the program.
     if (gc_state.modal.program_flow == PROGRAM_FLOW_COMPLETED) { mc_reset(); }
-    else { gc_state.modal.program_flow = PROGRAM_FLOW_RUNNING; }
+    else { gc_state.modal.program_flow = PROGRAM_FLOW_RUNNING; } // Resume from program pause.
   }
     
   // TODO: % to denote start of program. Sets auto cycle start?

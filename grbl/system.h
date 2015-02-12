@@ -33,6 +33,8 @@
 #define EXEC_CYCLE_STOP     bit(2) // bitmask 00000100
 #define EXEC_FEED_HOLD      bit(3) // bitmask 00001000
 #define EXEC_RESET          bit(4) // bitmask 00010000
+#define EXEC_SAFETY_DOOR    bit(5) // bitmask 00100000
+#define EXEC_MOTION_CANCEL  bit(6) // bitmask 01000000
 
 // Alarm executor bit map.
 // NOTE: EXEC_CRITICAL_EVENT is an optional flag that must be set with an alarm flag. When enabled,
@@ -47,27 +49,34 @@
 // Define system state bit map. The state variable primarily tracks the individual functions
 // of Grbl to manage each without overlapping. It is also used as a messaging flag for
 // critical events.
-#define STATE_IDLE       0      // Must be zero. No flags.
-#define STATE_ALARM      bit(0) // In alarm state. Locks out all g-code processes. Allows settings access.
-#define STATE_CHECK_MODE bit(1) // G-code check mode. Locks out planner and motion only.
-#define STATE_HOMING     bit(2) // Performing homing cycle
-#define STATE_QUEUED     bit(3) // Indicates buffered blocks, awaiting cycle start.
-#define STATE_CYCLE      bit(4) // Cycle is running
-#define STATE_HOLD       bit(5) // Executing feed hold
-// #define STATE_JOG     bit(6) // Jogging mode is unique like homing.
+#define STATE_IDLE          0      // Must be zero. No flags.
+#define STATE_ALARM         bit(0) // In alarm state. Locks out all g-code processes. Allows settings access.
+#define STATE_CHECK_MODE    bit(1) // G-code check mode. Locks out planner and motion only.
+#define STATE_HOMING        bit(2) // Performing homing cycle
+#define STATE_CYCLE         bit(3) // Cycle is running or motions are being executed.
+#define STATE_HOLD          bit(4) // Active feed hold
+#define STATE_SAFETY_DOOR   bit(5) // Safety door is ajar. Feed holds and de-energizes system.
+#define STATE_MOTION_CANCEL bit(6) // Motion cancel by feed hold and return to idle. 
+
+// Define system suspend states.
+#define SUSPEND_DISABLE       0      // Must be zero.
+#define SUSPEND_ENABLE_HOLD   bit(0) // Enabled. Indicates the cycle is active and currently undergoing a hold.
+#define SUSPEND_ENABLE_READY  bit(1) // Ready to resume with a cycle start command.
+#define SUSPEND_ENERGIZE      bit(2) // Re-energizes output before resume.
+#define SUSPEND_MOTION_CANCEL bit(3) // Cancels resume motion. Used by probing routine.
 
 
 // Define global system variables
 typedef struct {
   uint8_t abort;                 // System abort flag. Forces exit back to main loop for reset.
   uint8_t state;                 // Tracks the current state of Grbl.
+  uint8_t suspend;               // System suspend flag. Allows only realtime commands. Used primarily for holds.
 
   volatile uint8_t rt_exec_state;  // Global realtime executor bitflag variable for state management. See EXEC bitmasks.
   volatile uint8_t rt_exec_alarm;  // Global realtime executor bitflag variable for setting various alarms.
 
   int32_t position[N_AXIS];      // Real-time machine (aka home) position vector in steps. 
                                  // NOTE: This may need to be a volatile variable, if problems arise.                             
-  uint8_t auto_start;            // Planner auto-start flag. Toggled off during feed hold. Defaulted by settings.
 
   uint8_t homing_axis_lock;       // Locks axes when limits engage. Used as an axis motion mask in the stepper ISR.
   volatile uint8_t probe_state;   // Probing state value.  Used to coordinate the probing cycle with stepper ISR.
@@ -79,6 +88,9 @@ extern system_t sys;
 
 // Initialize the serial protocol
 void system_init();
+
+// Returns if safety door is open or closed, based on pin state.
+uint8_t system_check_safety_door_ajar();
 
 // Executes an internal system command, defined as a string starting with a '$'
 uint8_t system_execute_line(char *line);

@@ -123,6 +123,8 @@ void report_feedback_message(uint8_t message_code)
     printPgmString(PSTR("Enabled")); break;
     case MESSAGE_DISABLED:
     printPgmString(PSTR("Disabled")); break; 
+    case MESSAGE_SAFETY_DOOR_AJAR:
+    printPgmString(PSTR("Check Door")); break;
   }
   printPgmString(PSTR("]\r\n"));
 }
@@ -171,8 +173,7 @@ void report_grbl_settings() {
   printPgmString(PSTR(")\r\n$11=")); printFloat_SettingValue(settings.junction_deviation);
   printPgmString(PSTR(" (junction deviation, mm)\r\n$12=")); printFloat_SettingValue(settings.arc_tolerance);
   printPgmString(PSTR(" (arc tolerance, mm)\r\n$13=")); print_uint8_base10(bit_istrue(settings.flags,BITFLAG_REPORT_INCHES));
-  printPgmString(PSTR(" (report inches, bool)\r\n$14=")); print_uint8_base10(bit_istrue(settings.flags,BITFLAG_AUTO_START));
-  printPgmString(PSTR(" (auto start, bool)\r\n$20=")); print_uint8_base10(bit_istrue(settings.flags,BITFLAG_SOFT_LIMIT_ENABLE));
+  printPgmString(PSTR(" (report inches, bool)\r\n$20=")); print_uint8_base10(bit_istrue(settings.flags,BITFLAG_SOFT_LIMIT_ENABLE));
   printPgmString(PSTR(" (soft limits, bool)\r\n$21=")); print_uint8_base10(bit_istrue(settings.flags,BITFLAG_HARD_LIMIT_ENABLE));
   printPgmString(PSTR(" (hard limits, bool)\r\n$22=")); print_uint8_base10(bit_istrue(settings.flags,BITFLAG_HOMING_ENABLE));
   printPgmString(PSTR(" (homing cycle, bool)\r\n$23=")); print_uint8_base10(settings.homing_dir_mask);
@@ -379,12 +380,13 @@ void report_realtime_status()
   // Report current machine state
   switch (sys.state) {
     case STATE_IDLE: printPgmString(PSTR("<Idle")); break;
-    case STATE_QUEUED: printPgmString(PSTR("<Queue")); break;
+    case STATE_MOTION_CANCEL: // Report run state.
     case STATE_CYCLE: printPgmString(PSTR("<Run")); break;
     case STATE_HOLD: printPgmString(PSTR("<Hold")); break;
     case STATE_HOMING: printPgmString(PSTR("<Home")); break;
     case STATE_ALARM: printPgmString(PSTR("<Alarm")); break;
     case STATE_CHECK_MODE: printPgmString(PSTR("<Check")); break;
+    case STATE_SAFETY_DOOR: printPgmString(PSTR("<Door")); break;
   }
  
   // If reporting a position, convert the current step count (current_position) to millimeters.

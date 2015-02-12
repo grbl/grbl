@@ -108,10 +108,11 @@
   #define RESET_BIT         0  // Uno Analog Pin 0
   #define FEED_HOLD_BIT     1  // Uno Analog Pin 1
   #define CYCLE_START_BIT   2  // Uno Analog Pin 2
+  #define SAFETY_DOOR_BIT   1  // Uno Analog Pin 1 NOTE: Safety door is shared with feed hold. Enabled by config define.
   #define CONTROL_INT       PCIE1  // Pin change interrupt enable pin
   #define CONTROL_INT_vect  PCINT1_vect
   #define CONTROL_PCMSK     PCMSK1 // Pin change interrupt register
-  #define CONTROL_MASK ((1<<RESET_BIT)|(1<<FEED_HOLD_BIT)|(1<<CYCLE_START_BIT))
+  #define CONTROL_MASK ((1<<RESET_BIT)|(1<<FEED_HOLD_BIT)|(1<<CYCLE_START_BIT)|(1<<SAFETY_DOOR_BIT))
   
   // Define probe switch input pin.
   #define PROBE_DDR       DDRC

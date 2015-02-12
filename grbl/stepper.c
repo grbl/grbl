@@ -529,6 +529,12 @@ void st_update_plan_block_parameters()
 */
 void st_prep_buffer()
 {
+
+  if (sys.state & (STATE_HOLD|STATE_MOTION_CANCEL|STATE_SAFETY_DOOR)) { 
+    // Check if we still need to generate more segments for a motion suspend.
+    if (prep.current_speed == 0.0) { return; } // Nothing to do. Bail.
+  }
+  
   while (segment_buffer_tail != segment_next_head) { // Check if we need to fill the buffer.
 
     // Determine if we need to load a new planner block or if the block has been replanned. 
@@ -571,7 +577,7 @@ void st_prep_buffer()
         
         prep.dt_remainder = 0.0; // Reset for new planner block
 
-        if (sys.state == STATE_HOLD) {
+        if (sys.state & (STATE_HOLD|STATE_MOTION_CANCEL|STATE_SAFETY_DOOR)) {
           // Override planner block entry speed and enforce deceleration during feed hold.
           prep.current_speed = prep.exit_speed; 
           pl_block->entry_speed_sqr = prep.exit_speed*prep.exit_speed; 
@@ -587,7 +593,7 @@ void st_prep_buffer()
       */
       prep.mm_complete = 0.0; // Default velocity profile complete at 0.0mm from end of block.
       float inv_2_accel = 0.5/pl_block->acceleration;
-      if (sys.state == STATE_HOLD) { // [Forced Deceleration to Zero Velocity]
+      if (sys.state & (STATE_HOLD|STATE_MOTION_CANCEL|STATE_SAFETY_DOOR)) { // [Forced Deceleration to Zero Velocity]
         // Compute velocity profile parameters for a feed hold in-progress. This profile overrides
         // the planner block profile, enforcing a deceleration to zero speed.
         prep.ramp_type = RAMP_DECEL;
@@ -746,16 +752,14 @@ void st_prep_buffer()
     
     // Bail if we are at the end of a feed hold and don't have a step to execute.
     if (prep_segment->n_step == 0) {
-      if (sys.state == STATE_HOLD) {
-
+      if (sys.state & (STATE_HOLD|STATE_MOTION_CANCEL|STATE_SAFETY_DOOR)) {
         // Less than one step to decelerate to zero speed, but already very close. AMASS 
         // requires full steps to execute. So, just bail.
-        prep.current_speed = 0.0;
+        prep.current_speed = 0.0; // NOTE: (=0.0) Used to indicate completed segment calcs for hold.
         prep.dt_remainder = 0.0;
         prep.steps_remaining = n_steps_remaining;
         pl_block->millimeters = prep.steps_remaining/prep.step_per_mm; // Update with full steps.
         plan_cycle_reinitialize();         
-        sys.state = STATE_QUEUED; 
         return; // Segment not generated, but current step data still retained.
       }
     }
@@ -818,21 +822,18 @@ void st_prep_buffer()
     } else { 
       // End of planner block or forced-termination. No more distance to be executed.
       if (mm_remaining > 0.0) { // At end of forced-termination.
-        // Reset prep parameters for resuming and then bail.
-        // NOTE: Currently only feed holds qualify for this scenario. May change with overrides.       
-        prep.current_speed = 0.0;
+        // Reset prep parameters for resuming and then bail. Allow the stepper ISR to complete
+        // the segment queue, where realtime protocol will set new state upon receiving the 
+        // cycle stop flag from the ISR. Prep_segment is blocked until then.
+        prep.current_speed = 0.0; // NOTE: (=0.0) Used to indicate completed segment calcs for hold.
         prep.dt_remainder = 0.0;
         prep.steps_remaining = ceil(steps_remaining);
         pl_block->millimeters = prep.steps_remaining/prep.step_per_mm; // Update with full steps.
         plan_cycle_reinitialize(); 
-        sys.state = STATE_QUEUED; // End cycle.        
-
         return; // Bail!
-// TODO: Try to move QUEUED setting into cycle re-initialize.
-
       } else { // End of planner block
         // The planner block is complete. All steps are set to be executed in the segment buffer.
-        pl_block = NULL;
+        pl_block = NULL; // Set pointer to indicate check and load next planner block.
         plan_discard_current_block();
       }
     }
@@ -848,7 +849,7 @@ void st_prep_buffer()
 #ifdef REPORT_REALTIME_RATE
   float st_get_realtime_rate()
   {
-     if (sys.state & (STATE_CYCLE | STATE_HOMING | STATE_HOLD)){
+     if (sys.state & (STATE_CYCLE | STATE_HOMING | STATE_HOLD | STATE_MOTION_CANCEL | STATE_SAFETY_DOOR)){
        return prep.current_speed;
      }
     return 0.0f;

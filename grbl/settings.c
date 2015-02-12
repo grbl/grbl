@@ -77,7 +77,6 @@ void settings_restore_global_settings() {
 
   settings.flags = 0;
   if (DEFAULT_REPORT_INCHES) { settings.flags |= BITFLAG_REPORT_INCHES; }
-  if (DEFAULT_AUTO_START) { settings.flags |= BITFLAG_AUTO_START; }
   if (DEFAULT_INVERT_ST_ENABLE) { settings.flags |= BITFLAG_INVERT_ST_ENABLE; }
   if (DEFAULT_INVERT_LIMIT_PINS) { settings.flags |= BITFLAG_INVERT_LIMIT_PINS; }
   if (DEFAULT_SOFT_LIMIT_ENABLE) { settings.flags |= BITFLAG_SOFT_LIMIT_ENABLE; }
@@ -247,10 +246,6 @@ uint8_t settings_store_global_setting(uint8_t parameter, float value) {
       case 13:
         if (int_value) { settings.flags |= BITFLAG_REPORT_INCHES; }
         else { settings.flags &= ~BITFLAG_REPORT_INCHES; }
-        break;
-      case 14: // Reset to ensure change. Immediate re-init may cause problems.
-        if (int_value) { settings.flags |= BITFLAG_AUTO_START; }
-        else { settings.flags &= ~BITFLAG_AUTO_START; }
         break;
       case 20:
         if (int_value) { 

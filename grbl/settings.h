@@ -36,7 +36,7 @@
 
 // Define bit flag masks for the boolean settings in settings.flag.
 #define BITFLAG_REPORT_INCHES      bit(0)
-#define BITFLAG_AUTO_START         bit(1)
+// #define BITFLAG_AUTO_START         bit(1) // Obsolete. Don't alter to keep back compatibility.
 #define BITFLAG_INVERT_ST_ENABLE   bit(2)
 #define BITFLAG_HARD_LIMIT_ENABLE  bit(3)
 #define BITFLAG_HOMING_ENABLE      bit(4)
