@@ -222,16 +222,17 @@
   #define RESET_BIT         0  // MEGA2560 Analog Pin 8
   #define FEED_HOLD_BIT     1  // MEGA2560 Analog Pin 9
   #define CYCLE_START_BIT   2  // MEGA2560 Analog Pin 10
+  #define SAFETY_DOOR_BIT   3  // MEGA2560 Analog Pin 11
   #define CONTROL_INT       PCIE2  // Pin change interrupt enable pin
   #define CONTROL_INT_vect  PCINT2_vect
   #define CONTROL_PCMSK     PCMSK2 // Pin change interrupt register
-  #define CONTROL_MASK ((1<<RESET_BIT)|(1<<FEED_HOLD_BIT)|(1<<CYCLE_START_BIT))
+  #define CONTROL_MASK ((1<<RESET_BIT)|(1<<FEED_HOLD_BIT)|(1<<CYCLE_START_BIT)|(1<<SAFETY_DOOR_BIT))
 
   // Define probe switch input pin.
   #define PROBE_DDR       DDRK
   #define PROBE_PIN       PINK
   #define PROBE_PORT      PORTK
-  #define PROBE_BIT       3  // MEGA2560 Analog Pin 11
+  #define PROBE_BIT       7  // MEGA2560 Analog Pin 15
   #define PROBE_MASK      (1<<PROBE_BIT)
 
   // Start of PWM & Stepper Enabled Spindle
