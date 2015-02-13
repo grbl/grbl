@@ -41,10 +41,10 @@
 // this halts Grbl into an infinite loop until the user aknowledges the problem and issues a soft-
 // reset command. For example, a hard limit event needs this type of halt and aknowledgement.
 #define EXEC_CRITICAL_EVENT     bit(0) // bitmask 00000001 (SPECIAL FLAG. See NOTE:)
-#define EXEC_ALARM_HARD_LIMIT   bit(0) // bitmask 00000010
-#define EXEC_ALARM_SOFT_LIMIT   bit(1) // bitmask 00000100
-#define EXEC_ALARM_ABORT_CYCLE  bit(2) // bitmask 00001000
-#define EXEC_ALARM_PROBE_FAIL   bit(3) // bitmask 00010000
+#define EXEC_ALARM_HARD_LIMIT   bit(1) // bitmask 00000010
+#define EXEC_ALARM_SOFT_LIMIT   bit(2) // bitmask 00000100
+#define EXEC_ALARM_ABORT_CYCLE  bit(3) // bitmask 00001000
+#define EXEC_ALARM_PROBE_FAIL   bit(4) // bitmask 00010000
 
 // Define system state bit map. The state variable primarily tracks the individual functions
 // of Grbl to manage each without overlapping. It is also used as a messaging flag for
