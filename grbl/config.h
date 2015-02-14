@@ -54,7 +54,7 @@
 #define CMD_FEED_HOLD '!'
 #define CMD_CYCLE_START '~'
 #define CMD_RESET 0x18 // ctrl-x.
-#define CMD_SAFETY_DOOR '@' //0x13 // ctrl-s
+#define CMD_SAFETY_DOOR '@'
 
 // If homing is enabled, homing init lock sets Grbl into an alarm state upon power up. This forces
 // the user to perform the homing cycle (or override the locks) before doing anything else. This is
@@ -143,8 +143,8 @@
 // After the safety door switch has been toggled and restored, this setting sets the power-up delay
 // between restoring the spindle and coolant and resuming the cycle.
 // NOTE: Delay value is defined in milliseconds from zero to 65,535. 
-#define SAFETY_DOOR_SPINDLE_DELAY 4000 // Disabled by default. Comment to enable.
-#define SAFETY_DOOR_COOLANT_DELAY 1000 // Disabled by default. Comment to enable.
+#define SAFETY_DOOR_SPINDLE_DELAY 4000
+#define SAFETY_DOOR_COOLANT_DELAY 1000
 
 // Enable CoreXY kinematics. Use ONLY with CoreXY machines. 
 // IMPORTANT: If homing is enabled, you must reconfigure the homing cycle #defines above to 
