@@ -1,4 +1,4 @@
-![GitHub Logo](/doc/logo/Grbl Logo 320px.png)
+![GitHub Logo](/doc/logo/Grbl Logo 250px.png)
 
 
 ***
