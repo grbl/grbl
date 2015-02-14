@@ -1,4 +1,5 @@
-#Grbl - An embedded g-code interpreter and motion-controller for the Arduino/AVR328 microcontroller
+![GitHub Logo](/doc/logo/Grbl Logo 320px.png)
+
 
 ***
 
