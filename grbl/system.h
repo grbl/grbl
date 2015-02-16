@@ -1,6 +1,6 @@
 /*
   system.h - Header for system level commands and real-time processes
-  Part of Grbl v0.9
+  Part of Grbl
 
   Copyright (c) 2014-2015 Sungeun K. Jeon  
 
@@ -45,6 +45,7 @@
 #define EXEC_ALARM_SOFT_LIMIT   bit(2) // bitmask 00000100
 #define EXEC_ALARM_ABORT_CYCLE  bit(3) // bitmask 00001000
 #define EXEC_ALARM_PROBE_FAIL   bit(4) // bitmask 00010000
+#define EXEC_ALARM_HOMING_FAIL  bit(5) // bitmask 00100000
 
 // Define system state bit map. The state variable primarily tracks the individual functions
 // of Grbl to manage each without overlapping. It is also used as a messaging flag for

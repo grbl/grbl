@@ -1,6 +1,6 @@
 /*
   report.h - reporting and messaging methods
-  Part of Grbl v0.9
+  Part of Grbl
 
   Copyright (c) 2012-2015 Sungeun K. Jeon
 
@@ -59,6 +59,7 @@
 #define ALARM_SOFT_LIMIT_ERROR -2
 #define ALARM_ABORT_CYCLE -3
 #define ALARM_PROBE_FAIL -4
+#define ALARM_HOMING_FAIL -5
 
 // Define Grbl feedback message codes.
 #define MESSAGE_CRITICAL_EVENT 1

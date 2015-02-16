@@ -1,8 +1,10 @@
 /*
   motion_control.c - high level interface for issuing motion commands
-  Part of Grbl v0.9
+  Part of Grbl
 
-  Copyright (c) 2012-2015 Sungeun K. Jeon
+  Copyright (c) 2011-2015 Sungeun K. Jeon
+  Copyright (c) 2009-2011 Simen Svale Skogsrud
+  Copyright (c) 2011 Simen Svale Skogsrud
   
   Grbl is free software: you can redistribute it and/or modify
   it under the terms of the GNU General Public License as published by
@@ -17,13 +19,6 @@
   You should have received a copy of the GNU General Public License
   along with Grbl.  If not, see <http://www.gnu.org/licenses/>.
 */
-/* 
-  This file is based on work from Grbl v0.8, distributed under the 
-  terms of the MIT-license. See COPYING for more details.  
-    Copyright (c) 2009-2011 Simen Svale Skogsrud
-    Copyright (c) 2011-2012 Sungeun K. Jeon
-    Copyright (c) 2011 Jens Geisler
-*/  
 
 #include "grbl.h"
 
@@ -361,7 +356,8 @@ void mc_reset()
     // the steppers enabled by avoiding the go_idle call altogether, unless the motion state is
     // violated, by which, all bets are off.
     if ((sys.state & (STATE_CYCLE | STATE_HOMING)) || (sys.suspend == SUSPEND_ENABLE_HOLD)) {
-      bit_true_atomic(sys.rt_exec_alarm, EXEC_ALARM_ABORT_CYCLE);
+      if (sys.state == STATE_HOMING) { bit_true_atomic(sys.rt_exec_alarm, EXEC_ALARM_HOMING_FAIL); }
+      else { bit_true_atomic(sys.rt_exec_alarm, EXEC_ALARM_ABORT_CYCLE); }
       st_go_idle(); // Force kill steppers. Position has likely been lost.
     }
   }

@@ -1,6 +1,6 @@
 /*
   probe.c - code pertaining to probing methods
-  Part of Grbl v0.9
+  Part of Grbl
 
   Copyright (c) 2014-2015 Sungeun K. Jeon
 

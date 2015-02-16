@@ -1,6 +1,6 @@
 /*
   grbl.h - main Grbl include file
-  Part of Grbl v0.9
+  Part of Grbl
 
   Copyright (c) 2015 Sungeun K. Jeon
 

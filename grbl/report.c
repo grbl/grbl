@@ -1,6 +1,6 @@
 /*
   report.c - reporting and messaging methods
-  Part of Grbl v0.9
+  Part of Grbl
 
   Copyright (c) 2012-2015 Sungeun K. Jeon  
 
@@ -98,6 +98,8 @@ void report_alarm_message(int8_t alarm_code)
     printPgmString(PSTR("Abort during cycle")); break;
     case ALARM_PROBE_FAIL:
     printPgmString(PSTR("Probe fail")); break;
+    case ALARM_HOMING_FAIL:
+    printPgmString(PSTR("Homing fail")); break;
   }
   printPgmString(PSTR("\r\n"));
   delay_ms(500); // Force delay to ensure message clears serial write buffer.

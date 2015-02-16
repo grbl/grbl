@@ -1,9 +1,10 @@
 /*
   limits.c - code pertaining to limit-switches and performing the homing cycle
-  Part of Grbl v0.9
+  Part of Grbl
 
   Copyright (c) 2012-2015 Sungeun K. Jeon
-
+  Copyright (c) 2009-2011 Simen Svale Skogsrud
+  
   Grbl is free software: you can redistribute it and/or modify
   it under the terms of the GNU General Public License as published by
   the Free Software Foundation, either version 3 of the License, or
@@ -17,12 +18,6 @@
   You should have received a copy of the GNU General Public License
   along with Grbl.  If not, see <http://www.gnu.org/licenses/>.
 */
-/* 
-  This file is based on work from Grbl v0.8, distributed under the 
-  terms of the MIT-license. See COPYING for more details.  
-    Copyright (c) 2009-2011 Simen Svale Skogsrud
-    Copyright (c) 2012 Sungeun K. Jeon
-*/  
   
 #include "grbl.h"
 
@@ -202,8 +197,9 @@ void limits_go_home(uint8_t cycle_mask)
       st_prep_buffer(); // Check and prep segment buffer. NOTE: Should take no longer than 200us.
       // Check only for user reset. No time to run protocol_execute_realtime() in this loop.
 
-      if (sys.rt_exec_state & (EXEC_SAFETY_DOOR | EXEC_RESET)) { // Abort homing and alarm upon safety door.
-        if (sys.rt_exec_state & EXEC_SAFETY_DOOR) { mc_reset(); }  
+      // Exit routines: User abort homing and alarm upon safety door or no limit switch found.
+      if (sys.rt_exec_state & (EXEC_SAFETY_DOOR | EXEC_RESET | EXEC_CYCLE_STOP)) { 
+        if (sys.rt_exec_state & (EXEC_SAFETY_DOOR | EXEC_CYCLE_STOP)) { mc_reset(); }  
         protocol_execute_realtime();
         return;
       }
