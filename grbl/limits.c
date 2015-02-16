@@ -124,7 +124,7 @@ void limits_go_home(uint8_t cycle_mask)
   float target[N_AXIS];
   
   uint8_t limit_pin[N_AXIS], step_pin[N_AXIS];
-  float max_travel = 0.0;
+  float max_travel;
   for (idx=0; idx<N_AXIS; idx++) {  
     // Initialize limit and step pin masks
     limit_pin[idx] = get_limit_pin_mask(idx);
@@ -132,12 +132,7 @@ void limits_go_home(uint8_t cycle_mask)
     #ifdef COREXY    
       if ((idx==A_MOTOR)||(idx==B_MOTOR)) { step_pin[idx] = (get_step_pin_mask(X_AXIS)|get_step_pin_mask(Y_AXIS)); } 
     #endif
-    
-    // Determine travel distance to the furthest homing switch based on user max travel settings.
-    // NOTE: settings.max_travel[] is stored as a negative value.
-    if (max_travel > settings.max_travel[idx]) { max_travel = settings.max_travel[idx]; }
   }
-  max_travel *= -HOMING_AXIS_SEARCH_SCALAR; // Ensure homing switches engaged by over-estimating max travel.
   
   plan_reset(); // Reset planner buffer to zero planner current position and to clear previous motions.
   plan_sync_position(); // Sync planner position to current machine position.
@@ -156,15 +151,12 @@ void limits_go_home(uint8_t cycle_mask)
       // Set target location for active axes and setup computation for homing rate.
       if (bit_istrue(cycle_mask,bit(idx))) { 
         n_active_axis++;
-        if (approach) {
-          // Set target direction based on cycle mask
-          if (bit_istrue(settings.homing_dir_mask,bit(idx))) { target[idx] -= max_travel; }
-          else { target[idx] += max_travel; }
-        } else { 
-          // Set target direction based on cycle mask
-          if (bit_istrue(settings.homing_dir_mask,bit(idx))) { target[idx] += max_travel; }
-          else { target[idx] -= max_travel; }
-        }
+       // Set target based on max_travel setting. Ensure homing switches engaged with search scalar.
+       // NOTE: settings.max_travel[] is stored as a negative value.
+        max_travel = (-HOMING_AXIS_SEARCH_SCALAR)*settings.max_travel[idx];
+        if (bit_istrue(settings.homing_dir_mask,bit(idx))) { max_travel = -max_travel; }
+        if (!approach) { max_travel = -max_travel; }
+        target[idx] += max_travel;
       }
 
       // Apply axislock to the step port pins active in this cycle.
