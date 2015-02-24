@@ -49,6 +49,11 @@ int main(void)
     if (bit_istrue(settings.flags,BITFLAG_HOMING_ENABLE)) { sys.state = STATE_ALARM; }
   #endif
   
+  // Force Grbl into an ALARM state upon a power-cycle or hard reset.
+  #ifdef FORCE_INITIALIZATION_ALARM
+    sys.state = STATE_ALARM;
+  #endif
+  
   // Grbl initialization loop upon power-up or a system abort. For the latter, all processes
   // will return to this loop to be cleanly re-initialized.
   for(;;) {

@@ -79,8 +79,18 @@ void limits_disable()
     // limit setting if their limits are constantly triggering after a reset and move their axes.
     if (sys.state != STATE_ALARM) { 
       if (!(sys.rt_exec_alarm)) {
-        mc_reset(); // Initiate system kill.
-        bit_true_atomic(sys.rt_exec_alarm, (EXEC_ALARM_HARD_LIMIT|EXEC_CRITICAL_EVENT)); // Indicate hard limit critical event
+        #ifdef HARD_LIMIT_FORCE_STATE_CHECK
+          uint8_t bits = (LIMIT_PIN & LIMIT_MASK);
+          // Check limit pin state. 
+          if (bit_isfalse(settings.flags,BITFLAG_INVERT_LIMIT_PINS)) { bits ^= LIMIT_MASK; }
+          if (bits) {
+            mc_reset(); // Initiate system kill.
+            bit_true_atomic(sys.rt_exec_alarm, (EXEC_ALARM_HARD_LIMIT|EXEC_CRITICAL_EVENT)); // Indicate hard limit critical event
+          }
+        #else
+          mc_reset(); // Initiate system kill.
+          bit_true_atomic(sys.rt_exec_alarm, (EXEC_ALARM_HARD_LIMIT|EXEC_CRITICAL_EVENT)); // Indicate hard limit critical event
+        #endif
       }
     }
   }  
@@ -92,10 +102,10 @@ void limits_disable()
     WDTCSR &= ~(1<<WDIE); // Disable watchdog timer. 
     if (sys.state != STATE_ALARM) {  // Ignore if already in alarm state. 
       if (!(sys.rt_exec_alarm)) {
-        uint8_t bits = LIMIT_PIN;
+        uint8_t bits = (LIMIT_PIN & LIMIT_MASK);
         // Check limit pin state. 
-        if (bit_istrue(settings.flags,BITFLAG_INVERT_LIMIT_PINS)) { bits ^= LIMIT_MASK; }
-        if (bits & LIMIT_MASK) {
+        if (bit_isfalse(settings.flags,BITFLAG_INVERT_LIMIT_PINS)) { bits ^= LIMIT_MASK; }
+        if (bits) {
           mc_reset(); // Initiate system kill.
           bit_true_atomic(sys.rt_exec_alarm, (EXEC_ALARM_HARD_LIMIT|EXEC_CRITICAL_EVENT)); // Indicate hard limit critical event
         }

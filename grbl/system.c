@@ -109,54 +109,57 @@ uint8_t system_execute_line(char *line)
   float parameter, value;
   switch( line[char_counter] ) {
     case 0 : report_grbl_help(); break;
-    case '$' : // Prints Grbl settings
-      if ( line[++char_counter] != 0 ) { return(STATUS_INVALID_STATEMENT); }
-      if ( sys.state & (STATE_CYCLE | STATE_HOLD) ) { return(STATUS_IDLE_ERROR); } // Block during cycle. Takes too long to print.
-      else { report_grbl_settings(); }
-      break;
-    case 'G' : // Prints gcode parser state
-      // TODO: Move this to realtime commands for GUIs to request this data during suspend-state.
-      if ( line[++char_counter] != 0 ) { return(STATUS_INVALID_STATEMENT); }
-      else { report_gcode_modes(); }
-      break;   
-    case 'C' : // Set check g-code mode [IDLE/CHECK]
-      if ( line[++char_counter] != 0 ) { return(STATUS_INVALID_STATEMENT); }
-      // Perform reset when toggling off. Check g-code mode should only work if Grbl
-      // is idle and ready, regardless of alarm locks. This is mainly to keep things
-      // simple and consistent.
-      if ( sys.state == STATE_CHECK_MODE ) { 
-        mc_reset(); 
-        report_feedback_message(MESSAGE_DISABLED);
-      } else {
-        if (sys.state) { return(STATUS_IDLE_ERROR); } // Requires no alarm mode.
-        sys.state = STATE_CHECK_MODE;
-        report_feedback_message(MESSAGE_ENABLED);
+    case '$': case 'G': case 'C': case 'X':
+      if ( line[(char_counter+1)] != 0 ) { return(STATUS_INVALID_STATEMENT); }
+      switch( line[char_counter] ) {
+        case '$' : // Prints Grbl settings
+          if ( sys.state & (STATE_CYCLE | STATE_HOLD) ) { return(STATUS_IDLE_ERROR); } // Block during cycle. Takes too long to print.
+          else { report_grbl_settings(); }
+          break;
+        case 'G' : // Prints gcode parser state
+          // TODO: Move this to realtime commands for GUIs to request this data during suspend-state.
+          report_gcode_modes();
+          break;   
+        case 'C' : // Set check g-code mode [IDLE/CHECK]
+          // Perform reset when toggling off. Check g-code mode should only work if Grbl
+          // is idle and ready, regardless of alarm locks. This is mainly to keep things
+          // simple and consistent.
+          if ( sys.state == STATE_CHECK_MODE ) { 
+            mc_reset(); 
+            report_feedback_message(MESSAGE_DISABLED);
+          } else {
+            if (sys.state) { return(STATUS_IDLE_ERROR); } // Requires no alarm mode.
+            sys.state = STATE_CHECK_MODE;
+            report_feedback_message(MESSAGE_ENABLED);
+          }
+          break; 
+        case 'X' : // Disable alarm lock [ALARM]
+          if (sys.state == STATE_ALARM) { 
+            report_feedback_message(MESSAGE_ALARM_UNLOCK);
+            sys.state = STATE_IDLE;
+            // Don't run startup script. Prevents stored moves in startup from causing accidents.
+            if (system_check_safety_door_ajar()) { // Check safety door switch before returning.
+              bit_true(sys.rt_exec_state, EXEC_SAFETY_DOOR);
+              protocol_execute_realtime(); // Enter safety door mode.
+            }
+          } // Otherwise, no effect.
+          break;                   
+    //  case 'J' : break;  // Jogging methods
+          // TODO: Here jogging can be placed for execution as a seperate subprogram. It does not need to be 
+          // susceptible to other realtime commands except for e-stop. The jogging function is intended to
+          // be a basic toggle on/off with controlled acceleration and deceleration to prevent skipped 
+          // steps. The user would supply the desired feedrate, axis to move, and direction. Toggle on would
+          // start motion and toggle off would initiate a deceleration to stop. One could 'feather' the
+          // motion by repeatedly toggling to slow the motion to the desired location. Location data would 
+          // need to be updated real-time and supplied to the user through status queries.
+          //   More controlled exact motions can be taken care of by inputting G0 or G1 commands, which are 
+          // handled by the planner. It would be possible for the jog subprogram to insert blocks into the
+          // block buffer without having the planner plan them. It would need to manage de/ac-celerations 
+          // on its own carefully. This approach could be effective and possibly size/memory efficient.  
+//       }
+//       break;
       }
-      break; 
-    case 'X' : // Disable alarm lock [ALARM]
-      if ( line[++char_counter] != 0 ) { return(STATUS_INVALID_STATEMENT); }
-      if (sys.state == STATE_ALARM) { 
-        report_feedback_message(MESSAGE_ALARM_UNLOCK);
-        sys.state = STATE_IDLE;
-        // Don't run startup script. Prevents stored moves in startup from causing accidents.
-        if (system_check_safety_door_ajar()) { // Check safety door switch before returning.
-          bit_true(sys.rt_exec_state, EXEC_SAFETY_DOOR);
-          protocol_execute_realtime(); // Enter safety door mode.
-        }
-      } // Otherwise, no effect.
-      break;               
-//  case 'J' : break;  // Jogging methods
-      // TODO: Here jogging can be placed for execution as a seperate subprogram. It does not need to be 
-      // susceptible to other realtime commands except for e-stop. The jogging function is intended to
-      // be a basic toggle on/off with controlled acceleration and deceleration to prevent skipped 
-      // steps. The user would supply the desired feedrate, axis to move, and direction. Toggle on would
-      // start motion and toggle off would initiate a deceleration to stop. One could 'feather' the
-      // motion by repeatedly toggling to slow the motion to the desired location. Location data would 
-      // need to be updated real-time and supplied to the user through status queries.
-      //   More controlled exact motions can be taken care of by inputting G0 or G1 commands, which are 
-      // handled by the planner. It would be possible for the jog subprogram to insert blocks into the
-      // block buffer without having the planner plan them. It would need to manage de/ac-celerations 
-      // on its own carefully. This approach could be effective and possibly size/memory efficient.        
+      break;
     default : 
       // Block any system command that requires the state as IDLE/ALARM. (i.e. EEPROM, homing)
       if ( !(sys.state == STATE_IDLE || sys.state == STATE_ALARM) ) { return(STATUS_IDLE_ERROR); }

@@ -106,8 +106,8 @@
 // this feature. Since the two switches are sharing a single pin, there is no way for Grbl to tell
 // which one is enabled. This option only effects homing, where if a limit is engaged, Grbl will 
 // alarm out and force the user to manually disengage the limit switch. Otherwise, if you have one
-// limit switch for each axis, don't enable this option. By keeping it disabled, you can homing while
-// on the limit switch and not have to move the machine off of it.
+// limit switch for each axis, don't enable this option. By keeping it disabled, you can perform a
+// homing cycle while on the limit switch and not have to move the machine off of it.
 // #define LIMITS_TWO_SWITCHES_ON_AXES
 
 // Allows GRBL to track and report gcode line numbers.  Enabling this means that the planning buffer
@@ -161,8 +161,21 @@
 // with little to no benefit during normal operation.
 // #define REPORT_INPUT_PIN_STATES // Default disabled. Uncomment to enable.
 
+// When Grbl powers-cycles or is hard reset with the Arduino reset button, Grbl boots up with no ALARM
+// by default. This is to make it as simple as possible for new users to start using Grbl. When homing
+// is enabled and a user has installed limit switches, Grbl will boot up in an ALARM state to indicate 
+// Grbl doesn't know its position and to force the user to home before proceeding. This option forces
+// Grbl to always initialize into an ALARM state regardless of homing or not. This option is more for
+// OEMs and LinuxCNC users that would like this power-cycle behavior.
+// #define FORCE_INITIALIZATION_ALARM // Default disabled. Uncomment to enable.
+
 // ---------------------------------------------------------------------------------------
 // ADVANCED CONFIGURATION OPTIONS:
+
+// Enables minimal reporting feedback mode for GUIs, where human-readable strings are not as important.
+// This saves nearly 2KB of flash space and may allow enough space to install other/future features.
+// NOTE: This feature is new and experimental. Make sure the GUI you are using supports this mode.
+#define REPORT_GUI_MODE // Default disabled. Uncomment to enable.
 
 // The temporal resolution of the acceleration management subsystem. A higher number gives smoother
 // acceleration, particularly noticeable on machines that run at very high feedrates, but may negatively
@@ -180,8 +193,10 @@
 // step smoothing. See stepper.c for more details on the AMASS system works.
 #define ADAPTIVE_MULTI_AXIS_STEP_SMOOTHING  // Default enabled. Comment to disable.
 
-// Sets the maximum step rate allowed to be written as a Grbl setting. This value is strictly limited
-// by the CPU speed and will change if something other than an AVR running at 16MHz is used.
+// Sets the maximum step rate allowed to be written as a Grbl setting. This option enables an error 
+// check in the settings module to prevent settings values that will exceed this limitation. The maximum
+// step rate is strictly limited by the CPU speed and will change if something other than an AVR running
+// at 16MHz is used.
 // NOTE: For now disabled, will enable if flash space permits.
 // #define MAX_STEP_RATE_HZ 30000 // Hz
 
@@ -317,6 +332,17 @@
 // use shielded signal cables with their shielding connected to ground (old USB/computer cables 
 // work well and are cheap to find) and wire in a low-pass circuit into each limit pin.
 // #define ENABLE_SOFTWARE_DEBOUNCE // Default disabled. Uncomment to enable.
+
+// Force Grbl to check the state of the hard limit switches when the processor detects a pin
+// change inside the hard limit ISR routine. By default, Grbl will trigger the hard limits
+// alarm upon any pin change, since bouncing switches can cause a state check like this to 
+// misread the pin. When hard limits are triggers, this should be 100% reliable, which is the
+// reason that this option is disabled by default. Only if your system/electronics can guarantee
+// the pins don't bounce, we recommend enabling this option. If so, this will help prevent
+// triggering a hard limit when the machine disengages from the switch.
+// NOTE: This option has no effect if SOFTWARE_DEBOUNCE is enabled.
+// #define HARD_LIMIT_FORCE_STATE_CHECK // Default disabled. Uncomment to enable.
+
 
 // ---------------------------------------------------------------------------------------
 
