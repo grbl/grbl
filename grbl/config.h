@@ -174,8 +174,9 @@
 
 // Enables minimal reporting feedback mode for GUIs, where human-readable strings are not as important.
 // This saves nearly 2KB of flash space and may allow enough space to install other/future features.
+// GUIs will need to install a look-up table for the error-codes that Grbl sends back in their place.
 // NOTE: This feature is new and experimental. Make sure the GUI you are using supports this mode.
-#define REPORT_GUI_MODE // Default disabled. Uncomment to enable.
+// #define REPORT_GUI_MODE // Default disabled. Uncomment to enable.
 
 // The temporal resolution of the acceleration management subsystem. A higher number gives smoother
 // acceleration, particularly noticeable on machines that run at very high feedrates, but may negatively
@@ -226,7 +227,7 @@
 // enable pin will output 5V for maximum RPM with 256 intermediate levels and 0V when disabled.
 // NOTE: IMPORTANT for Arduino Unos! When enabled, the Z-limit pin D11 and spindle enable pin D12 switch!
 // The hardware PWM output on pin D11 is required for variable spindle output voltages.
-#define VARIABLE_SPINDLE // Default disabled. Uncomment to enable.
+#define VARIABLE_SPINDLE // Default enabled. Comment to disable.
 
 // Used by the variable spindle output only. These parameters set the maximum and minimum spindle speed
 // "S" g-code values to correspond to the maximum and minimum pin voltages. There are 256 discrete and 
