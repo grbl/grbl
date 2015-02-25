@@ -69,6 +69,7 @@ List of Supported G-Codes in Grbl v0.9
   - Feed Rate Modes: G93, G94
   - Unit Modes: G20, G21
   - Distance Modes: G90, G91
+  - Arc IJK Distance Modes: G91.1
   - Plane Select Modes: G17, G18, G19
   - Tool Length Offset Modes: G43.1, G49
   - Cutter Compensation Modes: G40

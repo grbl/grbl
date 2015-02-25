@@ -213,9 +213,16 @@ uint8_t gc_execute_line(char *line)
             }
             break;
           case 90: case 91: 
-            word_bit = MODAL_GROUP_G3; 
-            if (int_value == 90) { gc_block.modal.distance = DISTANCE_MODE_ABSOLUTE; } // G90
-            else { gc_block.modal.distance = DISTANCE_MODE_INCREMENTAL; } // G91            
+            if (mantissa == 0) {
+              word_bit = MODAL_GROUP_G3; 
+              if (int_value == 90) { gc_block.modal.distance = DISTANCE_MODE_ABSOLUTE; } // G90
+              else { gc_block.modal.distance = DISTANCE_MODE_INCREMENTAL; } // G91
+            } else {
+              word_bit = MODAL_GROUP_G4;
+              if (mantissa != 10) { FAIL(STATUS_GCODE_UNSUPPORTED_COMMAND); } // [G90.1 not supported]
+              mantissa = 0; // Set to zero to indicate valid non-integer G command.
+              // Otherwise, arc IJK incremental mode is default. G91.1 does nothing.
+            }
             break;
           case 93: case 94: 
             word_bit = MODAL_GROUP_G5; 

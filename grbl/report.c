@@ -68,10 +68,11 @@ void report_status_message(uint8_t status_code)
         case STATUS_SOFT_LIMIT_ERROR:
         printPgmString(PSTR("Homing not enabled")); break;
         case STATUS_OVERFLOW:
-        printPgmString(PSTR("Line overflow")); break; 
-        // case STATUS_MAX_STEP_RATE_EXCEEDED: 
-        // printPgmString(PSTR("Step rate > 30kHz")); break;
-      
+        printPgmString(PSTR("Line overflow")); break;
+        #ifdef MAX_STEP_RATE_HZ
+          case STATUS_MAX_STEP_RATE_EXCEEDED: 
+          printPgmString(PSTR("Step rate > 30kHz")); break;
+        #endif      
         // Common g-code parser errors.
         case STATUS_GCODE_MODAL_GROUP_VIOLATION:
         printPgmString(PSTR("Modal group violation")); break;

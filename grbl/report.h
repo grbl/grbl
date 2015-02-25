@@ -33,7 +33,7 @@
 #define STATUS_ALARM_LOCK 9
 #define STATUS_SOFT_LIMIT_ERROR 10
 #define STATUS_OVERFLOW 11
-// #define STATUS_MAX_STEP_RATE_EXCEEDED 12
+#define STATUS_MAX_STEP_RATE_EXCEEDED 12
 
 #define STATUS_GCODE_UNSUPPORTED_COMMAND 20
 #define STATUS_GCODE_MODAL_GROUP_VIOLATION 21
@@ -54,12 +54,12 @@
 #define STATUS_GCODE_UNUSED_WORDS 36
 #define STATUS_GCODE_G43_DYNAMIC_AXIS_ERROR 37
 
-// Define Grbl alarm codes. Less than zero to distinguish alarm error from status error.
-#define ALARM_HARD_LIMIT_ERROR -1
-#define ALARM_SOFT_LIMIT_ERROR -2
-#define ALARM_ABORT_CYCLE -3
-#define ALARM_PROBE_FAIL -4
-#define ALARM_HOMING_FAIL -5
+// Define Grbl alarm codes.
+#define ALARM_HARD_LIMIT_ERROR 1
+#define ALARM_SOFT_LIMIT_ERROR 2
+#define ALARM_ABORT_CYCLE 3
+#define ALARM_PROBE_FAIL 4
+#define ALARM_HOMING_FAIL 5
 
 // Define Grbl feedback message codes.
 #define MESSAGE_CRITICAL_EVENT 1
