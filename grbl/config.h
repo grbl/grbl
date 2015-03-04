@@ -27,6 +27,7 @@
 
 #ifndef config_h
 #define config_h
+#include "grbl.h" // For Arduino IDE compatibility.
 
 
 // Default settings. Used when resetting EEPROM. Change to desired name in defaults.h

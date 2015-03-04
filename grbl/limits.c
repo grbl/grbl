@@ -134,7 +134,8 @@ void limits_go_home(uint8_t cycle_mask)
   float target[N_AXIS];
   
   uint8_t limit_pin[N_AXIS], step_pin[N_AXIS];
-  float max_travel;
+
+  float max_travel = 0.0;
   for (idx=0; idx<N_AXIS; idx++) {  
     // Initialize limit and step pin masks
     limit_pin[idx] = get_limit_pin_mask(idx);
@@ -142,6 +143,13 @@ void limits_go_home(uint8_t cycle_mask)
     #ifdef COREXY    
       if ((idx==A_MOTOR)||(idx==B_MOTOR)) { step_pin[idx] = (get_step_pin_mask(X_AXIS)|get_step_pin_mask(Y_AXIS)); } 
     #endif
+
+    if (bit_istrue(cycle_mask,bit(idx))) { 
+      // Set target based on max_travel setting. Ensure homing switches engaged with search scalar.
+      // NOTE: settings.max_travel[] is stored as a negative value.
+      max_travel = max(max_travel,(-HOMING_AXIS_SEARCH_SCALAR)*settings.max_travel[idx]);
+    }
+
   }
   
   plan_reset(); // Reset planner buffer to zero planner current position and to clear previous motions.
@@ -153,25 +161,22 @@ void limits_go_home(uint8_t cycle_mask)
     else { invert_pin = !approach; }
 
     // Initialize and declare variables needed for homing routine.
-    uint8_t n_active_axis = 0;
     uint8_t axislock = 0;
-
+    uint8_t n_active_axis = 0;
     system_convert_array_steps_to_mpos(target,sys.position);      
     for (idx=0; idx<N_AXIS; idx++) {
       // Set target location for active axes and setup computation for homing rate.
       if (bit_istrue(cycle_mask,bit(idx))) { 
         n_active_axis++;
-       // Set target based on max_travel setting. Ensure homing switches engaged with search scalar.
-       // NOTE: settings.max_travel[] is stored as a negative value.
-        max_travel = (-HOMING_AXIS_SEARCH_SCALAR)*settings.max_travel[idx];
         if (bit_istrue(settings.homing_dir_mask,bit(idx))) { max_travel = -max_travel; }
         if (!approach) { max_travel = -max_travel; }
         target[idx] += max_travel;
+
+        // Apply axislock to the step port pins active in this cycle.
+        axislock |= step_pin[idx];
       }
 
-      // Apply axislock to the step port pins active in this cycle.
-      if (bit_istrue(cycle_mask,bit(idx))) { axislock |= step_pin[idx]; }
-    }      
+    }
     homing_rate *= sqrt(n_active_axis); // [sqrt(N_AXIS)] Adjust so individual axes all move at homing rate.
     sys.homing_axis_lock = axislock;
   
@@ -197,9 +202,9 @@ void limits_go_home(uint8_t cycle_mask)
       }
       sys.homing_axis_lock = axislock;
       st_prep_buffer(); // Check and prep segment buffer. NOTE: Should take no longer than 200us.
-      // Check only for user reset. No time to run protocol_execute_realtime() in this loop.
 
       // Exit routines: User abort homing and alarm upon safety door or no limit switch found.
+      // No time to run protocol_execute_realtime() in this loop.
       if (sys.rt_exec_state & (EXEC_SAFETY_DOOR | EXEC_RESET | EXEC_CYCLE_STOP)) { 
         if (sys.rt_exec_state & (EXEC_SAFETY_DOOR | EXEC_CYCLE_STOP)) { mc_reset(); }  
         protocol_execute_realtime();

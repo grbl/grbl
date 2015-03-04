@@ -206,6 +206,10 @@ void protocol_execute_realtime()
         // to do what is needed before resetting, like killing the incoming stream. The 
         // same could be said about soft limits. While the position is not lost, the incoming
         // stream could be still engaged and cause a serious crash if it continues afterwards.
+//         if (sys.rt_exec_state & EXEC_STATUS_REPORT) { 
+//           report_realtime_status();
+//           bit_false_atomic(sys.rt_exec_state,EXEC_STATUS_REPORT); 
+//         }
       } while (bit_isfalse(sys.rt_exec_state,EXEC_RESET));
     }
     bit_false_atomic(sys.rt_exec_alarm,0xFF); // Clear all alarm flags
