@@ -163,15 +163,19 @@ void limits_go_home(uint8_t cycle_mask)
     // Initialize and declare variables needed for homing routine.
     uint8_t axislock = 0;
     uint8_t n_active_axis = 0;
-    system_convert_array_steps_to_mpos(target,sys.position);      
+    system_convert_array_steps_to_mpos(target,sys.position);  
     for (idx=0; idx<N_AXIS; idx++) {
       // Set target location for active axes and setup computation for homing rate.
       if (bit_istrue(cycle_mask,bit(idx))) { 
         n_active_axis++;
-        if (bit_istrue(settings.homing_dir_mask,bit(idx))) { max_travel = -max_travel; }
-        if (!approach) { max_travel = -max_travel; }
-        target[idx] += max_travel;
-
+        // Set target direction based on cycle mask and homing cycle approach state.
+        if (bit_istrue(settings.homing_dir_mask,bit(idx))) {
+          if (approach) { target[idx] -= max_travel; }
+          else { target[idx] += max_travel; }
+        } else { 
+          if (approach) { target[idx] += max_travel; }
+          else { target[idx] -= max_travel; }
+        }        
         // Apply axislock to the step port pins active in this cycle.
         axislock |= step_pin[idx];
       }
