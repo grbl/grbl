@@ -30,14 +30,14 @@
 // and are similar/identical to other g-code interpreters by manufacturers (Haas,Fanuc,Mazak,etc).
 // NOTE: Modal group define values must be sequential and starting from zero.
 #define MODAL_GROUP_G0 0 // [G4,G10,G28,G28.1,G30,G30.1,G53,G92,G92.1] Non-modal
-#define MODAL_GROUP_G1 1 // [G0,G1,G2,G3,G38.2,G80] Motion
+#define MODAL_GROUP_G1 1 // [G0,G1,G2,G3,G38.2,G38.3,G38.4,G38.5,G80] Motion
 #define MODAL_GROUP_G2 2 // [G17,G18,G19] Plane selection
 #define MODAL_GROUP_G3 3 // [G90,G91] Distance mode
-#define MODAL_GROUP_G4 4 // [G90.1,G91.1] Arc IJK distance mode
+#define MODAL_GROUP_G4 4 // [G91.1] Arc IJK distance mode
 #define MODAL_GROUP_G5 5 // [G93,G94] Feed rate mode
 #define MODAL_GROUP_G6 6 // [G20,G21] Units
 #define MODAL_GROUP_G7 7 // [G40] Cutter radius compensation mode. G41/42 NOT SUPPORTED.
-#define MODAL_GROUP_G8 8 // [G43,G43.1,G49] Tool length offset
+#define MODAL_GROUP_G8 8 // [G43.1,G49] Tool length offset
 #define MODAL_GROUP_G12 9 // [G54,G55,G56,G57,G58,G59] Coordinate system selection
 
 #define MODAL_GROUP_M4 10  // [M0,M1,M2,M30] Stopping
@@ -142,8 +142,9 @@ typedef struct {
   uint8_t feed_rate;       // {G93,G94}
   uint8_t units;           // {G20,G21}
   uint8_t distance;        // {G90,G91}
+  // uint8_t distance_arc; // {G91.1} NOTE: Don't track. Only one supported.
   uint8_t plane_select;    // {G17,G18,G19}
-  // uint8_t cutter_comp;  // {G40} NOTE: Don't need to track since it's always disabled.
+  // uint8_t cutter_comp;  // {G40} NOTE: Don't track. Only one supported.
   uint8_t tool_length;     // {G43.1,G49}
   uint8_t coord_select;    // {G54,G55,G56,G57,G58,G59}
   uint8_t program_flow;    // {M0,M1,M2,M30}

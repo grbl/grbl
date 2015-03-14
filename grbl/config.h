@@ -156,11 +156,18 @@
 // NOTE: Will eventually be added to Grbl settings in v1.0.
 // #define INVERT_CONTROL_PIN // Default disabled. Uncomment to enable.
 
-// Enable input pin states feedback in status reports. The data is presented as a binary value with
-// the bits in the appropriate input pin ports being 0(low) or 1(high). Useful for setting up a new
-// CNC machine, but do not recommend keeping this option by default, as it will consume CPU resources
-// with little to no benefit during normal operation.
-// #define REPORT_INPUT_PIN_STATES // Default disabled. Uncomment to enable.
+// Enable limit pin states feedback in status reports. The data is presented as 0 (low) or 1(high), 
+// where the order is XYZ. For example, if the Y- and Z-limit pins are active, Grbl will include the 
+// following string in the status report "Lim:011". This is generally useful for setting up a new
+// CNC machine, but we do not recommend keeping this option enabled, as it will consume CPU resources
+// with little to no benefit during normal operation and it may not be supported by most GUIs.
+// #define REPORT_LIMIT_PIN_STATE // Default disabled. Uncomment to enable.
+
+// Enable control pin states feedback in status reports. The data is presented as simple binary of
+// the control pin port (0 (low) or 1(high)), masked to show only the input pins. Non-control pins on the 
+// port will always show a 0 value. See cpu_map.h for the pin bitmap. As with the limit pin reporting,
+// we do not recommend keeping this option enabled. Try to only use this for setting up a new CNC.
+// #define REPORT_CONTROL_PIN_STATE // Default disabled. Uncomment to enable.
 
 // When Grbl powers-cycles or is hard reset with the Arduino reset button, Grbl boots up with no ALARM
 // by default. This is to make it as simple as possible for new users to start using Grbl. When homing

@@ -484,9 +484,16 @@ void report_realtime_status()
     printFloat_RateValue(st_get_realtime_rate());
   #endif    
   
-  #ifdef REPORT_INPUT_PIN_STATES
+  #ifdef REPORT_LIMIT_PIN_STATE
     printPgmString(PSTR(",Lim:"));
-    print_uint8_base2(LIMIT_PIN & LIMIT_MASK);  
+    uint8_t idx;
+    for (idx=0; idx<N_AXIS; idx++) {
+      if (LIMIT_PIN & get_limit_pin_mask(idx)) { printString(PSTR("1")); }
+      else { printString(PSTR("0")); }
+    }
+  #endif
+  
+  #ifdef REPORT_CONTROL_PIN_STATE 
     printPgmString(PSTR(",Ctl:"));
     print_uint8_base2(CONTROL_PIN & CONTROL_MASK);
   #endif
