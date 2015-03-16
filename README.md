@@ -22,13 +22,15 @@ Grbl includes full acceleration management with look ahead. That means the contr
 ***
 
 _**Master Branch:**_
-* [Grbl v0.9g Atmega328p 16mhz 115200baud with generic defaults](http://bit.ly/1m8E1Qa) _(2014-09-05)_
-* [Grbl v0.9g Atmega328p 16mhz 115200baud with ShapeOko2 defaults](http://bit.ly/1kOAzig) _(2014-09-05)_
-  - **IMPORTANT INFO WHEN UPGRADING TO GRBL v0.9g:** 
+* [Grbl v0.9i Atmega328p 16mhz 115200baud with generic defaults](http://bit.ly/1EiviDk) _(2014-03-15)_
+* [Grbl v0.9i Atmega328p 16mhz 115200baud with ShapeOko2 defaults](http://bit.ly/1NYIfKl) _(2015-03-15)_
+  - **IMPORTANT INFO WHEN UPGRADING TO GRBL v0.9i:** 
   - Baudrate is now **115200** (Up from 9600). 
-  - Settings WILL be overwritten. Please make sure you have a backup. Also, settings have been renumbered and some have changed how they work. See our [Configuring v0.9 Wiki page](https://github.com/grbl/grbl/wiki/Configuring-Grbl-v0.9) for details.
+  - Variable spindle is now enabled by default. Z-limit(D12) and spindle enable(D11) have switched to access the hardware PWM on D11. Homing will not work if you do not re-wire your Z-limit switch to D12.
 
 _**Archives:**_
+* [Grbl v0.9g Atmega328p 16mhz 115200baud with generic defaults](http://bit.ly/1m8E1Qa) 
+* [Grbl v0.9g Atmega328p 16mhz 115200baud with ShapeOko2 defaults](http://bit.ly/1kOAzig) 
 * [Grbl v0.8c Atmega328p 16mhz 9600baud](http://bit.ly/SSdCJE)
 * [Grbl v0.7d Atmega328p 16mhz 9600baud](http://bit.ly/ZhL15G)
 * [Grbl v0.6b Atmega328p 16mhz 9600baud](http://bit.ly/VD04A5)
@@ -38,34 +40,43 @@ _**Archives:**_
 
 ***
 
-##Update Summary for v0.9 from v0.8
-  - **IMPORTANT: Default serial baudrate is now 115200! (Up from 9600). And your settings will be over-written! Make sure to have a backup.**
-  - **_NEW_ Super Smooth Stepper Algorithm:**  Complete overhaul of the handling of the stepper driver to simplify and reduce task time per ISR tick. Much smoother operation with the new Adaptive Multi-Axis Step Smoothing (AMASS) algorithm which does what its name implies (see stepper.c source for details). Users should immediately see significant improvements in how their machines move and overall performance!
-  - **Stability and Robustness Updates:** Grbl's overall stability has been focused on for this version. The planner and step-execution interface has been completely re-written for robustness and incorruptibility by the introduction of an intermediate step segment buffer that "checks-out" steps from the planner buffer in real-time. This means we can now fearlessly drive Grbl to it's highest limits. Combined with the new stepper algorithm and planner optimizations, this translated to **5x to 10x** overall performance increases in our testing! Also, stability and robustness tests have been reported to easily take 1.4 million (yes, **million**) line g-code programs like a champ!
-  - **(x4)+ Faster Planner:** Planning computations improved four-fold or more by optimizing end-to-end operations, which included streamlining the computations and introducing a planner pointer to locate un-improvable portions of the buffer and not waste cycles recomputing them.
-  - **Compile-able via Arduino IDE!:** Grbl's source code may be now download and altered, and then be compiled and flashed directly through the Arduino IDE, which should work on all platforms. See the Wiki for details on how to do it.
-  - **G-Code Parser Overhaul:** Completely re-written from the ground-up for 100%-compliance* to the g-code standard. (* Parts of the NIST standard are a bit out-dated and arbitrary, so we altered some minor things to make more sense. Differences are outlined in the source code.) We also took steps to allow us to break up the g-code parser into distinct separate tasks, which is key for some future development ideas and improvements.
-  - **Independent Acceleration and Velocity Settings:** Each axes may be defined with unique acceleration and velocity parameters and Grbl will automagically calculate the maximum acceleration and velocity through a path depending on the direction traveled. This is very useful for machines that have very different axes properties, like the ShapeOko's z-axis.
-  - **Soft Limits:** Checks if any motion command exceeds workspace limits before executing it, and alarms out, if detected. Another safety feature, but, unlike hard limits, position does not get lost, as it forces a feed hold before erroring out. NOTE: This still requires limit switches for homing so Grbl knows where the machine origin is, and the new max axis travel settings configured correctly for the machine.
-  - **Probing:** The G38.2 straight probe and G43.1/49 tool offset g-code commands are now supported. A simple probe switch must be connected to the Uno analog pin 5 (normally-open to ground). Grbl will report the probe position back to the user when the probing cycle detects a pin state change.
-  - **Tool Length Offsets:** Probing doesn't make sense without tool length offsets(TLO), so we added it! The G43.1 dynamic TLO (described by linuxcnc.org) and G49 TLO cancel commands are now supported. G43.1 dynamic TLO works like the normal G43 TLO(NOT SUPPORTED) but requires an additional axis word with the offset value attached. We did this so Grbl does not have to track and maintain a tool offset database in its memory. Perhaps in the future, we will support a tool database, but not for this version.
-  - **Improved Arc Performance:** The larger the arc radius, the faster Grbl will trace it! We are now defining arcs in terms of arc chordal tolerance, rather than a fixed segment length. This automatically scales the arc segment length such that maximum radial error of the segment from the true arc is never more than the chordal tolerance value of a super-accurate default of 0.002 mm. 
-  - **CPU Pin Mapping:** In an effort for Grbl to be compatible with other AVR architectures, such as the 1280 or 2560, a new cpu_map.h pin configuration file has been created to allow Grbl to be compiled for them. This is currently user supported, so your mileage may vary. If you run across a bug, please let us know or better send us a fix! Thanks in advance!
-  - **New Grbl SIMULATOR! (by @jgeisler and @ashelly):** A completely independent wrapper of the Grbl main source code that may be compiled as an executable on a computer. No Arduino required. Simply simulates the responses of Grbl as if it was on an Arduino. May be used for many things: checking out how Grbl works, pre-process moves for GUI graphics, debugging of new features, etc. Much left to do, but potentially very powerful, as the dummy AVR variables can be written to output anything you need. 
-  - **Configurable Real-time Status Reporting:** Users can now customize the type of real-time data Grbl reports back when they issue a '?' status report. This includes data such as: machine position, work position, planner buffer usage, serial RX buffer usage.
-  - **Updated Homing Routine:** Sets workspace volume in all negative space regardless of limit switch position. Common on pro CNCs. But, the behavior may be changed by a compile-time option though. Now tied directly into the main planner and stepper modules to reduce flash space and allow maximum speeds during seeking.
+##Update Summary for v0.9i from v0.9h
+  - **IMPORTANT:**
+    - **Z-limit(D12) and spindle enable(D11) pins have switched to support variable spindle PWM!**
+    - **System tweaks: $14 cycle auto-start has been removed. No more QUEUE state.**
+  - **New G-Codes:** Additional probing cycle commands G38.3, G38.4, G38.5 now supported. G40 cutter radius compensation cancel. G91.1 arc IJK distance mode incremental.
   - **CoreXY Support:** Grbl now supports CoreXY kinematics on an introductory-level. Most functions have been verified to work, but there may be bugs here or there. Please report any problems you find!
+  - **Safety Door Support:** Safety door switches are now supported. Grbl will force a feed hold, shutdown the spindle and coolant, and wait until the door switch has closed and the user has issued a resume. Upon resuming, the spindle and coolant will re-energize after a configurable delay and continue. Useful for OEMs that require this feature.
   - **Full Limit and Control Pin Configurability:** Limits and control pins operation can now be interpreted by Grbl however you'd like, with the internal pull-up resistors enabled or disabled, or reading a high or low as a trigger. This should cover all wiring and NO or NC switch scenarios.
-  - **Optional Limit Pin Sharing:** Limit switches can be combined to share the same pins to free up precious I/O pins for other purposes. When combined, users must adjust the homing cycle mask in config.h to not home the axes on a shared pin at the same time. Don't worry; hard limits and the homing cycle still work just like they did before.
-  - **Optional Variable Spindle Speed Output:** Available only as a compile-time option through the config.h file. Enables PWM output for 'S' g-code commands. Enabling this feature will swap the Z-limit D11 pin and spindle enable D12 pin to access the hardware PWM on pin D12. The Z-limit pin, now on D12, should work just as it did before.
-  - **Additional Compile-Time Feature Options:** Line number tracking, real-time feed rate reporting.
-  - **SLATED FOR v1.0 DEVELOPMENT** Jogging controls and feedrate/spindle/coolant overrides. (In v0.9, the framework for feedrate overrides are in-place, only the minor details to complete it have yet to be installed.)
+  - **Additional Compile-Time Feature Options:** Limit/control pin state reporting, force power-up alarm state, GUI reporting mode, and more.
+
+##Update Summary for v0.9h from v0.8
+  - **IMPORTANT: Default serial baudrate is now 115200! (Up from 9600)**
+  - **Super Smooth Stepper Algorithm**
+  - **Stability and Robustness Updates**
+  - **(x4)+ Faster Planner**
+  - **Compile-able via Arduino IDE!**
+  - **G-Code Parser Overhaul**
+  - **Independent Acceleration and Velocity Settings**
+  - **Soft Limits**
+  - **Probing**
+  - **Dynamic Tool Length Offsets**
+  - **Improved Arc Performance**
+  - **CPU Pin Mapping**
+  - **New Grbl SIMULATOR! (by @jgeisler and @ashelly)**
+  - **Configurable Real-time Status Reporting**
+  - **Updated Homing Routine**
+  - **CoreXY Support**
+  - **Full Limit and Control Pin Configurability**
+  - **Optional Limit Pin Sharing**
+  - **Optional Variable Spindle Speed Output**
+  - **Additional Compile-Time Feature Options**
 
 -
 ``` 
-List of Supported G-Codes in Grbl v0.9
+List of Supported G-Codes in Grbl v0.9i Master:
   - Non-Modal Commands: G4, G10 L2, G10 L20, G28, G30, G28.1, G30.1, G53, G92, G92.1
-  - Motion Modes: G0, G1, G2, G3, G38.1, G80
+  - Motion Modes: G0, G1, G2, G3, G38.1, G38.2, G38.3, G38.4, G80
   - Feed Rate Modes: G93, G94
   - Unit Modes: G20, G21
   - Distance Modes: G90, G91

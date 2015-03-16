@@ -68,7 +68,7 @@
 #define MOTION_MODE_LINEAR 1 // G1
 #define MOTION_MODE_CW_ARC 2  // G2
 #define MOTION_MODE_CCW_ARC 3  // G3
-#define MOTION_MODE_PROBE_TOWARD 4 // G38.2
+#define MOTION_MODE_PROBE_TOWARD 4 // G38.2 NOTE: G38.2, G38.3, G38.4, G38.5 must be sequential. See report_gcode_modes().
 #define MOTION_MODE_PROBE_TOWARD_NO_ERROR 5 // G38.3
 #define MOTION_MODE_PROBE_AWAY 6 // G38.4
 #define MOTION_MODE_PROBE_AWAY_NO_ERROR 7 // G38.5
