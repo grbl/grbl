@@ -22,7 +22,7 @@ Grbl includes full acceleration management with look ahead. That means the contr
 ***
 
 _**Master Branch:**_
-* [Grbl v0.9i Atmega328p 16mhz 115200baud with generic defaults](http://bit.ly/1EiviDk) _(2014-03-15)_
+* [Grbl v0.9i Atmega328p 16mhz 115200baud with generic defaults](http://bit.ly/1EiviDk) _(2015-03-15)_
 * [Grbl v0.9i Atmega328p 16mhz 115200baud with ShapeOko2 defaults](http://bit.ly/1NYIfKl) _(2015-03-15)_
   - **IMPORTANT INFO WHEN UPGRADING TO GRBL v0.9i:** 
   - Baudrate is now **115200** (Up from 9600). 
@@ -43,7 +43,7 @@ _**Archives:**_
 
 ##Update Summary for v0.9i from v0.9h
   - **IMPORTANT:**
-    - **Z-limit(D12) and spindle enable(D11) pins have switched to support variable spindle PWM!**
+    - **Z-limit(D12) and spindle enable(D11) pins have switched to support variable spindle!**
     - **System tweaks: $14 cycle auto-start has been removed. No more QUEUE state.**
   - **New G-Codes:** Additional probing cycle commands G38.3, G38.4, G38.5 now supported. G40 cutter radius compensation cancel. G91.1 arc IJK distance mode incremental.
   - **CoreXY Support:** Grbl now supports CoreXY kinematics on an introductory-level. Most functions have been verified to work, but there may be bugs here or there. Please report any problems you find!
@@ -67,8 +67,6 @@ _**Archives:**_
   - **New Grbl SIMULATOR! (by @jgeisler and @ashelly)**
   - **Configurable Real-time Status Reporting**
   - **Updated Homing Routine**
-  - **CoreXY Support**
-  - **Full Limit and Control Pin Configurability**
   - **Optional Limit Pin Sharing**
   - **Optional Variable Spindle Speed Output**
   - **Additional Compile-Time Feature Options**
@@ -76,8 +74,8 @@ _**Archives:**_
 -
 ``` 
 List of Supported G-Codes in Grbl v0.9i Master:
-  - Non-Modal Commands: G4, G10 L2, G10 L20, G28, G30, G28.1, G30.1, G53, G92, G92.1
-  - Motion Modes: G0, G1, G2, G3, G38.1, G38.2, G38.3, G38.4, G80
+  - Non-Modal Commands: G4, G10L2, G10L20, G28, G30, G28.1, G30.1, G53, G92, G92.1
+  - Motion Modes: G0, G1, G2, G3, G38.2, G38.3, G38.4, G38.5, G80
   - Feed Rate Modes: G93, G94
   - Unit Modes: G20, G21
   - Distance Modes: G90, G91
@@ -89,6 +87,7 @@ List of Supported G-Codes in Grbl v0.9i Master:
   - Program Flow: M0, M1, M2, M30*
   - Coolant Control: M7*, M8, M9
   - Spindle Control: M3, M4, M5
+  - Valid Non-Command Words: F, I, J, K, L, N, P, R, S, T, X, Y, Z
 ```
 
 -------------
