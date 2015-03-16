@@ -38,13 +38,6 @@ _**Archives:**_
 * [Grbl v0.6b Atmega168 16mhz 9600baud](http://bit.ly/SScWnE)
 * [Grbl v0.51 Atmega168 16mhz 9600baud](http://bit.ly/VXyrYu)
 
--------------
-
-_Grbl is an open-source project and fueled by the free-time of our intrepid administrators and altruistic users. If you'd like to donate, all proceeds will be used to help keep this project sustainable and to fund supporting equipment. Thank you!_
-
-| [![Donate](https://www.paypalobjects.com/en_US/i/btn/btn_donate_LG.gif)](https://www.paypal.com/cgi-bin/webscr?cmd=_s-xclick&hosted_button_id=EBQWAWQAAT878) | [![Flattr Grbl](http://api.flattr.com/button/flattr-badge-large.png)](https://flattr.com/submit/auto?user_id=chamnit&url=github.com/grbl/grbl&title=Grbl&language=&tags=github&category=software) | [![Support via Gratipay](https://cdn.rawgit.com/gratipay/gratipay-badge/2.1.3/dist/gratipay.png)](https://gratipay.com/chamnit/) |
-|:--:|:--:|:--:|
-
 
 ***
 
