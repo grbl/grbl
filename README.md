@@ -21,6 +21,11 @@ Grbl includes full acceleration management with look ahead. That means the contr
 
 ***
 
+### Official Supporters of the Grbl CNC Project
+[![Carbide3D](https://dl.dropboxusercontent.com/u/2221997/logo_240px.png)](http://carbide3d.com)  [![Inventables](https://dzevsq2emy08i.cloudfront.net/paperclip/press_image_uploads/62/low_res/inventables-logo.png)](http://inventables.com)
+
+***
+
 _**Master Branch:**_
 * [Grbl v0.9i Atmega328p 16mhz 115200baud with generic defaults](http://bit.ly/1EiviDk) _(2015-03-15)_
 * [Grbl v0.9i Atmega328p 16mhz 115200baud with ShapeOko2 defaults](http://bit.ly/1NYIfKl) _(2015-03-15)_
