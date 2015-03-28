@@ -251,6 +251,22 @@
 // spindle RPM output lower than this value will be set to this value.
 // #define MINIMUM_SPINDLE_PWM 5 // Default disabled. Uncomment to enable. Integer (0-255)
 
+// By default on a 328p(Uno), Grbl combines the variable spindle PWM and the enable into one pin to help 
+// preserve I/O pins. For certain setups, these may need to be separate pins. This configure option uses
+// the spindle direction pin(D13) as a separate spindle enable pin along with spindle speed PWM on pin D11. 
+// NOTE: This configure option only works with VARIABLE_SPINDLE enabled and a 328p processor (Uno). 
+// NOTE: With no direction pin, the spindle clockwise M4 g-code command will be removed. M3 and M5 still work.
+// #define USE_SPINDLE_DIR_AS_ENABLE_PIN // Default disabled. Uncomment to enable.
+
+// With this enabled, Grbl sends back an echo of the line it has received, which has been pre-parsed (spaces
+// removed, capitalized letters, no comments) and is to be immediately executed by Grbl. Echoes will not be 
+// sent upon a line buffer overflow, but should for all normal lines sent to Grbl. For example, if a user 
+// sendss the line 'g1 x1.032 y2.45 (test comment)', Grbl will echo back in the form '[echo: G1X1.032Y2.45]'.
+// NOTE: Only use this for debugging purposes!! When echoing, this takes up valuable resources and can effect
+// performance. If absolutely needed for normal operation, the serial write buffer should be greatly increased
+// to help minimize transmission waiting within the serial write protocol.
+// #define REPORT_ECHO_LINE_RECEIVED // Default disabled. Uncomment to enable.
+
 // Minimum planner junction speed. Sets the default minimum junction speed the planner plans to at
 // every buffer block junction, except for starting from rest and end of the buffer, which are always
 // zero. This value controls how fast the machine moves through junctions with no regard for acceleration
@@ -261,7 +277,8 @@
 
 // Sets the minimum feed rate the planner will allow. Any value below it will be set to this minimum
 // value. This also ensures that a planned motion always completes and accounts for any floating-point
-// round-off errors. A lower value than 1.0 mm/min may work in some cases, but we don't recommend it.
+// round-off errors. Although not recommended, a lower value than 1.0 mm/min will likely work in smaller
+// machines, perhaps to 0.1mm/min, but your success may vary based on multiple factors.
 #define MINIMUM_FEED_RATE 1.0 // (mm/min)
 
 // Number of arc generation iterations by small angle approximation before exact arc trajectory 
@@ -354,13 +371,19 @@
 
 
 // ---------------------------------------------------------------------------------------
-
-// TODO: Install compile-time option to send numeric status codes rather than strings.
-
-// ---------------------------------------------------------------------------------------
 // COMPILE-TIME ERROR CHECKING OF DEFINE VALUES:
 
+#ifndef HOMING_CYCLE_0
+  #error "Required HOMING_CYCLE_0 not defined."
+#endif
 
+#if defined(USE_SPINDLE_DIR_AS_ENABLE_PIN) && !defined(VARIABLE_SPINDLE)
+  #error "USE_SPINDLE_DIR_AS_ENABLE_PIN may only be used with VARIABLE_SPINDLE enabled"
+#endif
+
+#if defined(USE_SPINDLE_DIR_AS_ENABLE_PIN) && !defined(CPU_MAP_ATMEGA328P)
+  #error "USE_SPINDLE_DIR_AS_ENABLE_PIN may only be used with a 328p processor"
+#endif
 
 // ---------------------------------------------------------------------------------------
 

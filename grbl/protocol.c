@@ -21,6 +21,11 @@
 
 #include "grbl.h"
 
+// Define different comment types for pre-parsing.
+#define COMMENT_NONE 0
+#define COMMENT_TYPE_PARENTHESES 1
+#define COMMENT_TYPE_SEMICOLON 2
+
 
 static char line[LINE_BUFFER_SIZE]; // Line to be executed. Zero-terminated.
 
@@ -32,6 +37,10 @@ static void protocol_execute_line(char *line)
 {      
   protocol_execute_realtime(); // Runtime command check point.
   if (sys.abort) { return; } // Bail to calling function upon system abort  
+
+  #ifdef REPORT_ECHO_LINE_RECEIVED
+    report_echo_line_received(line);
+  #endif
 
   if (line[0] == 0) {
     // Empty or comment line. Send status message for syncing purposes.
@@ -82,7 +91,7 @@ void protocol_main_loop()
   // Primary loop! Upon a system abort, this exits back to main() to reset the system. 
   // ---------------------------------------------------------------------------------  
   
-  uint8_t iscomment = false;
+  uint8_t comment = COMMENT_NONE;
   uint8_t char_counter = 0;
   uint8_t c;
   for (;;) {
@@ -101,14 +110,14 @@ void protocol_main_loop()
       if ((c == '\n') || (c == '\r')) { // End of line reached
         line[char_counter] = 0; // Set string termination character.
         protocol_execute_line(line); // Line is complete. Execute it!
-        iscomment = false;
+        comment = COMMENT_NONE;
         char_counter = 0;
       } else {
-        if (iscomment) {
+        if (comment != COMMENT_NONE) {
           // Throw away all comment characters
           if (c == ')') {
-            // End of comment. Resume line.
-            iscomment = false;
+            // End of comment. Resume line. But, not if semicolon type comment.
+            if (comment == COMMENT_TYPE_PARENTHESES) { comment = COMMENT_NONE; }
           }
         } else {
           if (c <= ' ') { 
@@ -121,9 +130,10 @@ void protocol_main_loop()
             // NOTE: This doesn't follow the NIST definition exactly, but is good enough for now.
             // In the future, we could simply remove the items within the comments, but retain the
             // comment control characters, so that the g-code parser can error-check it.
-            iscomment = true;
-          // } else if (c == ';') {
-            // Comment character to EOL NOT SUPPORTED. LinuxCNC definition. Not NIST.
+            comment = COMMENT_TYPE_PARENTHESES;
+          } else if (c == ';') {
+            // NOTE: ';' comment to EOL is a LinuxCNC definition. Not NIST.
+            comment = COMMENT_TYPE_SEMICOLON;
             
           // TODO: Install '%' feature 
           // } else if (c == '%') {
@@ -136,7 +146,7 @@ void protocol_main_loop()
           } else if (char_counter >= (LINE_BUFFER_SIZE-1)) {
             // Detect line buffer overflow. Report error and reset line buffer.
             report_status_message(STATUS_OVERFLOW);
-            iscomment = false;
+            comment = COMMENT_NONE;
             char_counter = 0;
           } else if (c >= 'a' && c <= 'z') { // Upcase lowercase
             line[char_counter++] = c-'a'+'A';
@@ -206,6 +216,8 @@ void protocol_execute_realtime()
         // to do what is needed before resetting, like killing the incoming stream. The 
         // same could be said about soft limits. While the position is not lost, the incoming
         // stream could be still engaged and cause a serious crash if it continues afterwards.
+        
+        // TODO: Allow status reports during a critical alarm. Still need to think about implications of this.
 //         if (sys.rt_exec_state & EXEC_STATUS_REPORT) { 
 //           report_realtime_status();
 //           bit_false_atomic(sys.rt_exec_state,EXEC_STATUS_REPORT); 

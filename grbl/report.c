@@ -400,6 +400,15 @@ void report_build_info(char *line)
 }
 
 
+// Prints the character string line Grbl has received from the user, which has been pre-parsed,
+// and has been sent into protocol_execute_line() routine to be executed by Grbl.
+void report_echo_line_received(char *line)
+{
+  printPgmString(PSTR("[echo: ")); printString(line);
+  printPgmString(PSTR("]\r\n"));
+}
+
+
  // Prints real-time data. This function grabs a real-time snapshot of the stepper subprogram 
  // and the actual location of the CNC machine. Users may change the following function to their
  // specific needs, but the desired real-time data report must be as short as possible. This is
