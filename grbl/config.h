@@ -156,6 +156,13 @@
 // NOTE: Will eventually be added to Grbl settings in v1.0.
 // #define INVERT_CONTROL_PIN // Default disabled. Uncomment to enable.
 
+// Inverts the spindle enable pin from low-disabled/high-enabled to low-enabled/high-disabled. Useful
+// for some pre-built electronic boards.
+// NOTE: If VARIABLE_SPINDLE is enabled(default), this option has no effect as the PWM output and 
+// spindle enable are combined to one pin. If you need both this option and spindle speed PWM, 
+// uncomment the config option USE_SPINDLE_DIR_AS_ENABLE_PIN below.
+// #define INVERT_SPINDLE_ENABLE_PIN // Default disabled. Uncomment to enable.
+
 // Enable limit pin states feedback in status reports. The data is presented as 0 (low) or 1(high), 
 // where the order is XYZ. For example, if the Y- and Z-limit pins are active, Grbl will include the 
 // following string in the status report "Lim:011". This is generally useful for setting up a new

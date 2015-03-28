@@ -49,10 +49,18 @@ void spindle_stop()
   #ifdef VARIABLE_SPINDLE
     TCCRA_REGISTER &= ~(1<<COMB_BIT); // Disable PWM. Output voltage is zero.
     #if defined(CPU_MAP_ATMEGA2560) || defined(USE_SPINDLE_DIR_AS_ENABLE_PIN)
-      SPINDLE_ENABLE_PORT &= ~(1<<SPINDLE_ENABLE_BIT); // Set pin to low.
+      #ifdef INVERT_SPINDLE_ENABLE_PIN
+		SPINDLE_ENABLE_PORT |= (1<<SPINDLE_ENABLE_BIT);  // Set pin to high
+	  #else
+		SPINDLE_ENABLE_PORT &= ~(1<<SPINDLE_ENABLE_BIT); // Set pin to low
+	  #endif
     #endif
   #else
-    SPINDLE_ENABLE_PORT &= ~(1<<SPINDLE_ENABLE_BIT); // Set pin to low.
+    #ifdef INVERT_SPINDLE_ENABLE_PIN
+	  SPINDLE_ENABLE_PORT |= (1<<SPINDLE_ENABLE_BIT);  // Set pin to high
+	#else
+	  SPINDLE_ENABLE_PORT &= ~(1<<SPINDLE_ENABLE_BIT); // Set pin to low
+	#endif
   #endif  
 }
 
@@ -101,11 +109,19 @@ void spindle_set_state(uint8_t state, float rpm)
     
       // On the Uno, spindle enable and PWM are shared, unless otherwise specified.
       #if defined(CPU_MAP_ATMEGA2560) || defined(USE_SPINDLE_DIR_AS_ENABLE_PIN) 
-        SPINDLE_ENABLE_PORT |= (1<<SPINDLE_ENABLE_BIT);
+        #ifdef INVERT_SPINDLE_ENABLE_PIN
+          SPINDLE_ENABLE_PORT &= ~(1<<SPINDLE_ENABLE_BIT);
+        #else
+          SPINDLE_ENABLE_PORT |= (1<<SPINDLE_ENABLE_BIT);
+        #endif
       #endif
       
     #else   
-      SPINDLE_ENABLE_PORT |= (1<<SPINDLE_ENABLE_BIT);
+      #ifdef INVERT_SPINDLE_ENABLE_PIN
+		SPINDLE_ENABLE_PORT &= ~(1<<SPINDLE_ENABLE_BIT);
+	  #else
+		SPINDLE_ENABLE_PORT |= (1<<SPINDLE_ENABLE_BIT);
+	  #endif
     #endif
 
   }
