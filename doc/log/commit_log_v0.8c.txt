@@ -1,0 +1,831 @@
+----------------
+Date: 2012-11-25
+Author: Sonny Jeon
+Subject: G28/G30 post move bug fix. Altered file permissions.
+
+
+----------------
+Date: 2012-11-25
+Author: Sonny Jeon
+Subject: G28/G30 post move bug fix.
+
+- Fixed a bug when after moving to a pre-defined position G28/G30, the
+next move would go someplace unexpected. The g-code parser position
+vector wasn't getting updated.
+
+
+----------------
+Date: 2012-11-20
+Author: Sonny Jeon
+Subject: Merge error fix.
+
+
+----------------
+Date: 2012-11-20
+Author: Sonny Jeon
+Subject: Merge v0.8 edge to master
+
+
+----------------
+Date: 2012-11-19
+Author: Sonny Jeon
+Subject: Updated interface protocol. Fixed M2 bug.
+
+- Updated interface protocol to play nicer with interface programs. All
+Grbl responses beginning with '$' signifies a setting. Bracketed '[]'
+responses are feedback messages containing either state, parameter, or
+general messages. Chevron '<>' response are from the real-time status
+messages, i.e. position.
+
+- M2 Program end command was causing a system alarm. Fixed. Thanks
+@blinkenlight !
+
+
+----------------
+Date: 2012-11-18
+Author: Sonny Jeon
+Subject: Updated readme
+
+
+----------------
+Date: 2012-11-18
+Author: Sonny Jeon
+Subject: Homing search sequence now compile-time option. New defaults.h file. Tidying up.
+
+- The homing sequence is now a compile-time option, where a user can
+choose which axes(s) move in sequence during the search phase. Up to 3
+sequences. Works with the locating phase and the pull-off maneuver.
+
+- New defaults.h file to store user generated default settings for
+different machines. Mainly to be used as a central repo, but each set
+may be select to be compiled in as a config.h define.
+
+
+----------------
+Date: 2012-11-15
+Author: Sonny Jeon
+Subject: Added Grbl state in status report. Removed switch support.
+
+- Added Grbl state (Idle, Running, Queued, Hold, etc) to the real-time
+status reporting feature as feedback to the user of what Grbl is doing.
+Updated the help message to reflect this change.
+
+- Removed switches (dry run, block delete, single block mode). To keep
+Grbl simple and not muddled up from things that can easily be taken
+care of by an external interface, these were removed.
+
+- Check g-code mode was retained, but the command was moved to '$C'
+from '$S0'.
+
+
+----------------
+Date: 2012-11-14
+Author: Sonny Jeon
+Subject: Re-factored system states and alarm management. Serial baud support greater than 57600.
+
+- Refactored system states to be more clear and concise. Alarm locks
+processes when position is unknown to indicate to user something has
+gone wrong.
+
+- Changed mc_alarm to mc_reset, which now manages the system reset
+function. Centralizes it.
+
+- Renamed '$X' kill homing lock to kill alarm lock.
+
+- Created an alarm error reporting method to clear up what is an alarm:
+message vs a status error: message. For GUIs mainly. Alarm codes are
+negative. Status codes are positive.
+
+- Serial baud support upto 115200. Previous baudrate calc was unstable
+for 57600 and above.
+
+- Alarm state locks out all g-code blocks, including startup scripts,
+but allows user to access settings and internal commands. For example,
+to disable hard limits, if they are problematic.
+
+- Hard limits do not respond in an alarm state.
+
+- Fixed a problem with the hard limit interrupt during the homing
+cycle. The interrupt register is still active during the homing cycle
+and still signal the interrupt to trigger when re-enabled. Instead,
+just disabled the register.
+
+- Homing rate adjusted. All axes move at homing seek rate, regardless
+of how many axes move at the same time. This is unlike how the stepper
+module does it as a point to point rate.
+
+- New config.h settings to disable the homing rate adjustment and the
+force homing upon powerup.
+
+- Reduced the number of startup lines back down to 2 from 3. This
+discourages users from placing motion block in there, which can be very
+dangerous.
+
+- Startup blocks now run only after an alarm-free reset or after a
+homing cycle. Does not run when $X kill is called. For satefy reasons
+
+
+----------------
+Date: 2012-11-10
+Author: Sonny Jeon
+Subject: Tweaks. Seek rate updates when set. CCW arc full circle fix.
+
+- Fixed a minor issue where the seek rates would not immediately be
+used and only would after a reset. Should update live now.
+
+- A full circle IJ offset CCW arc would not do anything. Fixed bug via
+a simple if-then statement.
+
+- Radius mode tweaks to check for negative value in sqrt() rather than
+isnan() it. Error report updated to indicate what actually happened.
+
+
+----------------
+Date: 2012-11-09
+Author: Sonny Jeon
+Subject: Added note that D13 can't be used as input, pulled-high.
+
+
+----------------
+Date: 2012-11-09
+Author: Sonny Jeon
+Subject: Fixed homing cycle hanging after locating switches.
+
+
+----------------
+Date: 2012-11-08
+Author: Sonny Jeon
+Subject: Housekeeping.
+
+- Added some more notes to config.h.
+
+- Added the ability to override some of the #defines around Grbl in
+config.h, like planner buffer size, line buffer size, serial
+send/receive buffers. Mainly to centralize the configurations to be
+able to port to different microcontrollers later.
+
+
+----------------
+Date: 2012-11-08
+Author: Sonny Jeon
+Subject: Sanguino compile patch
+
+@daapp : Sanguino compile serial USART path. Thanks!
+
+
+----------------
+Date: 2012-11-07
+Author: Sonny Jeon
+Subject: More tweaks. Removed dry run. Trimmed all messages to save flash space.
+
+- Removed the dry run switch. It was getting overly complicated for
+what it needed to do. In practice, single block mode and feed rate
+overrides (coming in next release) does a much better job with dry runs
+than 'dry run'.
+
+- Trimmed all of Grbl's messages from help, status, feedback to
+settings. Saved 0.6KB+ of flash space that could be used for v0.9
+features.
+
+- Removed some settings inits when set. Will depend on user to power
+cycle to get some of these to reload.
+
+- Fixed a bug with settings version not re-writing old settings, when
+it should. Thanks Alden!
+
+
+----------------
+Date: 2012-11-06
+Author: Sonny Jeon
+Subject: Merge pull request #132 from hin/header_dependencies
+
+Header dependencies
+
+----------------
+Date: 2012-11-05
+Author: Sonny Jeon
+Subject: Tweaks and bug fixes. Increase to 3 startup blocks. Remove purge/added unlock command
+
+- Increased the number of startup blocks to 3 for no good reason other
+than it doesn't increase the flash size.
+
+- Removed the purge buffer command and replaced with an disable homing
+lock command.
+
+- Homing now blocks all g-code commands (not system commands) until the
+homing cycle has been performed or the disable homing lock is sent.
+Homing is required upon startup or if Grbl loses it position. This is
+for safety reasons.
+
+- Cleaned up some of the Grbl states and re-organized it to be little
+more cohesive.
+
+- Cleaned up the feedback and status messages to not use so much flash
+space, as it's a premium now.
+
+ - Check g-code and dry run switches how are mutually exclusive and
+can't be enabled when the other is. And automatically resets Grbl when
+disabled.
+
+- Some bug fixes and other minor tweaks.
+
+
+----------------
+Date: 2012-11-05
+Author: Hans Insulander
+Subject: Ignore dependency files
+
+
+----------------
+Date: 2012-11-05
+Author: Hans Insulander
+Subject: Generate header dependencies and use them in Makefile
+
+
+----------------
+Date: 2012-11-05
+Author: Sonny Jeon
+Subject: Tweaked dry run and check g-code switches. Now resets when toggled off.
+
+- To make managing the code easier and to help ensure a user starts
+with a fresh reset, the functionality of check g-code and dry run has
+been changed to automatically perform a soft reset when toggled off.
+Position will not be lost, unless there is a cycle active. Feed hold
+before toggling off it needed.
+
+This is mainly a safety issue. If a user dry runs a program and kills
+it mid-program, and then restarts it thinking to run it as normal, the
+g-code modes that we're set may not be what they expect, and very bad
+things can happen.
+
+- NOTE: Grbl is at 83.5% of flash capacity. Not a lot of room left, but
+I think we can squeeze in some more!
+
+
+----------------
+Date: 2012-11-04
+Author: Sonny Jeon
+Subject: Runtime command pinned out! Re-organized coolant pins.
+
+- Pinned out cycle start(A2), feed hold(A1), and reset(A0) runtime
+commands. These pins are held high with the internal pull-up resistor
+enabled. All you have to do is connect a normally-open switch to the
+pin and ground. That's it.
+
+- Moved the coolant control pins to A3 (and the optional mist control
+to A4).
+
+- Moved all of the MASK defines into the config.h file to centralize
+them.
+
+
+----------------
+Date: 2012-11-04
+Author: Sonny Jeon
+Subject: Tweaks and minor bug fixes. Added purge buffer command.
+
+- Added a purge buffer (and lock) command. This is an advanced option
+to clear any queued blocks in the buffer in the event of system
+position being lost or homed. These queued blocks will likely not move
+correctly if not purged. In typical use, the purging command releases
+the homing axes lock in case a user need to move the axes off their
+hard limit switches, but position is not guaranteed. Homing is advised
+immediately after.
+
+- Created a system-wide sync current position function. Cleans up some
+of the repetitive tasks in various places in the code that do the same
+thing.
+
+- Removed the clear all switches command '$S'. Not really needed and
+helped clean up a sync call.
+
+- Other minor tweaks. Readme updated slightly..
+
+
+----------------
+Date: 2012-11-03
+Author: Sonny Jeon
+Subject: New startup script setting. New dry run, check gcode switches. New system state variable. Lots of reorganizing.
+
+(All v0.8 features installed. Still likely buggy, but now thourough
+testing will need to start to squash them all. As soon as we're done,
+this will be pushed to master and v0.9 development will be started.
+Please report ANY issues to us so we can get this rolled out ASAP.)
+
+- User startup script! A user can now save one (up to 5 as compile-time
+option) block of g-code in EEPROM memory. This will be run everytime
+Grbl resets. Mainly to be used as a way to set your preferences, like
+G21, G54, etc.
+
+- New dry run and check g-code switches. Dry run moves ALL motions at
+rapids rate ignoring spindle, coolant, and dwell commands. For rapid
+physical proofing of your code. The check g-code switch ignores all
+motion and provides the user a way to check if there are any errors in
+their program that Grbl may not like.
+
+- Program restart! (sort of). Program restart is typically an advanced
+feature that allows users to restart a program mid-stream. The check
+g-code switch can perform this feature by enabling the switch at the
+start of the program, and disabling it at the desired point with some
+minimal changes.
+
+- New system state variable. This state variable tracks all of the
+different state processes that Grbl performs, i.e. cycle start, feed
+hold, homing, etc. This is mainly for making managing of these task
+easier and more clear.
+
+- Position lost state variable. Only when homing is enabled, Grbl will
+refuse to move until homing is completed and position is known. This is
+mainly for safety. Otherwise, it will let users fend for themselves.
+
+- Moved the default settings defines into config.h. The plan is to
+eventually create a set of config.h's for particular as-built machines
+to help users from doing it themselves.
+
+- Moved around misc defines into .h files. And lots of other little
+things.
+
+
+----------------
+Date: 2012-11-01
+Author: Sonny Jeon
+Subject: Added block delete, opt stop, single block mode. New parser state and parameter feedback. Overhauled '$' command.
+
+NOTE: Another incremental update. Likely buggy, still a ways to go
+before everything is installed, such as startup blocks.
+
+- Changed the '$' command to print help. '$$' now prints Grbl settings.
+The help now instructs the user of runtime commands, switch toggling,
+homing, etc. Jogging will be added to these in v0.9.
+
+- Added switches: block delete, opt stop, and single block mode.
+
+- Now can print the g-code parser state and persistent parameters
+(coord sys) to view what Grbl has internally.
+
+- Made the gc struct in the g-code parser global to be able to print
+the states. Also moved coordinate system tracking from sys to gc struct.
+
+- Changed up the welcome flag and updated version to v0.8c.
+
+- Removed spindle speed from gcode parser. Not used.
+
+
+----------------
+Date: 2012-11-01
+Author: Sonny Jeon
+Subject: New report module. 6 persistent work coordinates. New G-codes and settings. README and minor bug updates
+
+(NOTE: This push is likely buggy so proceed with caution. Just
+uploading to let people know where we're going.)
+
+- New report.c module. Moved all feedback functions into this module to
+centralize these processes. Includes realtime status reports, status
+messages, feedback messages.
+
+- Official support 6 work coordinate systems (G54-G59), which are
+persistently held in EEPROM memory.
+
+- New g-code support: G28.1, G30.1 stores current machine position as a
+home position into EEPROM. G10 L20 Px stores current machine position
+into work coordinates without needing to explicitly send XYZ words.
+
+- Homing performed with '$H' command. G28/G30 no longer start the
+homing cycle. This is how it's supposed to be.
+
+- New settings: Stepper enable invert and n_arc correction installed.
+
+- Updated and changed up some limits and homing functionality. Pull-off
+travel will now move after the homing cycle regardless of hard limits
+enabled. Fixed direction of pull-off travel (went wrong way).
+
+- Started on designing an internal Grbl command protocol based on the
+'$' settings letter. Commands with non numeric characters after '$'
+will perform switch commands, homing cycle, jogging, printing
+paramters, etc. Much more to do here.
+
+- Updated README to reflect all of the new features.
+
+
+----------------
+Date: 2012-10-21
+Author: Sonny Jeon
+Subject: Added misc message to indicate how to exit ALARM mode.
+
+
+----------------
+Date: 2012-10-21
+Author: Sonny Jeon
+Subject: New alarm method. Re(re)organized status messages.
+
+- Installed a new 'alarm' method to centralize motion kills across
+alarm or reset events. Right now, this is controlled by system abort
+and hard limits. But, in the future, a g-code parser error may call
+this too as a safety feature.
+
+- Re(re)organized status messages to just print all errors, regardless
+from where it was called. This centralizes them into one place.
+
+- Misc messages method installed for any user feedback that is not a
+confirmation or error. Mainly so that there is a place to perform
+warnings and such.
+
+- New stuff installed and still made the flash size smaller by saving
+flash space from clearing out repeated '\r\n' pgmstrings.
+
+- Fixed a bug where hard limits message would print everytime a system
+abort was sent.
+
+
+----------------
+Date: 2012-10-21
+Author: Sonny Jeon
+Subject: Re-organized status messages to be more coherent and centralized.
+
+- Reorganized all of the status message feedback from both the g-code
+parser and settings modules to be centralized into two message modules:
+status feedback from executing a line and warnings for misc feedback.
+
+- Pulled out the printPgmString() messages in settings.c and placed it
+into the new module. (settings_dump() not moved).
+
+- Some other minor edits. Renaming defines, comment updates, etc.
+
+
+----------------
+Date: 2012-10-18
+Author: Sonny Jeon
+Subject: Hard limits code minor updates.
+
+- Fixed a bug that would not disable the steppers if a user issues a
+system abort during a homing cycle.
+
+- Updated the hard limit interrupt to be more correct and to issue a
+shutdown for the right situations when the switch has been triggered.
+
+- Added a status message to indicate to the user what happened and what
+to do upon a hard limit trigger.
+
+
+----------------
+Date: 2012-10-16
+Author: Sonny Jeon
+Subject: Hard limits, homing direction, pull-off limits after homing, status reports in mm or inches, system alarm, and more.
+
+- Thank you statement added for Alden Hart of Synthetos.
+
+- Hard limits option added, which also works with homing by pulling off
+the switches to help prevent unintended triggering. Hard limits use a
+interrupt to sense a falling edge pin change and immediately go into
+alarm mode, which stops everything and forces the user to issue a reset
+(Ctrl-x) or reboot.
+
+- Auto cycle start now a configuration option.
+
+- Alarm mode: A new method to kill all Grbl processes in the event of
+something catastrophic or potentially catastropic. Just works with hard
+limits for now, but will be expanded to include g-code errors (most
+likely) and other events.
+
+- Updated status reports to be configurable in inches or mm mode. Much
+more to do here, but this is the first step.
+
+- New settings: auto cycle start, hard limit enable, homing direction
+mask (which works the same as the stepper mask), homing pulloff
+distance (or distance traveled from homed machine zero to prevent
+accidental limit trip).
+
+- Minor memory liberation and calculation speed ups.
+
+
+----------------
+Date: 2012-10-13
+Author: Sonny Jeon
+Subject: Minor updates, improvements, and bug fixes.
+
+- Allowed status_message function to be called by others. This is to
+centralize all feedback into protocol.c.
+
+- Fixed a bug where line number words 'N' were causing the parser to
+error out.
+
+- Allowed homing routine feed rates to move slower than the
+MINIMUM_STEP_RATE parameter in config.h.
+
+- Homing performs idle lock at the end of the routine.
+
+- Stepper idle lock time will now not disable the steppers when the
+value is set at 255. This is accomodate users who prefer to keep their
+axes enabled at all times.
+
+- Moved some defines around to where they need to be.
+
+
+----------------
+Date: 2012-10-12
+Author: Sonny Jeon
+Subject: Updated delay_us() function to accept long integers
+
+
+----------------
+Date: 2012-10-11
+Author: Sonny Jeon
+Subject: (2x) speed increase in printFloat() function. Decimal places setting added.
+
+- printFloat() function execution doubled in speed. This is a precursor
+to status reporting, since GUIs may query real-time position rapidly.
+
+- Decimal places added to settings (for now). This may disappear in
+future pushes, but here for testing purposes.
+
+
+----------------
+Date: 2012-10-11
+Author: Sonny Jeon
+Subject: Homing stepper enable bit fix.
+
+
+----------------
+Date: 2012-10-10
+Author: Sonny Jeon
+Subject: Homing direction pin bits fixed. Lite refactoring of settings.
+
+
+----------------
+Date: 2012-10-09
+Author: Sonny Jeon
+Subject: Improved homing cycle. New settings: homing enable/rates, debounce and step idle lock time.
+
+- Homing cycle will now cycle twice (spec more/less in config) to
+improve repeatability and accuracy by decreasing overshoot.
+
+- New Grbl settings added: Enable/disable homing cycles, homing seek
+and feed rates, switch debounce delay, and stepper idle lock time.
+
+- Please note that these settings may change upon the next push, since
+there will be more added soon. Grbl *should* not re-write your old
+settings, just re-write the new ones. So, make sure you keep these
+written down somewhere in case they get lost from a code bug.
+
+- Refactored settings migration to be a little smaller and managable
+going forward.
+
+
+----------------
+Date: 2012-10-08
+Author: Sonny Jeon
+Subject: Fixed an issue with leaving the limit switches during a homing cycle.
+
+
+----------------
+Date: 2012-10-08
+Author: Sonny Jeon
+Subject: Updated version number to v0.8b to reflect changes.
+
+
+----------------
+Date: 2012-10-08
+Author: Sonny Jeon
+Subject: Limit pin internal pull-resistors enabled. Re-wrote read_double() function. Correctly changed all 'double's to 'float's.
+
+- Limit pin internal pull-resistors now enabled. Normal high operation.
+This will be the standard going forward.
+
+- Updated all of the 'double' variable types to 'float' to reflect what
+happens when compiled for the Arduino. Also done for compatibility
+reasons to @jgeisler0303 's Grbl simulator code.
+
+- G-code parser will now ignore 'E' exponent values, since they are
+reserved g-code characters for some machines. Thanks @csdexter!
+
+- The read_double() function was re-written and optimized for use in
+Grbl. The strtod() avr lib was removed.
+
+
+----------------
+Date: 2012-09-30
+Author: Sonny Jeon
+Subject: Updated limit/homing routine. Works, but needs more TLC.
+
+- Added acceleration to the homing routine.
+
+- Homing now accounts for different step rates when moving multiple
+axes without exceeding acceleration limits.
+
+- Homing now updates all internal positioning variables to machine zero
+after completion.
+
+- "Poor-man's" debounce delay added.
+
+- Updated the delay_us() function to perform faster and more accurate
+microsecond delays. Previously, the single increments would add
+noticeable time drift for larger delays.
+
+- Fix a bug in the stepper.c prescalar calculations that was changed in
+the last commit.
+
+- Other minor fixes.
+
+
+----------------
+Date: 2012-09-21
+Author: Sonny Jeon
+Subject: Minor prescalar optimization. Changed up some defines.
+
+
+----------------
+Date: 2012-09-21
+Author: Sonny Jeon
+Subject: Added coolant control (M7*, M8, M9). Mist control can be enabled via config.h.
+
+- Added coolant control! Flood control (M8) functions on analog pin 0.
+Mist control (M7) is compile-time optional and is on analog pin 1. (Use
+only if you have multiple coolants on your system). Based on work by
+@openpnp.
+
+- Fixed some variable assignments in spindle control.
+
+
+----------------
+Date: 2012-09-21
+Author: Sonny Jeon
+Subject: Merge pull request #120 from tmpvar/configurable-makefile
+
+Add support for overriding DEVICE and PROGRAMMER
+
+----------------
+Date: 2012-09-21
+Author: Elijah Insua
+Subject: Add support for overriding DEVICE and PROGRAMMER
+
+By setting environment variables.
+
+example: PROGRAMMER=-c arduino -P /dev/tty.usbmodemfa131 make flash
+
+
+----------------
+Date: 2012-09-19
+Author: Sonny Jeon
+Subject: M30 minor bug fix.
+
+Order of operations was off. Now works as intended,
+
+
+----------------
+Date: 2012-06-27
+Author: Sonny Jeon
+Subject: No changes. Github commit bug.
+
+
+----------------
+Date: 2012-06-26
+Author: Sonny Jeon
+Subject: Added step pulse delay after direction set (Compile-time option only). Updated read me.
+
+Added a compile-time only experimental feature that creates a
+user-specified time delay between a step pulse and a direction pin set
+(in config.h). This is for users with hardware-specific issues
+(opto-couplers) that need more than a few microseconds between events,
+which can lead to slowly progressing step drift after many many
+direction changes. We suggest to try the hack/fix posted in the Wiki
+before using this, as this experimental feature may cause Grbl to take
+a performance hit at high step rates and about complex curves.
+
+
+----------------
+Date: 2012-03-10
+Author: Sonny Jeon
+Subject: Minor fix related to spindle_stop() crashing abort in certain cases.
+
+- Updated spindle_stop() to fix abort bug and to be more in line with
+v0.8.
+
+
+----------------
+Date: 2012-03-05
+Author: Sonny Jeon
+Subject: Minor updates.
+
+- Updated makefile to be more universally compatible by not requiring
+grep or ruby.
+
+- Edited XON/XOFF flow control usage, noting that FTDI-based Arduinos
+are known to work, but not Atmega8U2-based Arduino. Still officially
+not supported, but added for advanced users.
+
+- Minor edits.
+
+
+----------------
+Date: 2012-02-25
+Author: Sonny Jeon
+Subject: Minor include related compile fix. Added experimental XON/XOFF flow control. Not officially supported!
+
+- A latency issue related to USB-to-serial converters on the Arduino
+does not allow for XON/XOFF flow control to work correctly on standard
+terminal programs. It seems that only specialized UI's or avoiding the
+USB port all together solves this problem. However, XON/XOFF flow
+control is added for advanced users only as a compile-time option. This
+feature is officially *NOT* supported by grbl, but let us know of any
+successes with it!
+
+
+----------------
+Date: 2012-02-12
+Author: Sonny Jeon
+Subject: Spindle DDR pins init minor fix.
+
+
+----------------
+Date: 2012-02-11
+Author: Sonny Jeon
+Subject: Fix to enable spindle DDR ports.
+
+----------------
+Date: 2012-02-11
+Author: Sonny Jeon
+Subject: Minor compiler compatibility update for _delay_us().
+
+
+----------------
+Date: 2012-02-11
+Author: Sonny Jeon
+Subject: G54 work coordinate support (w/ G10,G92.1). Re-factored g-code parser with error checking. Minor compiler compatibility changes.
+
+- G54 work coordinate system support. Up to 6 work coordinate systems
+(G54-G59) available as a compile-time option.
+
+- G10 command added to set work coordinate offsets from machine
+position.
+
+- G92/G92.1 position offsets and cancellation support. Properly follows
+NIST standard rules with other systems.
+
+- G53 absolute override now works correctly with new coordinate systems.
+
+- Revamped g-code parser with robust error checking. Providing user
+feedback with bad commands. Follows NIST standards.
+
+- Planner module slightly changed to only expected position movements
+in terms of machine coordinates only. This was to simplify coordinate
+system handling, which is done solely by the g-code parser.
+
+- Upon grbl system abort, machine position and work positions are
+retained, while G92 offsets are reset per NIST standards.
+
+- Compiler compatibility update for _delay_us().
+
+- Updated README.
+
+
+----------------
+Date: 2012-01-31
+Author: Sonny Jeon
+Subject: printFloat rounding fix. Affected settings. Recommend using new build.
+
+printFloat was printing incorrectly and adding a value of 5 to every
+float instead of 0.0005 when rounding to 3 decimal places. The printed
+settings values do not accurately portray the actual stored value.
+Recommend using newly posted build.
+
+
+----------------
+Date: 2012-01-28
+Author: Sonny Jeon
+Subject: Program stop support (M0,M1*,M2,M30*), proper position retainment upon reset, misc minor updates.
+
+- Program stop support (M0,M1*,M2,M30*). *Optional stop to be done.
+*Pallet shuttle not supported.
+
+- Work position is set equal to machine position upon reset, as
+according to NIST RS274-NGC guidelines. G92 is disabled.
+
+- Renamed mc_set_current_position() to mc_set_coordinate_offset().
+
+- Fixed bug in plan_synchronize(). Would exit right before last step is
+finished and caused issues with program stops. Now fixed.
+
+- Spindle now stops upon a run-time abort command.
+
+- Updated readme and misc upkeeping.
+
+
+----------------
+Date: 2012-01-27
+Author: Sonny Jeon
+Subject: Streaming script argparse bugfix.
+
+
+----------------
+Date: 2012-01-27
+Author: Sonny Jeon
+Subject: Updated streaming scripts. Compiler compatibility for _delay_ms().
+
+- Moved obsolete streaming scripts to folder for reference.
+
+- Added a more complex Python streaming script which uses the serial
+buffer as an additional streaming buffer.
+
+- Removed all references to a _delay_ms(variable) to allow for better
+porting across different compilers.
+

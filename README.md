@@ -1,4 +1,4 @@
-![GitHub Logo](/doc/logo/Grbl Logo 250px.png)
+![GitHub Logo](/doc/media/Grbl Logo 250px.png)
 
 
 ***
@@ -27,8 +27,8 @@ Grbl includes full acceleration management with look ahead. That means the contr
 ***
 
 _**Master Branch:**_
-* [Grbl v0.9i Atmega328p 16mhz 115200baud with generic defaults](http://bit.ly/1EiviDk) _(2015-03-15)_
-* [Grbl v0.9i Atmega328p 16mhz 115200baud with ShapeOko2 defaults](http://bit.ly/1NYIfKl) _(2015-03-15)_
+* [Grbl v0.9i Atmega328p 16mhz 115200baud with generic defaults](http://bit.ly/1EiviDk) _(2015-03-29)_
+* [Grbl v0.9i Atmega328p 16mhz 115200baud with ShapeOko2 defaults](http://bit.ly/1NYIfKl) _(2015-03-29)_
   - **IMPORTANT INFO WHEN UPGRADING TO GRBL v0.9i:** 
   - Baudrate is now **115200** (Up from 9600). 
   - Variable spindle is now enabled by default. Z-limit(D12) and spindle enable(D11) have switched to access the hardware PWM on D11. Homing will not work if you do not re-wire your Z-limit switch to D12.

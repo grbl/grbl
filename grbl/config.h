@@ -294,6 +294,16 @@
 // bogged down by too many trig calculations. 
 #define N_ARC_CORRECTION 12 // Integer (1-255)
 
+// The arc G2/3 g-code standard is problematic by definition. Radius-based arcs have horrible numerical 
+// errors when arc at semi-circles(pi) or full-circles(2*pi). Offset-based arcs are much more accurate 
+// but still have a problem when arcs are full-circles (2*pi). This define accounts for the floating 
+// point issues when offset-based arcs are commanded as full circles, but get interpreted as extremely
+// small arcs with around machine epsilon (1.2e-7rad) due to numerical round-off and precision issues.
+// This define value sets the machine epsilon cutoff to determine if the arc is a full-circle or not.
+// NOTE: Be very careful when adjusting this value. It should always be greater than 1.2e-7 but not too
+// much greater than this. The default setting should capture most, if not all, full arc error situations.
+#define ARC_ANGULAR_TRAVEL_EPSILON 5E-7 // Float (radians)
+
 // Time delay increments performed during a dwell. The default value is set at 50ms, which provides
 // a maximum time delay of roughly 55 minutes, more than enough for most any application. Increasing
 // this delay will increase the maximum dwell time linearly, but also reduces the responsiveness of 
@@ -369,9 +379,9 @@
 // Force Grbl to check the state of the hard limit switches when the processor detects a pin
 // change inside the hard limit ISR routine. By default, Grbl will trigger the hard limits
 // alarm upon any pin change, since bouncing switches can cause a state check like this to 
-// misread the pin. When hard limits are triggers, this should be 100% reliable, which is the
+// misread the pin. When hard limits are triggered, they should be 100% reliable, which is the
 // reason that this option is disabled by default. Only if your system/electronics can guarantee
-// the pins don't bounce, we recommend enabling this option. If so, this will help prevent
+// that the switches don't bounce, we recommend enabling this option. This will help prevent
 // triggering a hard limit when the machine disengages from the switch.
 // NOTE: This option has no effect if SOFTWARE_DEBOUNCE is enabled.
 // #define HARD_LIMIT_FORCE_STATE_CHECK // Default disabled. Uncomment to enable.
