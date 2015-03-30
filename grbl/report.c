@@ -496,8 +496,8 @@ void report_realtime_status()
     printPgmString(PSTR(",Lim:"));
     uint8_t idx;
     for (idx=0; idx<N_AXIS; idx++) {
-      if (LIMIT_PIN & get_limit_pin_mask(idx)) { printString(PSTR("1")); }
-      else { printString(PSTR("0")); }
+      if (LIMIT_PIN & get_limit_pin_mask(idx)) { printPgmString(PSTR("1")); }
+      else { printPgmString(PSTR("0")); }
     }
   #endif
   
