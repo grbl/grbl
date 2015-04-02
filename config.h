@@ -41,6 +41,13 @@
 // Serial baud rate
 #define BAUD_RATE 115200
 
+// Serial Echo back
+// If enabled grbl will echo back each byte of data found on the serial input buffer
+// before any processing of the data occurs. This will help to debug communication
+// between the UI and the microcontroller.
+// #define SERIAL_ECHO // Disabled by default. Uncomment to enable.
+
+
 // Default cpu mappings. Grbl officially supports the Arduino Uno only. Other processor types
 // may exist from user-supplied templates or directly user-defined in cpu_map.h
 #define CPU_MAP_ATMEGA328P_TRADITIONAL // Arduino Uno CPU
