@@ -149,6 +149,10 @@ uint8_t serial_read()
   } else {
     uint8_t data = serial_rx_buffer[tail];
     
+    #ifdef SERIAL_ECHO
+    	serial_write(data);
+    #endif
+    
     tail++;
     if (tail == RX_BUFFER_SIZE) { tail = 0; }
     serial_rx_buffer_tail = tail;
