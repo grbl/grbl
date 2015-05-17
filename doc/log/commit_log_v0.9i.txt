@@ -1,4 +1,30 @@
 ----------------
+Date: 2015-03-29
+Author: Sonny Jeon
+Subject: Fix for limit pin reporting compile-option
+
+- The limit pin reporting wasn’t working correctly due to calling the
+wrong similarly-named function. Verified to be working now.
+
+
+----------------
+Date: 2015-03-29
+Author: Sonny Jeon
+Subject: Commit history, logo license, full-arc fix.
+
+- Commit history added to repo, as an easier way for people to see view
+the changes over time.
+
+- Grbl logo copyright license added. All rights reserved with regards
+to the Grbl logo.
+
+- G2/3 full circles would sometime not execute. The problem was due to
+numerical round-off of a trig calculation. Added a machine epsilon
+define to help detect and correct for this problem. Tested and should
+not effect general operation of arcs.
+
+
+----------------
 Date: 2015-03-27
 Author: Sungeun Jeon
 Subject: Compile-option for inverting spindle enable.

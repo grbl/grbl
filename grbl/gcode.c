@@ -219,7 +219,7 @@ uint8_t gc_execute_line(char *line)
               else { gc_block.modal.distance = DISTANCE_MODE_INCREMENTAL; } // G91
             } else {
               word_bit = MODAL_GROUP_G4;
-              if (mantissa != 10) { FAIL(STATUS_GCODE_UNSUPPORTED_COMMAND); } // [G90.1 not supported]
+              if ((mantissa != 10) || (int_value == 90)) { FAIL(STATUS_GCODE_UNSUPPORTED_COMMAND); } // [G90.1 not supported]
               mantissa = 0; // Set to zero to indicate valid non-integer G command.
               // Otherwise, arc IJK incremental mode is default. G91.1 does nothing.
             }
@@ -1028,18 +1028,41 @@ uint8_t gc_execute_line(char *line)
   // refill and can only be resumed by the cycle start run-time command.
   gc_state.modal.program_flow = gc_block.modal.program_flow;
   if (gc_state.modal.program_flow) { 
-    protocol_buffer_synchronize(); // Finish all remaining buffered motions. Program paused when complete.
-
-    sys.suspend = true;
-    protocol_execute_realtime(); // Suspend execution. For both program pause or program end.
-  
-    // If complete, reset to reload defaults (G92.2,G54,G17,G90,G94,M48,G40,M5,M9). Otherwise,
-    // re-enable program flow after pause complete, where cycle start will resume the program.
-    if (gc_state.modal.program_flow == PROGRAM_FLOW_COMPLETED) { mc_reset(); }
-    else { gc_state.modal.program_flow = PROGRAM_FLOW_RUNNING; } // Resume from program pause.
+	protocol_buffer_synchronize(); // Sync and finish all remaining buffered motions before moving on.
+	if (gc_state.modal.program_flow == PROGRAM_FLOW_PAUSED) {
+	  if (sys.state != STATE_CHECK_MODE) {
+		bit_true_atomic(sys.rt_exec_state, EXEC_FEED_HOLD); // Use feed hold for program pause.
+		protocol_execute_realtime(); // Execute suspend.
+	  }
+	} else { // == PROGRAM_FLOW_COMPLETED
+	  // Upon program complete, only a subset of g-codes reset to certain defaults, according to 
+	  // LinuxCNC's program end descriptions and testing. Only modal groups [G-code 1,2,3,5,7,12]
+	  // and [M-code 7,8,9] reset to [G1,G17,G90,G94,G40,G54,M5,M9,M48]. The remaining modal groups
+	  // [G-code 4,6,8,10,13,14,15] and [M-code 4,5,6] and the modal words [F,S,T,H] do not reset.
+	  gc_state.modal.motion = MOTION_MODE_LINEAR;
+	  gc_state.modal.plane_select = PLANE_SELECT_XY;
+	  gc_state.modal.distance = DISTANCE_MODE_ABSOLUTE;
+	  gc_state.modal.feed_rate = FEED_RATE_MODE_UNITS_PER_MIN;
+	  // gc_state.modal.cutter_comp = CUTTER_COMP_DISABLE; // Not supported.
+	  gc_state.modal.coord_select = 0; // G54
+	  gc_state.modal.spindle = SPINDLE_DISABLE;
+	  gc_state.modal.coolant = COOLANT_DISABLE;
+	  // gc_state.modal.override = OVERRIDE_DISABLE; // Not supported.
+	  
+	  // Execute coordinate change and spindle/coolant stop.
+	  if (sys.state != STATE_CHECK_MODE) {
+		if (!(settings_read_coord_data(gc_state.modal.coord_select,coordinate_data))) { FAIL(STATUS_SETTING_READ_FAIL); } 
+		memcpy(gc_state.coord_system,coordinate_data,sizeof(coordinate_data));
+		spindle_stop();
+		coolant_stop();		
+	  }
+	  
+	  report_feedback_message(MESSAGE_PROGRAM_END);
+	}
+    gc_state.modal.program_flow = PROGRAM_FLOW_RUNNING; // Reset program flow.
   }
     
-  // TODO: % to denote start of program. Sets auto cycle start?
+  // TODO: % to denote start of program.
   return(STATUS_OK);
 }
         

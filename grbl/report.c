@@ -136,6 +136,8 @@ void report_feedback_message(uint8_t message_code)
     printPgmString(PSTR("Disabled")); break; 
     case MESSAGE_SAFETY_DOOR_AJAR:
     printPgmString(PSTR("Check Door")); break;
+    case MESSAGE_PROGRAM_END:
+    printPgmString(PSTR("Pgm End")); break;
   }
   printPgmString(PSTR("]\r\n"));
 }
@@ -420,7 +422,7 @@ void report_realtime_status()
   // the system power on location (0,0,0) and work coordinate position (G54 and G92 applied). Eventually
   // to be added are distance to go on block, processed block id, and feed rate. Also a settings bitmask
   // for a user to select the desired real-time data.
-  uint8_t i;
+  uint8_t idx;
   int32_t current_position[N_AXIS]; // Copy current state of the system position variable
   memcpy(current_position,sys.position,sizeof(sys.position));
   float print_position[N_AXIS];
@@ -445,21 +447,21 @@ void report_realtime_status()
   // Report machine position
   if (bit_istrue(settings.status_report_mask,BITFLAG_RT_STATUS_MACHINE_POSITION)) {
     printPgmString(PSTR(",MPos:")); 
-    for (i=0; i< N_AXIS; i++) {
-      printFloat_CoordValue(print_position[i]);
-      if (i < (N_AXIS-1)) { printPgmString(PSTR(",")); }
+    for (idx=0; idx< N_AXIS; idx++) {
+      printFloat_CoordValue(print_position[idx]);
+      if (idx < (N_AXIS-1)) { printPgmString(PSTR(",")); }
     }
   }
   
   // Report work position
   if (bit_istrue(settings.status_report_mask,BITFLAG_RT_STATUS_WORK_POSITION)) {
     printPgmString(PSTR(",WPos:")); 
-    for (i=0; i< N_AXIS; i++) {
+    for (idx=0; idx< N_AXIS; idx++) {
       // Apply work coordinate offsets and tool length offset to current position.
-      print_position[i] -= gc_state.coord_system[i]+gc_state.coord_offset[i];
-      if (i == TOOL_LENGTH_OFFSET_AXIS) { print_position[i] -= gc_state.tool_length_offset; }    
-      printFloat_CoordValue(print_position[i]);
-      if (i < (N_AXIS-1)) { printPgmString(PSTR(",")); }
+      print_position[idx] -= gc_state.coord_system[idx]+gc_state.coord_offset[idx];
+      if (idx == TOOL_LENGTH_OFFSET_AXIS) { print_position[idx] -= gc_state.tool_length_offset; }    
+      printFloat_CoordValue(print_position[idx]);
+      if (idx < (N_AXIS-1)) { printPgmString(PSTR(",")); }
     }
   }
         
@@ -492,14 +494,13 @@ void report_realtime_status()
     printFloat_RateValue(st_get_realtime_rate());
   #endif    
   
-  #ifdef REPORT_LIMIT_PIN_STATE
+  if (bit_istrue(settings.status_report_mask,BITFLAG_RT_STATUS_LIMIT_PINS)) {
     printPgmString(PSTR(",Lim:"));
-    uint8_t idx;
     for (idx=0; idx<N_AXIS; idx++) {
-      if (LIMIT_PIN & get_limit_pin_mask(idx)) { printString(PSTR("1")); }
-      else { printString(PSTR("0")); }
+      if (LIMIT_PIN & get_limit_pin_mask(idx)) { printPgmString(PSTR("1")); }
+      else { printPgmString(PSTR("0")); }
     }
-  #endif
+  }
   
   #ifdef REPORT_CONTROL_PIN_STATE 
     printPgmString(PSTR(",Ctl:"));
