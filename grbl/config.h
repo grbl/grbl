@@ -39,6 +39,11 @@
 // Default cpu mappings. Grbl officially supports the Arduino Uno only. Other processor types
 // may exist from user-supplied templates or directly user-defined in cpu_map.h
 #define CPU_MAP_ATMEGA328P // Arduino Uno CPU
+#define N_AXIS 3   //3 Axis configuration. Must be compatible with DEFAULTS and CPU_MAP
+
+//#define CPU_MAP_ATMEGA2560_4AXIS // Arduino Mega CPU
+//#define N_AXIS 4   //4 Axis configuration. Must be compatible with DEFAULTS and CPU_MAP
+
 
 // Define realtime command special characters. These characters are 'picked-off' directly from the
 // serial read data stream and are not passed to the grbl line execution parser. Select characters

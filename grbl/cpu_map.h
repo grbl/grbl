@@ -38,7 +38,6 @@
 
 #endif
 
-
 //----------------------------------------------------------------------------------------
 
 #ifdef CPU_MAP_ATMEGA2560 // (Arduino Mega 2560) Working @EliteEng
@@ -46,6 +45,17 @@
   #include "cpu_map_atmega2560.h"
 
 #endif
+
+#ifdef CPU_MAP_ATMEGA2560_4AXIS // (Arduino Mega 2560) 
+
+  #include "cpu_map_atmega2560_4axis.h"
+
+#endif
+
+#ifndef GRBL_PLATFORM
+  #error "GRBL_PLATFORM not defined.  Was valid CPU_MAP selected in config.h?"
+#endif
+
 
 //----------------------------------------------------------------------------------------
 
