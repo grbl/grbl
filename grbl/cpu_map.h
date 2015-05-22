@@ -18,8 +18,9 @@
   along with Grbl.  If not, see <http://www.gnu.org/licenses/>.
 */
 
-/* The cpu_map.h file serves as a central pin mapping settings file for different processor
-   types, i.e. AVR 328p or AVR Mega 2560. Grbl officially supports the Arduino Uno, but the 
+/* The cpu_map.h file serves as a central pin mapping selection file for different processor
+   types, i.e. AVR 328p or AVR Mega 2560. Each processor has its own pin mapping file.
+   (i.e. cpu_map_atmega328p.h)  Grbl officially supports the Arduino Uno, but the 
    other supplied pin mappings are supplied by users, so your results may vary. */
 
 // NOTE: This is still a work in progress. We are still centralizing the configurations to
