@@ -20,9 +20,11 @@
 
 /* This cpu_map file serves as a central pin mapping settings file for AVR Mega 2560 */
 
+
 #ifdef GRBL_PLATFORM
 #error "cpu_map already defined: GRBL_PLATFORM=" GRBL_PLATFORM
 #endif
+
 
 #define GRBL_PLATFORM "Atmega2560"
 
@@ -133,4 +135,3 @@
   #define SPINDLE_PWM_PORT    PORTH
   #define SPINDLE_PWM_BIT		4 // MEGA2560 Digital Pin 97
 #endif // End of VARIABLE_SPINDLE
-

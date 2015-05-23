@@ -1,4 +1,23 @@
 ----------------
+Date: 2015-05-23
+Author: Sonny Jeon
+Subject: Homing and limit updates. Minor bug fixes.
+
+- Updated new homing cycle to error out when a pull-off motion detects
+the limit is still active.
+
+- Created a limits_get_state() function to centralize it. It reports
+state as a bit-wise booleans according to axis numbering.
+
+- Updated the print uint8 functions. Generalized it to allow both base2
+and base10 printouts, while allowing base2 prints with N_AXIS digits
+for limit state status reports. Doing this saved about 100bytes of
+flash as well.
+
+- Applied CoreXY status reporting bug fix by @phd0. Thanks!
+
+
+----------------
 Date: 2015-05-22
 Author: Sonny Jeon
 Subject: Merge pull request #702 from ashelly/default-split

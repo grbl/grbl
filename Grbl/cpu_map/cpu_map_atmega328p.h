@@ -18,16 +18,17 @@
   along with Grbl.  If not, see <http://www.gnu.org/licenses/>.
 */
 
-/* This cpu_map file serves as a central pin mapping settings file for AVR 328p 
-   used on the Arduino Uno */
-
-
+/* Grbl officially supports the Arduino Uno, but the other supplied pin mappings are
+   supplied by users, so your results may vary. This cpu_map file serves as a central
+   pin mapping settings file for AVR 328p used on the Arduino Uno.  */
+   
 #ifdef GRBL_PLATFORM
 #error "cpu_map already defined: GRBL_PLATFORM=" GRBL_PLATFORM
 #endif
 
 
 #define GRBL_PLATFORM "Atmega328p"
+
 // Define serial port pins and interrupt vectors.
 #define SERIAL_RX     USART_RX_vect
 #define SERIAL_UDRE   USART_UDRE_vect
@@ -143,4 +144,3 @@
   #define SPINDLE_PWM_PORT  PORTB
   #define SPINDLE_PWM_BIT	  3    // Uno Digital Pin 11
 #endif // End of VARIABLE_SPINDLE
-

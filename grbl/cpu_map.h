@@ -18,43 +18,30 @@
   along with Grbl.  If not, see <http://www.gnu.org/licenses/>.
 */
 
-/* The cpu_map.h file serves as a central pin mapping selection file for different processor
+/* The cpu_map.h files serve as a central pin mapping selection file for different processor
    types, i.e. AVR 328p or AVR Mega 2560. Each processor has its own pin mapping file.
    (i.e. cpu_map_atmega328p.h)  Grbl officially supports the Arduino Uno, but the 
    other supplied pin mappings are supplied by users, so your results may vary. */
 
-// NOTE: This is still a work in progress. We are still centralizing the configurations to
-// this file, so your success may vary for other CPUs.
+// NOTE: With new processors, only add the define name and filename to use.
 
 #ifndef cpu_map_h
 #define cpu_map_h
 
 
-//----------------------------------------------------------------------------------------
-
 #ifdef CPU_MAP_ATMEGA328P // (Arduino Uno) Officially supported by Grbl.
-
-  #include "cpu_map_atmega328p.h"
-
+  #include "cpu_map/cpu_map_atmega328p.h"
 #endif
-
-
-//----------------------------------------------------------------------------------------
 
 #ifdef CPU_MAP_ATMEGA2560 // (Arduino Mega 2560) Working @EliteEng
-
-  #include "cpu_map_atmega2560.h"
-
+  #include "cpu_map/cpu_map_atmega2560.h"
 #endif
-
-//----------------------------------------------------------------------------------------
 
 /* 
 #ifdef CPU_MAP_CUSTOM_PROC
-  // For a custom pin map or different processor, copy and edit ne of the default cpu map
-  // files above and modify it to your needs. Then, copy and paste one of the sections above
-  // and change the #defined name and included file. Make sure the defined name is also
-  // changed in the config.h file.
+  // For a custom pin map or different processor, copy and edit one of the available cpu
+  // map files and modify it to your needs. Make sure the defined name is also changed in
+  // the config.h file.
 #endif
 */
 
