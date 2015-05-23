@@ -249,14 +249,14 @@ uint8_t system_execute_line(char *line)
 float system_convert_axis_steps_to_mpos(int32_t *steps, uint8_t idx)
 {
   float pos;
+  pos = steps[idx]/settings.steps_per_mm[idx];
   #ifdef COREXY
     if (idx==A_MOTOR) { 
       pos = 0.5*((steps[A_MOTOR] + steps[B_MOTOR])/settings.steps_per_mm[idx]);
-    } else { // (idx==B_MOTOR)
+    } 
+	  if (idx==B_MOTOR) { 
       pos = 0.5*((steps[A_MOTOR] - steps[B_MOTOR])/settings.steps_per_mm[idx]);
     }
-  #else
-    pos = steps[idx]/settings.steps_per_mm[idx];
   #endif
   return(pos);
 }
