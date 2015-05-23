@@ -26,7 +26,9 @@
    Ensure one and only one of these DEFAULTS_XXX values is defined in config.h */
 
 #ifndef defaults_h
-// Don't #define defaults_h here, let the selected file do it. Prevents incuding more than one.
+
+// Only define the DEFAULT_XXX with where to find the corresponding default_XXX.h file.
+// Don't #define defaults_h here, let the selected file do it. Prevents including more than one.
 
 #ifdef DEFAULTS_GENERIC
   // Grbl generic default settings. Should work across different machines.

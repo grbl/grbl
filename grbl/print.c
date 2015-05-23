@@ -60,38 +60,36 @@ void printPgmString(const char *s)
 // }
 
 
-void print_uint8_base2(uint8_t n)
+// Prints an uint8 variable with base and number of desired digits.
+void print_unsigned_int8(uint8_t n, uint8_t base, uint8_t digits)
 { 
-	unsigned char buf[8];
-	uint8_t i = 0;
-
-	for (; i < 8; i++) {
-		buf[i] = n & 1;
-		n >>= 1;
-	}
-
-	for (; i > 0; i--)
-		serial_write('0' + buf[i - 1]);
-}
-
-
-void print_uint8_base10(uint8_t n)
-{ 
-  if (n == 0) {
-    serial_write('0');
-    return;
-  } 
-
-  unsigned char buf[3];
+  unsigned char buf[digits];
   uint8_t i = 0;
 
-  while (n > 0) {
-      buf[i++] = n % 10 + '0';
-      n /= 10;
+  for (; i < digits; i++) {
+      buf[i] = n % base ;
+      n /= base;
   }
 
   for (; i > 0; i--)
-      serial_write(buf[i - 1]);
+      serial_write('0' + buf[i - 1]);
+}
+
+
+// Prints an uint8 variable in base 2.
+void print_uint8_base2(uint8_t n) {
+  print_unsigned_int8(n,2,8);
+}
+
+
+// Prints an uint8 variable in base 10.
+void print_uint8_base10(uint8_t n)
+{   
+  uint8_t digits;
+  if (n < 10) { digits = 1; } 
+  else if (n < 100) { digits = 2; }
+  else { digits = 3; }
+  print_unsigned_int8(n,10,digits);
 }
 
 
@@ -119,7 +117,7 @@ void printInteger(long n)
 {
   if (n < 0) {
     serial_write('-');
-    print_uint32_base10((-n));
+    print_uint32_base10(-n);
   } else {
     print_uint32_base10(n);
   }
@@ -194,12 +192,13 @@ void printFloat_RateValue(float n) {
 void printFloat_SettingValue(float n) { printFloat(n,N_DECIMAL_SETTINGVALUE); }
 
 
-// Debug tool to print free memory in bytes at the called point. Not used otherwise.
-void printFreeMemory()
-{
-  extern int __heap_start, *__brkval; 
-  uint16_t free;  // Up to 64k values.
-  free = (int) &free - (__brkval == 0 ? (int) &__heap_start : (int) __brkval); 
-  printInteger((int32_t)free);
-  printString(" ");
-}
+// Debug tool to print free memory in bytes at the called point. 
+// NOTE: Keep commented unless using. Part of this function always gets compiled in.
+// void printFreeMemory()
+// {
+//   extern int __heap_start, *__brkval; 
+//   uint16_t free;  // Up to 64k values.
+//   free = (int) &free - (__brkval == 0 ? (int) &__heap_start : (int) __brkval); 
+//   printInteger((int32_t)free);
+//   printString(" ");
+// }

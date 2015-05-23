@@ -1,4 +1,85 @@
 ----------------
+Date: 2015-05-22
+Author: Sonny Jeon
+Subject: Merge pull request #702 from ashelly/default-split
+
+Moving defaults to individual files in subdirectory
+
+----------------
+Date: 2015-05-22
+Author: ashelly
+Subject: Moving defaults to individual files in subdirectory
+
+
+----------------
+Date: 2015-05-22
+Author: Sonny Jeon
+Subject: Merge pull request #700 from ashelly/header-split
+
+Header split
+
+----------------
+Date: 2015-05-22
+Author: ashelly
+Subject: Fixing up comment blocks in headers
+
+
+----------------
+Date: 2015-05-22
+Author: ashelly
+Subject: Splitting Cpu map into separate files.
+
+Makes comparison, addition of new ones easier
+
+
+----------------
+Date: 2015-05-17
+Author: Sonny Jeon
+Subject: Critical M0/2/30 fix. Homing updates.
+
+- Critical fix for M0 program pause. Due to its recent change, it would
+cause Grbl to suspend but wouldn’t notify the user of why Grbl was not
+doing anything. The state would show IDLE and a cycle start would
+resume it. Grbl now enters a HOLD state to better indicate the state
+change.
+
+- Critical fix for M2 and M30 program end. As with M0, the state
+previously would show IDLE while suspended. Grbl now does not suspend
+upon program end and leaves job control to the GUI. Grbl simply reports
+a `[Pgm End]` as a feedback message and resets certain g-code modes.
+
+- M2/30 g-code reseting fix. Previously Grbl would soft-reset after an
+M2/30, but this was not complaint to the (linuxcnc) g-code standard. It
+simply resets [G1,G17,G90,G94,G40,G54,M5,M9,M48] and keeps all other
+modes the same.
+
+- M0/M2/M30 check-mode fix. It now does not suspend the machine during
+check-mode.
+
+- Minor bug fix related to commands similar to G90.1, but not G90.1,
+not reporting an unsupported command.
+
+- Homing cycle refactoring. To help reduce the chance of users
+misunderstanding their limit switch wiring, Grbl only moves a short
+distance for the locate cycles only. In addition, the homing cycle
+pulls-off the limit switch by the pull-off distance to re-engage and
+locate home. This should improve its accuracy.
+
+- HOMING_FORCE_ORIGIN now sets the origin to the pull-off location,
+rather than where the limit switch was triggered.
+
+- Updated default junction deviation to 0.01mm. Recent tests showed
+that this improves Grbl’s cornering behavior a bit.
+
+- Added the ShapeOko3 defaults.
+
+- Added new feedback message `[Pgm End]` for M2/30 notification.
+
+- Limit pin reporting is now a $10 status report option. Requested by
+OEMs to help simplify support troubleshooting.
+
+
+----------------
 Date: 2015-03-29
 Author: Sonny Jeon
 Subject: Fix for limit pin reporting compile-option
