@@ -38,7 +38,11 @@
 // NOTE: AMASS cutoff frequency multiplied by ISR overdrive factor must not exceed maximum step frequency.
 // NOTE: Current settings are set to overdrive the ISR to no more than 16kHz, balancing CPU overhead
 // and timer accuracy.  Do not alter these settings unless you know what you are doing.
-#define MAX_AMASS_LEVEL 3
+#ifdef ADAPTIVE_MULTI_AXIS_STEP_SMOOTHING
+  #define MAX_AMASS_LEVEL 3
+#else
+  #define MAX_AMASS_LEVEL 0 //allows simplification of conditionally defined code below
+#endif 
 // AMASS_LEVEL0: Normal operation. No AMASS. No upper cutoff frequency. Starts at LEVEL1 cutoff frequency.
 #define AMASS_LEVEL1 (F_CPU/8000) // Over-drives ISR (x2). Defined as F_CPU/(Cutoff frequency in Hz)
 #define AMASS_LEVEL2 (F_CPU/4000) // Over-drives ISR (x4)
@@ -77,7 +81,7 @@ static segment_t segment_buffer[SEGMENT_BUFFER_SIZE];
 // Stepper ISR data struct. Contains the running data for the main stepper ISR.
 typedef struct {
   // Used by the bresenham line algorithm
-  uint32_t counters[N_AXIS],        // Counter variables for the bresenham line tracer
+  uint32_t counter[N_AXIS];        // Counter variables for the bresenham line tracer
   #ifdef STEP_PULSE_DELAY
     uint8_t step_bits;  // Stores out_bits output to complete the step pulse delay
   #endif
@@ -324,9 +328,7 @@ ISR(TIMER1_COMPA_vect)
         st.exec_block = &st_block_buffer[st.exec_block_index];
         
         // Initialize Bresenham line and distance counters
-        st.counter[X_AXIS] =  (st.exec_block->step_event_count >> 1);
-        st.counter[Y_AXIS] = st.counter[X_AXIS];
-        st.counter[Z_AXIS] = st.counter[X_AXIS];        
+        st.counter[Y_AXIS] = st.counter[Z_AXIS] = st.counter[X_AXIS] = (st.exec_block->step_event_count >> 1);
         #if N_AXIS==4
           st.counter[C_AXIS] = st.counter[X_AXIS];
         #endif
@@ -339,10 +341,11 @@ ISR(TIMER1_COMPA_vect)
         st.steps[Y_AXIS] = st.exec_block->steps[Y_AXIS] >> st.exec_segment->amass_level;
         st.steps[Z_AXIS] = st.exec_block->steps[Z_AXIS] >> st.exec_segment->amass_level;
         #if N_AXIS==4
-        st.steps[C_AXIS] = st.exec_block->steps[C_AXIS] >> st.exec_segment->amass_level;
+          st.steps[C_AXIS] = st.exec_block->steps[C_AXIS] >> st.exec_segment->amass_level;
         #endif
         //TODO: compare size/speed of for(i=0..N_AXIS]) loop
       #else
+        //otherwise, just use the block counters directly
         st.steps = st.exec_block->steps;
       #endif
       
@@ -362,38 +365,39 @@ ISR(TIMER1_COMPA_vect)
   st.step_outbits = 0; 
 
   // Execute step displacement profile by Bresenham line algorithm
-  st.counter_x += st.steps[X_AXIS];
+  st.counter[X_AXIS] += st.steps[X_AXIS];
 
-  if (st.counter_x > st.exec_block->step_event_count) {
+  if (st.counter[X_AXIS] > st.exec_block->step_event_count) {
     st.step_outbits |= (1<<X_STEP_BIT);
-    st.counter_x -= st.exec_block->step_event_count;
+    st.counter[X_AXIS] -= st.exec_block->step_event_count;
     if (st.exec_block->direction_bits & (1<<X_DIRECTION_BIT)) { sys.position[X_AXIS]--; }
     else { sys.position[X_AXIS]++; }
   }
   
-  st.counter_y += st.steps[Y_AXIS];
+  st.counter[Y_AXIS] += st.steps[Y_AXIS];
 
-  if (st.counter_y > st.exec_block->step_event_count) {
+  if (st.counter[Y_AXIS] > st.exec_block->step_event_count) {
     st.step_outbits |= (1<<Y_STEP_BIT);
-    st.counter_y -= st.exec_block->step_event_count;
+    st.counter[Y_AXIS] -= st.exec_block->step_event_count;
     if (st.exec_block->direction_bits & (1<<Y_DIRECTION_BIT)) { sys.position[Y_AXIS]--; }
     else { sys.position[Y_AXIS]++; }
   }
   
-  st.counter_z += st.steps[Z_AXIS];
+  st.counter[Z_AXIS] += st.steps[Z_AXIS];
 
-  if (st.counter_z > st.exec_block->step_event_count) {
+  if (st.counter[Z_AXIS] > st.exec_block->step_event_count) {
     st.step_outbits |= (1<<Z_STEP_BIT);
-    st.counter_z -= st.exec_block->step_event_count;
+    st.counter[Z_AXIS] -= st.exec_block->step_event_count;
     if (st.exec_block->direction_bits & (1<<Z_DIRECTION_BIT)) { sys.position[Z_AXIS]--; }
     else { sys.position[Z_AXIS]++; }
   }  
-  #if N_AXIS == 4
-    st.counter_c += st.steps[C_AXIS];
 
-    if (st.counter_c > st.exec_block->step_event_count) {
+  #if N_AXIS == 4
+    st.counter[C_AXIS] += st.steps[C_AXIS];
+
+    if (st.counter[C_AXIS] > st.exec_block->step_event_count) {
       st.step_outbits |= (1<<C_STEP_BIT);
-      st.counter_c -= st.exec_block->step_event_count;
+      st.counter[C_AXIS] -= st.exec_block->step_event_count;
       if (st.exec_block->direction_bits & (1<<C_DIRECTION_BIT)) { sys.position[C_AXIS]--; }
       else { sys.position[C_AXIS]++; }
     }  
@@ -561,26 +565,18 @@ void st_prep_buffer()
         // segment buffer finishes the prepped block, but the stepper ISR is still executing it. 
         st_prep_block = &st_block_buffer[prep.st_block_index];
         st_prep_block->direction_bits = pl_block->direction_bits;
-        #ifndef ADAPTIVE_MULTI_AXIS_STEP_SMOOTHING
-          st_prep_block->steps[X_AXIS] = pl_block->steps[X_AXIS];
-          st_prep_block->steps[Y_AXIS] = pl_block->steps[Y_AXIS];
-          st_prep_block->steps[Z_AXIS] = pl_block->steps[Z_AXIS];
-          #if N_AXIS == 4
-            st_prep_block->steps[C_AXIS] = pl_block->steps[C_AXIS];
-          #endif
-          st_prep_block->step_event_count = pl_block->step_event_count;
-        #else
-          // With AMASS enabled, simply bit-shift multiply all Bresenham data by the max AMASS 
-          // level, such that we never divide beyond the original data anywhere in the algorithm.
-          // If the original data is divided, we can lose a step from integer roundoff.
-          st_prep_block->steps[X_AXIS] = pl_block->steps[X_AXIS] << MAX_AMASS_LEVEL;
-          st_prep_block->steps[Y_AXIS] = pl_block->steps[Y_AXIS] << MAX_AMASS_LEVEL;
-          st_prep_block->steps[Z_AXIS] = pl_block->steps[Z_AXIS] << MAX_AMASS_LEVEL;
-          #if N_AXIS == 4
-            st_prep_block->steps[C_AXIS] = pl_block->steps[C_AXIS] << MAX_AMASS_LEVEL;
-          #endif
-          st_prep_block->step_event_count = pl_block->step_event_count << MAX_AMASS_LEVEL;
+
+        // With AMASS enabled, simply bit-shift multiply all Bresenham data by the max AMASS 
+        // level, such that we never divide beyond the original data anywhere in the algorithm.
+        // If the original data is divided, we can lose a step from integer roundoff.
+        // With AMASS disabled, `<< 0` is a no-op and is compiled out; use original counts.
+        st_prep_block->steps[X_AXIS] = pl_block->steps[X_AXIS] << MAX_AMASS_LEVEL;
+        st_prep_block->steps[Y_AXIS] = pl_block->steps[Y_AXIS] << MAX_AMASS_LEVEL;
+        st_prep_block->steps[Z_AXIS] = pl_block->steps[Z_AXIS] << MAX_AMASS_LEVEL;
+        #if N_AXIS == 4
+          st_prep_block->steps[C_AXIS] = pl_block->steps[C_AXIS] << MAX_AMASS_LEVEL;
         #endif
+        st_prep_block->step_event_count = pl_block->step_event_count << MAX_AMASS_LEVEL;
         
         // Initialize segment buffer data for generating the segments.
         prep.steps_remaining = pl_block->step_event_count;

@@ -326,7 +326,9 @@ uint8_t gc_execute_line(char *line)
         switch(letter){
           // case 'A': // Not supported
           // case 'B': // Not supported
-          case 'C': word_bit = WORD_C; gc_block.values.xyz[C_AXIS] = value; axis_words |= (1<<C_AXIS); break;
+          #if N_AXIS == 4
+            case 'C': word_bit = WORD_C; gc_block.values.xyz[C_AXIS] = value; axis_words |= (1<<C_AXIS); break;
+          #endif
           // case 'D': // Not supported
           case 'F': word_bit = WORD_F; gc_block.values.f = value; break;
           // case 'H': // Not supported
