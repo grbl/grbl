@@ -27,10 +27,11 @@ Grbl includes full acceleration management with look ahead. That means the contr
 ***
 
 _**Master Branch:**_
-* [Grbl v0.9i Atmega328p 16mhz 115200baud with generic defaults](http://bit.ly/1EiviDk) _(2015-03-29)_
-* [Grbl v0.9i Atmega328p 16mhz 115200baud with ShapeOko2 defaults](http://bit.ly/1NYIfKl) _(2015-03-29)_
+* [Grbl v0.9i Atmega328p 16mhz 115200baud with generic defaults](http://bit.ly/1EiviDk) _(2015-05-23)_
+* [Grbl v0.9i Atmega328p 16mhz 115200baud with ShapeOko2 defaults](http://bit.ly/1NYIfKl) _(2015-05-23)_
   - **IMPORTANT INFO WHEN UPGRADING TO GRBL v0.9i:** 
   - Baudrate is now **115200** (Up from 9600). 
+  - Homing cycle updated. Located based on switch trigger, rather than release point.
   - Variable spindle is now enabled by default. Z-limit(D12) and spindle enable(D11) have switched to access the hardware PWM on D11. Homing will not work if you do not re-wire your Z-limit switch to D12.
 
 _**Archives:**_
@@ -46,15 +47,16 @@ _**Archives:**_
 
 ***
 
-##Update Summary for v0.9i from v0.9h
+##Update Summary for v0.9i
   - **IMPORTANT:**
     - **Z-limit(D12) and spindle enable(D11) pins have switched to support variable spindle!**
+    - **Homing cycle updated. Locates based on trigger point, rather than release point.**
     - **System tweaks: $14 cycle auto-start has been removed. No more QUEUE state.**
   - **New G-Codes:** Additional probing cycle commands G38.3, G38.4, G38.5 now supported. G40 cutter radius compensation cancel. G91.1 arc IJK distance mode incremental.
   - **CoreXY Support:** Grbl now supports CoreXY kinematics on an introductory-level. Most functions have been verified to work, but there may be bugs here or there. Please report any problems you find!
   - **Safety Door Support:** Safety door switches are now supported. Grbl will force a feed hold, shutdown the spindle and coolant, and wait until the door switch has closed and the user has issued a resume. Upon resuming, the spindle and coolant will re-energize after a configurable delay and continue. Useful for OEMs that require this feature.
   - **Full Limit and Control Pin Configurability:** Limits and control pins operation can now be interpreted by Grbl however you'd like, with the internal pull-up resistors enabled or disabled, or reading a high or low as a trigger. This should cover all wiring and NO or NC switch scenarios.
-  - **Additional Compile-Time Feature Options:** Limit/control pin state reporting, force power-up alarm state, GUI reporting mode, and more.
+  - **Additional Compile-Time Feature Options:** Control pin state reporting, force power-up alarm state, GUI reporting mode, and more.
 
 ##Update Summary for v0.9h from v0.8
   - **IMPORTANT: Default serial baudrate is now 115200! (Up from 9600)**
