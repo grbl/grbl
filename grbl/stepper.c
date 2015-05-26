@@ -324,11 +324,8 @@ ISR(TIMER1_COMPA_vect)
         st.exec_block = &st_block_buffer[st.exec_block_index];
         
         // Initialize Bresenham line and distance counters
-        st.counter_x = (st.exec_block->step_event_count >> 1);
-        st.counter_y = st.counter_x;
-        st.counter_z = st.counter_x;        
+        st.counter_x = st.counter_y = st.counter_z = (st.exec_block->step_event_count >> 1);
       }
-
       st.dir_outbits = st.exec_block->direction_bits ^ dir_port_invert_mask; 
 
       #ifdef ADAPTIVE_MULTI_AXIS_STEP_SMOOTHING

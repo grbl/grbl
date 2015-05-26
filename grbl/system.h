@@ -71,7 +71,7 @@
 typedef struct {
   uint8_t abort;                 // System abort flag. Forces exit back to main loop for reset.
   uint8_t state;                 // Tracks the current state of Grbl.
-  uint8_t suspend;               // System suspend flag. Allows only realtime commands. Used primarily for holds.
+  uint8_t suspend;               // System suspend bitflag variable that manages holds, cancels, and safety door.
 
   volatile uint8_t rt_exec_state;  // Global realtime executor bitflag variable for state management. See EXEC bitmasks.
   volatile uint8_t rt_exec_alarm;  // Global realtime executor bitflag variable for setting various alarms.
