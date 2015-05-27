@@ -1,5 +1,5 @@
 /*
-  defaults_x_carve_500mm.h - defaults settings configuration file
+  defaults_x_carve_1000mm.h - defaults settings configuration file
   Part of Grbl
 
   Copyright (c) 2012-2015 Sungeun K. Jeon
@@ -44,8 +44,8 @@
   #define DEFAULT_X_ACCELERATION (500.0*60*60) // 25*60*60 mm/min^2 = 25 mm/sec^2
   #define DEFAULT_Y_ACCELERATION (500.0*60*60) // 25*60*60 mm/min^2 = 25 mm/sec^2
   #define DEFAULT_Z_ACCELERATION (50.0*60*60) // 25*60*60 mm/min^2 = 25 mm/sec^2
-  #define DEFAULT_X_MAX_TRAVEL 290.0 // mm
-  #define DEFAULT_Y_MAX_TRAVEL 290.0 // mm
+  #define DEFAULT_X_MAX_TRAVEL 740.0 // mm
+  #define DEFAULT_Y_MAX_TRAVEL 790.0 // mm
   #define DEFAULT_Z_MAX_TRAVEL 100.0 // mm
   #define DEFAULT_STEP_PULSE_MICROSECONDS 10
   #define DEFAULT_STEPPING_INVERT_MASK 0
@@ -64,6 +64,7 @@
   #define DEFAULT_HOMING_FEED_RATE 25.0 // mm/min
   #define DEFAULT_HOMING_SEEK_RATE 750.0 // mm/min
   #define DEFAULT_HOMING_DEBOUNCE_DELAY 250 // msec (0-65k)
-  #define DEFAULT_HOMING_PULLOFF 1.0 // mm  
+  #define DEFAULT_HOMING_PULLOFF 1.0 // mm 
   
 #endif
+ 
