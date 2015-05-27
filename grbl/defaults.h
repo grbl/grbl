@@ -58,6 +58,18 @@
   #include "defaults/defaults_shapeoko3.h"
 #endif
 
+#ifdef DEFAULTS_X_CARVE_500MM
+  // Description: X-Carve 3D Carver CNC mill with three 200 step/rev motors driven by Synthetos
+  // grblShield at 24V.
+  #include "defaults/defaults_x_carve_500mm.h"
+#endif
+
+#ifdef DEFAULTS_X_CARVE_1000MM
+  // Description: X-Carve 3D Carver CNC mill with three 200 step/rev motors driven by Synthetos
+  // grblShield at 24V.
+  #include "defaults/defaults_x_carve_1000mm.h"
+#endif
+
 #ifdef DEFAULTS_ZEN_TOOLWORKS_7x7
   // Description: Zen Toolworks 7x7 mill with three Shinano SST43D2121 65oz-in NEMA 17 stepper motors.
   // Leadscrew is different from some ZTW kits, where most are 1.25mm/rev rather than 8.0mm/rev here.
