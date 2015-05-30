@@ -1,8 +1,8 @@
 /*
-  settings.c - eeprom configuration handling 
+  settings.c - eeprom configuration handling
   Part of Grbl
 
-  Copyright (c) 2011-2015 Sungeun K. Jeon  
+  Copyright (c) 2011-2015 Sungeun K. Jeon
   Copyright (c) 2009-2011 Simen Svale Skogsrud
 
   Grbl is free software: you can redistribute it and/or modify
@@ -41,22 +41,22 @@ void settings_store_build_info(char *line)
 
 // Method to store coord data parameters into EEPROM
 void settings_write_coord_data(uint8_t coord_select, float *coord_data)
-{  
+{
   uint32_t addr = coord_select*(sizeof(float)*N_AXIS+1) + EEPROM_ADDR_PARAMETERS;
   memcpy_to_eeprom_with_checksum(addr,(char*)coord_data, sizeof(float)*N_AXIS);
-}  
+}
 
 
 // Method to store Grbl global settings struct and version number into EEPROM
-void write_global_settings() 
+void write_global_settings()
 {
   eeprom_put_char(0, SETTINGS_VERSION);
   memcpy_to_eeprom_with_checksum(EEPROM_ADDR_GLOBAL, (char*)&settings, sizeof(settings_t));
 }
 
 
-// Method to restore EEPROM-saved Grbl global settings back to defaults. 
-void settings_restore_global_settings() {  
+// Method to restore EEPROM-saved Grbl global settings back to defaults.
+void settings_restore_global_settings() {
   settings.pulse_microseconds = DEFAULT_STEP_PULSE_MICROSECONDS;
   settings.stepper_idle_lock_time = DEFAULT_STEPPER_IDLE_LOCK_TIME;
   settings.step_invert_mask = DEFAULT_STEPPING_INVERT_MASK;
@@ -77,7 +77,7 @@ void settings_restore_global_settings() {
   if (DEFAULT_SOFT_LIMIT_ENABLE) { settings.flags |= BITFLAG_SOFT_LIMIT_ENABLE; }
   if (DEFAULT_HARD_LIMIT_ENABLE) { settings.flags |= BITFLAG_HARD_LIMIT_ENABLE; }
   if (DEFAULT_HOMING_ENABLE) { settings.flags |= BITFLAG_HOMING_ENABLE; }
-  
+
   settings.steps_per_mm[X_AXIS] = DEFAULT_X_STEPS_PER_MM;
   settings.steps_per_mm[Y_AXIS] = DEFAULT_Y_STEPS_PER_MM;
   settings.steps_per_mm[Z_AXIS] = DEFAULT_Z_STEPS_PER_MM;
@@ -89,7 +89,7 @@ void settings_restore_global_settings() {
   settings.acceleration[Z_AXIS] = DEFAULT_Z_ACCELERATION;
   settings.max_travel[X_AXIS] = (-DEFAULT_X_MAX_TRAVEL);
   settings.max_travel[Y_AXIS] = (-DEFAULT_Y_MAX_TRAVEL);
-  settings.max_travel[Z_AXIS] = (-DEFAULT_Z_MAX_TRAVEL);    
+  settings.max_travel[Z_AXIS] = (-DEFAULT_Z_MAX_TRAVEL);
 
   write_global_settings();
 }
@@ -101,7 +101,7 @@ void settings_clear_parameters() {
   float coord_data[N_AXIS];
   memset(&coord_data, 0, sizeof(coord_data));
   for (idx=0; idx < SETTING_INDEX_NCOORD; idx++) { settings_write_coord_data(idx, coord_data); }
-}  
+}
 
 
 // Helper function to clear the EEPROM space containing the startup lines.
@@ -152,16 +152,19 @@ uint8_t settings_read_coord_data(uint8_t coord_select, float *coord_data)
   uint32_t addr = coord_select*(sizeof(float)*N_AXIS+1) + EEPROM_ADDR_PARAMETERS;
   if (!(memcpy_from_eeprom_with_checksum((char*)coord_data, addr, sizeof(float)*N_AXIS))) {
     // Reset with default zero vector
-    clear_vector_float(coord_data); 
+    clear_vector_float(coord_data);
     settings_write_coord_data(coord_select,coord_data);
     return(false);
   }
   return(true);
-}  
+}
 
 
 // Reads Grbl global settings struct from EEPROM.
 uint8_t read_global_settings() {
+  #if RESET_SETTINGS
+    return(false);
+  #endif
   // Check version-byte of eeprom
   uint8_t version = eeprom_get_char(0);
   if (version == SETTINGS_VERSION) {
@@ -170,7 +173,7 @@ uint8_t read_global_settings() {
       return(false);
     }
   } else {
-    return(false); 
+    return(false);
   }
   return(true);
 }
@@ -178,7 +181,7 @@ uint8_t read_global_settings() {
 
 // A helper method to set settings from command line
 uint8_t settings_store_global_setting(uint8_t parameter, float value) {
-  if (value < 0.0) { return(STATUS_NEGATIVE_VALUE); } 
+  if (value < 0.0) { return(STATUS_NEGATIVE_VALUE); }
   if (parameter >= AXIS_SETTINGS_START_VAL) {
     // Store axis configuration. Axis numbering sequence set by AXIS_SETTING defines.
     // NOTE: Ensure the setting index corresponds to the report.c settings printout.
@@ -215,16 +218,16 @@ uint8_t settings_store_global_setting(uint8_t parameter, float value) {
     // Store non-axis Grbl settings
     uint8_t int_value = trunc(value);
     switch(parameter) {
-      case 0: 
+      case 0:
         if (int_value < 3) { return(STATUS_SETTING_STEP_PULSE_MIN); }
         settings.pulse_microseconds = int_value; break;
       case 1: settings.stepper_idle_lock_time = int_value; break;
-      case 2: 
-        settings.step_invert_mask = int_value; 
+      case 2:
+        settings.step_invert_mask = int_value;
         st_generate_step_dir_invert_masks(); // Regenerate step and direction port invert masks.
         break;
-      case 3: 
-        settings.dir_invert_mask = int_value; 
+      case 3:
+        settings.dir_invert_mask = int_value;
         st_generate_step_dir_invert_masks(); // Regenerate step and direction port invert masks.
         break;
       case 4: // Reset to ensure change. Immediate re-init may cause problems.
@@ -247,9 +250,9 @@ uint8_t settings_store_global_setting(uint8_t parameter, float value) {
         else { settings.flags &= ~BITFLAG_REPORT_INCHES; }
         break;
       case 20:
-        if (int_value) { 
+        if (int_value) {
           if (bit_isfalse(settings.flags, BITFLAG_HOMING_ENABLE)) { return(STATUS_SOFT_LIMIT_ERROR); }
-          settings.flags |= BITFLAG_SOFT_LIMIT_ENABLE; 
+          settings.flags |= BITFLAG_SOFT_LIMIT_ENABLE;
         } else { settings.flags &= ~BITFLAG_SOFT_LIMIT_ENABLE; }
         break;
       case 21:
@@ -259,8 +262,8 @@ uint8_t settings_store_global_setting(uint8_t parameter, float value) {
         break;
       case 22:
         if (int_value) { settings.flags |= BITFLAG_HOMING_ENABLE; }
-        else { 
-          settings.flags &= ~BITFLAG_HOMING_ENABLE; 
+        else {
+          settings.flags &= ~BITFLAG_HOMING_ENABLE;
           settings.flags &= ~BITFLAG_SOFT_LIMIT_ENABLE; // Force disable soft-limits.
         }
         break;
@@ -269,7 +272,7 @@ uint8_t settings_store_global_setting(uint8_t parameter, float value) {
       case 25: settings.homing_seek_rate = value; break;
       case 26: settings.homing_debounce_delay = int_value; break;
       case 27: settings.homing_pulloff = value; break;
-      default: 
+      default:
         return(STATUS_INVALID_STATEMENT);
     }
   }
@@ -284,12 +287,12 @@ void settings_init() {
     report_status_message(STATUS_SETTING_READ_FAIL);
 
     settings_restore_global_settings();
-    
+
     // Force clear startup lines and build info user data. Parameters should be ok.
     // TODO: For next version, remove these clears. Only here because line buffer increased.
     settings_clear_startup_lines();
     settings_clear_build_info();
-    
+
     report_grbl_settings();
   }
 
@@ -309,8 +312,8 @@ void settings_init() {
 // Returns step pin mask according to Grbl internal axis indexing.
 uint8_t get_step_pin_mask(uint8_t axis_idx)
 {
-  if ( axis_idx == X_AXIS ) { return((1<<X_STEP_BIT)); }
-  if ( axis_idx == Y_AXIS ) { return((1<<Y_STEP_BIT)); }
+  if ( axis_idx == X_AXIS ) { return(X_STEP_MASK); }
+  if ( axis_idx == Y_AXIS ) { return(Y_STEP_MASK); }
   return((1<<Z_STEP_BIT));
 }
 
@@ -318,8 +321,8 @@ uint8_t get_step_pin_mask(uint8_t axis_idx)
 // Returns direction pin mask according to Grbl internal axis indexing.
 uint8_t get_direction_pin_mask(uint8_t axis_idx)
 {
-  if ( axis_idx == X_AXIS ) { return((1<<X_DIRECTION_BIT)); }
-  if ( axis_idx == Y_AXIS ) { return((1<<Y_DIRECTION_BIT)); }
+  if ( axis_idx == X_AXIS ) { return(X_DIRECTION_MASK); }
+  if ( axis_idx == Y_AXIS ) { return(Y_DIRECTION_MASK); }
   return((1<<Z_DIRECTION_BIT));
 }
 

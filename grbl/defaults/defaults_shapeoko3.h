@@ -55,7 +55,7 @@
   #define DEFAULT_ARC_TOLERANCE 0.01 // mm
   #define DEFAULT_REPORT_INCHES 0 // false
   #define DEFAULT_INVERT_ST_ENABLE 0 // false
-  #define DEFAULT_INVERT_LIMIT_PINS 0 // false  
+  #define DEFAULT_INVERT_LIMIT_PINS 0 // false
   #define DEFAULT_SOFT_LIMIT_ENABLE 0 // false
   #define DEFAULT_HARD_LIMIT_ENABLE 0  // false
   #define DEFAULT_HOMING_ENABLE 0  // false
@@ -63,6 +63,6 @@
   #define DEFAULT_HOMING_FEED_RATE 100.0 // mm/min
   #define DEFAULT_HOMING_SEEK_RATE 1000.0 // mm/min
   #define DEFAULT_HOMING_DEBOUNCE_DELAY 25 // msec (0-65k)
-  #define DEFAULT_HOMING_PULLOFF 5.0 // mm  
+  #define DEFAULT_HOMING_PULLOFF 5.0 // mm
 
 #endif

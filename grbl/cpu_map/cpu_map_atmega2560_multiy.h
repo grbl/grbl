@@ -1,5 +1,5 @@
 /*
-  cpu_map_atmega2560.h - CPU and pin mapping configuration file
+  cpu_map_atmega2560_multiy.h - CPU and pin mapping configuration file
   Part of Grbl
 
   Copyright (c) 2012-2015 Sungeun K. Jeon
@@ -18,15 +18,19 @@
   along with Grbl.  If not, see <http://www.gnu.org/licenses/>.
 */
 
-/* This cpu_map file serves as a central pin mapping settings file for AVR Mega 2560 */
-
+/*
+  This cpu_map file serves as a central pin mapping settings file for
+  AVR Mega 2560 for multiple Y Axis drive setups.
+ */
 
 #ifdef GRBL_PLATFORM
 #error "cpu_map already defined: GRBL_PLATFORM=" GRBL_PLATFORM
 #endif
 
-
 #define GRBL_PLATFORM "Atmega2560"
+#define CPU_MAP_ATMEGA2560
+
+
 
 // Serial port pins
 #define SERIAL_RX USART0_RX_vect
@@ -93,17 +97,16 @@
 #define SPINDLE_DIRECTION_DDR   DDRE
 #define SPINDLE_DIRECTION_PORT  PORTE
 #define SPINDLE_DIRECTION_BIT   3 // MEGA2560 Digital Pin 5
-
 // Define flood and mist coolant enable output pins.
 // NOTE: Uno analog pins 4 and 5 are reserved for an i2c interface, and may be installed at
 // a later date if flash and memory space allows.
-#define COOLANT_FLOOD_DDR     DDRH
-#define COOLANT_FLOOD_PORT    PORTH
-#define COOLANT_FLOOD_BIT     5 // MEGA2560 Digital Pin 8
+#define COOLANT_FLOOD_DDR     DDRC
+#define COOLANT_FLOOD_PORT    PORTC
+#define COOLANT_FLOOD_BIT     3 // MEGA2560 Digital Pin 34
 #ifdef ENABLE_M7 // Mist coolant disabled by default. See config.h to enable/disable.
-#define COOLANT_MIST_DDR    DDRH
-#define COOLANT_MIST_PORT   PORTH
-#define COOLANT_MIST_BIT    6 // MEGA2560 Digital Pin 9
+#define COOLANT_MIST_DDR      DDRC
+#define COOLANT_MIST_PORT     PORTC
+#define COOLANT_MIST_BIT      2 // MEGA2560 Digital Pin 35
 #endif
 
 // Define user-control CONTROLs (cycle start, reset, feed hold) input pins.
@@ -131,18 +134,18 @@
 #ifdef VARIABLE_SPINDLE
   // Advanced Configuration Below You should not need to touch these variables
   // Set Timer up to use TIMER4B which is attached to Digital Pin 7
-  #define PWM_MAX_VALUE       65535.0
+  #define PWM_MAX_VALUE     65535.0
   #define TCCRA_REGISTER		TCCR4A
   #define TCCRB_REGISTER		TCCR4B
-  #define OCR_REGISTER		OCR4B
+  #define OCR_REGISTER		  OCR4B
 
-  #define COMB_BIT			COM4B1
+  #define COMB_BIT			    COM4B1
   #define WAVE0_REGISTER		WGM40
   #define WAVE1_REGISTER		WGM41
   #define WAVE2_REGISTER		WGM42
   #define WAVE3_REGISTER		WGM43
 
   #define SPINDLE_PWM_DDR		DDRH
-  #define SPINDLE_PWM_PORT    PORTH
-  #define SPINDLE_PWM_BIT		4 // MEGA2560 Digital Pin 97
+  #define SPINDLE_PWM_PORT  PORTH
+  #define SPINDLE_PWM_BIT		4 // MEGA2560 Digital Pin 7
 #endif // End of VARIABLE_SPINDLE
