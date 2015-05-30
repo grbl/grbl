@@ -27,8 +27,8 @@ Grbl includes full acceleration management with look ahead. That means the contr
 ***
 
 _**Master Branch:**_
-* [Grbl v0.9i Atmega328p 16mhz 115200baud with generic defaults](http://bit.ly/1EiviDk) _(2015-05-23)_
-* [Grbl v0.9i Atmega328p 16mhz 115200baud with ShapeOko2 defaults](http://bit.ly/1NYIfKl) _(2015-05-23)_
+* [Grbl v0.9i Atmega328p 16mhz 115200baud with generic defaults](http://bit.ly/1EiviDk) _(2015-05-29)_
+* [Grbl v0.9i Atmega328p 16mhz 115200baud with ShapeOko2 defaults](http://bit.ly/1NYIfKl) _(2015-05-29)_
   - **IMPORTANT INFO WHEN UPGRADING TO GRBL v0.9i:** 
   - Baudrate is now **115200** (Up from 9600). 
   - Homing cycle updated. Located based on switch trigger, rather than release point.
@@ -52,7 +52,7 @@ _**Archives:**_
     - **Z-limit(D12) and spindle enable(D11) pins have switched to support variable spindle!**
     - **Homing cycle updated. Locates based on trigger point, rather than release point.**
     - **System tweaks: $14 cycle auto-start has been removed. No more QUEUE state.**
-  - **New G-Codes:** Additional probing cycle commands G38.3, G38.4, G38.5 now supported. G40 cutter radius compensation cancel. G91.1 arc IJK distance mode incremental.
+  - **New G-Codes:** Additional probing cycle commands G38.3, G38.4, G38.5 now supported. G40 cutter radius compensation cancel. G91.1 arc IJK distance mode incremental. G61 exact path mode.
   - **CoreXY Support:** Grbl now supports CoreXY kinematics on an introductory-level. Most functions have been verified to work, but there may be bugs here or there. Please report any problems you find!
   - **Safety Door Support:** Safety door switches are now supported. Grbl will force a feed hold, shutdown the spindle and coolant, and wait until the door switch has closed and the user has issued a resume. Upon resuming, the spindle and coolant will re-energize after a configurable delay and continue. Useful for OEMs that require this feature.
   - **Full Limit and Control Pin Configurability:** Limits and control pins operation can now be interpreted by Grbl however you'd like, with the internal pull-up resistors enabled or disabled, or reading a high or low as a trigger. This should cover all wiring and NO or NC switch scenarios.
@@ -91,6 +91,7 @@ List of Supported G-Codes in Grbl v0.9i Master:
   - Tool Length Offset Modes: G43.1, G49
   - Cutter Compensation Modes: G40
   - Coordinate System Modes: G54, G55, G56, G57, G58, G59
+  - Control Modes: G61
   - Program Flow: M0, M1, M2, M30*
   - Coolant Control: M7*, M8, M9
   - Spindle Control: M3, M4, M5

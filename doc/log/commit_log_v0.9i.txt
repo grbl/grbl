@@ -1,4 +1,72 @@
 ----------------
+Date: 2015-05-27
+Author: Sonny Jeon
+Subject: Another git case-sensitive folder fix.
+
+- I’m now officially annoyed.
+
+
+----------------
+Date: 2015-05-27
+Author: Sonny Jeon
+Subject: Added X-Carve defaults.
+
+- Added X-Carve 500mm and 1000mm default files.
+
+- Tweaked all default files. Removed obsolete AUTO_START and updated
+some JUNCTION_DEVIATION defaults after testing showed these needed to
+be reduced slightly.
+
+
+----------------
+Date: 2015-05-27
+Author: Sonny Jeon
+Subject: Merge pull request #710 from buserror/fix-directory-case-sensitivity
+
+Rename Grbl to grbl
+
+----------------
+Date: 2015-05-27
+Author: Michel Pollet
+Subject: Rename Grbl to grbl
+
+Otherwise compilation fails on linux, or other case sensitive systems
+
+Signed-off-by: Michel Pollet <buserror@gmail.com>
+
+
+----------------
+Date: 2015-05-26
+Author: Sonny Jeon
+Subject: Updated README
+
+
+----------------
+Date: 2015-05-26
+Author: Sonny Jeon
+Subject: Merge pull request #706 from grbl/edge
+
+Merge edge branch.
+
+----------------
+Date: 2015-05-23
+Author: Sonny Jeon
+Subject: CoreXY planner bug fix.
+
+- CoreXY motions were moving to the negative value of the intended
+target. Now fixed.
+
+
+----------------
+Date: 2015-05-23
+Author: Sonny Jeon
+Subject: Moved cpu_map.
+
+- Moved cpu_map files to a cpu_map directory, like the defaults file
+organization.
+
+
+----------------
 Date: 2015-05-23
 Author: Sonny Jeon
 Subject: Homing and limit updates. Minor bug fixes.
