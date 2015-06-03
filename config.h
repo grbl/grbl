@@ -38,8 +38,16 @@
 // Default settings. Used when resetting EEPROM. Change to desired name in defaults.h
 #define DEFAULTS_HORUS
 
+// This enables the serial port associated to the Bluetooth interface
+//#define BTENABLED              // Enable BT interface 
+
 // Serial baud rate
-#define BAUD_RATE 115200
+#ifndef BTENABLED
+#define BAUD_RATE 115200         // Default baud rate
+#elif
+#define BAUD_RATE 19200           // Bluetooth baudrate
+#endif
+
 
 // Default cpu mappings. Grbl officially supports the Arduino Uno only. Other processor types
 // may exist from user-supplied templates or directly user-defined in cpu_map.h
