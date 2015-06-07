@@ -19,7 +19,7 @@
 */
 
 /* The defaults.h file serves as a central default settings selector for different machine
-   types, from DIY CNC mills to CNC conversions of off-the-shelf machines. The settings 
+   types, from DIY CNC mills to CNC conversions of off-the-shelf machines. The settings
    files listed here are supplied by users, so your results may vary. However, this should
    give you a good starting point as you get to know your machine and tweak the settings for
    your nefarious needs.
@@ -81,6 +81,10 @@
   // Grbl settings for OpenBuilds OX CNC Machine
   // http://www.openbuilds.com/builds/openbuilds-ox-cnc-machine.341/
   #include "defaults/defaults_oxcnc.h"
+#endif
+
+#ifdef DEFAULTS_BALLSCREW
+  #include "defaults/defaults_ballscrew.h"
 #endif
 
 #ifdef DEFAULTS_SIMULATOR

@@ -23,19 +23,19 @@
 
 
 void spindle_init()
-{    
+{
   // Configure variable spindle PWM and enable pin, if requried. On the Uno, PWM and enable are
   // combined unless configured otherwise.
   #ifdef VARIABLE_SPINDLE
     SPINDLE_PWM_DDR |= (1<<SPINDLE_PWM_BIT); // Configure as PWM output pin.
     #if defined(CPU_MAP_ATMEGA2560) || defined(USE_SPINDLE_DIR_AS_ENABLE_PIN)
       SPINDLE_ENABLE_DDR |= (1<<SPINDLE_ENABLE_BIT); // Configure as output pin.
-    #endif     
+    #endif
   // Configure no variable spindle and only enable pin.
-  #else  
+  #else
     SPINDLE_ENABLE_DDR |= (1<<SPINDLE_ENABLE_BIT); // Configure as output pin.
   #endif
-  
+
   #ifndef USE_SPINDLE_DIR_AS_ENABLE_PIN
     SPINDLE_DIRECTION_DDR |= (1<<SPINDLE_DIRECTION_BIT); // Configure as output pin.
   #endif
@@ -61,13 +61,13 @@ void spindle_stop()
 	#else
 	  SPINDLE_ENABLE_PORT &= ~(1<<SPINDLE_ENABLE_BIT); // Set pin to low
 	#endif
-  #endif  
+  #endif
 }
 
 
 void spindle_set_state(uint8_t state, float rpm)
 {
-  // Halt or set spindle direction and rpm. 
+  // Halt or set spindle direction and rpm.
   if (state == SPINDLE_DISABLE) {
 
     spindle_stop();
@@ -96,9 +96,9 @@ void spindle_set_state(uint8_t state, float rpm)
       #endif
 
       #define SPINDLE_RPM_RANGE (SPINDLE_MAX_RPM-SPINDLE_MIN_RPM)
-      if ( rpm < SPINDLE_MIN_RPM ) { rpm = 0; } 
-      else { 
-        rpm -= SPINDLE_MIN_RPM; 
+      if ( rpm < SPINDLE_MIN_RPM ) { rpm = 0; }
+      else {
+        rpm -= SPINDLE_MIN_RPM;
         if ( rpm > SPINDLE_RPM_RANGE ) { rpm = SPINDLE_RPM_RANGE; } // Prevent integer overflow
       }
       current_pwm = floor( rpm*(PWM_MAX_VALUE/SPINDLE_RPM_RANGE) + 0.5);
@@ -106,17 +106,17 @@ void spindle_set_state(uint8_t state, float rpm)
         if (current_pwm < MINIMUM_SPINDLE_PWM) { current_pwm = MINIMUM_SPINDLE_PWM; }
       #endif
       OCR_REGISTER = current_pwm; // Set PWM pin output
-    
+
       // On the Uno, spindle enable and PWM are shared, unless otherwise specified.
-      #if defined(CPU_MAP_ATMEGA2560) || defined(USE_SPINDLE_DIR_AS_ENABLE_PIN) 
+      #if defined(CPU_MAP_ATMEGA2560) || defined(USE_SPINDLE_DIR_AS_ENABLE_PIN)
         #ifdef INVERT_SPINDLE_ENABLE_PIN
           SPINDLE_ENABLE_PORT &= ~(1<<SPINDLE_ENABLE_BIT);
         #else
           SPINDLE_ENABLE_PORT |= (1<<SPINDLE_ENABLE_BIT);
         #endif
       #endif
-      
-    #else   
+
+    #else
       #ifdef INVERT_SPINDLE_ENABLE_PIN
 		SPINDLE_ENABLE_PORT &= ~(1<<SPINDLE_ENABLE_BIT);
 	  #else
@@ -131,6 +131,6 @@ void spindle_set_state(uint8_t state, float rpm)
 void spindle_run(uint8_t state, float rpm)
 {
   if (sys.state == STATE_CHECK_MODE) { return; }
-  protocol_buffer_synchronize(); // Empty planner buffer to ensure spindle is set when programmed.  
+  protocol_buffer_synchronize(); // Empty planner buffer to ensure spindle is set when programmed.
   spindle_set_state(state, rpm);
 }
