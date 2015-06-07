@@ -30,9 +30,12 @@
   #define SPINDLE_MAX_RPM 24000.0
   #undef  SPINDLE_MIN_RPM
   #define SPINDLE_MIN_RPM 0.0
+  #undef  HOMING_CYCLE_0
+  #define HOMING_CYCLE_0 ((1<<X_AXIS)|(1<<Y_AXIS))  // OPTIONAL: Then move X,Y at the same time
+  #undef  HOMING_CYCLE_1
   #define ENABLE_M7
   #define MICROSTEPS_XY 4
-  #define MAX_SPEED 250.0
+  #define MAX_SPEED 1000.0
   #define STEP_REVS_XY 200
   #define MM_PER_REV_XY (5)
   #define MICROSTEPS_Z 4
@@ -52,21 +55,22 @@
   #define DEFAULT_Z_MAX_TRAVEL 370.0 // mm
   #define DEFAULT_STEP_PULSE_MICROSECONDS 20
   #define DEFAULT_STEPPING_INVERT_MASK 0
-  #define DEFAULT_DIRECTION_INVERT_MASK ((0<<X_AXIS)|(0<<Z_AXIS)|(1<<Y_AXIS))
+  #define DEFAULT_DIRECTION_INVERT_MASK ((0<<X_AXIS)|(0<<Z_AXIS)|(0<<Y_AXIS))
   #define DEFAULT_STEPPER_IDLE_LOCK_TIME 254 // msec (0-254, 255 keeps steppers enabled)
   #define DEFAULT_STATUS_REPORT_MASK 255 // All enabled
   #define DEFAULT_JUNCTION_DEVIATION 0.02 // mm
   #define DEFAULT_ARC_TOLERANCE 0.01 // mm
-  #define DEFAULT_REPORT_INCHES 0 // false
-  #define DEFAULT_INVERT_ST_ENABLE 1 // true
-  #define DEFAULT_INVERT_LIMIT_PINS 0 // false
-  #define DEFAULT_SOFT_LIMIT_ENABLE 0 // false
-  #define DEFAULT_HARD_LIMIT_ENABLE 0  // false
-  #define DEFAULT_HOMING_ENABLE 0  // false
-  #define DEFAULT_HOMING_DIR_MASK 0 // move positive dir
+  #define DEFAULT_REPORT_INCHES 0
+  #define DEFAULT_INVERT_ST_ENABLE 1
+  #define DEFAULT_INVERT_LIMIT_PINS 0
+  #define DEFAULT_SOFT_LIMIT_ENABLE 0
+  #define DEFAULT_HARD_LIMIT_ENABLE 1
+  #define DEFAULT_HOMING_ENABLE 1
+  #define DEFAULT_HOMING_DIR_MASK ((1<<X_AXIS)|(1<<Y_AXIS))
   #define DEFAULT_HOMING_FEED_RATE MAX_SPEED/2 // mm/min
   #define DEFAULT_HOMING_SEEK_RATE MAX_SPEED
   #define DEFAULT_HOMING_DEBOUNCE_DELAY 25 // msec (0-65k)
-  #define DEFAULT_HOMING_PULLOFF 1.0 // mm
+  #define DEFAULT_HOMING_PULLOFF 15.0 // mm
+  #define HOMING_FORCE_SET_ORIGIN
 
 #endif
