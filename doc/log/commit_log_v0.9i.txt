@@ -1,4 +1,13 @@
 ----------------
+Date: 2015-05-29
+Author: Sonny Jeon
+Subject: Added G61 exact path support.
+
+- G61 exact path is the Grbl default path control mode, so it’s now
+added as a supported g-code.
+
+
+----------------
 Date: 2015-05-27
 Author: Sonny Jeon
 Subject: Another git case-sensitive folder fix.

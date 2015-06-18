@@ -101,7 +101,7 @@ void settings_init();
 // Helper functions to clear and restore EEPROM defaults
 void settings_restore_global_settings();
 void settings_clear_parameters();
-void settings_clear_startup_line();
+void settings_clear_startup_lines();
 void settings_clear_build_info();
 
 // A helper method to set new settings from command line
