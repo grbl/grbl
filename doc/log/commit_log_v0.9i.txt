@@ -1,6 +1,12 @@
 ----------------
 Date: 2015-06-18
 Author: Sonny Jeon
+Subject: Updated README
+
+
+----------------
+Date: 2015-06-18
+Author: Sonny Jeon
 Subject: Added restore settings defaults command.
 
 - New restore setting defaults command. Only wipes ‘$$’ setting in
