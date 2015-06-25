@@ -46,6 +46,13 @@
 #define BITFLAG_RT_STATUS_SERIAL_RX         bit(3)
 #define BITFLAG_RT_STATUS_LIMIT_PINS        bit(4)
 
+// Define settings restore bitflags.
+#define SETTINGS_RESTORE_ALL 0xFF // All bitflags
+#define SETTINGS_RESTORE_DEFAULTS bit(0)
+#define SETTINGS_RESTORE_PARAMETERS bit(1)
+#define SETTINGS_RESTORE_STARTUP_LINES bit(2)
+#define SETTINGS_RESTORE_BUILD_INFO bit(3)
+
 // Define EEPROM memory address location values for Grbl settings and parameters
 // NOTE: The Atmega328p has 1KB EEPROM. The upper half is reserved for parameters and
 // the startup script. The lower half contains the global settings and space for future 
@@ -98,11 +105,8 @@ extern settings_t settings;
 // Initialize the configuration subsystem (load settings from EEPROM)
 void settings_init();
 
-// Helper functions to clear and restore EEPROM defaults
-void settings_restore_global_settings();
-void settings_clear_parameters();
-void settings_clear_startup_line();
-void settings_clear_build_info();
+// Helper function to clear and restore EEPROM defaults
+void settings_restore(uint8_t restore_flag);
 
 // A helper method to set new settings from command line
 uint8_t settings_store_global_setting(uint8_t parameter, float value);

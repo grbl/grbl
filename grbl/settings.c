@@ -56,67 +56,63 @@ void write_global_settings()
 
 
 // Method to restore EEPROM-saved Grbl global settings back to defaults. 
-void settings_restore_global_settings() {  
-  settings.pulse_microseconds = DEFAULT_STEP_PULSE_MICROSECONDS;
-  settings.stepper_idle_lock_time = DEFAULT_STEPPER_IDLE_LOCK_TIME;
-  settings.step_invert_mask = DEFAULT_STEPPING_INVERT_MASK;
-  settings.dir_invert_mask = DEFAULT_DIRECTION_INVERT_MASK;
-  settings.status_report_mask = DEFAULT_STATUS_REPORT_MASK;
-  settings.junction_deviation = DEFAULT_JUNCTION_DEVIATION;
-  settings.arc_tolerance = DEFAULT_ARC_TOLERANCE;
-  settings.homing_dir_mask = DEFAULT_HOMING_DIR_MASK;
-  settings.homing_feed_rate = DEFAULT_HOMING_FEED_RATE;
-  settings.homing_seek_rate = DEFAULT_HOMING_SEEK_RATE;
-  settings.homing_debounce_delay = DEFAULT_HOMING_DEBOUNCE_DELAY;
-  settings.homing_pulloff = DEFAULT_HOMING_PULLOFF;
+void settings_restore(uint8_t restore_flag) {  
+  if (restore_flag & SETTINGS_RESTORE_DEFAULTS) {
+	settings.pulse_microseconds = DEFAULT_STEP_PULSE_MICROSECONDS;
+	settings.stepper_idle_lock_time = DEFAULT_STEPPER_IDLE_LOCK_TIME;
+	settings.step_invert_mask = DEFAULT_STEPPING_INVERT_MASK;
+	settings.dir_invert_mask = DEFAULT_DIRECTION_INVERT_MASK;
+	settings.status_report_mask = DEFAULT_STATUS_REPORT_MASK;
+	settings.junction_deviation = DEFAULT_JUNCTION_DEVIATION;
+	settings.arc_tolerance = DEFAULT_ARC_TOLERANCE;
+	settings.homing_dir_mask = DEFAULT_HOMING_DIR_MASK;
+	settings.homing_feed_rate = DEFAULT_HOMING_FEED_RATE;
+	settings.homing_seek_rate = DEFAULT_HOMING_SEEK_RATE;
+	settings.homing_debounce_delay = DEFAULT_HOMING_DEBOUNCE_DELAY;
+	settings.homing_pulloff = DEFAULT_HOMING_PULLOFF;
 
-  settings.flags = 0;
-  if (DEFAULT_REPORT_INCHES) { settings.flags |= BITFLAG_REPORT_INCHES; }
-  if (DEFAULT_INVERT_ST_ENABLE) { settings.flags |= BITFLAG_INVERT_ST_ENABLE; }
-  if (DEFAULT_INVERT_LIMIT_PINS) { settings.flags |= BITFLAG_INVERT_LIMIT_PINS; }
-  if (DEFAULT_SOFT_LIMIT_ENABLE) { settings.flags |= BITFLAG_SOFT_LIMIT_ENABLE; }
-  if (DEFAULT_HARD_LIMIT_ENABLE) { settings.flags |= BITFLAG_HARD_LIMIT_ENABLE; }
-  if (DEFAULT_HOMING_ENABLE) { settings.flags |= BITFLAG_HOMING_ENABLE; }
+	settings.flags = 0;
+	if (DEFAULT_REPORT_INCHES) { settings.flags |= BITFLAG_REPORT_INCHES; }
+	if (DEFAULT_INVERT_ST_ENABLE) { settings.flags |= BITFLAG_INVERT_ST_ENABLE; }
+	if (DEFAULT_INVERT_LIMIT_PINS) { settings.flags |= BITFLAG_INVERT_LIMIT_PINS; }
+	if (DEFAULT_SOFT_LIMIT_ENABLE) { settings.flags |= BITFLAG_SOFT_LIMIT_ENABLE; }
+	if (DEFAULT_HARD_LIMIT_ENABLE) { settings.flags |= BITFLAG_HARD_LIMIT_ENABLE; }
+	if (DEFAULT_HOMING_ENABLE) { settings.flags |= BITFLAG_HOMING_ENABLE; }
   
-  settings.steps_per_mm[X_AXIS] = DEFAULT_X_STEPS_PER_MM;
-  settings.steps_per_mm[Y_AXIS] = DEFAULT_Y_STEPS_PER_MM;
-  settings.steps_per_mm[Z_AXIS] = DEFAULT_Z_STEPS_PER_MM;
-  settings.max_rate[X_AXIS] = DEFAULT_X_MAX_RATE;
-  settings.max_rate[Y_AXIS] = DEFAULT_Y_MAX_RATE;
-  settings.max_rate[Z_AXIS] = DEFAULT_Z_MAX_RATE;
-  settings.acceleration[X_AXIS] = DEFAULT_X_ACCELERATION;
-  settings.acceleration[Y_AXIS] = DEFAULT_Y_ACCELERATION;
-  settings.acceleration[Z_AXIS] = DEFAULT_Z_ACCELERATION;
-  settings.max_travel[X_AXIS] = (-DEFAULT_X_MAX_TRAVEL);
-  settings.max_travel[Y_AXIS] = (-DEFAULT_Y_MAX_TRAVEL);
-  settings.max_travel[Z_AXIS] = (-DEFAULT_Z_MAX_TRAVEL);    
+	settings.steps_per_mm[X_AXIS] = DEFAULT_X_STEPS_PER_MM;
+	settings.steps_per_mm[Y_AXIS] = DEFAULT_Y_STEPS_PER_MM;
+	settings.steps_per_mm[Z_AXIS] = DEFAULT_Z_STEPS_PER_MM;
+	settings.max_rate[X_AXIS] = DEFAULT_X_MAX_RATE;
+	settings.max_rate[Y_AXIS] = DEFAULT_Y_MAX_RATE;
+	settings.max_rate[Z_AXIS] = DEFAULT_Z_MAX_RATE;
+	settings.acceleration[X_AXIS] = DEFAULT_X_ACCELERATION;
+	settings.acceleration[Y_AXIS] = DEFAULT_Y_ACCELERATION;
+	settings.acceleration[Z_AXIS] = DEFAULT_Z_ACCELERATION;
+	settings.max_travel[X_AXIS] = (-DEFAULT_X_MAX_TRAVEL);
+	settings.max_travel[Y_AXIS] = (-DEFAULT_Y_MAX_TRAVEL);
+	settings.max_travel[Z_AXIS] = (-DEFAULT_Z_MAX_TRAVEL);    
 
-  write_global_settings();
+	write_global_settings();
+  }
+  
+  if (restore_flag & SETTINGS_RESTORE_PARAMETERS) {
+	uint8_t idx;
+	float coord_data[N_AXIS];
+	memset(&coord_data, 0, sizeof(coord_data));
+	for (idx=0; idx < SETTING_INDEX_NCOORD; idx++) { settings_write_coord_data(idx, coord_data); }
+  }
+  
+  if (restore_flag & SETTINGS_RESTORE_STARTUP_LINES) {
+	#if N_STARTUP_LINE > 0
+	eeprom_put_char(EEPROM_ADDR_STARTUP_BLOCK, 0);
+	#endif
+	#if N_STARTUP_LINE > 1
+	eeprom_put_char(EEPROM_ADDR_STARTUP_BLOCK+(LINE_BUFFER_SIZE+1), 0);
+	#endif
+  }
+  
+  if (restore_flag & SETTINGS_RESTORE_BUILD_INFO) { eeprom_put_char(EEPROM_ADDR_BUILD_INFO , 0); }
 }
-
-
-// Helper function to clear the EEPROM space containing parameter data.
-void settings_clear_parameters() {
-  uint8_t idx;
-  float coord_data[N_AXIS];
-  memset(&coord_data, 0, sizeof(coord_data));
-  for (idx=0; idx < SETTING_INDEX_NCOORD; idx++) { settings_write_coord_data(idx, coord_data); }
-}  
-
-
-// Helper function to clear the EEPROM space containing the startup lines.
-void settings_clear_startup_lines() {
-  #if N_STARTUP_LINE > 0
-  eeprom_put_char(EEPROM_ADDR_STARTUP_BLOCK, 0);
-  #endif
-  #if N_STARTUP_LINE > 1
-  eeprom_put_char(EEPROM_ADDR_STARTUP_BLOCK+(LINE_BUFFER_SIZE+1), 0);
-  #endif
-}
-
-
-// Helper function to clear the EEPROM space containing the user build info string.
-void settings_clear_build_info() { eeprom_put_char(EEPROM_ADDR_BUILD_INFO , 0); }
 
 
 // Reads startup line from EEPROM. Updated pointed line string data.
@@ -282,27 +278,21 @@ uint8_t settings_store_global_setting(uint8_t parameter, float value) {
 void settings_init() {
   if(!read_global_settings()) {
     report_status_message(STATUS_SETTING_READ_FAIL);
-
-    settings_restore_global_settings();
-    
-    // Force clear startup lines and build info user data. Parameters should be ok.
-    // TODO: For next version, remove these clears. Only here because line buffer increased.
-    settings_clear_startup_lines();
-    settings_clear_build_info();
-    
+    settings_restore(SETTINGS_RESTORE_ALL); // Force restore all EEPROM data.
     report_grbl_settings();
   }
 
+  // NOTE: Checking paramater data, startup lines, and build info string should be done here, 
+  // but it seems fairly redundant. Each of these can be manually checked and reset or restored.
   // Check all parameter data into a dummy variable. If error, reset to zero, otherwise do nothing.
-  float coord_data[N_AXIS];
-  uint8_t i;
-  for (i=0; i<=SETTING_INDEX_NCOORD; i++) {
-    if (!settings_read_coord_data(i, coord_data)) {
-      report_status_message(STATUS_SETTING_READ_FAIL);
-    }
-  }
+  // float coord_data[N_AXIS];
+  // uint8_t i;
+  // for (i=0; i<=SETTING_INDEX_NCOORD; i++) {
+  //   if (!settings_read_coord_data(i, coord_data)) {
+  // 	report_status_message(STATUS_SETTING_READ_FAIL);
+  //   }
+  // }
   // NOTE: Startup lines are checked and executed by protocol_main_loop at the end of initialization.
-  // TODO: Build info should be checked here, but will wait until v1.0 to address this. Ok for now.
 }
 
 

@@ -259,6 +259,11 @@ uint8_t gc_execute_line(char *line)
             word_bit = MODAL_GROUP_G12;
             gc_block.modal.coord_select = int_value-54; // Shift to array indexing.
             break;
+          case 61:
+            word_bit = MODAL_GROUP_G13;
+            if (mantissa != 0) { FAIL(STATUS_GCODE_UNSUPPORTED_COMMAND); } // [G61.1 not supported]
+            // gc_block.modal.control = CONTROL_MODE_EXACT_PATH; // G61
+            break;
           default: FAIL(STATUS_GCODE_UNSUPPORTED_COMMAND); // [Unsupported G command]
         }      
         if (mantissa > 0) { FAIL(STATUS_GCODE_COMMAND_VALUE_NOT_INTEGER); } // [Unsupported or invalid Gxx.x command]
@@ -519,8 +524,8 @@ uint8_t gc_execute_line(char *line)
     }
   }
   
-  // [16. Set path control mode ]: NOT SUPPORTED.
-  // [17. Set distance mode ]: N/A. G90.1 and G91.1 NOT SUPPORTED.
+  // [16. Set path control mode ]: N/A. Only G61. G61.1 and G64 NOT SUPPORTED.
+  // [17. Set distance mode ]: N/A. Only G91.1. G90.1 NOT SUPPORTED.
   // [18. Set retract mode ]: NOT SUPPORTED.
   
   // [19. Remaining non-modal actions ]: Check go to predefined position, set G10, or set axis offsets.
@@ -900,7 +905,8 @@ uint8_t gc_execute_line(char *line)
     memcpy(gc_state.coord_system,coordinate_data,sizeof(coordinate_data));
   }
   
-  // [16. Set path control mode ]: NOT SUPPORTED
+  // [16. Set path control mode ]: G61.1/G64 NOT SUPPORTED
+  // gc_state.modal.control = gc_block.modal.control; // NOTE: Always default.
   
   // [17. Set distance mode ]:
   gc_state.modal.distance = gc_block.modal.distance;
@@ -1089,5 +1095,5 @@ uint8_t gc_execute_line(char *line)
    group 8 = {*M7} enable mist coolant (* Compile-option)
    group 9 = {M48, M49} enable/disable feed and speed override switches
    group 10 = {G98, G99} return mode canned cycles
-   group 13 = {G61, G61.1, G64} path control mode
+   group 13 = {G61.1, G64} path control mode (G61 is supported)
 */

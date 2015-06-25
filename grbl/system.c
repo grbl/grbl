@@ -200,7 +200,21 @@ uint8_t system_execute_line(char *line)
             } while (line[char_counter++] != 0);
             settings_store_build_info(line);
           }
-          break;                 
+          break; 
+        case 'R' : // Restore defaults [IDLE/ALARM]
+          if (line[++char_counter] != 'S') { return(STATUS_INVALID_STATEMENT); }
+          if (line[++char_counter] != 'T') { return(STATUS_INVALID_STATEMENT); }
+          if (line[++char_counter] != '=') { return(STATUS_INVALID_STATEMENT); }
+          if (line[char_counter+2] != 0) { return(STATUS_INVALID_STATEMENT); }                        
+          switch (line[++char_counter]) {
+            case '$': settings_restore(SETTINGS_RESTORE_DEFAULTS); break;
+            case '#': settings_restore(SETTINGS_RESTORE_PARAMETERS); break;
+            case '*': settings_restore(SETTINGS_RESTORE_ALL); break;
+            default: return(STATUS_INVALID_STATEMENT);
+          }
+          report_feedback_message(MESSAGE_RESTORE_DEFAULTS);
+          mc_reset(); // Force reset to ensure settings are initialized correctly.
+          break;
         case 'N' : // Startup lines. [IDLE/ALARM]
           if ( line[++char_counter] == 0 ) { // Print startup lines
             for (helper_var=0; helper_var < N_STARTUP_LINE; helper_var++) {
