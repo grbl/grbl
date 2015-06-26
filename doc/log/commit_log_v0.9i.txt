@@ -1,4 +1,30 @@
 ----------------
+Date: 2015-06-20
+Author: Sonny Jeon
+Subject: New EEPROM restore functions.
+
+- Tweaked the previous EEPROM restore implementation and added new
+functionality.
+
+- `$RST=$` restores the `$$` grbl settings back to firmware defaults,
+which are set when compiled.
+
+- `$RST=#` restores the `$#` parameters in EEPROM. At times it’s useful
+to clear these and start over, rather than manually writing each entry.
+
+-`$RST=*` wipe all of the data in EEPROM that Grbl uses and restores
+them to defaults. This includes `$$` settings, `$#` parameters, `$N`
+startup lines, and `$i` build info string.
+
+NOTE: This doesn’t write zeros throughout the EEPROM. It only writes
+where Grbl looks for data. For a complete wipe, please use the Arduino
+IDE’s EEPROM clear example.
+
+- Refactored the restore and wipe functions in settings.c to
+accommodate the new commands.
+
+
+----------------
 Date: 2015-06-18
 Author: Sonny Jeon
 Subject: Updated README

@@ -99,7 +99,7 @@ void settings_restore(uint8_t restore_flag) {
 	uint8_t idx;
 	float coord_data[N_AXIS];
 	memset(&coord_data, 0, sizeof(coord_data));
-	for (idx=0; idx < SETTING_INDEX_NCOORD; idx++) { settings_write_coord_data(idx, coord_data); }
+	for (idx=0; idx <= SETTING_INDEX_NCOORD; idx++) { settings_write_coord_data(idx, coord_data); }
   }
   
   if (restore_flag & SETTINGS_RESTORE_STARTUP_LINES) {
