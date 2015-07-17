@@ -1,4 +1,13 @@
 ----------------
+Date: 2015-06-25
+Author: Sonny Jeon
+Subject: Restore parameters minor bug fix.
+
+- `$RST=#` was not wiping the G30 positions from EEPROM. Minor but now
+fixed.
+
+
+----------------
 Date: 2015-06-20
 Author: Sonny Jeon
 Subject: New EEPROM restore functions.

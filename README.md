@@ -27,14 +27,16 @@ Grbl includes full acceleration management with look ahead. That means the contr
 ***
 
 _**Master Branch:**_
-* [Grbl v0.9i Atmega328p 16mhz 115200baud with generic defaults](http://bit.ly/1EiviDk) _(2015-06-25)_
-* [Grbl v0.9i Atmega328p 16mhz 115200baud with ShapeOko2 defaults](http://bit.ly/1NYIfKl) _(2015-06-25)_
-  - **IMPORTANT INFO WHEN UPGRADING TO GRBL v0.9i:** 
+* [Grbl v0.9j Atmega328p 16mhz 115200baud with generic defaults](http://bit.ly/1I8Ey4S) _(2015-07-17)_
+* [Grbl v0.9j Atmega328p 16mhz 115200baud with ShapeOko2 defaults](http://bit.ly/1OjUSia) _(2015-07-17)_
+  - **IMPORTANT INFO WHEN UPGRADING TO GRBL v0.9 :** 
   - Baudrate is now **115200** (Up from 9600). 
   - Homing cycle updated. Located based on switch trigger, rather than release point.
   - Variable spindle is now enabled by default. Z-limit(D12) and spindle enable(D11) have switched to access the hardware PWM on D11. Homing will not work if you do not re-wire your Z-limit switch to D12.
 
 _**Archives:**_
+* [Grbl v0.9i Atmega328p 16mhz 115200baud with generic defaults](http://bit.ly/1EiviDk) 
+* [Grbl v0.9i Atmega328p 16mhz 115200baud with ShapeOko2 defaults](http://bit.ly/1NYIfKl) 
 * [Grbl v0.9g Atmega328p 16mhz 115200baud with generic defaults](http://bit.ly/1m8E1Qa) 
 * [Grbl v0.9g Atmega328p 16mhz 115200baud with ShapeOko2 defaults](http://bit.ly/1kOAzig) 
 * [Grbl v0.8c Atmega328p 16mhz 9600baud](http://bit.ly/SSdCJE)
@@ -47,19 +49,23 @@ _**Archives:**_
 
 ***
 
+##Update Summary for v0.9j
+  - **Restore EEPROM feature:** A new set of restore EEPROM features to help OEMs and users reset their Grbl installation to the build defaults. See Configuring Grbl Wiki for details.
+  
 ##Update Summary for v0.9i
   - **IMPORTANT:**
-    - **Z-limit(D12) and spindle enable(D11) pins have switched to support variable spindle!**
     - **Homing cycle updated. Locates based on trigger point, rather than release point.**
     - **System tweaks: $14 cycle auto-start has been removed. No more QUEUE state.**
-  - **New G-Codes:** Additional probing cycle commands G38.3, G38.4, G38.5 now supported. G40 cutter radius compensation cancel. G91.1 arc IJK distance mode incremental. G61 exact path mode.
-  - **CoreXY Support:** Grbl now supports CoreXY kinematics on an introductory-level. Most functions have been verified to work, but there may be bugs here or there. Please report any problems you find!
-  - **Safety Door Support:** Safety door switches are now supported. Grbl will force a feed hold, shutdown the spindle and coolant, and wait until the door switch has closed and the user has issued a resume. Upon resuming, the spindle and coolant will re-energize after a configurable delay and continue. Useful for OEMs that require this feature.
-  - **Full Limit and Control Pin Configurability:** Limits and control pins operation can now be interpreted by Grbl however you'd like, with the internal pull-up resistors enabled or disabled, or reading a high or low as a trigger. This should cover all wiring and NO or NC switch scenarios.
-  - **Additional Compile-Time Feature Options:** Control pin state reporting, force power-up alarm state, GUI reporting mode, and more.
+  - **New G-Codes** 
+  - **CoreXY Support**
+  - **Safety Door Support**
+  - **Full Limit and Control Pin Configurability**
+  - **Additional Compile-Time Feature Options**
 
 ##Update Summary for v0.9h from v0.8
-  - **IMPORTANT: Default serial baudrate is now 115200! (Up from 9600)**
+  - **IMPORTANT:**
+    - **Default serial baudrate is now 115200! (Up from 9600)**
+    - **Z-limit(D12) and spindle enable(D11) pins have switched to support variable spindle!**
   - **Super Smooth Stepper Algorithm**
   - **Stability and Robustness Updates**
   - **(x4)+ Faster Planner**
@@ -80,7 +86,7 @@ _**Archives:**_
 
 -
 ``` 
-List of Supported G-Codes in Grbl v0.9i Master:
+List of Supported G-Codes in Grbl v0.9 Master:
   - Non-Modal Commands: G4, G10L2, G10L20, G28, G30, G28.1, G30.1, G53, G92, G92.1
   - Motion Modes: G0, G1, G2, G3, G38.2, G38.3, G38.4, G38.5, G80
   - Feed Rate Modes: G93, G94
