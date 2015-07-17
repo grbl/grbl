@@ -1,0 +1,433 @@
+----------------
+Date: 2012-01-17
+Author: Sonny Jeon
+Subject: Update readme.textile
+
+----------------
+Date: 2012-01-17
+Author: Sonny Jeon
+Subject: Merge pull request #47 from chamnit/v0_7
+
+Merging chamnit/v0_7 to grbl/master
+
+----------------
+Date: 2012-01-17
+Author: Sonny Jeon
+Subject: Merge chamnit/v0_7 with grbl/master
+
+
+----------------
+Date: 2012-01-17
+Author: Sonny Jeon
+Subject: Update readme.textile
+
+----------------
+Date: 2012-01-17
+Author: Sonny Jeon
+Subject: Merge pull request #39 from chamnit/edge
+
+Merging chamnit/grbl edge v0.8a to grbl/grbl edge
+
+----------------
+Date: 2012-01-15
+Author: Sonny Jeon
+Subject: Propagated premature step end bug fix from the edge branch. Updated printFloat() function.
+
+- Will not be uploading a hex build of this, unless asked.
+
+
+----------------
+Date: 2012-01-15
+Author: Sonny Jeon
+Subject: Fix bug with premature step end. Refactored _delay_ms() and square() for better portability.
+
+- Fixed a premature step end bug dating back to Simen's 0.7b edge
+version is fixed, from which this code is forked from. Caused by Timer2
+constantly overflowing calling the Step Reset Interrupt every 128usec.
+Now Timer2 is always disabled after a step end and should free up some
+cycles for the main program. Could be more than one way to fix this
+problem. I'm open to suggestions.
+
+- _delay_ms() refactored to accept only constants to comply with
+current compilers. square() removed since not available with some
+compilers.
+
+
+----------------
+Date: 2012-01-10
+Author: Sonny Jeon
+Subject: Extended position reporting with both home and work coordinates. Home position now retained after reset. Other minor changes/fixes.
+
+- Grbl now tracks both home and work (G92) coordinate systems and does
+live updates when G92 is called.
+- Rudimentary home and work position status reporting. Works but still
+under major construction.
+- Updated the main streaming script. Has a disabled periodic timer for
+querying status reports, disabled only because the Python timer doesn't
+consistently restart after the script exits. Add here only for user
+testing.
+- Fixed a bug to prevent an endless serial_write loop during status
+reports.
+- Refactored the planner variables to make it more clear what they are
+and make it easier for clear them.
+
+
+----------------
+Date: 2012-01-09
+Author: Sonny Jeon
+Subject: Corrected a minor streaming script character counting bug.
+
+----------------
+Date: 2012-01-09
+Author: Sonny Jeon
+Subject: Updated line in streaming script.
+
+----------------
+Date: 2012-01-06
+Author: Sonny Jeon
+Subject: Position reporting, refactored system variables, serial print fixes, updated streaming scripts.
+
+- Added machine position reporting to status queries. This will be
+further developed with part positioning/offsets and maintaining
+location upon reset.
+
+- System variables refactored into a global struct for better
+readability.
+
+- Removed old obsolete Ruby streaming scripts. These were no longer
+compatible. Updated Python streaming scripts.
+
+- Fixed printFloat() and other printing functions.
+
+- Decreased planner buffer back to 18 blocks and increased TX serial
+buffer to 64 bytes. Need the memory space for future developments.
+
+- Begun adding run-time modes to grbl, where block delete toggle, mm/in
+reporting modes, jog modes, etc can be set during runtime. Will be
+fleshed out and placed into EEPROM when everything is added.
+
+
+----------------
+Date: 2011-12-10
+Author: Sonny Jeon
+Subject: Various minor updates and variable definition corrections. Removed deprecated acceleration manager.
+
+- Removed deprecated acceleration manager (non-functional since v0.7b)
+- Updated variable types and function headers. - Updated stepper
+interrupt to ISR() from SIGNAL()+sei(). - General code cleanup.
+
+
+----------------
+Date: 2011-12-08
+Author: Sonny Jeon
+Subject: Initial v0.8 ALPHA commit. Features multi-tasking run-time command execution (feed hold, cycle start, reset, status query). Extensive re-structuring of code for future features.
+
+- ALPHA status. - Multitasking ability with run-time command executions
+for real-time control and feedback. - Decelerating feed hold and resume
+during operation. - System abort/reset, which immediately kills all
+movement and re-initializes grbl. - Re-structured grbl to easily allow
+for new features: Status reporting, jogging, backlash compensation. (To
+be completed in the following releases.) - Resized TX/RX serial buffers
+(32/128 bytes) - Increased planner buffer size to 20 blocks. - Updated
+documentation.
+
+
+----------------
+Date: 2011-11-19
+Author: Sonny Jeon
+Subject: Updated README and reordered branch versions.
+
+
+----------------
+Date: 2011-11-19
+Author: Sonny Jeon
+Subject: Re-ordered stepper idle function to first disable interrupt.
+
+----------------
+Date: 2011-11-11
+Author: Sonny Jeon
+Subject: Corrected clearing of target and position variable for the go home routine. Thanks Jens!
+
+----------------
+Date: 2011-10-11
+Author: Sonny Jeon
+Subject: Delete a new work file shouldn't have been synced.
+
+
+----------------
+Date: 2011-10-11
+Author: Sonny Jeon
+Subject: Third time's a charm! No more deceleration issues! Updated grbl version and settings. General cleanup.
+
+- Fleshed out the original idea to completely remove the long slope at
+the end of deceleration issue. This third time should absolutely
+eliminate it.
+- Changed the acceleration setting to kept as mm/min^2 internally,
+since this was creating unneccessary additional computation in the
+planner. Human readable value kept at mm/sec^2.
+- Updated grbl version 0.7d and settings version to 4. NOTE: Please
+check settings after update. These may have changed, but shouldn't.
+- Before updating the new features (pause, e-stop, federate override,
+etc), the edge branch will soon be merged with the master, barring any
+immediate issues that people may have, and the edge branch will be the
+testing ground for the new grbl version 0.8.
+
+
+----------------
+Date: 2011-10-07
+Author: Sonny Jeon
+Subject: Forgot something! Comments on what the last change does.
+
+
+----------------
+Date: 2011-10-06
+Author: Sonny Jeon
+Subject: Minor update to further eliminate the ole long slope deceleration issue. New update note!
+
+- Added another way to further ensure the long slope deceleration issue
+is eliminated. If the stepper rate change is too great near zero, the
+stepper rate is adjusted at half increments to the end of travel,
+creating a smooth transition. - If the new STEPPER_IDLE_LOCK_TIME is
+set as zero, this delay is not compiled at compile-time. - NOTE: The
+next update is likely going to be major, involving a full re-write of
+the stepper.c program to integrate a simple way to apply pauses,
+jogging, e-stop, and feedrate overrides. The interface should be
+flexible enough to be easily modified for use with either hardware
+switches or software commands. Coming soon.
+
+
+----------------
+Date: 2011-09-29
+Author: Sonny Jeon
+Subject: Added complete stop delay at the end of all motion. Moved grbl preprocessor script into a new repository.
+
+Added a very short (25 ms) user-definable delay before the steppers are
+disabled at the motors are disabled and grbl goes idle. This ensures
+any residual inertia at the end of the last motion does not cause the
+axes to drift and grbl to lose its position when manually entering
+g-code or when performing a tool change and starting the next
+operation.
+
+
+----------------
+Date: 2011-09-25
+Author: Sonny Jeon
+Subject: Updated some comments and fixed a bug in the new stepper logic.
+
+- The stepper logic was not initiating the decelerations for certain
+cases. Just re-arranged the logic to fix it.
+
+
+----------------
+Date: 2011-09-24
+Author: Sonny Jeon
+Subject: Fixed long slope at deceleration issue. Moved things into config.h. New MINIMUM_PLANNER_SPEED parameter.
+
+- The long standing issue of a long slope at deceleration is likely
+fixed. The stepper program was not tracking and timing the end of
+acceleration and start of deceleration exactly and now is fixed to
+start and stop on time. Also, to ensure a better acceleration curve fit
+used by the planner, the stepper program delays the start of the
+accelerations by a half trapezoid tick to employ the midpoint rule. -
+Settings version 3 migration (not fully tested, but should work) -
+Added a MINIMUM_PLANNER_SPEED user-defined parameter to planner to let
+a user change this if problems arise for some reason. - Moved all
+user-definable #define parameters into config.h with clear comments on
+what they do and recommendations of how to change them. - Minor
+housekeeping.
+
+
+----------------
+Date: 2011-09-18
+Author: Sonny J
+Subject: Fixed minor bugs in planner. Increased max dwell time. Long slope bug stop-gap solution note.
+
+- Fixed the planner TODO regarding minimum nominal speeds. Re-arranged
+calculations to be both more efficient and guaranteed to be greater
+than zero. - Missed a parenthesis location on the rate_delta
+calculation. Should fix a nearly in-perceptible issue with incorrect
+acceleration ramping in diagonal directions. - Increased maximum dwell
+time from 6.5sec to an 18hour max. A crazy amount more, but that's how
+the math works out. - Converted the internal feedrate values to mm/min
+only, as it was switching between mm/min to mm/sec and back to mm/min.
+Also added a feedrate > 0 check in gcode.c. - Identified the long slope
+at the end of rapid de/ac-celerations noted by stephanix. Problem with
+the numerical integration truncation error between the exact solution
+of estimate_acceleration_distance and how grbl actually performs the
+acceleration ramps discretely. Increasing the
+ACCELERATION_TICKS_PER_SECOND in config.h helps fix this problem.
+Investigating further.
+
+
+----------------
+Date: 2011-09-15
+Author: Sonny J
+Subject: More '%' modulo opertor removals and some housecleaning.
+
+- Serial functions contained quite a few modulo operations that would
+be executed with high frequency when streaming. AVR processors are very
+slow when operating these. In one test on the Arduino forums, it showed
+about a 15x slow down compared to a simple if-then statement. -
+Clarified some variable names and types and comments.
+
+
+----------------
+Date: 2011-09-13
+Author: Sonny J
+Subject: Further planner improvements and misc minor bug fixes. Memory savings and increased buffer size.
+
+- Update grbl version and settings version to automatically reset
+eeprom. FYI, this will reset your grbl settings. - Saved
+3*BLOCK_BUFFER_SIZE doubles in static memory by removing obsolete
+variables: speed_x, speed_y, and speed_z. - Increased buffer size
+conservatively to 18 from 16. (Probably can do 20). - Removed expensive!
+modulo operator from block indexing function. Reduces significant
+computational overhead. - Re-organized some sqrt() calls to be more
+efficient during time critical planning cases, rather than non-time
+critical. - Minor bug fix in planner max junction velocity logic. -
+Simplified arc logic and removed need to multiply for CW or CCW
+direction.
+
+
+----------------
+Date: 2011-09-06
+Author: Sonny J
+Subject: Optimized planner re-write. Significantly faster. Full arc support enabled by rotation matrix approach.
+
+- Significant improvements in the planner. Removed or reordered
+repetitive and expensive calculations by order of importance:
+recalculating unchanged blocks, trig functions [sin(), cos(), tan()],
+sqrt(), divides, and multiplications. Blocks long enough for nominal
+speed to be guaranteed to be reached ignored by planner. Done by
+introducing two uint8_t flags per block. Reduced computational overhead
+by an order of magnitude.   - Arc motion generation completely
+re-written and optimized. Now runs with acceleration planner. Removed
+all but one trig function (atan2) from initialization. Streamlined
+computations. Segment target locations generated by vector
+transformation and small angle approximation. Arc path correction
+implemented for accumulated error of approximation and single precision
+calculation of Arduino. Bug fix in message passing.
+
+
+----------------
+Date: 2011-09-04
+Author: Sonny J
+Subject: Minor update for memory savings in ring buffer and fleshed out commenting.
+
+No changes in functionality. Path vectors moved from ring buffer to
+local planner static variables to save 3*(BUFFER_SIZE - 1) doubles in
+memory. Detailed comments. Really need to stop micro-updating. Should be
+the last until a planner optimization (ala Jens Geisler) has been
+completed.
+
+
+----------------
+Date: 2011-09-04
+Author: Sonny J
+Subject: More minor bug fixes in planner.
+
+Reverse planner was over-writing the initial/buffer tail entry speed,
+which reset the forward planner and caused it to lose track of its
+speed. Should now accelerate into short linear segments much nicer now.
+
+
+----------------
+Date: 2011-09-03
+Author: Sonny J
+Subject: Minor bug fixes in planner.
+
+
+----------------
+Date: 2011-09-03
+Author: Sonny J
+Subject: Add G02/03 arc conversion/pre-processor script and example streaming script
+
+Beta pre-processor script used to clean and streamline g-code for
+streaming and converts G02/03 arcs into linear segments. Allows for full
+acceleration support if the pre-processed g-code is then streamed to
+grill, sans G02/03 arcs. Added a simple example streaming script for
+Python users.
+
+
+----------------
+Date: 2011-09-03
+Author: Sonny J
+Subject: Significantly improved junction control and fixed computation bugs in planner
+
+- Junction jerk now re-defined as junction_deviation. The distance from
+the junction to the edge of a circle tangent to both previous and
+current path lines. The circle radii is used to compute the maximum
+junction velocity by centripetal acceleration. More robust and
+simplified way to compute jerk.   - Fixed bugs related to entry and exit
+factors. They were computed based on the current nominal speeds but not
+when computing exit factors for neighboring blocks. Removed factors and
+replaced with entry speeds only. Factors now only computed for stepper
+trapezoid rate conversions.  - Misc: Added min(), next_block_index,
+prev_block_index functions for clarity.
+
+
+----------------
+Date: 2011-08-15
+Author: Sonny J
+Subject: Moved comment and block delete handling into protocol.c from gcode.c. Fixes bug when comment and block delete are not isolated. Blank lines ignored.
+
+Comments, block delete characters, and blank lines are no longer passed
+to the gcode parser and should free up some memory by ignoring these
+characters. Gcode parser now expects clean gcode only. There was a bug
+if there were block deletes or comments not in the first character (i.e.
+spindle on/off for proofing geode without turning it on, or a NXX
+followed by a comment). This should fix it by bypassing the problem.
+Left a commented line for easily turning on and off block deletes for a
+later feature, if desired.
+
+
+----------------
+Date: 2011-08-15
+Author: Sonny J
+Subject: Revert ea5b8942db2616e93fc0478922010c3bab7c0481^..HEAD
+
+
+----------------
+Date: 2011-08-15
+Author: Sonny J
+Subject: Moved comment and block delete handling into protocol.c from gcode.c. Fixes bug when comment and block delete are not isolated. Blank lines ignored.
+
+Comments, block delete characters, and blank lines are no longer passed
+to the gcode parser and should free up some memory by ignoring these
+characters. Gcode parser now expects clean gcode only. There was a bug
+if there were block deletes or comments not in the first character (i.e.
+spindle on/off for proofing geode without turning it on, or a NXX
+followed by a comment). This should fix it by bypassing the problem.
+Left a commented line for easily turning on and off block deletes for a
+later feature, if desired.
+
+
+----------------
+Date: 2011-08-15
+Author: Sonny J
+Subject: Revert 517a0f659a06182c89cafe27ee371edccad777a4^..HEAD
+
+
+----------------
+Date: 2011-08-15
+Author: Sonny J
+Subject: Revert "Moved comment and block delete handling to be done in protocol.c rather than gcode.c. Prevents these from being held in memory. Also, fixes bug when comments and block delete character are mixed with g-code."
+
+This reverts commit ea5b8942db2616e93fc0478922010c3bab7c0481.
+
+
+----------------
+Date: 2011-08-15
+Author: Sonny J
+Subject: Revert fdc90f1821f1f5edb7756fcddce75b4b4fbf6bbf^..HEAD
+
+
+----------------
+Date: 2011-08-15
+Author: chamnit
+Subject: Removed comment and block delete handling from gcode.c. Parser expects clean gcode.
+
+----------------
+Date: 2011-08-15
+Author: chamnit
+Subject: Moved comment and block delete handling to be done in protocol.c rather than gcode.c. Prevents these from being held in memory. Also, fixes bug when comments and block delete character are mixed with g-code.
