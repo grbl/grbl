@@ -108,6 +108,7 @@
 #define CONTROL_INT_vect  PCINT2_vect
 #define CONTROL_PCMSK     PCMSK2 // Pin change interrupt register
 #define CONTROL_MASK ((1<<RESET_BIT)|(1<<FEED_HOLD_BIT)|(1<<CYCLE_START_BIT)|(1<<SAFETY_DOOR_BIT))
+#define CONTROL_INVERT_MASK CONTROL_MASK // May be re-defined to only invert certain control pins.
 
 // Define probe switch input pin.
 #define PROBE_DDR       DDRK

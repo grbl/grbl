@@ -1,4 +1,14 @@
 ----------------
+Date: 2015-07-17
+Author: Sonny Jeon
+Subject: Version bump to v0.9j
+
+- Version bump requested by OEMs to easily determine whether the
+firmware supports the new EEPROM reset feature. Other than that, no
+significant changes.
+
+
+----------------
 Date: 2015-06-25
 Author: Sonny Jeon
 Subject: Restore parameters minor bug fix.

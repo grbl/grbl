@@ -153,8 +153,9 @@
 
 // Inverts pin logic of the control command pins. This essentially means when this option is enabled
 // you can use normally-closed switches, rather than the default normally-open switches.
-// NOTE: Will eventually be added to Grbl settings in v1.0.
-// #define INVERT_CONTROL_PIN // Default disabled. Uncomment to enable.
+// NOTE: If you require individual control pins inverted, keep this macro disabled and simply alter
+//   the CONTROL_INVERT_MASK definition in cpu_map.h files.
+// #define INVERT_ALL_CONTROL_PINS // Default disabled. Uncomment to enable.
 
 // Inverts the spindle enable pin from low-disabled/high-enabled to low-enabled/high-disabled. Useful
 // for some pre-built electronic boards.

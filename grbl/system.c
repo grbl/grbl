@@ -41,8 +41,8 @@ void system_init()
 ISR(CONTROL_INT_vect) 
 {
   uint8_t pin = (CONTROL_PIN & CONTROL_MASK);
-  #ifndef INVERT_CONTROL_PIN
-    pin ^= CONTROL_MASK;
+  #ifndef INVERT_ALL_CONTROL_PINS
+    pin ^= CONTROL_INVERT_MASK;
   #endif
   // Enter only if any CONTROL pin is detected as active.
   if (pin) { 
