@@ -22,7 +22,7 @@ Grbl includes full acceleration management with look ahead. That means the contr
 ***
 
 ### Official Supporters of the Grbl CNC Project
-[![Carbide3D](http://carbide3d.com/files/logo_240px.png)](http://carbide3d.com)  [![Inventables](https://dzevsq2emy08i.cloudfront.net/paperclip/press_image_uploads/62/low_res/inventables-logo.png)](http://inventables.com)
+![Official Supporters](https://dl.dropboxusercontent.com/u/2221997/Contributors.png)
 
 ***
 
