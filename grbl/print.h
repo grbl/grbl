@@ -46,11 +46,11 @@ void printFloat(float n, uint8_t decimal_places);
 //  - CoordValue: Handles all position or coordinate values in inches or mm reporting.
 //  - RateValue: Handles feed rate and current velocity in inches or mm reporting.
 //  - SettingValue: Handles all floating point settings values (always in mm.)
+//  - RPMValue: Handles spindle RPM values in settings and reports.
 void printFloat_CoordValue(float n);
-
 void printFloat_RateValue(float n);
-
 void printFloat_SettingValue(float n);
+void printFloat_RPMValue(float n);
 
 // Debug tool to print free memory in bytes at the called point. Not used otherwise.
 void printFreeMemory();

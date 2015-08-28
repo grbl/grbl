@@ -33,10 +33,11 @@
 #define SERIAL_UDRE USART0_UDRE_vect
 
 // Increase Buffers to make use of extra SRAM
-//#define RX_BUFFER_SIZE		256
-//#define TX_BUFFER_SIZE		128
-//#define BLOCK_BUFFER_SIZE	36
-//#define LINE_BUFFER_SIZE	100
+//#define RX_BUFFER_SIZE		  256
+//#define TX_BUFFER_SIZE		  128
+//#define BLOCK_BUFFER_SIZE	  36
+//#define LINE_BUFFER_SIZE	  100
+//#define SEGMENT_BUFFER_SIZE 10
 
 // Define step pulse output pins. NOTE: All step bit pins must be on the same port.
 #define STEP_DDR      DDRA
@@ -107,8 +108,8 @@
 #define CONTROL_INT       PCIE2  // Pin change interrupt enable pin
 #define CONTROL_INT_vect  PCINT2_vect
 #define CONTROL_PCMSK     PCMSK2 // Pin change interrupt register
-#define CONTROL_MASK ((1<<RESET_BIT)|(1<<FEED_HOLD_BIT)|(1<<CYCLE_START_BIT)|(1<<SAFETY_DOOR_BIT))
-#define CONTROL_INVERT_MASK CONTROL_MASK // May be re-defined to only invert certain control pins.
+#define CONTROL_MASK      ((1<<RESET_BIT)|(1<<FEED_HOLD_BIT)|(1<<CYCLE_START_BIT)|(1<<SAFETY_DOOR_BIT))
+#define CONTROL_INVERT_MASK   CONTROL_MASK // May be re-defined to only invert certain control pins.
 
 // Define probe switch input pin.
 #define PROBE_DDR       DDRK
@@ -121,18 +122,19 @@
 #ifdef VARIABLE_SPINDLE
   // Advanced Configuration Below You should not need to touch these variables
   // Set Timer up to use TIMER4B which is attached to Digital Pin 7
-  #define PWM_MAX_VALUE       65535.0
+  #define PWM_MAX_VALUE     1024.0 // Translates to about 1.9 kHz PWM frequency at 1/8 prescaler
   #define TCCRA_REGISTER		TCCR4A
   #define TCCRB_REGISTER		TCCR4B
-  #define OCR_REGISTER		OCR4B
+  #define OCR_REGISTER	  	OCR4B
+  #define COMB_BIT			    COM4B1
   
-  #define COMB_BIT			COM4B1
-  #define WAVE0_REGISTER		WGM40
-  #define WAVE1_REGISTER		WGM41
-  #define WAVE2_REGISTER		WGM42
-  #define WAVE3_REGISTER		WGM43
-  
+  // 1/8 Prescaler, 16-bit Fast PWM mode
+  #define TCCRA_INIT_MASK ((1<<WGM40) | (1<<WGM41))
+  #define TCCRB_INIT_MASK ((1<<WGM42) | (1<<WGM43) | (1<<CS41)) 
+  #define OCRA_REGISTER   OCR4A // 16-bit Fast PWM mode requires top reset value stored here.
+  #define OCRA_TOP_VALUE  0x0400 // PWM counter reset value. Should be the same as PWM_MAX_VALUE in hex.
+
   #define SPINDLE_PWM_DDR		DDRH
-  #define SPINDLE_PWM_PORT    PORTH
-  #define SPINDLE_PWM_BIT		4 // MEGA2560 Digital Pin 97
+  #define SPINDLE_PWM_PORT  PORTH
+  #define SPINDLE_PWM_BIT		4 // MEGA2560 Digital Pin 7
 #endif // End of VARIABLE_SPINDLE

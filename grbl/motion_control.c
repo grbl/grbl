@@ -67,10 +67,11 @@
   } while (1);
 
   // Plan and queue motion into planner buffer
+//   uint8_t plan_status; // Not used in normal operation.
   #ifdef USE_LINE_NUMBERS
-    plan_buffer_line(target, feed_rate, invert_feed_rate, line_number);
+    plan_buffer_line(target, feed_rate, invert_feed_rate, false, line_number);
   #else
-    plan_buffer_line(target, feed_rate, invert_feed_rate);
+    plan_buffer_line(target, feed_rate, invert_feed_rate, false);
   #endif
 }
 
@@ -202,17 +203,9 @@
 // Execute dwell in seconds.
 void mc_dwell(float seconds) 
 {
-   if (sys.state == STATE_CHECK_MODE) { return; }
-   
-   uint16_t i = floor(1000/DWELL_TIME_STEP*seconds);
-   protocol_buffer_synchronize();
-   delay_ms(floor(1000*seconds-i*DWELL_TIME_STEP)); // Delay millisecond remainder.
-   while (i-- > 0) {
-     // NOTE: Check and execute realtime commands during dwell every <= DWELL_TIME_STEP milliseconds.
-     protocol_execute_realtime();
-     if (sys.abort) { return; }
-     _delay_ms(DWELL_TIME_STEP); // Delay DWELL_TIME_STEP increment
-   }
+  if (sys.state == STATE_CHECK_MODE) { return; }
+  protocol_buffer_synchronize();
+  delay_sec(seconds, DELAY_MODE_DWELL);
 }
 
 
@@ -334,6 +327,32 @@ void mc_homing_cycle()
 }
 
 
+// Plans and executes the single special motion case for parking. Independent of main planner buffer.
+// NOTE: Uses the always free planner ring buffer head to store motion parameters for execution.
+void mc_parking_motion(float *parking_target, float feed_rate) 
+{
+  if (sys.abort) { return; } // Block during abort.
+  
+  uint8_t plan_status = plan_buffer_line(parking_target, feed_rate, false, true);
+  if (plan_status) {
+		bit_true(sys.step_control, STEP_CONTROL_EXECUTE_PARK); 
+		bit_false(sys.step_control, STEP_CONTROL_END_MOTION); // Allow parking motion to execute, if feed hold is active.
+    st_parking_setup_buffer(); // Setup step segment buffer for special parking motion case
+		st_prep_buffer();
+		st_wake_up();     
+		do {
+			protocol_exec_rt_system();
+			if (sys.abort) { return; }
+		} while (sys.step_control & STEP_CONTROL_EXECUTE_PARK);  
+		st_parking_restore_buffer(); // Restore step segment buffer to normal run state.
+	} else {
+    bit_false(sys.step_control, STEP_CONTROL_EXECUTE_PARK);
+		protocol_exec_rt_system();
+  }
+
+}
+
+
 // Method to ready the system to reset by setting the realtime reset command and killing any
 // active processes in the system. This also checks if a system reset is issued while Grbl
 // is in a motion state. If so, kills the steppers and sets the system alarm to flag position
@@ -353,7 +372,8 @@ void mc_reset()
     // NOTE: If steppers are kept enabled via the step idle delay setting, this also keeps
     // the steppers enabled by avoiding the go_idle call altogether, unless the motion state is
     // violated, by which, all bets are off.
-    if ((sys.state & (STATE_CYCLE | STATE_HOMING)) || (sys.suspend == SUSPEND_ENABLE_HOLD)) {
+    if ((sys.state & (STATE_CYCLE | STATE_HOMING)) || 
+    		(sys.step_control & (STEP_CONTROL_EXECUTE_HOLD | STEP_CONTROL_EXECUTE_PARK))) {
       if (sys.state == STATE_HOMING) { bit_true_atomic(sys.rt_exec_alarm, EXEC_ALARM_HOMING_FAIL); }
       else { bit_true_atomic(sys.rt_exec_alarm, EXEC_ALARM_ABORT_CYCLE); }
       st_go_idle(); // Force kill steppers. Position has likely been lost.

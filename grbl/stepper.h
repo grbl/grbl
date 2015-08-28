@@ -40,6 +40,12 @@ void st_generate_step_dir_invert_masks();
 
 // Reset the stepper subsystem variables       
 void st_reset();
+
+// Changes the run state of the step segment buffer to execute the special parking motion.
+void st_parking_setup_buffer();
+
+// Restores the step segment buffer to the normal run state after a parking motion.
+void st_parking_restore_buffer();
              
 // Reloads step segment buffer. Called continuously by realtime execution system.
 void st_prep_buffer();

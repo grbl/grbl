@@ -21,7 +21,7 @@
 #include "grbl.h"
 
 
-void system_init() 
+void system_init()
 {
   CONTROL_DDR &= ~(CONTROL_MASK); // Configure as input pins
   #ifdef DISABLE_CONTROL_PIN_PULL_UP
@@ -135,13 +135,11 @@ uint8_t system_execute_line(char *line)
           break; 
         case 'X' : // Disable alarm lock [ALARM]
           if (sys.state == STATE_ALARM) { 
+            // Block if safety door is ajar.
+            if (system_check_safety_door_ajar()) { return(STATUS_CHECK_DOOR); }
             report_feedback_message(MESSAGE_ALARM_UNLOCK);
             sys.state = STATE_IDLE;
             // Don't run startup script. Prevents stored moves in startup from causing accidents.
-            if (system_check_safety_door_ajar()) { // Check safety door switch before returning.
-              bit_true(sys.rt_exec_state, EXEC_SAFETY_DOOR);
-              protocol_execute_realtime(); // Enter safety door mode.
-            }
           } // Otherwise, no effect.
           break;                   
     //  case 'J' : break;  // Jogging methods
@@ -156,8 +154,6 @@ uint8_t system_execute_line(char *line)
           // handled by the planner. It would be possible for the jog subprogram to insert blocks into the
           // block buffer without having the planner plan them. It would need to manage de/ac-celerations 
           // on its own carefully. This approach could be effective and possibly size/memory efficient.  
-//       }
-//       break;
       }
       break;
     default : 
@@ -170,16 +166,9 @@ uint8_t system_execute_line(char *line)
           break;          
         case 'H' : // Perform homing cycle [IDLE/ALARM]
           if (bit_istrue(settings.flags,BITFLAG_HOMING_ENABLE)) { 
+            // Block if safety door is ajar.
+            if (system_check_safety_door_ajar()) { return(STATUS_CHECK_DOOR); }
             sys.state = STATE_HOMING; // Set system state variable
-            // Only perform homing if Grbl is idle or lost.
-            
-            // TODO: Likely not required.
-            if (system_check_safety_door_ajar()) { // Check safety door switch before homing.
-              bit_true(sys.rt_exec_state, EXEC_SAFETY_DOOR);
-              protocol_execute_realtime(); // Enter safety door mode.
-            }
-            
-            
             mc_homing_cycle(); 
             if (!sys.abort) {  // Execute startup scripts after successful homing.
               sys.state = STATE_IDLE; // Set to IDLE when complete.
@@ -276,7 +265,7 @@ float system_convert_axis_steps_to_mpos(int32_t *steps, uint8_t idx)
   #endif
   return(pos);
 }
-  
+
 
 void system_convert_array_steps_to_mpos(float *position, int32_t *steps)
 {

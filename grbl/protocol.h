@@ -38,6 +38,7 @@ void protocol_main_loop();
 
 // Checks and executes a realtime command at various stop points in main program
 void protocol_execute_realtime();
+void protocol_exec_rt_system();
 
 // Notify the stepper subsystem to start executing the g-code program in buffer.
 // void protocol_cycle_start();

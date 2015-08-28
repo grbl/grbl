@@ -3,6 +3,10 @@
 
 ***
 
+This is the development branch for Grbl v1.0's upcoming release. In general, the new features here are beta, so use with caution. If you'd like to help, please report any bugs or oddities that you find! Thanks!
+
+***
+
 Grbl is a no-compromise, high performance, low cost alternative to parallel-port-based motion control for CNC milling. It will run on a vanilla Arduino (Duemillanove/Uno) as long as it sports an Atmega 328. 
 
 The controller is written in highly optimized C utilizing every clever feature of the AVR-chips to achieve precise timing and asynchronous operation. It is able to maintain up to 30kHz of stable, jitter free control pulses.
@@ -24,67 +28,21 @@ Grbl includes full acceleration management with look ahead. That means the contr
 ### Official Supporters of the Grbl CNC Project
 [![Carbide3D](http://carbide3d.com/files/logo_240px.png)](http://carbide3d.com)  [![Inventables](https://dzevsq2emy08i.cloudfront.net/paperclip/press_image_uploads/62/low_res/inventables-logo.png)](http://inventables.com)
 
-***
-
-_**Master Branch:**_
-* [Grbl v0.9j Atmega328p 16mhz 115200baud with generic defaults](http://bit.ly/1I8Ey4S) _(2015-07-17)_
-* [Grbl v0.9j Atmega328p 16mhz 115200baud with ShapeOko2 defaults](http://bit.ly/1OjUSia) _(2015-07-17)_
-  - **IMPORTANT INFO WHEN UPGRADING TO GRBL v0.9 :** 
-  - Baudrate is now **115200** (Up from 9600). 
-  - Homing cycle updated. Located based on switch trigger, rather than release point.
-  - Variable spindle is now enabled by default. Z-limit(D12) and spindle enable(D11) have switched to access the hardware PWM on D11. Homing will not work if you do not re-wire your Z-limit switch to D12.
-
-_**Archives:**_
-* [Grbl v0.9i Atmega328p 16mhz 115200baud with generic defaults](http://bit.ly/1EiviDk) 
-* [Grbl v0.9i Atmega328p 16mhz 115200baud with ShapeOko2 defaults](http://bit.ly/1NYIfKl) 
-* [Grbl v0.9g Atmega328p 16mhz 115200baud with generic defaults](http://bit.ly/1m8E1Qa) 
-* [Grbl v0.9g Atmega328p 16mhz 115200baud with ShapeOko2 defaults](http://bit.ly/1kOAzig) 
-* [Grbl v0.8c Atmega328p 16mhz 9600baud](http://bit.ly/SSdCJE)
-* [Grbl v0.7d Atmega328p 16mhz 9600baud](http://bit.ly/ZhL15G)
-* [Grbl v0.6b Atmega328p 16mhz 9600baud](http://bit.ly/VD04A5)
-* [Grbl v0.51 Atmega328p 16mhz 9600baud](http://bit.ly/W75BS1)
-* [Grbl v0.6b Atmega168 16mhz 9600baud](http://bit.ly/SScWnE)
-* [Grbl v0.51 Atmega168 16mhz 9600baud](http://bit.ly/VXyrYu)
-
 
 ***
 
-##Update Summary for v0.9j
-  - **Restore EEPROM feature:** A new set of restore EEPROM features to help OEMs and users reset their Grbl installation to the build defaults. See Configuring Grbl Wiki for details.
-  
-##Update Summary for v0.9i
-  - **IMPORTANT:**
-    - **Homing cycle updated. Locates based on trigger point, rather than release point.**
-    - **System tweaks: $14 cycle auto-start has been removed. No more QUEUE state.**
-  - **New G-Codes** 
-  - **CoreXY Support**
-  - **Safety Door Support**
-  - **Full Limit and Control Pin Configurability**
-  - **Additional Compile-Time Feature Options**
+##Update Summary for v1.0b
+- **IMPORTANT:** Your EEPROM will be wiped and restored with new settings. This is due to the addition of two new spindle speed '$' settings.
 
-##Update Summary for v0.9h from v0.8
-  - **IMPORTANT:**
-    - **Default serial baudrate is now 115200! (Up from 9600)**
-    - **Z-limit(D12) and spindle enable(D11) pins have switched to support variable spindle!**
-  - **Super Smooth Stepper Algorithm**
-  - **Stability and Robustness Updates**
-  - **(x4)+ Faster Planner**
-  - **Compile-able via Arduino IDE!**
-  - **G-Code Parser Overhaul**
-  - **Independent Acceleration and Velocity Settings**
-  - **Soft Limits**
-  - **Probing**
-  - **Dynamic Tool Length Offsets**
-  - **Improved Arc Performance**
-  - **CPU Pin Mapping**
-  - **New Grbl SIMULATOR! (by @jgeisler and @ashelly)**
-  - **Configurable Real-time Status Reporting**
-  - **Updated Homing Routine**
-  - **Optional Limit Pin Sharing**
-  - **Optional Variable Spindle Speed Output**
-  - **Additional Compile-Time Feature Options**
+- New safety door parking motion as a compile-option. Grbl will retract, disable the spindle/coolant, and park near Z max. When resumed, it will perform these task in reverse order and continue the program. Highly configurable. See config.h for details.
+
+- New '$' Grbl settings for max and min spindle rpm. Allows for tweaking the PWM output to more closely match true spindle rpm. When max rpm is set to zero or less than min rpm, the PWM pin D11 will act like a simple enable on/off output.
+
+- A few bug fixes and lots of refactoring to make the code more efficient and flexible.
+
 
 -
+
 ``` 
 List of Supported G-Codes in Grbl v0.9 Master:
   - Non-Modal Commands: G4, G10L2, G10L20, G28, G30, G28.1, G30.1, G53, G92, G92.1

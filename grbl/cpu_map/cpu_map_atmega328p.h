@@ -116,8 +116,8 @@
 #define CONTROL_INT       PCIE1  // Pin change interrupt enable pin
 #define CONTROL_INT_vect  PCINT1_vect
 #define CONTROL_PCMSK     PCMSK1 // Pin change interrupt register
-#define CONTROL_MASK ((1<<RESET_BIT)|(1<<FEED_HOLD_BIT)|(1<<CYCLE_START_BIT)|(1<<SAFETY_DOOR_BIT))
-#define CONTROL_INVERT_MASK CONTROL_MASK // May be re-defined to only invert certain control pins.
+#define CONTROL_MASK      ((1<<RESET_BIT)|(1<<FEED_HOLD_BIT)|(1<<CYCLE_START_BIT)|(1<<SAFETY_DOOR_BIT))
+#define CONTROL_INVERT_MASK   CONTROL_MASK // May be re-defined to only invert certain control pins.
   
 // Define probe switch input pin.
 #define PROBE_DDR       DDRC
@@ -129,16 +129,15 @@
 // Start of PWM & Stepper Enabled Spindle
 #ifdef VARIABLE_SPINDLE
   // Advanced Configuration Below You should not need to touch these variables
-  #define PWM_MAX_VALUE    255.0
-  #define TCCRA_REGISTER	 TCCR2A
-  #define TCCRB_REGISTER	 TCCR2B
-  #define OCR_REGISTER     OCR2A
+  #define PWM_MAX_VALUE     255.0 // Don't change. 328p fast PWM mode fixes top value as 255.
+  #define TCCRA_REGISTER	  TCCR2A
+  #define TCCRB_REGISTER	  TCCR2B
+  #define OCR_REGISTER      OCR2A
+  #define COMB_BIT	        COM2A1
   
-  #define COMB_BIT	     COM2A1
-  #define WAVE0_REGISTER	 WGM20
-  #define WAVE1_REGISTER	 WGM21
-  #define WAVE2_REGISTER	 WGM22
-  #define WAVE3_REGISTER	 WGM23
+  // 1/8 Prescaler, 8-bit Fast PWM mode. Translates to about 7.8kHz PWM frequency.
+  #define TCCRA_INIT_MASK   ((1<<WGM20) | (1<<WGM21))
+  #define TCCRB_INIT_MASK   (1<<CS21)
       
   // NOTE: On the 328p, these must be the same as the SPINDLE_ENABLE settings.
   #define SPINDLE_PWM_DDR	  DDRB

@@ -72,7 +72,9 @@ void report_status_message(uint8_t status_code)
         #ifdef MAX_STEP_RATE_HZ
           case STATUS_MAX_STEP_RATE_EXCEEDED: 
           printPgmString(PSTR("Step rate > 30kHz")); break;
-        #endif      
+        #endif
+        case STATUS_CHECK_DOOR:
+        printPgmString(PSTR("Check Door")); break;
         // Common g-code parser errors.
         case STATUS_GCODE_MODAL_GROUP_VIOLATION:
         printPgmString(PSTR("Modal group violation")); break;
@@ -196,6 +198,8 @@ void report_grbl_settings() {
     printPgmString(PSTR("\r\n$25=")); printFloat_SettingValue(settings.homing_seek_rate);
     printPgmString(PSTR("\r\n$26=")); print_uint8_base10(settings.homing_debounce_delay);
     printPgmString(PSTR("\r\n$27=")); printFloat_SettingValue(settings.homing_pulloff);
+    printPgmString(PSTR("\r\n$30=")); printFloat_RPMValue(settings.rpm_max);
+    printPgmString(PSTR("\r\n$31=")); printFloat_RPMValue(settings.rpm_min);
     printPgmString(PSTR("\r\n"));
   #else      
     printPgmString(PSTR("$0=")); print_uint8_base10(settings.pulse_microseconds);
@@ -221,7 +225,9 @@ void report_grbl_settings() {
     printPgmString(PSTR(" (homing feed, mm/min)\r\n$25=")); printFloat_SettingValue(settings.homing_seek_rate);
     printPgmString(PSTR(" (homing seek, mm/min)\r\n$26=")); print_uint8_base10(settings.homing_debounce_delay);
     printPgmString(PSTR(" (homing debounce, msec)\r\n$27=")); printFloat_SettingValue(settings.homing_pulloff);
-    printPgmString(PSTR(" (homing pull-off, mm)\r\n"));
+    printPgmString(PSTR(" (homing pull-off, mm)\r\n$30=")); printFloat_RPMValue(settings.rpm_max);
+    printPgmString(PSTR(" (rpm max)\r\n$31=")); printFloat_RPMValue(settings.rpm_min);
+    printPgmString(PSTR(" (rpm min)\r\n"));
   #endif
   
   // Print axis settings
@@ -380,7 +386,7 @@ void report_gcode_modes()
   
   #ifdef VARIABLE_SPINDLE
     printPgmString(PSTR(" S"));
-    printFloat_RateValue(gc_state.spindle_speed);
+    printFloat_RPMValue(gc_state.spindle_speed);
   #endif
 
   printPgmString(PSTR("]\r\n"));

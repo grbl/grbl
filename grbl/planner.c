@@ -219,6 +219,12 @@ void plan_discard_current_block()
 }
 
 
+plan_block_t *plan_get_parking_block()
+{
+  return(&block_buffer[block_buffer_head]);
+}
+
+
 plan_block_t *plan_get_current_block() 
 {
   if (block_buffer_head == block_buffer_tail) { return(NULL); } // Buffer empty  
@@ -251,11 +257,15 @@ uint8_t plan_check_full_buffer()
    In other words, the buffer head is never equal to the buffer tail.  Also the feed rate input value
    is used in three ways: as a normal feed rate if invert_feed_rate is false, as inverse time if
    invert_feed_rate is true, or as seek/rapids rate if the feed_rate value is negative (and
-   invert_feed_rate always false). */
+   invert_feed_rate always false). 
+   The is_parking_motion boolean tells the planner to plan a motion in the always unused block buffer
+   head. It avoids changing the planner state and preserves the buffer to ensure subsequent gcode
+   motions are still planned correctly, while the stepper module only points to the block buffer head 
+   to execute the parking motion. */
 #ifdef USE_LINE_NUMBERS   
-  void plan_buffer_line(float *target, float feed_rate, uint8_t invert_feed_rate, int32_t line_number) 
+  uint8_t plan_buffer_line(float *target, float feed_rate, uint8_t invert_feed_rate, uint8_t is_parking_motion, int32_t line_number) 
 #else
-  void plan_buffer_line(float *target, float feed_rate, uint8_t invert_feed_rate) 
+  uint8_t plan_buffer_line(float *target, float feed_rate, uint8_t invert_feed_rate, uint8_t is_parking_motion) 
 #endif
 {
   // Prepare and initialize new block
@@ -271,14 +281,19 @@ uint8_t plan_check_full_buffer()
   // Compute and store initial move distance data.
   // TODO: After this for-loop, we don't touch the stepper algorithm data. Might be a good idea
   // to try to keep these types of things completely separate from the planner for portability.
-  int32_t target_steps[N_AXIS];
+  int32_t target_steps[N_AXIS], position_steps[N_AXIS];
   float unit_vec[N_AXIS], delta_mm;
   uint8_t idx;
+  
+  // Copy position data based on type of motion being planned.
+  if (is_parking_motion) { memcpy(position_steps, sys.position, sizeof(sys.position)); }
+  else { memcpy(position_steps, pl.position, sizeof(pl.position)); }
+  
   #ifdef COREXY
     target_steps[A_MOTOR] = lround(target[A_MOTOR]*settings.steps_per_mm[A_MOTOR]);
     target_steps[B_MOTOR] = lround(target[B_MOTOR]*settings.steps_per_mm[B_MOTOR]);
-    block->steps[A_MOTOR] = labs((target_steps[X_AXIS]-pl.position[X_AXIS]) + (target_steps[Y_AXIS]-pl.position[Y_AXIS]));
-    block->steps[B_MOTOR] = labs((target_steps[X_AXIS]-pl.position[X_AXIS]) - (target_steps[Y_AXIS]-pl.position[Y_AXIS]));
+    block->steps[A_MOTOR] = labs((target_steps[X_AXIS]-position_steps[X_AXIS]) + (target_steps[Y_AXIS]-position_steps[Y_AXIS]));
+    block->steps[B_MOTOR] = labs((target_steps[X_AXIS]-position_steps[X_AXIS]) - (target_steps[Y_AXIS]-position_steps[Y_AXIS]));
   #endif
 
   for (idx=0; idx<N_AXIS; idx++) {
@@ -288,22 +303,22 @@ uint8_t plan_check_full_buffer()
     #ifdef COREXY
       if ( !(idx == A_MOTOR) && !(idx == B_MOTOR) ) {
         target_steps[idx] = lround(target[idx]*settings.steps_per_mm[idx]);
-        block->steps[idx] = labs(target_steps[idx]-pl.position[idx]);
+        block->steps[idx] = labs(target_steps[idx]-position_steps[idx]);
       }
       block->step_event_count = max(block->step_event_count, block->steps[idx]);
       if (idx == A_MOTOR) {
-        delta_mm = ((target_steps[X_AXIS]-pl.position[X_AXIS]) + (target_steps[Y_AXIS]-pl.position[Y_AXIS]))/settings.steps_per_mm[idx];
+        delta_mm = ((target_steps[X_AXIS]-position_steps[X_AXIS]) + (target_steps[Y_AXIS]-position_steps[Y_AXIS]))/settings.steps_per_mm[idx];
       } else if (idx == B_MOTOR) {
-        delta_mm = ((target_steps[X_AXIS]-pl.position[X_AXIS]) - (target_steps[Y_AXIS]-pl.position[Y_AXIS]))/settings.steps_per_mm[idx];
+        delta_mm = ((target_steps[X_AXIS]-position_steps[X_AXIS]) - (target_steps[Y_AXIS]-position_steps[Y_AXIS]))/settings.steps_per_mm[idx];
       } else {
-        delta_mm = (target_steps[idx] - pl.position[idx])/settings.steps_per_mm[idx];
+        delta_mm = (target_steps[idx] - position_steps[idx])/settings.steps_per_mm[idx];
       }
     #else
       target_steps[idx] = lround(target[idx]*settings.steps_per_mm[idx]);
-      block->steps[idx] = labs(target_steps[idx]-pl.position[idx]);
+      block->steps[idx] = labs(target_steps[idx]-position_steps[idx]);
       block->step_event_count = max(block->step_event_count, block->steps[idx]);
-      delta_mm = (target_steps[idx] - pl.position[idx])/settings.steps_per_mm[idx];
-    #endif
+      delta_mm = (target_steps[idx] - position_steps[idx])/settings.steps_per_mm[idx];
+	  #endif
     unit_vec[idx] = delta_mm; // Store unit vector numerator. Denominator computed later.
         
     // Set direction bits. Bit enabled always means direction is negative.
@@ -315,7 +330,7 @@ uint8_t plan_check_full_buffer()
   block->millimeters = sqrt(block->millimeters); // Complete millimeters calculation with sqrt()
   
   // Bail if this is a zero-length block. Highly unlikely to occur.
-  if (block->step_event_count == 0) { return; } 
+  if (block->step_event_count == 0) { return(PLAN_EMPTY_BLOCK); } 
   
   // Adjust feed_rate value to mm/min depending on type of rate input (normal, inverse time, or rapids)
   // TODO: Need to distinguish a rapids vs feed move for overrides. Some flag of some sort.
@@ -329,7 +344,7 @@ uint8_t plan_check_full_buffer()
   // if they are also orthogonal/independent. Operates on the absolute value of the unit vector.
   float inverse_unit_vec_value;
   float inverse_millimeters = 1.0/block->millimeters;  // Inverse millimeters to remove multiple float divides	
-  float junction_cos_theta = 0;
+  float junction_cos_theta = 0.0;
   for (idx=0; idx<N_AXIS; idx++) {
     if (unit_vec[idx] != 0) {  // Avoid divide by zero.
       unit_vec[idx] *= inverse_millimeters;  // Complete unit vector calculation
@@ -345,14 +360,15 @@ uint8_t plan_check_full_buffer()
       junction_cos_theta -= pl.previous_unit_vec[idx] * unit_vec[idx];
     }
   }
-  
+
   // TODO: Need to check this method handling zero junction speeds when starting from rest.
-  if (block_buffer_head == block_buffer_tail) {
-  
+  if ((block_buffer_head == block_buffer_tail) || is_parking_motion) {
+
     // Initialize block entry speed as zero. Assume it will be starting from rest. Planner will correct this later.
+    // If parking motion, the parking block always is assumed to start from rest and end at a complete stop.
     block->entry_speed_sqr = 0.0;
     block->max_junction_speed_sqr = 0.0; // Starting from rest. Enforce start from zero velocity.
-  
+
   } else {
     /* 
        Compute maximum allowable entry speed at junction by centripetal acceleration approximation.
@@ -371,7 +387,7 @@ uint8_t plan_check_full_buffer()
        is exactly the same. Instead of motioning all the way to junction point, the machine will
        just follow the arc circle defined here. The Arduino doesn't have the CPU cycles to perform
        a continuous mode path, but ARM-based microcontrollers most certainly do. 
-       
+   
        NOTE: The max junction speed is a fixed value, since machine acceleration limits cannot be
        changed dynamically during operation nor can the line move geometry. This must be kept in
        memory in the event of a feedrate override changing the nominal speeds of blocks, which can 
@@ -388,31 +404,35 @@ uint8_t plan_check_full_buffer()
       // TODO: Technically, the acceleration used in calculation needs to be limited by the minimum of the
       // two junctions. However, this shouldn't be a significant problem except in extreme circumstances.
       block->max_junction_speed_sqr = max( MINIMUM_JUNCTION_SPEED*MINIMUM_JUNCTION_SPEED,
-                                   (block->acceleration * settings.junction_deviation * sin_theta_d2)/(1.0-sin_theta_d2) );
+                     (block->acceleration * settings.junction_deviation * sin_theta_d2)/(1.0-sin_theta_d2) );
 
     }
   }
-
+  
   // Store block nominal speed
   block->nominal_speed_sqr = feed_rate*feed_rate; // (mm/min). Always > 0
   
   // Compute the junction maximum entry based on the minimum of the junction speed and neighboring nominal speeds.
   block->max_entry_speed_sqr = min(block->max_junction_speed_sqr, 
-                                   min(block->nominal_speed_sqr,pl.previous_nominal_speed_sqr));
-  
-  // Update previous path unit_vector and nominal speed (squared)
-  memcpy(pl.previous_unit_vec, unit_vec, sizeof(unit_vec)); // pl.previous_unit_vec[] = unit_vec[]
-  pl.previous_nominal_speed_sqr = block->nominal_speed_sqr;
-    
-  // Update planner position
-  memcpy(pl.position, target_steps, sizeof(target_steps)); // pl.position[] = target_steps[]
+								   min(block->nominal_speed_sqr,pl.previous_nominal_speed_sqr));
 
-  // New block is all set. Update buffer head and next buffer head indices.
-  block_buffer_head = next_buffer_head;  
-  next_buffer_head = plan_next_block_index(block_buffer_head);
+  // Block parking motion from updating this data to ensure next g-code motion is computed correctly.
+  if (!is_parking_motion) {
+    // Update previous path unit_vector and nominal speed (squared)
+    memcpy(pl.previous_unit_vec, unit_vec, sizeof(unit_vec)); // pl.previous_unit_vec[] = unit_vec[]
+    pl.previous_nominal_speed_sqr = block->nominal_speed_sqr;
   
-  // Finish up by recalculating the plan with the new block.
-  planner_recalculate();
+    // Update planner position
+    memcpy(pl.position, target_steps, sizeof(target_steps)); // pl.position[] = target_steps[]
+
+    // New block is all set. Update buffer head and next buffer head indices.
+    block_buffer_head = next_buffer_head;  
+    next_buffer_head = plan_next_block_index(block_buffer_head);
+  
+    // Finish up by recalculating the plan with the new block.
+    planner_recalculate();
+  }
+  return(PLAN_OK);
 }
 
 
@@ -424,7 +444,7 @@ void plan_sync_position()
   uint8_t idx;
   for (idx=0; idx<N_AXIS; idx++) {
     #ifdef COREXY
-     if (idx==A_MOTOR) { 
+      if (idx==A_MOTOR) { 
         pl.position[idx] = (sys.position[A_MOTOR] + sys.position[B_MOTOR])/2;
       } else if (idx==B_MOTOR) { 
         pl.position[idx] = (sys.position[A_MOTOR] - sys.position[B_MOTOR])/2;
