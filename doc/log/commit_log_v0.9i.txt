@@ -1,6 +1,12 @@
 ----------------
 Date: 2015-08-27
 Author: Sonny Jeon
+Subject: Update README
+
+
+----------------
+Date: 2015-08-27
+Author: Sonny Jeon
 Subject: v1.0 Beta Release.
 
 - Tons of new stuff in this release, which is fairly stable and well

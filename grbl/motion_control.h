@@ -24,6 +24,7 @@
 
 
 #define HOMING_CYCLE_LINE_NUMBER -1
+#define PARKING_MOTION_LINE_NUMBER -2
 
 // Execute linear motion in absolute millimeter coordinates. Feed rate given in millimeters/second
 // unless invert_feed_rate is true. Then the feed_rate means that the motion should be completed in

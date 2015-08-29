@@ -67,7 +67,7 @@
   } while (1);
 
   // Plan and queue motion into planner buffer
-//   uint8_t plan_status; // Not used in normal operation.
+  // uint8_t plan_status; // Not used in normal operation.
   #ifdef USE_LINE_NUMBERS
     plan_buffer_line(target, feed_rate, invert_feed_rate, false, line_number);
   #else
@@ -333,7 +333,11 @@ void mc_parking_motion(float *parking_target, float feed_rate)
 {
   if (sys.abort) { return; } // Block during abort.
   
-  uint8_t plan_status = plan_buffer_line(parking_target, feed_rate, false, true);
+  #ifdef USE_LINE_NUMBERS
+    uint8_t plan_status = plan_buffer_line(parking_target, feed_rate, false, true, PARKING_MOTION_LINE_NUMBER);
+  #else
+    uint8_t plan_status = plan_buffer_line(parking_target, feed_rate, false, true);
+  #endif
   if (plan_status) {
 		bit_true(sys.step_control, STEP_CONTROL_EXECUTE_PARK); 
 		bit_false(sys.step_control, STEP_CONTROL_END_MOTION); // Allow parking motion to execute, if feed hold is active.
