@@ -1,4 +1,13 @@
 ----------------
+Date: 2015-08-29
+Author: Sonny Jeon
+Subject: Optional line number reporting bug fix.
+
+- Fixed a bug where it would not compile when USE_LINE_NUMBERS was
+enabled.
+
+
+----------------
 Date: 2015-08-27
 Author: Sonny Jeon
 Subject: Update README

@@ -135,7 +135,6 @@ typedef struct {
     uint8_t last_st_block_index;
     float last_steps_remaining;
     float last_step_per_mm;
-    float last_req_mm_increment;
     float last_dt_remainder;
   #endif
 
@@ -551,12 +550,13 @@ static uint8_t st_next_block_index(uint8_t block_index)
   {   
     // Restore step execution data and flags of partially completed block, if necessary. 
     if (prep.recalculate_flag & PREP_FLAG_HOLD_PARTIAL_BLOCK) {
+      st_prep_block = &st_block_buffer[prep.last_st_block_index];
       prep.st_block_index = prep.last_st_block_index;
       prep.steps_remaining = prep.last_steps_remaining;
       prep.dt_remainder = prep.last_dt_remainder;
       prep.step_per_mm = prep.last_step_per_mm;
-      st_prep_block = &st_block_buffer[prep.st_block_index];
       prep.recalculate_flag = (PREP_FLAG_HOLD_PARTIAL_BLOCK | PREP_FLAG_RECALCULATE);
+      prep.req_mm_increment = REQ_MM_INCREMENT_SCALAR/prep.step_per_mm; // Recompute this value.
     } else {
       prep.recalculate_flag = false;
     }
@@ -594,12 +594,15 @@ void st_prep_buffer()
         if (sys.step_control & STEP_CONTROL_EXECUTE_PARK) { pl_block = plan_get_parking_block(); }
         else { pl_block = plan_get_current_block(); }
         if (pl_block == NULL) { return; } // No planner blocks. Exit.
-  
+
         // Check if we need to only recompute the velocity profile or load a new block.
         if (prep.recalculate_flag & PREP_FLAG_RECALCULATE) {
+
           if (prep.recalculate_flag & PREP_FLAG_PARKING) { prep.recalculate_flag &= ~(PREP_FLAG_RECALCULATE); }
           else { prep.recalculate_flag = false; }
-      
+
+        } else {
+
       #else
       
         // Query planner for a queued block
@@ -608,11 +611,12 @@ void st_prep_buffer()
 
         // Check if we need to only recompute the velocity profile or load a new block.
         if (prep.recalculate_flag & PREP_FLAG_RECALCULATE) {
+
           prep.recalculate_flag = false;
+        
+        } else {
 	      
       #endif
-
-      } else {
               
         // Load the Bresenham stepping data for the block.
         prep.st_block_index = st_next_block_index(prep.st_block_index);
@@ -639,7 +643,7 @@ void st_prep_buffer()
         prep.step_per_mm = prep.steps_remaining/pl_block->millimeters;
         prep.req_mm_increment = REQ_MM_INCREMENT_SCALAR/prep.step_per_mm;
         prep.dt_remainder = 0.0; // Reset for new segment block
-
+      
         if (sys.step_control & STEP_CONTROL_EXECUTE_HOLD) {
           // New block loaded mid-hold. Override planner block entry speed to enforce deceleration.
           prep.current_speed = prep.exit_speed; 
@@ -648,7 +652,7 @@ void st_prep_buffer()
           prep.current_speed = sqrt(pl_block->entry_speed_sqr); 
         }
       }
-
+      
 			/* --------------------------------------------------------------------------------- 
 			 Compute the velocity profile of a new planner block based on its entry and exit
 			 speeds, or recompute the profile of a partially-completed planner block if the 
