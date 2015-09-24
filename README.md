@@ -38,6 +38,8 @@ Grbl includes full acceleration management with look ahead. That means the contr
 
 - New '$' Grbl settings for max and min spindle rpm. Allows for tweaking the PWM output to more closely match true spindle rpm. When max rpm is set to zero or less than min rpm, the PWM pin D11 will act like a simple enable on/off output.
 
+- Updated G28 and G30 behavior from NIST to LinuxCNC g-code description. In short, if a intermediate motion is specified, only the axes specified will move to the stored coordinates, not all axes as before.
+
 - A few bug fixes and lots of refactoring to make the code more efficient and flexible.
 
 

@@ -1,4 +1,13 @@
 ----------------
+Date: 2015-09-05
+Author: Sonny Jeon
+Subject: Parking motion bug fix.
+
+- Parking motion would intermittently complete the queued tool path
+upon resuming in certain scenarios. Now fixed.
+
+
+----------------
 Date: 2015-08-29
 Author: Sonny Jeon
 Subject: Optional line number reporting bug fix.

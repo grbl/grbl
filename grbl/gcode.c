@@ -615,19 +615,26 @@ uint8_t gc_execute_line(char *line)
           
       // Check remaining non-modal commands for errors.
       switch (gc_block.non_modal_command) {        
-        case NON_MODAL_GO_HOME_0: 
-          // [G28 Errors]: Cutter compensation is enabled. 
-          // Retreive G28 go-home position data (in machine coordinates) from EEPROM
-          if (!axis_words) { axis_command = AXIS_COMMAND_NONE; } // Set to none if no intermediate motion.
-          if (!settings_read_coord_data(SETTING_INDEX_G28,parameter_data)) { FAIL(STATUS_SETTING_READ_FAIL); }
+        case NON_MODAL_GO_HOME_0: // G28
+        case NON_MODAL_GO_HOME_1: // G30
+          // [G28/30 Errors]: Cutter compensation is enabled. 
+          // Retreive G28/30 go-home position data (in machine coordinates) from EEPROM
+          if (gc_block.non_modal_command == NON_MODAL_GO_HOME_0) {
+            if (!settings_read_coord_data(SETTING_INDEX_G28,parameter_data)) { FAIL(STATUS_SETTING_READ_FAIL); }
+          } else { // == NON_MODAL_GO_HOME_1
+            if (!settings_read_coord_data(SETTING_INDEX_G30,parameter_data)) { FAIL(STATUS_SETTING_READ_FAIL); }
+          }
+          if (axis_words) { 
+            // Move only the axes specified in secondary move.
+            for (idx=0; idx<N_AXIS; idx++) {
+              if (!(axis_words & (1<<idx))) { parameter_data[idx] = gc_state.position[idx]; }
+            }
+          } else {
+            axis_command = AXIS_COMMAND_NONE; // Set to none if no intermediate motion.
+          }
           break;
-        case NON_MODAL_GO_HOME_1:
-          // [G30 Errors]: Cutter compensation is enabled. 
-          // Retreive G30 go-home position data (in machine coordinates) from EEPROM
-          if (!axis_words) { axis_command = AXIS_COMMAND_NONE; } // Set to none if no intermediate motion.
-          if (!settings_read_coord_data(SETTING_INDEX_G30,parameter_data)) { FAIL(STATUS_SETTING_READ_FAIL); }
-          break;
-        case NON_MODAL_SET_HOME_0: case NON_MODAL_SET_HOME_1:
+        case NON_MODAL_SET_HOME_0: // G28.1
+        case NON_MODAL_SET_HOME_1: // G30.1
           // [G28.1/30.1 Errors]: Cutter compensation is enabled. 
           // NOTE: If axis words are passed here, they are interpreted as an implicit motion mode.
           break;
