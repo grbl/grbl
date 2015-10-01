@@ -218,7 +218,7 @@ void st_go_idle()
   
   // Set stepper driver idle state, disabled or enabled, depending on settings and circumstances.
   bool pin_state = false; // Keep enabled.
-  if (((settings.stepper_idle_lock_time != 0xff) || sys.rt_exec_alarm) && sys.state != STATE_HOMING) {
+  if (((settings.stepper_idle_lock_time != 0xff) || sys_rt_exec_alarm) && sys.state != STATE_HOMING) {
     // Force stepper dwell to lock axes for a defined amount of time to ensure the axes come to a complete
     // stop and not drift from residual inertial forces at the end of the last movement.
     delay_ms(settings.stepper_idle_lock_time);
@@ -338,7 +338,7 @@ ISR(TIMER1_COMPA_vect)
     } else {
       // Segment buffer empty. Shutdown.
       st_go_idle();
-      bit_true_atomic(sys.rt_exec_state,EXEC_CYCLE_STOP); // Flag main program for cycle end
+      bit_true_atomic(sys_rt_exec_state,EXEC_CYCLE_STOP); // Flag main program for cycle end
       return; // Nothing to do but exit.
     }  
   }

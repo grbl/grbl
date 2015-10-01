@@ -77,8 +77,8 @@ int main(void)
 
     // Reset system variables.
     sys.abort = false;
-    sys.rt_exec_state = 0;
-    sys.rt_exec_alarm = 0;
+    sys_rt_exec_state = 0;
+    sys_rt_exec_alarm = 0;
     sys.suspend = false;
           
     // Start Grbl main loop. Processes program inputs and executes them.

@@ -101,16 +101,16 @@ uint8_t limits_get_state()
     // locked out until a homing cycle or a kill lock command. Allows the user to disable the hard
     // limit setting if their limits are constantly triggering after a reset and move their axes.
     if (sys.state != STATE_ALARM) { 
-      if (!(sys.rt_exec_alarm)) {
+      if (!(sys_rt_exec_alarm)) {
         #ifdef HARD_LIMIT_FORCE_STATE_CHECK
           // Check limit pin state. 
           if (limits_get_state()) {
             mc_reset(); // Initiate system kill.
-            bit_true_atomic(sys.rt_exec_alarm, (EXEC_ALARM_HARD_LIMIT|EXEC_CRITICAL_EVENT)); // Indicate hard limit critical event
+            bit_true_atomic(sys_rt_exec_alarm, (EXEC_ALARM_HARD_LIMIT|EXEC_CRITICAL_EVENT)); // Indicate hard limit critical event
           }
         #else
           mc_reset(); // Initiate system kill.
-          bit_true_atomic(sys.rt_exec_alarm, (EXEC_ALARM_HARD_LIMIT|EXEC_CRITICAL_EVENT)); // Indicate hard limit critical event
+          bit_true_atomic(sys_rt_exec_alarm, (EXEC_ALARM_HARD_LIMIT|EXEC_CRITICAL_EVENT)); // Indicate hard limit critical event
         #endif
       }
     }
@@ -122,11 +122,11 @@ uint8_t limits_get_state()
   {
     WDTCSR &= ~(1<<WDIE); // Disable watchdog timer. 
     if (sys.state != STATE_ALARM) {  // Ignore if already in alarm state. 
-      if (!(sys.rt_exec_alarm)) {
+      if (!(sys_rt_exec_alarm)) {
         // Check limit pin state. 
         if (limits_get_state()) {
           mc_reset(); // Initiate system kill.
-          bit_true_atomic(sys.rt_exec_alarm, (EXEC_ALARM_HARD_LIMIT|EXEC_CRITICAL_EVENT)); // Indicate hard limit critical event
+          bit_true_atomic(sys_rt_exec_alarm, (EXEC_ALARM_HARD_LIMIT|EXEC_CRITICAL_EVENT)); // Indicate hard limit critical event
         }
       }  
     }
@@ -225,17 +225,17 @@ void limits_go_home(uint8_t cycle_mask)
 	  st_prep_buffer(); // Check and prep segment buffer. NOTE: Should take no longer than 200us.
 
 	  // Exit routines: No time to run protocol_execute_realtime() in this loop.
-	  if (sys.rt_exec_state & (EXEC_SAFETY_DOOR | EXEC_RESET | EXEC_CYCLE_STOP)) {
+	  if (sys_rt_exec_state & (EXEC_SAFETY_DOOR | EXEC_RESET | EXEC_CYCLE_STOP)) {
 	    // Homing failure: Limit switches are still engaged after pull-off motion
-		if ( (sys.rt_exec_state & (EXEC_SAFETY_DOOR | EXEC_RESET)) ||  // Safety door or reset issued
+		if ( (sys_rt_exec_state & (EXEC_SAFETY_DOOR | EXEC_RESET)) ||  // Safety door or reset issued
 		     (!approach && (limits_get_state() & cycle_mask)) ||  // Limit switch still engaged after pull-off motion
-		     ( approach && (sys.rt_exec_state & EXEC_CYCLE_STOP)) ) { // Limit switch not found during approach.
+		     ( approach && (sys_rt_exec_state & EXEC_CYCLE_STOP)) ) { // Limit switch not found during approach.
      	  mc_reset(); // Stop motors, if they are running.
 		  protocol_execute_realtime();
 		  return;
 		} else {
 		  // Pull-off motion complete. Disable CYCLE_STOP from executing.
-          bit_false_atomic(sys.rt_exec_state,EXEC_CYCLE_STOP);
+          bit_false_atomic(sys_rt_exec_state,EXEC_CYCLE_STOP);
 		  break;
 		} 
 	  }
@@ -335,7 +335,7 @@ void limits_soft_check(float *target)
       // workspace volume so just come to a controlled stop so position is not lost. When complete
       // enter alarm mode.
       if (sys.state == STATE_CYCLE) {
-        bit_true_atomic(sys.rt_exec_state, EXEC_FEED_HOLD);
+        bit_true_atomic(sys_rt_exec_state, EXEC_FEED_HOLD);
         do {
           protocol_execute_realtime();
           if (sys.abort) { return; }
@@ -343,7 +343,7 @@ void limits_soft_check(float *target)
       }
     
       mc_reset(); // Issue system reset and ensure spindle and coolant are shutdown.
-      bit_true_atomic(sys.rt_exec_alarm, (EXEC_ALARM_SOFT_LIMIT|EXEC_CRITICAL_EVENT)); // Indicate soft limit critical event
+      bit_true_atomic(sys_rt_exec_alarm, (EXEC_ALARM_SOFT_LIMIT|EXEC_CRITICAL_EVENT)); // Indicate soft limit critical event
       protocol_execute_realtime(); // Execute to enter critical event loop and system abort
       return;
     }
