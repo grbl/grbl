@@ -49,13 +49,13 @@ ISR(CONTROL_INT_vect)
     if (bit_istrue(pin,bit(RESET_BIT))) {
       mc_reset();
     } else if (bit_istrue(pin,bit(CYCLE_START_BIT))) {
-      bit_true(sys.rt_exec_state, EXEC_CYCLE_START);
+      bit_true(sys_rt_exec_state, EXEC_CYCLE_START);
     #ifndef ENABLE_SAFETY_DOOR_INPUT_PIN
       } else if (bit_istrue(pin,bit(FEED_HOLD_BIT))) {
-        bit_true(sys.rt_exec_state, EXEC_FEED_HOLD); 
+        bit_true(sys_rt_exec_state, EXEC_FEED_HOLD); 
     #else
       } else if (bit_istrue(pin,bit(SAFETY_DOOR_BIT))) {
-        bit_true(sys.rt_exec_state, EXEC_SAFETY_DOOR);
+        bit_true(sys_rt_exec_state, EXEC_SAFETY_DOOR);
     #endif
     } 
   }

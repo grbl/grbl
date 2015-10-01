@@ -1,0 +1,17 @@
+----------------
+Date: 2015-08-14
+Author: Sonny Jeon
+Subject: Individual control pin invert compile-option.
+
+- Control pins may be individually inverted through a
+CONTROL_INVERT_MASK macro. This mask is define in the cpu_map.h file.
+
+
+----------------
+Date: 2015-07-17
+Author: Sonny Jeon
+Subject: Version bump to v0.9j
+
+- Version bump requested by OEMs to easily determine whether the
+firmware supports the new EEPROM reset feature. Other than that, no
+significant changes.

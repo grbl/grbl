@@ -1,0 +1,104 @@
+----------------
+Date: 2015-09-24
+Author: Sonny Jeon
+Subject: Updated G28/G30 intermediate motion behavior.
+
+- G28 and G30’s behavior has been updated from the old NIST g-code
+standard to LinuxCNC’s. Previously when an intermediate motion was
+programmed, the NIST standard would move all axes to the final G28/30
+stored coordinates. LinuxCNC states it only moves the axes specified in
+the command.
+
+  For example, suppose G28’s stored position is (x,y,z) = (1,2,3) for
+simplicity, and we want to do an automated z-axis tool retraction and
+then park at the x,y location. `G28 G91 Z5` will first move the Z axis
+5mm(or inches) up, then move Z to position 3 in machine coordinates.
+Next, the command `G28 G91 X0 Y0` would skip the intermediate move
+since distance is zero, but then move only the x and y axes to machine
+coordinates 1 and 2, respectively. The z-axis wouldn’t move in this
+case, since it wasn’t specified.
+
+This change is intended to make Grbl more LinuxCNC compatible while
+making commands, like the shown tool retraction, much easier to
+implement.
+
+
+----------------
+Date: 2015-09-05
+Author: Sonny Jeon
+Subject: Parking motion bug fix.
+
+- Parking motion would intermittently complete the queued tool path
+upon resuming in certain scenarios. Now fixed.
+
+
+----------------
+Date: 2015-08-29
+Author: Sonny Jeon
+Subject: Optional line number reporting bug fix.
+
+- Fixed a bug where it would not compile when USE_LINE_NUMBERS was
+enabled.
+
+
+----------------
+Date: 2015-08-27
+Author: Sonny Jeon
+Subject: Update README
+
+
+----------------
+Date: 2015-08-27
+Author: Sonny Jeon
+Subject: v1.0 Beta Release.
+
+- Tons of new stuff in this release, which is fairly stable and well
+tested. However, much more is coming soon!
+
+- Real-time parking motion with safety door. When this compile option
+is enabled, an opened safety door will cause Grbl to automatically feed
+hold, retract, de-energize the spindle/coolant, and parks near Z max.
+After the door is closed and resume is commanded, this reverses and the
+program continues as if nothing happened. This is also highly
+configurable. See config.h for details.
+
+- New spindle max and min rpm ‘$’ settings! This has been requested
+often. Grbl will output 5V when commanded to turn on the spindle at its
+max rpm, and 0.02V with min rpm. The voltage and the rpm range are
+linear to each other. This should help users tweak their settings to
+get close to true rpm’s.
+
+- If the new max rpm ‘$’ setting is set = 0 or less than min rpm, the
+spindle speed PWM pin will act like a regular on/off spindle enable
+pin. On pin D11.
+
+- BEWARE: Your old EEPROM settings will be wiped! The new spindle rpm
+settings require a new settings version, so Grbl will automatically
+wipe and restore the EEPROM with the new defaults.
+
+- Control pin can now be inverted individually with a
+CONTROL_INVERT_MASK in the cpu_map header file. Not typical for users
+to need this, but handy to have.
+
+- Fixed bug when Grbl receive too many characters in a line and
+overflows. Previously it would respond with an error per overflow
+character and another acknowledge upon an EOL character. This broke the
+streaming protocol. Now fixed to only respond with an error after an
+EOL character.
+
+- Fixed a bug with the safety door during an ALARM mode. You now can’t
+home or unlock the axes until the safety door has been closed. This is
+for safety reasons (obviously.)
+
+- Tweaked some the Mega2560 cpu_map settings . Increased segment buffer
+size and fixed the spindle PWM settings to output at a higher PWM
+frequency.
+
+- Generalized the delay function used by G4 delay for use by parking
+motion. Allows non-blocking status reports and real-time control during
+re-energizing of the spindle and coolant.
+
+- Added spindle rpm max and min defaults to default.h files.
+
+- Added a new print float for rpm values.
+
