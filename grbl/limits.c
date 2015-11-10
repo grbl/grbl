@@ -106,11 +106,11 @@ uint8_t limits_get_state()
           // Check limit pin state. 
           if (limits_get_state()) {
             mc_reset(); // Initiate system kill.
-            bit_true_atomic(sys_rt_exec_alarm, (EXEC_ALARM_HARD_LIMIT|EXEC_CRITICAL_EVENT)); // Indicate hard limit critical event
+            system_set_exec_alarm_flag((EXEC_ALARM_HARD_LIMIT|EXEC_CRITICAL_EVENT)); // Indicate hard limit critical event
           }
         #else
           mc_reset(); // Initiate system kill.
-          bit_true_atomic(sys_rt_exec_alarm, (EXEC_ALARM_HARD_LIMIT|EXEC_CRITICAL_EVENT)); // Indicate hard limit critical event
+          system_set_exec_alarm_flag((EXEC_ALARM_HARD_LIMIT|EXEC_CRITICAL_EVENT)); // Indicate hard limit critical event
         #endif
       }
     }
@@ -126,7 +126,7 @@ uint8_t limits_get_state()
         // Check limit pin state. 
         if (limits_get_state()) {
           mc_reset(); // Initiate system kill.
-          bit_true_atomic(sys_rt_exec_alarm, (EXEC_ALARM_HARD_LIMIT|EXEC_CRITICAL_EVENT)); // Indicate hard limit critical event
+          system_set_exec_alarm_flag((EXEC_ALARM_HARD_LIMIT|EXEC_CRITICAL_EVENT)); // Indicate hard limit critical event
         }
       }  
     }
@@ -235,7 +235,7 @@ void limits_go_home(uint8_t cycle_mask)
           return;
         } else {
           // Pull-off motion complete. Disable CYCLE_STOP from executing.
-          bit_false_atomic(sys_rt_exec_state,EXEC_CYCLE_STOP);
+          system_clear_exec_state_flag(EXEC_CYCLE_STOP);
           break;
         } 
       }
@@ -335,7 +335,7 @@ void limits_soft_check(float *target)
       // workspace volume so just come to a controlled stop so position is not lost. When complete
       // enter alarm mode.
       if (sys.state == STATE_CYCLE) {
-        bit_true_atomic(sys_rt_exec_state, EXEC_FEED_HOLD);
+        system_set_exec_state_flag(EXEC_FEED_HOLD);
         do {
           protocol_execute_realtime();
           if (sys.abort) { return; }
@@ -343,7 +343,7 @@ void limits_soft_check(float *target)
       }
     
       mc_reset(); // Issue system reset and ensure spindle and coolant are shutdown.
-      bit_true_atomic(sys_rt_exec_alarm, (EXEC_ALARM_SOFT_LIMIT|EXEC_CRITICAL_EVENT)); // Indicate soft limit critical event
+      system_set_exec_alarm_flag((EXEC_ALARM_SOFT_LIMIT|EXEC_CRITICAL_EVENT)); // Indicate soft limit critical event
       protocol_execute_realtime(); // Execute to enter critical event loop and system abort
       return;
     }

@@ -31,8 +31,10 @@ Grbl includes full acceleration management with look ahead. That means the contr
 
 ***
 
-##Update Summary for v1.0b
+##Update Summary for v1.0c
 - **IMPORTANT:** Your EEPROM will be wiped and restored with new settings. This is due to the addition of two new spindle speed '$' settings.
+
+- Altered limit pin status reports from `Lim:000` to `Pin:000|0|0000`, where the `|` delimiters separate the new probe state and control pin states. Each new field may be disabled by the `$10` Grbl setting. NOTE: Commenting `REPORT_ALL_PIN_STATES` in config.h reverts to old `Lim:` reports, if needed.
 
 - New safety door parking motion as a compile-option. Grbl will retract, disable the spindle/coolant, and park near Z max. When resumed, it will perform these task in reverse order and continue the program. Highly configurable. See config.h for details.
 

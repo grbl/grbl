@@ -164,11 +164,12 @@
 // uncomment the config option USE_SPINDLE_DIR_AS_ENABLE_PIN below.
 // #define INVERT_SPINDLE_ENABLE_PIN // Default disabled. Uncomment to enable.
 
-// Enable control pin states feedback in status reports. The data is presented as simple binary of
-// the control pin port (0 (low) or 1(high)), masked to show only the input pins. Non-control pins on the 
-// port will always show a 0 value. See cpu_map.h for the pin bitmap. As with the limit pin reporting,
-// we do not recommend keeping this option enabled. Try to only use this for setting up a new CNC.
-// #define REPORT_CONTROL_PIN_STATE // Default disabled. Uncomment to enable.
+// Enable all pin states feedback in status reports. Configurable with Grbl settings to print only
+// the desired data, which is presented as simple binary reading of each pin as (0 (low) or 1(high)).
+// The fields are printed in a particular order and settings groups are separated by '|' characters. 
+// NOTE: This option is here for backward compatibility of the old style of pin state reports, i.e. 
+// `Lim:000`. This new `Pin:` report will be the standard going forward.
+#define REPORT_ALL_PIN_STATES // Default enabled. Comment to disable.
 
 // When Grbl powers-cycles or is hard reset with the Arduino reset button, Grbl boots up with no ALARM
 // by default. This is to make it as simple as possible for new users to start using Grbl. When homing

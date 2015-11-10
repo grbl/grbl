@@ -502,14 +502,28 @@ void report_realtime_status()
     printFloat_RateValue(st_get_realtime_rate());
   #endif    
   
-  if (bit_istrue(settings.status_report_mask,BITFLAG_RT_STATUS_LIMIT_PINS)) {
-    printPgmString(PSTR(",Lim:"));
-    print_unsigned_int8(limits_get_state(),2,N_AXIS);
-  }
-  
-  #ifdef REPORT_CONTROL_PIN_STATE 
-    printPgmString(PSTR(",Ctl:"));
-    print_uint8_base2(CONTROL_PIN & CONTROL_MASK);
+  #ifdef REPORT_ALL_PIN_STATES
+    if (bit_istrue(settings.status_report_mask,
+          ( BITFLAG_RT_STATUS_LIMIT_PINS| BITFLAG_RT_STATUS_PROBE_PIN | BITFLAG_RT_STATUS_CONTROL_PINS ))) {
+      printPgmString(PSTR(",Pin:"));
+      if (bit_istrue(settings.status_report_mask,BITFLAG_RT_STATUS_LIMIT_PINS)) { 
+        print_unsigned_int8(limits_get_state(),2,N_AXIS);
+      }
+      printPgmString(PSTR("|"));
+      if (bit_istrue(settings.status_report_mask,BITFLAG_RT_STATUS_PROBE_PIN)) {
+        if (probe_get_state()) { printPgmString(PSTR("1")); }
+        else { printPgmString(PSTR("0")); }
+      }
+      printPgmString(PSTR("|"));
+      if (bit_istrue(settings.status_report_mask,BITFLAG_RT_STATUS_CONTROL_PINS)) {
+        print_unsigned_int8(system_control_get_state(),2,N_CONTROL_PIN);
+      }
+    }
+  #else
+    if (bit_istrue(settings.status_report_mask,BITFLAG_RT_STATUS_LIMIT_PINS)) {
+      printPgmString(PSTR(",Lim:"));
+      print_unsigned_int8(limits_get_state(),2,N_AXIS);
+    }
   #endif
   
   printPgmString(PSTR(">\r\n"));

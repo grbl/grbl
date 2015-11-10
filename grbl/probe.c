@@ -34,7 +34,7 @@ void probe_init()
   #else
     PROBE_PORT |= PROBE_MASK;    // Enable internal pull-up resistors. Normal high operation.
   #endif
-  // probe_configure_invert_mask(false); // Initialize invert mask. Not required. Updated when in-use.
+  probe_configure_invert_mask(false); // Initialize invert mask. Re-updated during use.
 }
 
 

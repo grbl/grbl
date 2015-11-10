@@ -34,27 +34,45 @@ void system_init()
 }
 
 
+// Returns control pin state as a uint8 bitfield. Each bit indicates the input pin state, where 
+// triggered is 1 and not triggered is 0. Invert mask is applied. Bitfield organization is
+// defined by the CONTROL_PIN_INDEX in the header file.
+uint8_t system_control_get_state()
+{
+  uint8_t control_state = 0;
+  uint8_t pin = (CONTROL_PIN & CONTROL_MASK);
+  #ifndef INVERT_ALL_CONTROL_PINS
+    pin ^= CONTROL_INVERT_MASK;
+  #endif
+  if (pin) {
+    #ifdef ENABLE_SAFETY_DOOR_INPUT_PIN
+      if (bit_istrue(pin,(1<<SAFETY_DOOR_BIT))) { control_state |= CONTROL_PIN_INDEX_SAFETY_DOOR; }
+    #endif
+    if (bit_istrue(pin,(1<<RESET_BIT))) { control_state |= CONTROL_PIN_INDEX_RESET; }
+    if (bit_istrue(pin,(1<<FEED_HOLD_BIT))) { control_state |= CONTROL_PIN_INDEX_FEED_HOLD; }
+    if (bit_istrue(pin,(1<<CYCLE_START_BIT))) { control_state |= CONTROL_PIN_INDEX_CYCLE_START; }
+  }
+  return(control_state);
+}
+
+
 // Pin change interrupt for pin-out commands, i.e. cycle start, feed hold, and reset. Sets
 // only the realtime command execute variable to have the main program execute these when 
 // its ready. This works exactly like the character-based realtime commands when picked off
 // directly from the incoming serial data stream.
 ISR(CONTROL_INT_vect) 
 {
-  uint8_t pin = (CONTROL_PIN & CONTROL_MASK);
-  #ifndef INVERT_ALL_CONTROL_PINS
-    pin ^= CONTROL_INVERT_MASK;
-  #endif
-  // Enter only if any CONTROL pin is detected as active.
+  uint8_t pin = system_control_get_state();
   if (pin) { 
-    if (bit_istrue(pin,bit(RESET_BIT))) {
+    if (bit_istrue(pin,CONTROL_PIN_INDEX_RESET)) {
       mc_reset();
-    } else if (bit_istrue(pin,bit(CYCLE_START_BIT))) {
+    } else if (bit_istrue(pin,CONTROL_PIN_INDEX_CYCLE_START)) {
       bit_true(sys_rt_exec_state, EXEC_CYCLE_START);
     #ifndef ENABLE_SAFETY_DOOR_INPUT_PIN
-      } else if (bit_istrue(pin,bit(FEED_HOLD_BIT))) {
+      } else if (bit_istrue(pin,CONTROL_PIN_INDEX_FEED_HOLD)) {
         bit_true(sys_rt_exec_state, EXEC_FEED_HOLD); 
     #else
-      } else if (bit_istrue(pin,bit(SAFETY_DOOR_BIT))) {
+      } else if (bit_istrue(pin,CONTROL_PIN_INDEX_SAFETY_DOOR)) {
         bit_true(sys_rt_exec_state, EXEC_SAFETY_DOOR);
     #endif
     } 
@@ -66,11 +84,7 @@ ISR(CONTROL_INT_vect)
 uint8_t system_check_safety_door_ajar()
 {
   #ifdef ENABLE_SAFETY_DOOR_INPUT_PIN
-    #ifdef INVERT_CONTROL_PIN
-      return(bit_istrue(CONTROL_PIN,bit(SAFETY_DOOR_BIT)));
-    #else
-      return(bit_isfalse(CONTROL_PIN,bit(SAFETY_DOOR_BIT)));
-    #endif
+    return(system_control_get_state() & CONTROL_PIN_INDEX_SAFETY_DOOR);
   #else
     return(false); // Input pin not enabled, so just return that it's closed.
   #endif
@@ -274,4 +288,34 @@ void system_convert_array_steps_to_mpos(float *position, int32_t *steps)
     position[idx] = system_convert_axis_steps_to_mpos(steps, idx);
   }
   return;
+}
+
+
+// Special handlers for setting and clearing Grbl's real-time execution flags.
+void system_set_exec_state_flag(uint8_t mask) {
+  uint8_t sreg = SREG; 
+  cli(); 
+  sys_rt_exec_state |= (mask);
+  SREG = sreg;
+}
+
+void system_clear_exec_state_flag(uint8_t mask) {
+  uint8_t sreg = SREG; 
+  cli(); 
+  sys_rt_exec_state &= ~(mask);
+  SREG = sreg;
+}
+
+void system_set_exec_alarm_flag(uint8_t mask) {
+  uint8_t sreg = SREG; 
+  cli(); 
+  sys_rt_exec_alarm |= (mask);
+  SREG = sreg;
+}
+
+void system_clear_exec_alarm_flag(uint8_t mask) {
+  uint8_t sreg = SREG; 
+  cli(); 
+  sys_rt_exec_alarm &= ~(mask);
+  SREG = sreg;
 }

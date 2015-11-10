@@ -190,7 +190,7 @@ void protocol_buffer_synchronize()
 // when one of these conditions exist respectively: There are no more blocks sent (i.e. streaming 
 // is finished, single commands), a command that needs to wait for the motions in the buffer to 
 // execute calls a buffer sync, or the planner buffer is full and ready to go.
-void protocol_auto_cycle_start() { bit_true_atomic(sys_rt_exec_state, EXEC_CYCLE_START); } 
+void protocol_auto_cycle_start() { system_set_exec_state_flag(EXEC_CYCLE_START); } 
 
 
 // This function is the general interface to Grbl's real-time command execution system. It is called
@@ -237,7 +237,7 @@ void protocol_exec_rt_system()
     // Halt everything upon a critical event flag. Currently hard and soft limits flag this.
     if (rt_exec & EXEC_CRITICAL_EVENT) {
       report_feedback_message(MESSAGE_CRITICAL_EVENT);
-      bit_false_atomic(sys_rt_exec_state,EXEC_RESET); // Disable any existing reset
+      system_clear_exec_state_flag(EXEC_RESET); // Disable any existing reset
       do {       
         // Block everything, except reset and status reports, until user issues reset or power 
         // cycles. Hard limits typically occur while unattended or not paying attention. Gives 
@@ -248,12 +248,12 @@ void protocol_exec_rt_system()
 // TODO: Allow status reports during a critical alarm. Still need to think about implications of this.
         // if (sys_rt_exec_state & EXEC_STATUS_REPORT) { 
         //   report_realtime_status();
-        //   bit_false_atomic(sys_rt_exec_state,EXEC_STATUS_REPORT); 
+        //   system_clear_exec_state_flag(EXEC_STATUS_REPORT); 
         // }
 
       } while (bit_isfalse(sys_rt_exec_state,EXEC_RESET));
     }
-    bit_false_atomic(sys_rt_exec_alarm,0xFF); // Clear all alarm flags
+    system_clear_exec_alarm_flag(0xFF); // Clear all alarm flags
   }
   
   rt_exec = sys_rt_exec_state; // Copy volatile sys_rt_exec_state.
@@ -268,7 +268,7 @@ void protocol_exec_rt_system()
     // Execute and serial print status
     if (rt_exec & EXEC_STATUS_REPORT) { 
       report_realtime_status();
-      bit_false_atomic(sys_rt_exec_state,EXEC_STATUS_REPORT);
+      system_clear_exec_state_flag(EXEC_STATUS_REPORT);
     }
   
     // NOTE: The math involved to calculate the hold should be low enough for most, if not all, 
@@ -340,7 +340,7 @@ void protocol_exec_rt_system()
      
       }
   
-      bit_false_atomic(sys_rt_exec_state,(EXEC_MOTION_CANCEL | EXEC_FEED_HOLD | EXEC_SAFETY_DOOR));      
+      system_clear_exec_state_flag((EXEC_MOTION_CANCEL | EXEC_FEED_HOLD | EXEC_SAFETY_DOOR));      
     }
     
     // Execute a cycle start by starting the stepper interrupt to begin executing the blocks in queue.
@@ -380,7 +380,7 @@ void protocol_exec_rt_system()
           }
         }
       }    
-      bit_false_atomic(sys_rt_exec_state,EXEC_CYCLE_START);
+      system_clear_exec_state_flag(EXEC_CYCLE_START);
     }
     
     if (rt_exec & EXEC_CYCLE_STOP) {
@@ -399,7 +399,7 @@ void protocol_exec_rt_system()
         sys.suspend = SUSPEND_DISABLE;
         sys.state = STATE_IDLE;
       }  
-      bit_false_atomic(sys_rt_exec_state,EXEC_CYCLE_STOP);
+      system_clear_exec_state_flag(EXEC_CYCLE_STOP);
     }
   }
   
@@ -544,7 +544,7 @@ static void protocol_exec_rt_suspend()
           
           if (bit_isfalse(sys.suspend,SUSPEND_RESTART_RETRACT)) {
             sys.suspend |= SUSPEND_RESTORE_COMPLETE;
-            bit_true_atomic(sys_rt_exec_state,EXEC_CYCLE_START); // Set to resume program.
+            system_set_exec_state_flag(EXEC_CYCLE_START); // Set to resume program.
           }
         }
    
