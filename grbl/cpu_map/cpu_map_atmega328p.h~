@@ -42,12 +42,12 @@ D10 = Coolant
 D11 = MOSI (SPI)
 D12 = MISO (SPI)
 D13 = SCK (SPI)
-A0 = CS-x TMC26x 
-A1 = CS-y TMC26x
-A2 = CS-z TMC26x
-A3 = X-end
-A4 = Y-end
-A5 = Z-end / probe
+A0 = cs-x 
+A1 = cs-y
+A2 = cs-z
+A3 = x-end
+A4 = y-end
+A5 = z-end / probe
 
 
 */

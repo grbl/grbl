@@ -365,11 +365,9 @@ void protocol_execute_realtime()
   // NOTE: This unlocks the SAFETY_DOOR state to a HOLD state, such that CYCLE_START can activate a resume.
   if (sys.state == STATE_SAFETY_DOOR) { 
     if (bit_istrue(sys.suspend,SUSPEND_ENABLE_READY)) { 
-      #ifndef DEFAULTS_TRINAMIC
       if (!(system_check_safety_door_ajar())) {
         sys.state = STATE_HOLD; // Update to HOLD state to indicate door is closed and ready to resume.
       }
-      #endif
     }
   }
 

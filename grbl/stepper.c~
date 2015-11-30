@@ -20,7 +20,7 @@
 */
 
 #include "grbl.h"
-#include "trinamic.h"
+#include <trinamic.h>
 
 
 // Some useful constants.
