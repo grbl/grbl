@@ -96,6 +96,14 @@ void protocol_main_loop()
   uint8_t c;
   for (;;) {
 
+    // When motion purge was requested, process all pending blocks and commands, until Grbl is idle or in alarm state
+    if(bit_istrue(sys_rt_exec_state,EXEC_MOTION_PURGE))
+    {
+      report_feedback_message(MESSAGE_MOTION_PURGE);
+      protocol_motion_purge();
+  	  report_status_message(STATUS_OK);
+    }
+
     // Process one line of incoming serial data, as the data becomes available. Performs an
     // initial filtering by removing spaces and comments and capitalizing all letters.
     
@@ -170,6 +178,19 @@ void protocol_main_loop()
   return; /* Never reached */
 }
 
+// Return only once Grbl is idle or an alarm was triggered
+// This is in response to realtime CMD_MOTION_PURGE
+void protocol_motion_purge()
+{
+  while (sys.state!=STATE_IDLE && sys.state!=STATE_ALARM)
+  {
+    // Actively purge all commands before returning (wait until Grbl is idle)
+    protocol_auto_cycle_start();
+    protocol_execute_realtime();
+    if (sys.abort) { return; }
+  }
+  bit_false(sys_rt_exec_state, EXEC_MOTION_PURGE);
+}
 
 // Executes run-time commands, when required. This is called from various check points in the main
 // program, primarily where there may be a while loop waiting for a buffer to clear space or any
