@@ -141,12 +141,10 @@ uint8_t system_execute_line(char *line)
             report_feedback_message(MESSAGE_ALARM_UNLOCK);
             sys.state = STATE_IDLE;
             // Don't run startup script. Prevents stored moves in startup from causing accidents.
-          #ifndef DEFAULTS_TRINAMIC
-          if (system_check_safety_door_ajar()) { // Check safety door switch before returning.
+            if (system_check_safety_door_ajar()) { // Check safety door switch before returning.
               bit_true(sys_rt_exec_state, EXEC_SAFETY_DOOR);
               protocol_execute_realtime(); // Enter safety door mode.
             }
-	  #endif
           } // Otherwise, no effect.
           break;                   
     //  case 'J' : break;  // Jogging methods
