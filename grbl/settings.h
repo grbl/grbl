@@ -91,6 +91,11 @@ typedef struct {
   uint8_t status_report_mask; // Mask to indicate desired report data.
   float junction_deviation;
   float arc_tolerance;
+
+  // trinamic EEPROM settings
+  uint8_t trinamic_x;
+  uint8_t trinamic_y;
+  uint8_t trinamic_z;
   
   uint8_t flags;  // Contains default boolean settings
 

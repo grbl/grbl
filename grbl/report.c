@@ -221,7 +221,10 @@ void report_grbl_settings() {
     printPgmString(PSTR(" (homing feed, mm/min)\r\n$25=")); printFloat_SettingValue(settings.homing_seek_rate);
     printPgmString(PSTR(" (homing seek, mm/min)\r\n$26=")); print_uint8_base10(settings.homing_debounce_delay);
     printPgmString(PSTR(" (homing debounce, msec)\r\n$27=")); printFloat_SettingValue(settings.homing_pulloff);
-    printPgmString(PSTR(" (homing pull-off, mm)\r\n"));
+    printPgmString(PSTR(" (homing pull-off, mm)\r\n$30=")); printInteger(settings.trinamic_x);
+    printPgmString(PSTR(" (trinamic x)\r\n$31=")); printInteger(settings.trinamic_y);
+    printPgmString(PSTR(" (trinamic y)\r\n$32=")); printInteger(settings.trinamic_z);
+    printPgmString(PSTR(" (trinamic z)\r\n"));
   #endif
   
   // Print axis settings

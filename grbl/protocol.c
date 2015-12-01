@@ -78,12 +78,14 @@ void protocol_main_loop()
     report_feedback_message(MESSAGE_ALARM_LOCK); 
   } else {
     // All systems go! But first check for safety door.
+    #ifndef DEFAULTS_TRINAMIC
     if (system_check_safety_door_ajar()) {
       bit_true(sys_rt_exec_state, EXEC_SAFETY_DOOR);
       protocol_execute_realtime(); // Enter safety door mode. Should return as IDLE state.
     } else {
       sys.state = STATE_IDLE; // Set system to ready. Clear all state flags.
     } 
+    #endif
     system_execute_startup(line); // Execute startup script.
   }
     
@@ -363,9 +365,11 @@ void protocol_execute_realtime()
   // NOTE: This unlocks the SAFETY_DOOR state to a HOLD state, such that CYCLE_START can activate a resume.
   if (sys.state == STATE_SAFETY_DOOR) { 
     if (bit_istrue(sys.suspend,SUSPEND_ENABLE_READY)) { 
+      #ifndef DEFAULTS_TRINAMIC
       if (!(system_check_safety_door_ajar())) {
         sys.state = STATE_HOLD; // Update to HOLD state to indicate door is closed and ready to resume.
       }
+      #endif
     }
   }
 

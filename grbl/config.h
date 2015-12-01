@@ -31,7 +31,8 @@
 
 
 // Default settings. Used when resetting EEPROM. Change to desired name in defaults.h
-#define DEFAULTS_GENERIC
+//#define DEFAULTS_GENERIC
+#define DEFAULTS_TRINAMIC
 
 // Serial baud rate
 #define BAUD_RATE 115200
@@ -236,7 +237,7 @@
 // enable pin will output 5V for maximum RPM with 256 intermediate levels and 0V when disabled.
 // NOTE: IMPORTANT for Arduino Unos! When enabled, the Z-limit pin D11 and spindle enable pin D12 switch!
 // The hardware PWM output on pin D11 is required for variable spindle output voltages.
-#define VARIABLE_SPINDLE // Default enabled. Comment to disable.
+#define VARIABLE_SPINDLE // Default enabled. Comment to disable. // TRINAMIC - TESTIng
 
 // Used by the variable spindle output only. These parameters set the maximum and minimum spindle speed
 // "S" g-code values to correspond to the maximum and minimum pin voltages. There are 256 discrete and 
@@ -260,7 +261,7 @@
 // NOTE: BEWARE! The Arduino bootloader toggles the D13 pin when it powers up. If you flash Grbl with
 // a programmer (you can use a spare Arduino as "Arduino as ISP". Search the web on how to wire this.), 
 // this D13 LED toggling should go away. We haven't tested this though. Please report how it goes!
-// #define USE_SPINDLE_DIR_AS_ENABLE_PIN // Default disabled. Uncomment to enable.
+ #define USE_SPINDLE_DIR_AS_ENABLE_PIN // Default disabled. Uncomment to enable.
 
 // With this enabled, Grbl sends back an echo of the line it has received, which has been pre-parsed (spaces
 // removed, capitalized letters, no comments) and is to be immediately executed by Grbl. Echoes will not be 
@@ -269,7 +270,7 @@
 // NOTE: Only use this for debugging purposes!! When echoing, this takes up valuable resources and can effect
 // performance. If absolutely needed for normal operation, the serial write buffer should be greatly increased
 // to help minimize transmission waiting within the serial write protocol.
-// #define REPORT_ECHO_LINE_RECEIVED // Default disabled. Uncomment to enable.
+ #define REPORT_ECHO_LINE_RECEIVED // Default disabled. Uncomment to enable.
 
 // Minimum planner junction speed. Sets the default minimum junction speed the planner plans to at
 // every buffer block junction, except for starting from rest and end of the buffer, which are always

@@ -92,6 +92,10 @@ void settings_restore(uint8_t restore_flag) {
 	settings.max_travel[Y_AXIS] = (-DEFAULT_Y_MAX_TRAVEL);
 	settings.max_travel[Z_AXIS] = (-DEFAULT_Z_MAX_TRAVEL);    
 
+	settings.trinamic_x = DEFAULT_TRINAMIC_X;
+	settings.trinamic_y = DEFAULT_TRINAMIC_Y;
+	settings.trinamic_z = DEFAULT_TRINAMIC_Z;
+
 	write_global_settings();
   }
   
@@ -265,6 +269,9 @@ uint8_t settings_store_global_setting(uint8_t parameter, float value) {
       case 25: settings.homing_seek_rate = value; break;
       case 26: settings.homing_debounce_delay = int_value; break;
       case 27: settings.homing_pulloff = value; break;
+      case 30: settings.trinamic_x = value; break;
+      case 31: settings.trinamic_y = value; break;
+      case 32: settings.trinamic_z = value; break;
       default: 
         return(STATUS_INVALID_STATEMENT);
     }

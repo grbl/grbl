@@ -22,8 +22,8 @@
 #define grbl_h
 
 // Grbl versioning system
-#define GRBL_VERSION "0.9j"
-#define GRBL_VERSION_BUILD "20150930"
+#define GRBL_VERSION "0.9j - with Trinamic Support"
+#define GRBL_VERSION_BUILD "20151130"
 
 // Define standard libraries used by Grbl.
 #include <avr/io.h>

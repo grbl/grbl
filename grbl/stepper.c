@@ -20,6 +20,7 @@
 */
 
 #include "grbl.h"
+#include "trinamic.h"
 
 
 // Some useful constants.
@@ -475,6 +476,36 @@ void stepper_init()
   STEP_DDR |= STEP_MASK;
   STEPPERS_DISABLE_DDR |= 1<<STEPPERS_DISABLE_BIT;
   DIRECTION_DDR |= DIRECTION_MASK;
+
+  // Trinamic settings
+  #ifdef DEFAULTS_TRINAMIC
+	// Configure Client Select Pins as output
+	CS_DDR |= CS_MASK;
+
+	// configure X stepper
+	  stepper_tos_100[0].cs_pin = X_CS_BIT;
+	  stepper_tos_100[0].microsteps = MICROSTEPS_XY;
+	  stepper_tos_100[0].number_of_steps=STEP_REVS_XY;
+	  stepper_tos_100[0].current = 800;
+	  stepper_tos_100[0].resistor = 150;
+	  TMC26XStepper_init( &stepper_tos_100[0]);
+	
+	  // configure Y stepper                                                        
+	  stepper_tos_100[1].cs_pin = Y_CS_BIT;
+	  stepper_tos_100[1].microsteps = MICROSTEPS_XY;
+	  stepper_tos_100[1].number_of_steps=STEP_REVS_XY;
+	  stepper_tos_100[1].current = 800;
+	  stepper_tos_100[1].resistor = 150;
+	  TMC26XStepper_init( &stepper_tos_100[1]);
+	
+	  // configure Z stepper                                                        
+	  stepper_tos_100[2].cs_pin = Z_CS_BIT;
+	  stepper_tos_100[2].microsteps = MICROSTEPS_Z;
+	  stepper_tos_100[2].number_of_steps=STEP_REVS_Z;
+	  stepper_tos_100[2].current = 800;
+	  stepper_tos_100[2].resistor = 150;
+	  TMC26XStepper_init( &stepper_tos_100[2]);
+  #endif
 
   // Configure Timer 1: Stepper Driver Interrupt
   TCCR1B &= ~(1<<WGM13); // waveform generation = 0100 = CTC
