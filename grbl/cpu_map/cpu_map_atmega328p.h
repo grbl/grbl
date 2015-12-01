@@ -226,11 +226,21 @@ A5 = Z-end / probe
   #define TCCRB_REGISTER	 TCCR1B
   #define OCR_REGISTER     OCR1A
   #define COMB_BIT	     COM1A1
+  // NOTE: On the 328p, these must be the same as the SPINDLE_ENABLE settings.
+  #define SPINDLE_PWM_DDR	  DDRB
+  #define SPINDLE_PWM_PORT  	PORTB
+  #define SPINDLE_PWM_BIT	  1    // Uno Digital Pin 9 for Trinamic boards to free up SPI
+
 #else
   #define TCCRA_REGISTER	 TCCR2A
   #define TCCRB_REGISTER	 TCCR2B
   #define OCR_REGISTER     OCR2A
   #define COMB_BIT	     COM2A1
+  // NOTE: On the 328p, these must be the same as the SPINDLE_ENABLE settings.
+  // NOTE: On the 328p, these must be the same as the SPINDLE_ENABLE settings.
+  #define SPINDLE_PWM_DDR	  DDRB
+  #define SPINDLE_PWM_PORT  PORTB
+  #define SPINDLE_PWM_BIT	  3    // Uno Digital Pin 11
 #endif
   
 
@@ -239,8 +249,4 @@ A5 = Z-end / probe
   #define WAVE2_REGISTER	 WGM22
   #define WAVE3_REGISTER	 WGM23
       
-  // NOTE: On the 328p, these must be the same as the SPINDLE_ENABLE settings.
-  #define SPINDLE_PWM_DDR	  DDRB
-  #define SPINDLE_PWM_PORT  	PORTB
-  #define SPINDLE_PWM_BIT	  1    // Uno Digital Pin 9
 #endif // End of VARIABLE_SPINDLE
