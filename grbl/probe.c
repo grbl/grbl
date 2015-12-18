@@ -61,7 +61,7 @@ void probe_state_monitor()
   if (sys_probe_state == PROBE_ACTIVE) {
     if (probe_get_state()) {
       sys_probe_state = PROBE_OFF;
-      memcpy(sys.probe_position, sys.position, sizeof(float)*N_AXIS);
+      memcpy(sys.probe_position, sys.position, sizeof(sys.position));
       bit_true(sys_rt_exec_state, EXEC_MOTION_CANCEL);
     }
   }

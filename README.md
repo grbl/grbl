@@ -27,8 +27,7 @@ Grbl includes full acceleration management with look ahead. That means the contr
 ***
 
 _**Master Branch:**_
-* [Grbl v0.9j Atmega328p 16mhz 115200baud with generic defaults](http://bit.ly/1I8Ey4S) _(2015-09-30)_
-* [Grbl v0.9j Atmega328p 16mhz 115200baud with ShapeOko2 defaults](http://bit.ly/1OjUSia) _(2015-09-30)_
+* [Grbl v0.9j Atmega328p 16mhz 115200baud with generic defaults](http://bit.ly/1I8Ey4S) _(2015-12-18)_
   - **IMPORTANT INFO WHEN UPGRADING TO GRBL v0.9 :** 
   - Baudrate is now **115200** (Up from 9600). 
   - Homing cycle updated. Located based on switch trigger, rather than release point.
@@ -36,9 +35,7 @@ _**Master Branch:**_
 
 _**Archives:**_
 * [Grbl v0.9i Atmega328p 16mhz 115200baud with generic defaults](http://bit.ly/1EiviDk) 
-* [Grbl v0.9i Atmega328p 16mhz 115200baud with ShapeOko2 defaults](http://bit.ly/1NYIfKl) 
 * [Grbl v0.9g Atmega328p 16mhz 115200baud with generic defaults](http://bit.ly/1m8E1Qa) 
-* [Grbl v0.9g Atmega328p 16mhz 115200baud with ShapeOko2 defaults](http://bit.ly/1kOAzig) 
 * [Grbl v0.8c Atmega328p 16mhz 9600baud](http://bit.ly/SSdCJE)
 * [Grbl v0.7d Atmega328p 16mhz 9600baud](http://bit.ly/ZhL15G)
 * [Grbl v0.6b Atmega328p 16mhz 9600baud](http://bit.ly/VD04A5)
