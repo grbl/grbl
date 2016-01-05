@@ -44,6 +44,9 @@
 #define INCH_PER_MM (0.0393701)
 #define TICKS_PER_MICROSECOND (F_CPU/1000000)
 
+#define DELAY_MODE_DWELL       0
+#define DELAY_MODE_SAFETY_DOOR 1
+
 // Useful macros
 #define clear_vector(a) memset(a, 0, sizeof(a))
 #define clear_vector_float(a) memset(a, 0.0, sizeof(float)*N_AXIS)
@@ -53,9 +56,6 @@
 
 // Bit field and masking macros
 #define bit(n) (1 << n) 
-#define bit_true_atomic(x,mask) {uint8_t sreg = SREG; cli(); (x) |= (mask); SREG = sreg; }
-#define bit_false_atomic(x,mask) {uint8_t sreg = SREG; cli(); (x) &= ~(mask); SREG = sreg; }
-#define bit_toggle_atomic(x,mask) {uint8_t sreg = SREG; cli(); (x) ^= (mask); SREG = sreg; }
 #define bit_true(x,mask) (x) |= (mask)
 #define bit_false(x,mask) (x) &= ~(mask)
 #define bit_istrue(x,mask) ((x & mask) != 0)
@@ -65,6 +65,9 @@
 // is the indexer pointing to the current character of the line, while float_ptr is 
 // a pointer to the result variable. Returns true when it succeeds
 uint8_t read_float(char *line, uint8_t *char_counter, float *float_ptr);
+
+// Non-blocking delay function used for general operation and suspend features.
+void delay_sec(float seconds, uint8_t mode);
 
 // Delays variable-defined milliseconds. Compiler compatibility fix for _delay_ms().
 void delay_ms(uint16_t ms);

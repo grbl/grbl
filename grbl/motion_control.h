@@ -24,6 +24,7 @@
 
 
 #define HOMING_CYCLE_LINE_NUMBER -1
+#define PARKING_MOTION_LINE_NUMBER -2
 
 // Execute linear motion in absolute millimeter coordinates. Feed rate given in millimeters/second
 // unless invert_feed_rate is true. Then the feed_rate means that the motion should be completed in
@@ -60,6 +61,9 @@ void mc_probe_cycle(float *target, float feed_rate, uint8_t invert_feed_rate, ui
 void mc_probe_cycle(float *target, float feed_rate, uint8_t invert_feed_rate, uint8_t is_probe_away,
   uint8_t is_no_error);
 #endif
+
+// Plans and executes the single special motion case for parking. Independent of main planner buffer.
+void mc_parking_motion(float *parking_target, float feed_rate);
 
 // Performs system reset. If in motion state, kills all motion and sets system alarm.
 void mc_reset();

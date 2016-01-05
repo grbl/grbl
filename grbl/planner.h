@@ -32,6 +32,9 @@
   #endif
 #endif
 
+#define PLAN_OK true
+#define PLAN_EMPTY_BLOCK false
+
 // This struct stores a linear movement of a g-code block motion with its critical "nominal" values
 // are as specified in the source g-code. 
 typedef struct {
@@ -39,9 +42,10 @@ typedef struct {
   // NOTE: Used by stepper algorithm to execute the block correctly. Do not alter these values.
   uint8_t direction_bits;    // The direction bit set for this block (refers to *_DIRECTION_BIT in config.h)
   uint32_t steps[N_AXIS];    // Step count along each axis
-  uint32_t step_event_count; // The maximum step axis count and number of steps required to complete this block. 
+  uint32_t step_event_count; // The maximum step axis count and number of steps required to complete this block.
 
-  // Fields used by the motion planner to manage acceleration
+  // Fields used by the motion planner to manage acceleration. Some of these values may be updated
+  // by the stepper module during execution of special motion cases for replanning purposes.
   float entry_speed_sqr;         // The current planned entry speed at block junction in (mm/min)^2
   float max_entry_speed_sqr;     // Maximum allowable entry speed based on the minimum of junction limit and 
                                  //   neighboring nominal speeds with overrides in (mm/min)^2
@@ -64,14 +68,17 @@ void plan_reset();
 // in millimeters. Feed rate specifies the speed of the motion. If feed rate is inverted, the feed
 // rate is taken to mean "frequency" and would complete the operation in 1/feed_rate minutes.
 #ifdef USE_LINE_NUMBERS
-  void plan_buffer_line(float *target, float feed_rate, uint8_t invert_feed_rate, int32_t line_number);
+  uint8_t plan_buffer_line(float *target, float feed_rate, uint8_t invert_feed_rate, uint8_t is_parking_motion, int32_t line_number);
 #else
-  void plan_buffer_line(float *target, float feed_rate, uint8_t invert_feed_rate);
+  uint8_t plan_buffer_line(float *target, float feed_rate, uint8_t invert_feed_rate, uint8_t is_parking_motion);
 #endif
 
 // Called when the current block is no longer needed. Discards the block and makes the memory
 // availible for new blocks.
 void plan_discard_current_block();
+
+// Gets the planner block for the parking special motion case. Parking uses the always available buffer head.
+plan_block_t *plan_get_parking_block();
 
 // Gets the current block. Returns NULL if buffer empty
 plan_block_t *plan_get_current_block();

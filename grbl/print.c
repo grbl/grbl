@@ -191,6 +191,7 @@ void printFloat_RateValue(float n) {
 
 void printFloat_SettingValue(float n) { printFloat(n,N_DECIMAL_SETTINGVALUE); }
 
+void printFloat_RPMValue(float n) { printFloat(n,N_DECIMAL_RPMVALUE); }
 
 // Debug tool to print free memory in bytes at the called point. 
 // NOTE: Keep commented unless using. Part of this function always gets compiled in.

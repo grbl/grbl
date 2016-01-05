@@ -65,6 +65,10 @@ void settings_restore(uint8_t restore_flag) {
 	settings.status_report_mask = DEFAULT_STATUS_REPORT_MASK;
 	settings.junction_deviation = DEFAULT_JUNCTION_DEVIATION;
 	settings.arc_tolerance = DEFAULT_ARC_TOLERANCE;
+	
+	settings.rpm_max = DEFAULT_SPINDLE_RPM_MAX;
+	settings.rpm_min = DEFAULT_SPINDLE_RPM_MIN;
+	
 	settings.homing_dir_mask = DEFAULT_HOMING_DIR_MASK;
 	settings.homing_feed_rate = DEFAULT_HOMING_FEED_RATE;
 	settings.homing_seek_rate = DEFAULT_HOMING_SEEK_RATE;
@@ -265,6 +269,8 @@ uint8_t settings_store_global_setting(uint8_t parameter, float value) {
       case 25: settings.homing_seek_rate = value; break;
       case 26: settings.homing_debounce_delay = int_value; break;
       case 27: settings.homing_pulloff = value; break;
+      case 30: settings.rpm_max = value; break;
+      case 31: settings.rpm_min = value; break;
       default: 
         return(STATUS_INVALID_STATEMENT);
     }

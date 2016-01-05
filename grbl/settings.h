@@ -27,7 +27,7 @@
 
 // Version of the EEPROM data. Will be used to migrate existing data from older versions of Grbl
 // when firmware is upgraded. Always stored in byte 0 of eeprom
-#define SETTINGS_VERSION 9  // NOTE: Check settings_reset() when moving to next version.
+#define SETTINGS_VERSION 10  // NOTE: Check settings_reset() when moving to next version.
 
 // Define bit flag masks for the boolean settings in settings.flag.
 #define BITFLAG_REPORT_INCHES      bit(0)
@@ -45,6 +45,8 @@
 #define BITFLAG_RT_STATUS_PLANNER_BUFFER    bit(2)
 #define BITFLAG_RT_STATUS_SERIAL_RX         bit(3)
 #define BITFLAG_RT_STATUS_LIMIT_PINS        bit(4)
+#define BITFLAG_RT_STATUS_PROBE_PIN         bit(5)
+#define BITFLAG_RT_STATUS_CONTROL_PINS      bit(6)
 
 // Define settings restore bitflags.
 #define SETTINGS_RESTORE_ALL 0xFF // All bitflags
@@ -91,6 +93,9 @@ typedef struct {
   uint8_t status_report_mask; // Mask to indicate desired report data.
   float junction_deviation;
   float arc_tolerance;
+  
+  float rpm_max;
+  float rpm_min;
   
   uint8_t flags;  // Contains default boolean settings
 
