@@ -190,8 +190,13 @@ void limits_go_home(uint8_t cycle_mask)
         #ifndef COREXY
           sys.position[idx] = 0;
         #else
-          sys.position[A_MOTOR] = 0;
-          sys.position[B_MOTOR] = 0;
+          if (idx==2){ // axe Z   Yann
+	  	sys.position[idx] = 0;
+	  }
+	 else  {
+		 sys.position[A_MOTOR] = 0;
+		 sys.position[B_MOTOR] = 0;
+	      }
         #endif
         // Set target direction based on cycle mask and homing cycle approach state.
         // NOTE: This happens to compile smaller than any other implementation tried.
@@ -231,7 +236,10 @@ void limits_go_home(uint8_t cycle_mask)
                       #ifndef COREXY
                         axislock &= ~(step_pin[idx]);
                       #else
-                        axislock &= ~(step_pin[A_MOTOR]|step_pin[B_MOTOR]);
+                        if (idx==2) // axe Z
+				{axislock &= ~(step_pin[idx]);} // Yann
+			else 
+				{axislock &= ~(step_pin[A_MOTOR]|step_pin[B_MOTOR]);}
                       #endif
                     }
 		  }
