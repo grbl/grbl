@@ -164,6 +164,12 @@ void limits_go_home(uint8_t cycle_mask)
       max_travel = max(max_travel,(-HOMING_AXIS_SEARCH_SCALAR)*settings.max_travel[idx]);
     }
   }
+  
+  #ifdef COREXY
+    sys.position[A_MOTOR] = 0;
+    sys.position[B_MOTOR] = 0;
+    plan_sync_position();
+  #endif
 
   // Set search mode with approach at seek rate to quickly engage the specified cycle_mask limit switches.
   bool approach = true;
@@ -181,7 +187,17 @@ void limits_go_home(uint8_t cycle_mask)
       // Set target location for active axes and setup computation for homing rate.
       if (bit_istrue(cycle_mask,bit(idx))) {
         n_active_axis++;
-        sys.position[idx] = 0;
+        #ifndef COREXY
+          sys.position[idx] = 0;
+        #else
+          if (idx==2){ // axe Z   Yann
+	  	sys.position[idx] = 0;
+	  }
+	 else  {
+		 sys.position[A_MOTOR] = 0;
+		 sys.position[B_MOTOR] = 0;
+	      }
+        #endif
         // Set target direction based on cycle mask and homing cycle approach state.
         // NOTE: This happens to compile smaller than any other implementation tried.
         if (bit_istrue(settings.homing_dir_mask,bit(idx))) {
@@ -216,7 +232,16 @@ void limits_go_home(uint8_t cycle_mask)
 		limit_state = limits_get_state();
 		for (idx=0; idx<N_AXIS; idx++) {
 		  if (axislock & step_pin[idx]) {
-			if (limit_state & (1 << idx)) { axislock &= ~(step_pin[idx]); }
+                    if (limit_state & (1 << idx)) {
+                      #ifndef COREXY
+                        axislock &= ~(step_pin[idx]);
+                      #else
+                        if (idx==2) // axe Z
+				{axislock &= ~(step_pin[idx]);} // Yann
+			else 
+				{axislock &= ~(step_pin[A_MOTOR]|step_pin[B_MOTOR]);}
+                      #endif
+                    }
 		  }
 		}
 		sys.homing_axis_lock = axislock;
