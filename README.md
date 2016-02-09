@@ -21,10 +21,12 @@ you can change the pulse duration in the file spindle_control.c:
 
 If you want to have the servo working from 0 --> 180 degrees change RC_SERVO_SHORT and put 9, RC_SERVO_LONG and put 39 If you want invert the servo direction uncomment the line above.  
 
-*tools*  
-[GCODE cheatsheet](http://linuxcnc.org/docs/html/gcode.html)  
-[makercam](http://www.makercam.com/) - online svg to gcode  
-[bCNC](https://github.com/vlachoudis/bCNC) or [Universal-G-Code-Sender](https://github.com/winder/Universal-G-Code-Sender)  
+* TOOLS
+ - [GCODE cheatsheet](http://linuxcnc.org/docs/html/gcode.html)  
+ - [makercam](http://www.makercam.com/) - online svg to gcode  [image](http://i.imgur.com/JcXGzAh.png)
+ - [bCNC](https://github.com/vlachoudis/bCNC) or [Universal-G-Code-Sender](https://github.com/winder/Universal-G-Code-Sender)  
+ - [PCB-TO-Gcode](http://pcbgcode.org/) for eagle
+    -- see [this](http://pcbgcode.org/read.php?15,392) for how to have only one pass (good for us with a pen)  [image](http://i.imgur.com/gkHqKvP.png), [image2](http://i.imgur.com/e12rZnG.png)
 
 _**Master Branch:**_
 * [Grbl v0.9j Atmega328p 16mhz 115200baud with generic defaults](http://bit.ly/1I8Ey4S) _(2015-12-18)_
