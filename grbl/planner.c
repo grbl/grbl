@@ -378,11 +378,11 @@ uint8_t plan_check_full_buffer()
        change the overall maximum entry speed conditions of all blocks.
     */
     // NOTE: Computed without any expensive trig, sin() or acos(), by trig half angle identity of cos(theta).
-    if (junction_cos_theta > 0.99) {
+    if (junction_cos_theta > 0.999999) {
       //  For a 0 degree acute junction, just set minimum junction speed. 
       block->max_junction_speed_sqr = MINIMUM_JUNCTION_SPEED*MINIMUM_JUNCTION_SPEED;
     } else {
-      junction_cos_theta = max(junction_cos_theta,-0.99); // Check for numerical round-off to avoid divide by zero.
+      junction_cos_theta = max(junction_cos_theta,-0.999999); // Check for numerical round-off to avoid divide by zero.
       float sin_theta_d2 = sqrt(0.5*(1.0-junction_cos_theta)); // Trig half angle identity. Always positive.
 
       // TODO: Technically, the acceleration used in calculation needs to be limited by the minimum of the

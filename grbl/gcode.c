@@ -1037,7 +1037,7 @@ uint8_t gc_execute_line(char *line)
 	protocol_buffer_synchronize(); // Sync and finish all remaining buffered motions before moving on.
 	if (gc_state.modal.program_flow == PROGRAM_FLOW_PAUSED) {
 	  if (sys.state != STATE_CHECK_MODE) {
-		bit_true_atomic(sys.rt_exec_state, EXEC_FEED_HOLD); // Use feed hold for program pause.
+		bit_true_atomic(sys_rt_exec_state, EXEC_FEED_HOLD); // Use feed hold for program pause.
 		protocol_execute_realtime(); // Execute suspend.
 	  }
 	} else { // == PROGRAM_FLOW_COMPLETED

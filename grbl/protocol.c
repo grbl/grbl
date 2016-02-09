@@ -79,7 +79,7 @@ void protocol_main_loop()
   } else {
     // All systems go! But first check for safety door.
     if (system_check_safety_door_ajar()) {
-      bit_true(sys.rt_exec_state, EXEC_SAFETY_DOOR);
+      bit_true(sys_rt_exec_state, EXEC_SAFETY_DOOR);
       protocol_execute_realtime(); // Enter safety door mode. Should return as IDLE state.
     } else {
       sys.state = STATE_IDLE; // Set system to ready. Clear all state flags.
@@ -180,7 +180,7 @@ void protocol_main_loop()
 // define more computationally-expensive volatile variables. This also provides a controlled way to 
 // execute certain tasks without having two or more instances of the same task, such as the planner
 // recalculating the buffer upon a feedhold or override.
-// NOTE: The sys.rt_exec_state variable flags are set by any process, step or serial interrupts, pinouts,
+// NOTE: The sys_rt_exec_state variable flags are set by any process, step or serial interrupts, pinouts,
 // limit switches, or the main program.
 void protocol_execute_realtime()
 {
@@ -189,7 +189,7 @@ void protocol_execute_realtime()
   do { // If system is suspended, suspend loop restarts here.
     
   // Check and execute alarms. 
-  rt_exec = sys.rt_exec_alarm; // Copy volatile sys.rt_exec_alarm.
+  rt_exec = sys_rt_exec_alarm; // Copy volatile sys_rt_exec_alarm.
   if (rt_exec) { // Enter only if any bit flag is true
     // System alarm. Everything has shutdown by something that has gone severely wrong. Report
     // the source of the error to the user. If critical, Grbl disables by entering an infinite
@@ -209,7 +209,7 @@ void protocol_execute_realtime()
     // Halt everything upon a critical event flag. Currently hard and soft limits flag this.
     if (rt_exec & EXEC_CRITICAL_EVENT) {
       report_feedback_message(MESSAGE_CRITICAL_EVENT);
-      bit_false_atomic(sys.rt_exec_state,EXEC_RESET); // Disable any existing reset
+      bit_false_atomic(sys_rt_exec_state,EXEC_RESET); // Disable any existing reset
       do { 
         // Nothing. Block EVERYTHING until user issues reset or power cycles. Hard limits
         // typically occur while unattended or not paying attention. Gives the user time
@@ -218,17 +218,17 @@ void protocol_execute_realtime()
         // stream could be still engaged and cause a serious crash if it continues afterwards.
         
         // TODO: Allow status reports during a critical alarm. Still need to think about implications of this.
-//         if (sys.rt_exec_state & EXEC_STATUS_REPORT) { 
+//         if (sys_rt_exec_state & EXEC_STATUS_REPORT) { 
 //           report_realtime_status();
-//           bit_false_atomic(sys.rt_exec_state,EXEC_STATUS_REPORT); 
+//           bit_false_atomic(sys_rt_exec_state,EXEC_STATUS_REPORT); 
 //         }
-      } while (bit_isfalse(sys.rt_exec_state,EXEC_RESET));
+      } while (bit_isfalse(sys_rt_exec_state,EXEC_RESET));
     }
-    bit_false_atomic(sys.rt_exec_alarm,0xFF); // Clear all alarm flags
+    bit_false_atomic(sys_rt_exec_alarm,0xFF); // Clear all alarm flags
   }
   
   // Check amd execute realtime commands
-  rt_exec = sys.rt_exec_state; // Copy volatile sys.rt_exec_state.
+  rt_exec = sys_rt_exec_state; // Copy volatile sys_rt_exec_state.
   if (rt_exec) { // Enter only if any bit flag is true
   
     // Execute system abort. 
@@ -240,7 +240,7 @@ void protocol_execute_realtime()
     // Execute and serial print status
     if (rt_exec & EXEC_STATUS_REPORT) { 
       report_realtime_status();
-      bit_false_atomic(sys.rt_exec_state,EXEC_STATUS_REPORT);
+      bit_false_atomic(sys_rt_exec_state,EXEC_STATUS_REPORT);
     }
   
     // Execute hold states.
@@ -291,7 +291,7 @@ void protocol_execute_realtime()
         }
          
       }
-      bit_false_atomic(sys.rt_exec_state,(EXEC_MOTION_CANCEL | EXEC_FEED_HOLD | EXEC_SAFETY_DOOR));      
+      bit_false_atomic(sys_rt_exec_state,(EXEC_MOTION_CANCEL | EXEC_FEED_HOLD | EXEC_SAFETY_DOOR));      
     }
           
     // Execute a cycle start by starting the stepper interrupt to begin executing the blocks in queue.
@@ -326,7 +326,7 @@ void protocol_execute_realtime()
           sys.suspend = SUSPEND_DISABLE; // Break suspend state.
         }
       }    
-      bit_false_atomic(sys.rt_exec_state,EXEC_CYCLE_START);
+      bit_false_atomic(sys_rt_exec_state,EXEC_CYCLE_START);
     }
     
     // Reinitializes the cycle plan and stepper system after a feed hold for a resume. Called by 
@@ -348,7 +348,7 @@ void protocol_execute_realtime()
         sys.suspend = SUSPEND_DISABLE;
         sys.state = STATE_IDLE;
       }
-      bit_false_atomic(sys.rt_exec_state,EXEC_CYCLE_STOP);
+      bit_false_atomic(sys_rt_exec_state,EXEC_CYCLE_STOP);
     }
     
   }
@@ -398,4 +398,4 @@ void protocol_buffer_synchronize()
 // when one of these conditions exist respectively: There are no more blocks sent (i.e. streaming 
 // is finished, single commands), a command that needs to wait for the motions in the buffer to 
 // execute calls a buffer sync, or the planner buffer is full and ready to go.
-void protocol_auto_cycle_start() { bit_true_atomic(sys.rt_exec_state, EXEC_CYCLE_START); } 
+void protocol_auto_cycle_start() { bit_true_atomic(sys_rt_exec_state, EXEC_CYCLE_START); } 

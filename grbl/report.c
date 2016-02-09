@@ -331,7 +331,7 @@ void report_gcode_modes()
     case MOTION_MODE_NONE : printPgmString(PSTR("G80")); break;
     default: 
       printPgmString(PSTR("G38."));
-      print_uint8_base10(gc_state.modal.motion - (MOTION_MODE_PROBE_TOWARD+2));
+      print_uint8_base10(gc_state.modal.motion - (MOTION_MODE_PROBE_TOWARD-2));
   }
 
   printPgmString(PSTR(" G"));

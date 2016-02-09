@@ -227,7 +227,7 @@ void mc_homing_cycle()
   #ifdef LIMITS_TWO_SWITCHES_ON_AXES  
     if (limits_get_state()) { 
       mc_reset(); // Issue system reset and ensure spindle and coolant are shutdown.
-      bit_true_atomic(sys.rt_exec_alarm, (EXEC_ALARM_HARD_LIMIT|EXEC_CRITICAL_EVENT));
+      bit_true_atomic(sys_rt_exec_alarm, (EXEC_ALARM_HARD_LIMIT|EXEC_CRITICAL_EVENT));
       return;
     }
   #endif
@@ -283,7 +283,7 @@ void mc_homing_cycle()
   // After syncing, check if probe is already triggered. If so, halt and issue alarm.
   // NOTE: This probe initialization error applies to all probing cycles.
   if ( probe_get_state() ) { // Check probe pin state.
-    bit_true_atomic(sys.rt_exec_alarm, EXEC_ALARM_PROBE_FAIL);
+    bit_true_atomic(sys_rt_exec_alarm, EXEC_ALARM_PROBE_FAIL);
     protocol_execute_realtime();
   }
   if (sys.abort) { return; } // Return if system reset has been issued.
@@ -296,10 +296,10 @@ void mc_homing_cycle()
   #endif
   
   // Activate the probing state monitor in the stepper module.
-  sys.probe_state = PROBE_ACTIVE;
+  sys_probe_state = PROBE_ACTIVE;
 
   // Perform probing cycle. Wait here until probe is triggered or motion completes.
-  bit_true_atomic(sys.rt_exec_state, EXEC_CYCLE_START);
+  bit_true_atomic(sys_rt_exec_state, EXEC_CYCLE_START);
   do {
     protocol_execute_realtime(); 
     if (sys.abort) { return; } // Check for system abort
@@ -308,13 +308,13 @@ void mc_homing_cycle()
   // Probing cycle complete!
   
   // Set state variables and error out, if the probe failed and cycle with error is enabled.
-  if (sys.probe_state == PROBE_ACTIVE) {
+  if (sys_probe_state == PROBE_ACTIVE) {
     if (is_no_error) { memcpy(sys.probe_position, sys.position, sizeof(float)*N_AXIS); }
-    else { bit_true_atomic(sys.rt_exec_alarm, EXEC_ALARM_PROBE_FAIL); }
+    else { bit_true_atomic(sys_rt_exec_alarm, EXEC_ALARM_PROBE_FAIL); }
   } else { 
     sys.probe_succeeded = true; // Indicate to system the probing cycle completed successfully.
   }
-  sys.probe_state = PROBE_OFF; // Ensure probe state monitor is disabled.
+  sys_probe_state = PROBE_OFF; // Ensure probe state monitor is disabled.
   protocol_execute_realtime();   // Check and execute run-time commands
   if (sys.abort) { return; } // Check for system abort
 
@@ -342,8 +342,8 @@ void mc_homing_cycle()
 void mc_reset()
 {
   // Only this function can set the system reset. Helps prevent multiple kill calls.
-  if (bit_isfalse(sys.rt_exec_state, EXEC_RESET)) {
-    bit_true_atomic(sys.rt_exec_state, EXEC_RESET);
+  if (bit_isfalse(sys_rt_exec_state, EXEC_RESET)) {
+    bit_true_atomic(sys_rt_exec_state, EXEC_RESET);
 
     // Kill spindle and coolant.   
     spindle_stop();
@@ -354,8 +354,8 @@ void mc_reset()
     // the steppers enabled by avoiding the go_idle call altogether, unless the motion state is
     // violated, by which, all bets are off.
     if ((sys.state & (STATE_CYCLE | STATE_HOMING)) || (sys.suspend == SUSPEND_ENABLE_HOLD)) {
-      if (sys.state == STATE_HOMING) { bit_true_atomic(sys.rt_exec_alarm, EXEC_ALARM_HOMING_FAIL); }
-      else { bit_true_atomic(sys.rt_exec_alarm, EXEC_ALARM_ABORT_CYCLE); }
+      if (sys.state == STATE_HOMING) { bit_true_atomic(sys_rt_exec_alarm, EXEC_ALARM_HOMING_FAIL); }
+      else { bit_true_atomic(sys_rt_exec_alarm, EXEC_ALARM_ABORT_CYCLE); }
       st_go_idle(); // Force kill steppers. Position has likely been lost.
     }
   }
