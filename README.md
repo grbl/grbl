@@ -1,11 +1,10 @@
 ![GitHub Logo](/doc/media/Grbl Logo 250px.png)
-
-
 ***
+
+as we cannot have the servo control code in the main branch we must fork.  
 
 _**SERVO Branch:**_
 
-as we cannot have the servo control code in the main branch we must fork.  
 the only diff between Grbl and the grbl-servo code can be found in the spindle_control.c file (see [this compare](https://github.com/grbl/grbl/compare/master...shenkarSElab:servo?expand=1))
 
 the modified file lifted of https://github.com/robottini/grbl-servo  
@@ -22,6 +21,10 @@ you can change the pulse duration in the file spindle_control.c:
 
 If you want to have the servo working from 0 --> 180 degrees change RC_SERVO_SHORT and put 9, RC_SERVO_LONG and put 39 If you want invert the servo direction uncomment the line above.  
 
+*tools*  
+[GCODE cheatsheet](http://linuxcnc.org/docs/html/gcode.html)  
+[makercam](http://www.makercam.com/) - online svg to gcode  
+[bCNC](https://github.com/vlachoudis/bCNC) or [Universal-G-Code-Sender](https://github.com/winder/Universal-G-Code-Sender)  
 
 _**Master Branch:**_
 * [Grbl v0.9j Atmega328p 16mhz 115200baud with generic defaults](http://bit.ly/1I8Ey4S) _(2015-12-18)_
