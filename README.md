@@ -4,13 +4,16 @@
 ***
 
 _**SERVO Branch:**_
-*Grbl V0.9iServo  
+
 as we cannot have the servo control code in the main branch we must fork.  
-the only diff between Grbl and the grbl-servo code can be found in the spindle_control.c file (see [this compare](https://github.com/grbl/grbl/compare/master...shenkarSElab:servo?expand=1) 
+the only diff between Grbl and the grbl-servo code can be found in the spindle_control.c file (see [this compare](https://github.com/grbl/grbl/compare/master...shenkarSElab:servo?expand=1))
 
 the modified file lifted of https://github.com/robottini/grbl-servo  
-following is [robottini] comments  
-GRBL 0.9 with servo motor support. Use the PIN D11 to drive the servo. Use the commands M03 Sxxx (xxx between 0 and 255) to rotate the servo between 0-180. The command M05 turn the servo to zero degrees.
+following is [robottini] comments:  
+GRBL 0.9 with servo motor support.  
+Use the PIN D11 to drive the servo.   
+Use the commands M03 Sxxx (xxx between 0 and 255) to rotate the servo between 0-180.  
+The command M05 turn the servo to zero degrees.
 
 you can change the pulse duration in the file spindle_control.c:  
 `define RC_SERVO_SHORT 15 // Timer ticks for 0.6ms pulse duration (9 for 0.6ms)`  
@@ -18,7 +21,7 @@ you can change the pulse duration in the file spindle_control.c:
 `define RC_SERVO_INVERT 1 // Uncomment to invert servo direction`   
 
 If you want to have the servo working from 0 --> 180 degrees change RC_SERVO_SHORT and put 9, RC_SERVO_LONG and put 39 If you want invert the servo direction uncomment the line above.  
-I tested the code very well with 328p (Arduino Uno, Duemilanove etv), not with 2560 (Arduino Mega), but I think it would work well also with the Mega.
+
 
 _**Master Branch:**_
 * [Grbl v0.9j Atmega328p 16mhz 115200baud with generic defaults](http://bit.ly/1I8Ey4S) _(2015-12-18)_
