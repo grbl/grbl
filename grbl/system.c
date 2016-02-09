@@ -41,21 +41,21 @@ void system_init()
 ISR(CONTROL_INT_vect) 
 {
   uint8_t pin = (CONTROL_PIN & CONTROL_MASK);
-  #ifndef INVERT_ALL_CONTROL_PINS
-    pin ^= CONTROL_INVERT_MASK;
+  #ifndef INVERT_CONTROL_PIN
+    pin ^= CONTROL_MASK;
   #endif
   // Enter only if any CONTROL pin is detected as active.
   if (pin) { 
     if (bit_istrue(pin,bit(RESET_BIT))) {
       mc_reset();
     } else if (bit_istrue(pin,bit(CYCLE_START_BIT))) {
-      bit_true(sys_rt_exec_state, EXEC_CYCLE_START);
+      bit_true(sys.rt_exec_state, EXEC_CYCLE_START);
     #ifndef ENABLE_SAFETY_DOOR_INPUT_PIN
       } else if (bit_istrue(pin,bit(FEED_HOLD_BIT))) {
-        bit_true(sys_rt_exec_state, EXEC_FEED_HOLD); 
+        bit_true(sys.rt_exec_state, EXEC_FEED_HOLD); 
     #else
       } else if (bit_istrue(pin,bit(SAFETY_DOOR_BIT))) {
-        bit_true(sys_rt_exec_state, EXEC_SAFETY_DOOR);
+        bit_true(sys.rt_exec_state, EXEC_SAFETY_DOOR);
     #endif
     } 
   }
@@ -139,7 +139,7 @@ uint8_t system_execute_line(char *line)
             sys.state = STATE_IDLE;
             // Don't run startup script. Prevents stored moves in startup from causing accidents.
             if (system_check_safety_door_ajar()) { // Check safety door switch before returning.
-              bit_true(sys_rt_exec_state, EXEC_SAFETY_DOOR);
+              bit_true(sys.rt_exec_state, EXEC_SAFETY_DOOR);
               protocol_execute_realtime(); // Enter safety door mode.
             }
           } // Otherwise, no effect.
@@ -175,7 +175,7 @@ uint8_t system_execute_line(char *line)
             
             // TODO: Likely not required.
             if (system_check_safety_door_ajar()) { // Check safety door switch before homing.
-              bit_true(sys_rt_exec_state, EXEC_SAFETY_DOOR);
+              bit_true(sys.rt_exec_state, EXEC_SAFETY_DOOR);
               protocol_execute_realtime(); // Enter safety door mode.
             }
             
