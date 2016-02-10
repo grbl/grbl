@@ -1,30 +1,32 @@
 ![GitHub Logo](/doc/media/Grbl Logo 250px.png)
-
-
 ***
 
-Grbl is a no-compromise, high performance, low cost alternative to parallel-port-based motion control for CNC milling. It will run on a vanilla Arduino (Duemillanove/Uno) as long as it sports an Atmega 328. 
+as we cannot have the servo control code in the main branch we must fork.  
 
-The controller is written in highly optimized C utilizing every clever feature of the AVR-chips to achieve precise timing and asynchronous operation. It is able to maintain up to 30kHz of stable, jitter free control pulses.
+_**SERVO Branch:**_
 
-It accepts standards-compliant g-code and has been tested with the output of several CAM tools with no problems. Arcs, circles and helical motion are fully supported, as well as, all other primary g-code commands. Macro functions, variables, and most canned cycles are not supported, but we think GUIs can do a much better job at translating them into straight g-code anyhow.
+the only diff between Grbl and the grbl-servo code can be found in the spindle_control.c file (see [this compare](https://github.com/grbl/grbl/compare/master...shenkarSElab:servo?expand=1))
 
-Grbl includes full acceleration management with look ahead. That means the controller will look up to 18 motions into the future and plan its velocities ahead to deliver smooth acceleration and jerk-free cornering.
+the modified file lifted of https://github.com/robottini/grbl-servo  
+following is [robottini] comments:  
+GRBL 0.9 with servo motor support.  
+Use the PIN D11 to drive the servo.   
+Use the commands M03 Sxxx (xxx between 0 and 255) to rotate the servo between 0-180.  
+The command M05 turn the servo to zero degrees.
 
-* [Licensing](https://github.com/grbl/grbl/wiki/Licensing): Grbl is free software, released under the GPLv3 license.
+you can change the pulse duration in the file spindle_control.c:  
+`define RC_SERVO_SHORT 15 // Timer ticks for 0.6ms pulse duration (9 for 0.6ms)`  
+`define RC_SERVO_LONG 32 // Timer ticks for 2.5 ms pulse duration (39 for 2.5ms)`  
+`define RC_SERVO_INVERT 1 // Uncomment to invert servo direction`   
 
-* For more information and help, check out our **[Wiki pages!](https://github.com/grbl/grbl/wiki)** If you find that the information is out-dated, please to help us keep it updated by editing it or notifying our community! Thanks!
+If you want to have the servo working from 0 --> 180 degrees change RC_SERVO_SHORT and put 9, RC_SERVO_LONG and put 39 If you want invert the servo direction uncomment the line above.  
 
-* Lead Developer [_2011 - Current_]: Sungeun(Sonny) K. Jeon, Ph.D. (USA) aka @chamnit
-
-* Lead Developer [_2009 - 2011_]: Simen Svale Skogsrud (Norway). aka The Originator/Creator/Pioneer/Father of Grbl.
-
-***
-
-### Official Supporters of the Grbl CNC Project
-![Official Supporters](https://dl.dropboxusercontent.com/u/2221997/Contributors.png)
-
-***
+* TOOLS
+ - [GCODE Quick Reference](http://linuxcnc.org/docs/html/gcode.html)  
+ - [bCNC](https://github.com/vlachoudis/bCNC) or [Universal-G-Code-Sender](https://github.com/winder/Universal-G-Code-Sender)  
+ - [PCB-TO-Gcode](http://pcbgcode.org/) for eagle  
+    -- see [this](http://pcbgcode.org/read.php?15,392) for how to have only one pass (good for us with a pen)  [image](http://i.imgur.com/gkHqKvP.png), [image2](http://i.imgur.com/e12rZnG.png)  
+ - [makercam](http://www.makercam.com/) - online svg to gcode  [image](http://i.imgur.com/JcXGzAh.png)
 
 _**Master Branch:**_
 * [Grbl v0.9j Atmega328p 16mhz 115200baud with generic defaults](http://bit.ly/1I8Ey4S) _(2015-12-18)_
@@ -105,3 +107,27 @@ List of Supported G-Codes in Grbl v0.9 Master:
 Grbl is an open-source project and fueled by the free-time of our intrepid administrators and altruistic users. If you'd like to donate, all proceeds will be used to help fund supporting hardware and testing equipment. Thank you!
 
 [![Donate](https://www.paypalobjects.com/en_US/i/btn/btn_donate_LG.gif)](https://www.paypal.com/cgi-bin/webscr?cmd=_s-xclick&hosted_button_id=CUGXJHXA36BYW)
+
+
+Grbl is a no-compromise, high performance, low cost alternative to parallel-port-based motion control for CNC milling. It will run on a vanilla Arduino (Duemillanove/Uno) as long as it sports an Atmega 328. 
+
+The controller is written in highly optimized C utilizing every clever feature of the AVR-chips to achieve precise timing and asynchronous operation. It is able to maintain up to 30kHz of stable, jitter free control pulses.
+
+It accepts standards-compliant g-code and has been tested with the output of several CAM tools with no problems. Arcs, circles and helical motion are fully supported, as well as, all other primary g-code commands. Macro functions, variables, and most canned cycles are not supported, but we think GUIs can do a much better job at translating them into straight g-code anyhow.
+
+Grbl includes full acceleration management with look ahead. That means the controller will look up to 18 motions into the future and plan its velocities ahead to deliver smooth acceleration and jerk-free cornering.
+
+* [Licensing](https://github.com/grbl/grbl/wiki/Licensing): Grbl is free software, released under the GPLv3 license.
+
+* For more information and help, check out our **[Wiki pages!](https://github.com/grbl/grbl/wiki)** If you find that the information is out-dated, please to help us keep it updated by editing it or notifying our community! Thanks!
+
+* Lead Developer [_2011 - Current_]: Sungeun(Sonny) K. Jeon, Ph.D. (USA) aka @chamnit
+
+* Lead Developer [_2009 - 2011_]: Simen Svale Skogsrud (Norway). aka The Originator/Creator/Pioneer/Father of Grbl.
+
+***
+
+### Official Supporters of the Grbl CNC Project
+![Official Supporters](https://dl.dropboxusercontent.com/u/2221997/Contributors.png)
+
+***
