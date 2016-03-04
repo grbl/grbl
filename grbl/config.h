@@ -127,7 +127,7 @@
 #define MESSAGE_PROBE_COORDINATES // Enabled by default. Comment to disable.
  
 // Enables a second coolant control pin via the mist coolant g-code command M7 on the Arduino Uno
-// analog pin 5. Only use this option if you require a second coolant control pin.
+// analog pin 4. Only use this option if you require a second coolant control pin.
 // NOTE: The M8 flood coolant control pin on analog pin 4 will still be functional regardless.
 // #define ENABLE_M7 // Disabled by default. Uncomment to enable.
 
@@ -156,6 +156,15 @@
 // NOTE: If you require individual control pins inverted, keep this macro disabled and simply alter
 //   the CONTROL_INVERT_MASK definition in cpu_map.h files.
 // #define INVERT_ALL_CONTROL_PINS // Default disabled. Uncomment to enable.
+
+// Inverts select limit pin states based on the following mask. This effects all limit pin functions, 
+// such as hard limits and homing. However, this is different from overall invert limits setting. 
+// This build option will invert only the limit pins defined here, and then the invert limits setting
+// will be applied to all of them. This is useful when a user has a mixed set of limit pins with both
+// normally-open(NO) and normally-closed(NC) switches installed on their machine.
+// NOTE: PLEASE DO NOT USE THIS, unless you have a situation that needs it.
+// #define INVERT_LIMIT_PIN_MASK ((1<<X_LIMIT_BIT)|(1<<Y_LIMIT_BIT)) // Default disabled. Uncomment to enable.
+
 
 // Inverts the spindle enable pin from low-disabled/high-enabled to low-enabled/high-disabled. Useful
 // for some pre-built electronic boards.

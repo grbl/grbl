@@ -1,0 +1,25 @@
+----------------
+Date: 2015-11-09
+Author: Sonny Jeon
+Subject: Pin state reporting of all pins. Flash optimization.
+
+- New pin state realtime reporting feature. Instead of `Lim:000` for
+limit state reports, the new feature shows `Pin:000|0|0000`, or
+something similar. The `|` delimited fields indicate xyz limits, probe,
+and control pin states, where 0 is always not triggered, and 1 is
+triggered. Invert masks ARE accounted for.
+  Each field may be enabled or disabled via the `$10` status report
+setting. The probe and control pin flags are bits 5 and 6, respectively.
+
+- Remove the now deprecated `REPORT_CONTROL_PIN_STATE` option in
+config.h
+
+- The old limit pin reports `Lim:000` may be re-enabled by commenting
+out `REPORT_ALL_PIN_STATES` in config.h.
+
+- Incremented the version letter (v1.0c) to indicate the change in
+reporting style.
+
+- Replaced all bit_true_atomic and bit_false_atomic macros with
+function calls. This saved a couple hundred bytes of flash.
+

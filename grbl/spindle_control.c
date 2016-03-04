@@ -106,41 +106,47 @@ void spindle_set_state(uint8_t state, float rpm)
       #endif
 
       // Calculate PWM register value based on rpm max/min settings and programmed rpm.
-      if (settings.rpm_max <= settings.rpm_min) {
-        // No PWM range possible. Set simple on/off spindle control pin state.
-        current_pwm = PWM_MAX_VALUE;
-      } else {
-        if (rpm > settings.rpm_max) { rpm = settings.rpm_max; }
-        if (rpm < settings.rpm_min) { rpm = settings.rpm_min; }
-        #ifdef SPINDLE_MINIMUM_PWM
-          float pwm_gradient = (PWM_MAX_VALUE-SPINDLE_MINIMUM_PWM)/(settings.rpm_max-settings.rpm_min);
-          current_pwm = floor( (rpm-settings.rpm_min)*pwm_gradient + (SPINDLE_MINIMUM_PWM+0.5));
-        #else
-          float pwm_gradient = (PWM_MAX_VALUE)/(settings.rpm_max-settings.rpm_min);
-          current_pwm = floor( (rpm-settings.rpm_min)*pwm_gradient + 0.5);
+      if (rpm <= 0.0) { spindle_stop(); } // RPM should never be negative, but check anyway.
+      else {
+        if (settings.rpm_max <= settings.rpm_min) {
+          // No PWM range possible. Set simple on/off spindle control pin state.
+          current_pwm = PWM_MAX_VALUE;
+        } else {
+          if (rpm > settings.rpm_max) { rpm = settings.rpm_max; }
+          if (rpm < settings.rpm_min) { rpm = settings.rpm_min; }
+          #ifdef SPINDLE_MINIMUM_PWM
+            float pwm_gradient = (PWM_MAX_VALUE-SPINDLE_MINIMUM_PWM)/(settings.rpm_max-settings.rpm_min);
+            current_pwm = floor( (rpm-settings.rpm_min)*pwm_gradient + (SPINDLE_MINIMUM_PWM+0.5));
+          #else
+            float pwm_gradient = (PWM_MAX_VALUE)/(settings.rpm_max-settings.rpm_min);
+            current_pwm = floor( (rpm-settings.rpm_min)*pwm_gradient + 0.5);
+          #endif
+        }
+      
+        OCR_REGISTER = current_pwm; // Set PWM output level.
+        TCCRA_REGISTER |= (1<<COMB_BIT); // Ensure PWM output is enabled.
+    
+        // On the Uno, spindle enable and PWM are shared, unless otherwise specified.
+        #if defined(CPU_MAP_ATMEGA2560) || defined(USE_SPINDLE_DIR_AS_ENABLE_PIN) 
+          #ifdef INVERT_SPINDLE_ENABLE_PIN
+            SPINDLE_ENABLE_PORT &= ~(1<<SPINDLE_ENABLE_BIT);
+          #else
+            SPINDLE_ENABLE_PORT |= (1<<SPINDLE_ENABLE_BIT);
+          #endif
         #endif
       }
       
-      OCR_REGISTER = current_pwm; // Set PWM output level.
-      TCCRA_REGISTER |= (1<<COMB_BIT); // Ensure PWM output is enabled.
-    
-      // On the Uno, spindle enable and PWM are shared, unless otherwise specified.
-      #if defined(CPU_MAP_ATMEGA2560) || defined(USE_SPINDLE_DIR_AS_ENABLE_PIN) 
+    #else
+      
+      if (rpm <= 0.0) { spindle_stop(); } // RPM should never be negative, but check anyway.
+      else {
         #ifdef INVERT_SPINDLE_ENABLE_PIN
           SPINDLE_ENABLE_PORT &= ~(1<<SPINDLE_ENABLE_BIT);
         #else
           SPINDLE_ENABLE_PORT |= (1<<SPINDLE_ENABLE_BIT);
         #endif
-      #endif
+      }
       
-    #else
-       
-      #ifdef INVERT_SPINDLE_ENABLE_PIN
-        SPINDLE_ENABLE_PORT &= ~(1<<SPINDLE_ENABLE_BIT);
-      #else
-        SPINDLE_ENABLE_PORT |= (1<<SPINDLE_ENABLE_BIT);
-      #endif
-    
     #endif
 
   }
