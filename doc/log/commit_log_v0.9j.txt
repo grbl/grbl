@@ -1,4 +1,20 @@
 ----------------
+Date: 2015-12-18
+Author: Sonny Jeon
+Subject: Minor bug fixes.
+
+- Planner was under-estimating maximum speeds through straight
+junctions in certain cases. The calculations have been updated to be
+more accurate.
+
+- Type declaration fix in probe.c.
+
+ - Commit log for v0.9j generated separately from v0.9i’s.
+
+- Incremented version and updated pre-built firmware link.
+
+
+----------------
 Date: 2015-09-30
 Author: Sonny Jeon
 Subject: Minor bug fixes.

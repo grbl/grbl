@@ -40,7 +40,7 @@ parser_block_t gc_block;
 
 void gc_init() 
 {
-  memset(&gc_state, 0, sizeof(gc_state));
+  memset(&gc_state, 0, sizeof(parser_state_t));
   
   // Load default G54 coordinate system.
   if (!(settings_read_coord_data(gc_state.modal.coord_select,gc_state.coord_system))) { 
@@ -79,8 +79,8 @@ uint8_t gc_execute_line(char *line)
      executed after successful error-checking. The parser block struct also contains a block
      values struct, word tracking variables, and a non-modal commands tracker for the new 
      block. This struct contains all of the necessary information to execute the block. */
-     
-  memset(&gc_block, 0, sizeof(gc_block)); // Initialize the parser block struct.
+
+  memset(&gc_block, 0, sizeof(parser_block_t)); // Initialize the parser block struct.
   memcpy(&gc_block.modal,&gc_state.modal,sizeof(gc_modal_t)); // Copy current modes
   uint8_t axis_command = AXIS_COMMAND_NONE;
   uint8_t axis_0, axis_1, axis_linear;

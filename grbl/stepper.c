@@ -451,8 +451,8 @@ void st_reset()
   st_go_idle();
   
   // Initialize stepper algorithm variables.
-  memset(&prep, 0, sizeof(prep));
-  memset(&st, 0, sizeof(st));
+  memset(&prep, 0, sizeof(st_prep_t));
+  memset(&st, 0, sizeof(stepper_t));
   st.exec_segment = NULL;
   pl_block = NULL;  // Planner block pointer used by segment buffer
   segment_buffer_tail = 0;

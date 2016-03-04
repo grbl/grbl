@@ -70,12 +70,15 @@ uint8_t limits_get_state()
 {
   uint8_t limit_state = 0;
   uint8_t pin = (LIMIT_PIN & LIMIT_MASK);
+  #ifdef INVERT_LIMIT_PIN_MASK
+    pin ^= INVERT_LIMIT_PIN_MASK;
+  #endif
   if (bit_isfalse(settings.flags,BITFLAG_INVERT_LIMIT_PINS)) { pin ^= LIMIT_MASK; }
   if (pin) {  
-	uint8_t idx;
-	for (idx=0; idx<N_AXIS; idx++) {
-	  if (pin & get_limit_pin_mask(idx)) { limit_state |= (1 << idx); }
-	}
+    uint8_t idx;
+    for (idx=0; idx<N_AXIS; idx++) {
+      if (pin & get_limit_pin_mask(idx)) { limit_state |= (1 << idx); }
+    }
   }
   return(limit_state);
 }
@@ -210,37 +213,37 @@ void limits_go_home(uint8_t cycle_mask)
     
     st_prep_buffer(); // Prep and fill segment buffer from newly planned block.
     st_wake_up(); // Initiate motion
-	do {
-	  if (approach) {
-		// Check limit state. Lock out cycle axes when they change.
-		limit_state = limits_get_state();
-		for (idx=0; idx<N_AXIS; idx++) {
-		  if (axislock & step_pin[idx]) {
-			if (limit_state & (1 << idx)) { axislock &= ~(step_pin[idx]); }
-		  }
-		}
-		sys.homing_axis_lock = axislock;
-	  }
+    do {
+      if (approach) {
+        // Check limit state. Lock out cycle axes when they change.
+        limit_state = limits_get_state();
+        for (idx=0; idx<N_AXIS; idx++) {
+          if (axislock & step_pin[idx]) {
+            if (limit_state & (1 << idx)) { axislock &= ~(step_pin[idx]); }
+          }
+        }
+        sys.homing_axis_lock = axislock;
+      }
 
-	  st_prep_buffer(); // Check and prep segment buffer. NOTE: Should take no longer than 200us.
+      st_prep_buffer(); // Check and prep segment buffer. NOTE: Should take no longer than 200us.
 
-	  // Exit routines: No time to run protocol_execute_realtime() in this loop.
-	  if (sys_rt_exec_state & (EXEC_SAFETY_DOOR | EXEC_RESET | EXEC_CYCLE_STOP)) {
-	    // Homing failure: Limit switches are still engaged after pull-off motion
-		if ( (sys_rt_exec_state & (EXEC_SAFETY_DOOR | EXEC_RESET)) ||  // Safety door or reset issued
-		     (!approach && (limits_get_state() & cycle_mask)) ||  // Limit switch still engaged after pull-off motion
-		     ( approach && (sys_rt_exec_state & EXEC_CYCLE_STOP)) ) { // Limit switch not found during approach.
-     	  mc_reset(); // Stop motors, if they are running.
-		  protocol_execute_realtime();
-		  return;
-		} else {
-		  // Pull-off motion complete. Disable CYCLE_STOP from executing.
+      // Exit routines: No time to run protocol_execute_realtime() in this loop.
+      if (sys_rt_exec_state & (EXEC_SAFETY_DOOR | EXEC_RESET | EXEC_CYCLE_STOP)) {
+        // Homing failure: Limit switches are still engaged after pull-off motion
+        if ( (sys_rt_exec_state & (EXEC_SAFETY_DOOR | EXEC_RESET)) ||  // Safety door or reset issued
+           (!approach && (limits_get_state() & cycle_mask)) ||  // Limit switch still engaged after pull-off motion
+           ( approach && (sys_rt_exec_state & EXEC_CYCLE_STOP)) ) { // Limit switch not found during approach.
+          mc_reset(); // Stop motors, if they are running.
+          protocol_execute_realtime();
+          return;
+        } else {
+          // Pull-off motion complete. Disable CYCLE_STOP from executing.
           bit_false_atomic(sys_rt_exec_state,EXEC_CYCLE_STOP);
-		  break;
-		} 
-	  }
+          break;
+        } 
+      }
 
-	} while (STEP_MASK & axislock);
+    } while (STEP_MASK & axislock);
 
     st_reset(); // Immediately force kill steppers and reset step segment buffer.
     plan_reset(); // Reset planner buffer to zero planner current position and to clear previous motions.
