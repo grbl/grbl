@@ -38,4 +38,13 @@ void limits_go_home(uint8_t cycle_mask);
 // Check for soft limit violations
 void limits_soft_check(float *target);
 
+// Called when the limit interrupt method(s) are triggered
+void limits_interrupt_triggered();
+
+// Called when the limit interrupt method(s) are triggered, using a delay.
+void limits_interrupt_triggered_delayed();
+
+// Indicate hard limit critical event
+void hard_limit_critical_event();
+
 #endif

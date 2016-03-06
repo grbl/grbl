@@ -20,7 +20,9 @@
 */
 
 #include "grbl.h"
-
+#ifdef CPU_MAP_ATMEGA2560_RAMPS_1_4
+#include "ramps.h"
+#endif
 
 // Some useful constants.
 #define DT_SEGMENT (1.0/(ACCELERATION_TICKS_PER_SECOND*60.0)) // min/segment 
@@ -183,8 +185,18 @@ static st_prep_t prep;
 void st_wake_up() 
 {
   // Enable stepper drivers.
-  if (bit_istrue(settings.flags,BITFLAG_INVERT_ST_ENABLE)) { STEPPERS_DISABLE_PORT |= (1<<STEPPERS_DISABLE_BIT); }
-  else { STEPPERS_DISABLE_PORT &= ~(1<<STEPPERS_DISABLE_BIT); }
+  uint8_t val = 0;
+  if (bit_istrue(settings.flags,BITFLAG_INVERT_ST_ENABLE)) { 
+    val |= (1<<STEPPERS_DISABLE_BIT); 
+  } else { 
+    val &= ~(1<<STEPPERS_DISABLE_BIT); 
+  }
+  
+  #ifdef CPU_MAP_ATMEGA2560_RAMPS_1_4
+    rampsWriteDisable(val);
+  #else
+    STEPPERS_DISABLE_PORT = val;
+  #endif // CPU_MAP_ATMEGA2560_RAMPS_1_4    
 
   if (sys.state & (STATE_CYCLE | STATE_HOMING)){
     // Initialize stepper output bits
@@ -225,8 +237,17 @@ void st_go_idle()
     pin_state = true; // Override. Disable steppers.
   }
   if (bit_istrue(settings.flags,BITFLAG_INVERT_ST_ENABLE)) { pin_state = !pin_state; } // Apply pin invert.
-  if (pin_state) { STEPPERS_DISABLE_PORT |= (1<<STEPPERS_DISABLE_BIT); }
-  else { STEPPERS_DISABLE_PORT &= ~(1<<STEPPERS_DISABLE_BIT); }
+  uint8_t val = 0;
+  if (pin_state) { 
+    val |= (1<<STEPPERS_DISABLE_BIT); 
+  } else { 
+    val &= ~(1<<STEPPERS_DISABLE_BIT); 
+  }
+  #ifdef CPU_MAP_ATMEGA2560_RAMPS_1_4
+    rampsWriteDisable(val);
+  #else
+    STEPPERS_DISABLE_PORT = val;
+  #endif // CPU_MAP_ATMEGA2560_RAMPS_1_4
 }
 
 
@@ -284,13 +305,21 @@ ISR(TIMER1_COMPA_vect)
   if (busy) { return; } // The busy-flag is used to avoid reentering this interrupt
   
   // Set the direction pins a couple of nanoseconds before we step the steppers
-  DIRECTION_PORT = (DIRECTION_PORT & ~DIRECTION_MASK) | (st.dir_outbits & DIRECTION_MASK);
-
+  #ifdef CPU_MAP_ATMEGA2560_RAMPS_1_4
+    rampsWriteDirections(st.dir_outbits);
+  #else
+    DIRECTION_PORT = (DIRECTION_PORT & ~DIRECTION_MASK) | (st.dir_outbits & DIRECTION_MASK);
+  #endif // CPU_MAP_ATMEGA2560_RAMPS_1_4
+  
   // Then pulse the stepping pins
   #ifdef STEP_PULSE_DELAY
     st.step_bits = (STEP_PORT & ~STEP_MASK) | st.step_outbits; // Store out_bits to prevent overwriting.
   #else  // Normal operation
-    STEP_PORT = (STEP_PORT & ~STEP_MASK) | st.step_outbits;
+    #ifdef CPU_MAP_ATMEGA2560_RAMPS_1_4
+      rampsWriteSteps(st.step_outbits);
+    #else
+      STEP_PORT = (STEP_PORT & ~STEP_MASK) | st.step_outbits;
+    #endif // CPU_MAP_ATMEGA2560_RAMPS_1_4
   #endif  
 
   // Enable step pulse reset timer so that The Stepper Port Reset Interrupt can reset the signal after
@@ -415,7 +444,12 @@ ISR(TIMER1_COMPA_vect)
 ISR(TIMER0_OVF_vect)
 {
   // Reset stepping pins (leave the direction pins)
-  STEP_PORT = (STEP_PORT & ~STEP_MASK) | (step_port_invert_mask & STEP_MASK); 
+  #ifdef CPU_MAP_ATMEGA2560_RAMPS_1_4
+    rampsWriteSteps(step_port_invert_mask & STEP_MASK);
+  #else
+    STEP_PORT = (STEP_PORT & ~STEP_MASK) | (step_port_invert_mask & STEP_MASK); 
+  #endif // CPU_MAP_ATMEGA2560_RAMPS_1_4
+  
   TCCR0B = 0; // Disable Timer0 to prevent re-entering this interrupt when it's not needed. 
 }
 #ifdef STEP_PULSE_DELAY
@@ -426,7 +460,11 @@ ISR(TIMER0_OVF_vect)
   // st_wake_up() routine.
   ISR(TIMER0_COMPA_vect) 
   { 
-    STEP_PORT = st.step_bits; // Begin step pulse.
+    #ifdef CPU_MAP_ATMEGA2560_RAMPS_1_4
+      rampsWriteSteps(st.step_bits);
+    #else
+      STEP_PORT = st.step_bits; // Begin step pulse.
+    #endif // CPU_MAP_ATMEGA2560_RAMPS_1_4        
   }
 #endif
 
@@ -461,10 +499,15 @@ void st_reset()
   busy = false;
   
   st_generate_step_dir_invert_masks();
-      
+   
   // Initialize step and direction port pins.
-  STEP_PORT = (STEP_PORT & ~STEP_MASK) | step_port_invert_mask;
-  DIRECTION_PORT = (DIRECTION_PORT & ~DIRECTION_MASK) | dir_port_invert_mask;
+  #ifdef CPU_MAP_ATMEGA2560_RAMPS_1_4
+    rampsWriteSteps(step_port_invert_mask);
+    rampsWriteDirections(dir_port_invert_mask);
+  #else
+    STEP_PORT = (STEP_PORT & ~STEP_MASK) | step_port_invert_mask;
+    DIRECTION_PORT = (DIRECTION_PORT & ~DIRECTION_MASK) | dir_port_invert_mask;
+  #endif // CPU_MAP_ATMEGA2560_RAMPS_1_4      
 }
 
 
@@ -472,9 +515,13 @@ void st_reset()
 void stepper_init()
 {
   // Configure step and direction interface pins
-  STEP_DDR |= STEP_MASK;
-  STEPPERS_DISABLE_DDR |= 1<<STEPPERS_DISABLE_BIT;
-  DIRECTION_DDR |= DIRECTION_MASK;
+  #ifdef CPU_MAP_ATMEGA2560_RAMPS_1_4
+    rampsInitSteppers();
+  #else
+    STEP_DDR |= STEP_MASK;
+    STEPPERS_DISABLE_DDR |= 1<<STEPPERS_DISABLE_BIT;
+    DIRECTION_DDR |= DIRECTION_MASK;
+  #endif // CPU_MAP_ATMEGA2560_RAMPS_1_4
 
   // Configure Timer 1: Stepper Driver Interrupt
   TCCR1B &= ~(1<<WGM13); // waveform generation = 0100 = CTC
