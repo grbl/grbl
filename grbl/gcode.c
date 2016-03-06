@@ -312,6 +312,22 @@ uint8_t gc_execute_line(char *line)
               case 9: gc_block.modal.coolant = COOLANT_DISABLE; break;
             }
             break;
+          case 180: case 181: case 182: case 183: case 184:
+          case 190: case 191: case 192: case 193: case 194:
+            word_bit = MODAL_GROUP_M80;
+            switch(int_value){      
+              case 180:gc_block.modal.relay = RELAY_ENABLE;break;
+              case 181:gc_block.modal.relay = RELAY_1_ON;break;
+              case 182:gc_block.modal.relay = RELAY_2_ON;break;
+              case 183:gc_block.modal.relay = RELAY_3_ON;break;
+              case 184:gc_block.modal.relay = RELAY_4_ON;break;
+
+              case 190:gc_block.modal.relay = RELAY_DISABLE;break;
+              case 191:gc_block.modal.relay = RELAY_1_OFF;break;
+              case 192:gc_block.modal.relay = RELAY_2_OFF;break;
+              case 193:gc_block.modal.relay = RELAY_3_OFF;break;
+              case 194:gc_block.modal.relay = RELAY_4_OFF;break;
+            }break;
           default: FAIL(STATUS_GCODE_UNSUPPORTED_COMMAND); // [Unsupported M command]
         }
       
@@ -872,6 +888,11 @@ uint8_t gc_execute_line(char *line)
     gc_state.modal.coolant = gc_block.modal.coolant;
   }
   
+  if (gc_state.modal.relay != gc_block.modal.relay){
+    relay_run(gc_block.modal.relay);
+    gc_state.modal.relay = gc_block.modal.relay;
+  }
+
   // [9. Enable/disable feed rate or spindle overrides ]: NOT SUPPORTED
 
   // [10. Dwell ]:
@@ -1053,6 +1074,7 @@ uint8_t gc_execute_line(char *line)
 	  gc_state.modal.coord_select = 0; // G54
 	  gc_state.modal.spindle = SPINDLE_DISABLE;
 	  gc_state.modal.coolant = COOLANT_DISABLE;
+          gc_state.modal.relay = RELAY_DISABLE;
 	  // gc_state.modal.override = OVERRIDE_DISABLE; // Not supported.
 	  
 	  // Execute coordinate change and spindle/coolant stop.

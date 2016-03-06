@@ -83,6 +83,14 @@
 #define SPINDLE_DIRECTION_PORT  PORTE
 #define SPINDLE_DIRECTION_BIT   3 // MEGA2560 Digital Pin 5
 
+#define RELAY_DDR   DDRC
+#define RELAY_PORT  PORTC
+#define RELAY1_BIT  3  // Uno Analog Pin 37
+#define RELAY2_BIT  2  // Uno Analog Pin 36
+#define RELAY3_BIT  1  // Uno Analog Pin 35
+#define RELAY4_BIT  0  // Uno Analog Pin 34
+
+
 // Define flood and mist coolant enable output pins.
 // NOTE: Uno analog pins 4 and 5 are reserved for an i2c interface, and may be installed at
 // a later date if flash and memory space allows.

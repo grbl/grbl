@@ -95,6 +95,7 @@ typedef struct {
   uint8_t flags;  // Contains default boolean settings
 
   uint8_t homing_dir_mask;
+  uint8_t relay;
   float homing_feed_rate;
   float homing_seek_rate;
   uint16_t homing_debounce_delay;

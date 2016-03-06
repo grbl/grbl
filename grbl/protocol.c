@@ -313,6 +313,9 @@ void protocol_execute_realtime()
               coolant_set_state(gc_state.modal.coolant); 
               delay_ms(SAFETY_DOOR_COOLANT_DELAY); // TODO: Blocking function call. Need a non-blocking one eventually.
             }
+            if (gc_state.modal.relay != COOLANT_DISABLE){
+              relay_set_state(gc_state.modal.relay);
+            }
             // TODO: Install return to pre-park position.
           }
           // Start cycle only if queued motions exist in planner buffer and the motion is not canceled.

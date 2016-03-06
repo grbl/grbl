@@ -46,6 +46,7 @@
 #include "defaults.h"
 #include "cpu_map.h"
 #include "coolant_control.h"
+#include "relay_control.h"
 #include "eeprom.h"
 #include "gcode.h"
 #include "limits.h"
