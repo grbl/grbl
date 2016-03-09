@@ -334,9 +334,9 @@ uint8_t gc_execute_line(char *line)
           // case 'D': // Not supported
           case 'F': word_bit = WORD_F; gc_block.values.f = value; break;
           // case 'H': // Not supported
-          case 'I': word_bit = WORD_I; gc_block.values.ijk[X_AXIS] = value; ijk_words |= (1<<X_AXIS); break;
-          case 'J': word_bit = WORD_J; gc_block.values.ijk[Y_AXIS] = value; ijk_words |= (1<<Y_AXIS); break;
-          case 'K': word_bit = WORD_K; gc_block.values.ijk[Z_AXIS] = value; ijk_words |= (1<<Z_AXIS); break;
+          case 'I': word_bit = WORD_I; gc_block.values.ijk[A_AXIS] = value; ijk_words |= (1<<A_AXIS); break;
+          case 'J': word_bit = WORD_J; gc_block.values.ijk[B_AXIS] = value; ijk_words |= (1<<B_AXIS); break;
+          case 'K': word_bit = WORD_K; gc_block.values.ijk[C_AXIS] = value; ijk_words |= (1<<C_AXIS); break;
           case 'L': word_bit = WORD_L; gc_block.values.l = int_value; break;
           case 'N': word_bit = WORD_N; gc_block.values.n = trunc(value); break;
           case 'P': word_bit = WORD_P; gc_block.values.p = value; break;
@@ -345,9 +345,9 @@ uint8_t gc_execute_line(char *line)
           case 'R': word_bit = WORD_R; gc_block.values.r = value; break;
           case 'S': word_bit = WORD_S; gc_block.values.s = value; break;
           case 'T': word_bit = WORD_T; break; // gc.values.t = int_value;
-          case 'X': word_bit = WORD_X; gc_block.values.xyz[X_AXIS] = value; axis_words |= (1<<X_AXIS); break;
-          case 'Y': word_bit = WORD_Y; gc_block.values.xyz[Y_AXIS] = value; axis_words |= (1<<Y_AXIS); break;
-          case 'Z': word_bit = WORD_Z; gc_block.values.xyz[Z_AXIS] = value; axis_words |= (1<<Z_AXIS); break;
+          case 'X': word_bit = WORD_X; gc_block.values.xyz[A_AXIS] = value; axis_words |= (1<<A_AXIS); break;
+          case 'Y': word_bit = WORD_Y; gc_block.values.xyz[B_AXIS] = value; axis_words |= (1<<B_AXIS); break;
+          case 'Z': word_bit = WORD_Z; gc_block.values.xyz[C_AXIS] = value; axis_words |= (1<<C_AXIS); break;
           default: FAIL(STATUS_GCODE_UNSUPPORTED_COMMAND);
         } 
         
@@ -469,19 +469,19 @@ uint8_t gc_execute_line(char *line)
   // [11. Set active plane ]: N/A
   switch (gc_block.modal.plane_select) {
     case PLANE_SELECT_XY:
-      axis_0 = X_AXIS;
-      axis_1 = Y_AXIS;
-      axis_linear = Z_AXIS;
+      axis_0 = A_AXIS;
+      axis_1 = B_AXIS;
+      axis_linear = C_AXIS;
       break;
     case PLANE_SELECT_ZX:
-      axis_0 = Z_AXIS;
-      axis_1 = X_AXIS;
-      axis_linear = Y_AXIS;
+      axis_0 = C_AXIS;
+      axis_1 = A_AXIS;
+      axis_linear = B_AXIS;
       break;
     default: // case PLANE_SELECT_YZ:
-      axis_0 = Y_AXIS;
-      axis_1 = Z_AXIS;
-      axis_linear = X_AXIS;
+      axis_0 = B_AXIS;
+      axis_1 = C_AXIS;
+      axis_linear = A_AXIS;
   }   
             
   // [12. Set length units ]: N/A

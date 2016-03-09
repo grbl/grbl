@@ -38,7 +38,7 @@
 
 // Default cpu mappings. Grbl officially supports the Arduino Uno only. Other processor types
 // may exist from user-supplied templates or directly user-defined in cpu_map.h
-#define CPU_MAP_ATMEGA328P // Arduino Uno CPU
+#define CPU_MAP_ATMEGA2560 // Arduino Uno CPU
 
 // Define realtime command special characters. These characters are 'picked-off' directly from the
 // serial read data stream and are not passed to the grbl line execution parser. Select characters
@@ -72,8 +72,8 @@
 // on separate pin, but homed in one cycle. Also, it should be noted that the function of hard limits 
 // will not be affected by pin sharing.
 // NOTE: Defaults are set for a traditional 3-axis CNC machine. Z-axis first to clear, followed by X & Y.
-#define HOMING_CYCLE_0 (1<<Z_AXIS)                // REQUIRED: First move Z to clear workspace.
-#define HOMING_CYCLE_1 ((1<<X_AXIS)|(1<<Y_AXIS))  // OPTIONAL: Then move X,Y at the same time.
+#define HOMING_CYCLE_0 (1<<C_AXIS)                // REQUIRED: First move Z to clear workspace.
+#define HOMING_CYCLE_1 ((1<<A_AXIS)|(1<<B_AXIS))  // OPTIONAL: Then move X,Y at the same time.
 // #define HOMING_CYCLE_2                         // OPTIONAL: Uncomment and add axes mask to enable
 
 // Number of homing cycles performed after when the machine initially jogs to limit switches.
@@ -238,7 +238,7 @@
 // Sets which axis the tool length offset is applied. Assumes the spindle is always parallel with 
 // the selected axis with the tool oriented toward the negative direction. In other words, a positive
 // tool length offset value is subtracted from the current location.
-#define TOOL_LENGTH_OFFSET_AXIS Z_AXIS // Default z-axis. Valid values are X_AXIS, Y_AXIS, or Z_AXIS.
+#define TOOL_LENGTH_OFFSET_AXIS C_AXIS // Default z-axis. Valid values are X_AXIS, Y_AXIS, or Z_AXIS.
 
 // Enables variable spindle output voltage for different RPM values. On the Arduino Uno, the spindle
 // enable pin will output 5V for maximum RPM with 256 intermediate levels and 0V when disabled.
