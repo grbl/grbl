@@ -135,9 +135,9 @@
 #define WORD_R  7
 #define WORD_S  8
 #define WORD_T  9
-#define WORD_X  10
-#define WORD_Y  11
-#define WORD_Z  12
+#define WORD_A  10
+#define WORD_B  11
+#define WORD_C  12
 
 
 // NOTE: When this struct is zeroed, the above defines set the defaults for the system.

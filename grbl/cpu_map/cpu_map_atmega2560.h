@@ -64,12 +64,12 @@
 
 // Define homing/hard limit switch input pins and limit interrupt vectors. 
 // NOTE: All limit bit pins must be on the same port
-#define LIMIT_DDR       DDRB
-#define LIMIT_PORT      PORTB
-#define LIMIT_PIN       PINB
-#define A_LIMIT_BIT     4 // MEGA2560 Digital Pin 10
-#define B_LIMIT_BIT     5 // MEGA2560 Digital Pin 11
-#define C_LIMIT_BIT     6 // MEGA2560 Digital Pin 12
+#define LIMIT_DDR       DDRL
+#define LIMIT_PORT      PORTL
+#define LIMIT_PIN       PINL
+#define A_LIMIT_BIT     0 // MEGA2560 Digital Pin 44
+#define B_LIMIT_BIT     1 // MEGA2560 Digital Pin 45
+#define C_LIMIT_BIT     2 // MEGA2560 Digital Pin 46
 #define LIMIT_INT       PCIE0  // Pin change interrupt enable pin
 #define LIMIT_INT_vect  PCINT0_vect 
 #define LIMIT_PCMSK     PCMSK0 // Pin change interrupt register
