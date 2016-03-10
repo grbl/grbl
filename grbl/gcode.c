@@ -348,6 +348,10 @@ uint8_t gc_execute_line(char *line)
           case 'A': word_bit = WORD_A; gc_block.values.xyz[A_AXIS] = value; axis_words |= (1<<A_AXIS); break;
           case 'B': word_bit = WORD_B; gc_block.values.xyz[B_AXIS] = value; axis_words |= (1<<B_AXIS); break;
           case 'C': word_bit = WORD_C; gc_block.values.xyz[C_AXIS] = value; axis_words |= (1<<C_AXIS); break;
+          case 'D': word_bit = WORD_D; gc_block.values.xyz[D_AXIS] = value; axis_words |= (1<<D_AXIS); break;
+          case 'X': word_bit = WORD_X; gc_block.values.xyz[E_AXIS] = value; axis_words |= (1<<E_AXIS); break;
+          case 'Y': word_bit = WORD_Y; gc_block.values.xyz[F_AXIS] = value; axis_words |= (1<<F_AXIS); break;
+          case 'Z': word_bit = WORD_Z; gc_block.values.xyz[G_AXIS] = value; axis_words |= (1<<G_AXIS); break;
           default: FAIL(STATUS_GCODE_UNSUPPORTED_COMMAND);
         } 
         
@@ -826,7 +830,7 @@ uint8_t gc_execute_line(char *line)
   // [0. Non-specific error-checks]: Complete unused value words check, i.e. IJK used when in arc
   // radius mode, or axis words that aren't used in the block.  
   bit_false(value_words,(bit(WORD_N)|bit(WORD_F)|bit(WORD_S)|bit(WORD_T))); // Remove single-meaning value words. 
-  if (axis_command) { bit_false(value_words,(bit(WORD_A)|bit(WORD_B)|bit(WORD_C))); } // Remove axis words. 
+  if (axis_command) { bit_false(value_words,(bit(WORD_A)|bit(WORD_B)|bit(WORD_C)|bit(WORD_D)|bit(WORD_X)|bit(WORD_Y)|bit(WORD_Z))); } // Remove axis words. 
   if (value_words) { FAIL(STATUS_GCODE_UNUSED_WORDS); } // [Unused words]
 
    

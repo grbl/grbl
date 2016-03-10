@@ -82,15 +82,31 @@ void settings_restore(uint8_t restore_flag) {
 	settings.steps_per_mm[A_AXIS] = DEFAULT_A_STEPS_PER_MM;
 	settings.steps_per_mm[B_AXIS] = DEFAULT_B_STEPS_PER_MM;
 	settings.steps_per_mm[C_AXIS] = DEFAULT_C_STEPS_PER_MM;
+  settings.steps_per_mm[D_AXIS] = DEFAULT_D_STEPS_PER_MM;
+  settings.steps_per_mm[E_AXIS] = DEFAULT_E_STEPS_PER_MM;
+  settings.steps_per_mm[F_AXIS] = DEFAULT_F_STEPS_PER_MM;
+  settings.steps_per_mm[G_AXIS] = DEFAULT_G_STEPS_PER_MM;
 	settings.max_rate[A_AXIS] = DEFAULT_A_MAX_RATE;
 	settings.max_rate[B_AXIS] = DEFAULT_B_MAX_RATE;
 	settings.max_rate[C_AXIS] = DEFAULT_C_MAX_RATE;
+  settings.max_rate[D_AXIS] = DEFAULT_D_MAX_RATE;
+  settings.max_rate[E_AXIS] = DEFAULT_E_MAX_RATE;
+  settings.max_rate[F_AXIS] = DEFAULT_F_MAX_RATE;
+  settings.max_rate[G_AXIS] = DEFAULT_G_MAX_RATE;
 	settings.acceleration[A_AXIS] = DEFAULT_A_ACCELERATION;
 	settings.acceleration[B_AXIS] = DEFAULT_B_ACCELERATION;
 	settings.acceleration[C_AXIS] = DEFAULT_C_ACCELERATION;
+  settings.acceleration[D_AXIS] = DEFAULT_D_ACCELERATION;
+  settings.acceleration[E_AXIS] = DEFAULT_E_ACCELERATION;
+  settings.acceleration[F_AXIS] = DEFAULT_F_ACCELERATION;
+  settings.acceleration[G_AXIS] = DEFAULT_G_ACCELERATION;
 	settings.max_travel[A_AXIS] = (-DEFAULT_A_MAX_TRAVEL);
 	settings.max_travel[B_AXIS] = (-DEFAULT_B_MAX_TRAVEL);
-	settings.max_travel[C_AXIS] = (-DEFAULT_C_MAX_TRAVEL);    
+	settings.max_travel[C_AXIS] = (-DEFAULT_C_MAX_TRAVEL);
+  settings.max_travel[D_AXIS] = (-DEFAULT_D_MAX_TRAVEL); 
+  settings.max_travel[E_AXIS] = (-DEFAULT_E_MAX_TRAVEL);
+  settings.max_travel[F_AXIS] = (-DEFAULT_F_MAX_TRAVEL);
+  settings.max_travel[G_AXIS] = (-DEFAULT_G_MAX_TRAVEL);       
 
 	write_global_settings();
   }
@@ -301,7 +317,11 @@ uint8_t get_step_pin_mask(uint8_t axis_idx)
 {
   if ( axis_idx == A_AXIS ) { return((1<<A_STEP_BIT)); }
   if ( axis_idx == B_AXIS ) { return((1<<B_STEP_BIT)); }
-  return((1<<C_STEP_BIT));
+  if ( axis_idx == C_AXIS ) { return((1<<C_STEP_BIT)); }
+  if ( axis_idx == D_AXIS ) { return((1<<F_STEP_BIT)); }
+  if ( axis_idx == E_AXIS ) { return((1<<E_STEP_BIT)); }
+  if ( axis_idx == F_AXIS ) { return((1<<F_STEP_BIT)); }
+  return((1<<G_STEP_BIT));
 }
 
 
@@ -310,7 +330,11 @@ uint8_t get_direction_pin_mask(uint8_t axis_idx)
 {
   if ( axis_idx == A_AXIS ) { return((1<<A_DIRECTION_BIT)); }
   if ( axis_idx == B_AXIS ) { return((1<<B_DIRECTION_BIT)); }
-  return((1<<C_DIRECTION_BIT));
+  if ( axis_idx == C_AXIS ) { return((1<<C_DIRECTION_BIT)); }
+  if ( axis_idx == D_AXIS ) { return((1<<D_DIRECTION_BIT)); }
+  if ( axis_idx == E_AXIS ) { return((1<<E_DIRECTION_BIT)); }
+  if ( axis_idx == F_AXIS ) { return((1<<F_DIRECTION_BIT)); }
+  return((1<<G_DIRECTION_BIT));
 }
 
 
@@ -319,5 +343,9 @@ uint8_t get_limit_pin_mask(uint8_t axis_idx)
 {
   if ( axis_idx == A_AXIS ) { return((1<<A_LIMIT_BIT)); }
   if ( axis_idx == B_AXIS ) { return((1<<B_LIMIT_BIT)); }
-  return((1<<C_LIMIT_BIT));
+  if ( axis_idx == C_AXIS ) { return((1<<C_LIMIT_BIT)); }
+  if ( axis_idx == D_AXIS ) { return((1<<D_LIMIT_BIT)); }
+  if ( axis_idx == E_AXIS ) { return((1<<E_LIMIT_BIT)); }
+  if ( axis_idx == F_AXIS ) { return((1<<F_LIMIT_BIT)); }
+  return((1<<G_LIMIT_BIT));
 }

@@ -26,11 +26,14 @@
 #define true 1
 
 // Axis array index values. Must start with 0 and be continuous.
-#define N_AXIS 3 // Number of axes
+#define N_AXIS 7 // Number of axes
 #define A_AXIS 0 // Axis indexing value. 
 #define B_AXIS 1
 #define C_AXIS 2
-// #define A_AXIS 3
+#define D_AXIS 3
+#define E_AXIS 4
+#define F_AXIS 5
+#define G_AXIS 6
 
 // CoreXY motor assignments. DO NOT ALTER.
 // NOTE: If the A and B motor axis bindings are changed, this effects the CoreXY equations.

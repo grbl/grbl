@@ -138,7 +138,10 @@
 #define WORD_A  10
 #define WORD_B  11
 #define WORD_C  12
-
+#define WORD_D  13
+#define WORD_X  14
+#define WORD_Y  15
+#define WORD_Z  16
 
 // NOTE: When this struct is zeroed, the above defines set the defaults for the system.
 typedef struct {
@@ -167,7 +170,7 @@ typedef struct {
   float r;         // Arc radius
   float s;         // Spindle speed
   uint8_t t;       // Tool selection
-  float xyz[3];    // X,Y,Z Translational axes
+  float xyz[7];    // A,B,C,D,E,F,G Translational axes
 } gc_values_t;
 
 
