@@ -317,23 +317,22 @@ void limits_go_home(uint8_t cycle_mask)
 void limits_soft_check(float *target)
 {
   uint8_t idx;
-  uint8_t soft_limit_error = false;
   for (idx=0; idx<N_AXIS; idx++) {
    
     #ifdef HOMING_FORCE_SET_ORIGIN
       // When homing forced set origin is enabled, soft limits checks need to account for directionality.
       // NOTE: max_travel is stored as negative
       if (bit_istrue(settings.homing_dir_mask,bit(idx))) {
-        if (target[idx] < 0 || target[idx] > -settings.max_travel[idx]) { soft_limit_error = true; }
+        if (target[idx] < 0 || target[idx] > -settings.max_travel[idx]) { sys.soft_limit = true; }
       } else {
-        if (target[idx] > 0 || target[idx] < settings.max_travel[idx]) { soft_limit_error = true; }
+        if (target[idx] > 0 || target[idx] < settings.max_travel[idx]) { sys.soft_limit = true; }
       }
     #else  
       // NOTE: max_travel is stored as negative
-      if (target[idx] > 0 || target[idx] < settings.max_travel[idx]) { soft_limit_error = true; }
+      if (target[idx] > 0 || target[idx] < settings.max_travel[idx]) { sys.soft_limit = true; }
     #endif
     
-    if (soft_limit_error) {
+    if (sys.soft_limit) {
       // Force feed hold if cycle is active. All buffered blocks are guaranteed to be within 
       // workspace volume so just come to a controlled stop so position is not lost. When complete
       // enter alarm mode.
