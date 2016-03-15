@@ -35,6 +35,11 @@
   #include "defaults/defaults_generic.h"
 #endif
 
+#ifdef DEFAULTS_POLAR
+  // Grbl generic default settings. Should work across different machines.
+  #include "defaults/defaults_polar.h"
+#endif
+
 #ifdef DEFAULTS_SHERLINE_5400
   // Description: Sherline 5400 mill with three NEMA 23 Keling  KL23H256-21-8B 185 oz-in stepper motors,
   // driven by three Pololu A4988 stepper drivers with a 30V, 6A power supply at 1.5A per winding.

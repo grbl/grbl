@@ -70,6 +70,7 @@ void settings_restore(uint8_t restore_flag) {
 	settings.homing_seek_rate = DEFAULT_HOMING_SEEK_RATE;
 	settings.homing_debounce_delay = DEFAULT_HOMING_DEBOUNCE_DELAY;
 	settings.homing_pulloff = DEFAULT_HOMING_PULLOFF;
+	settings.distance = DEFAULT_DISTANCE;
 
 	settings.flags = 0;
 	if (DEFAULT_REPORT_INCHES) { settings.flags |= BITFLAG_REPORT_INCHES; }
@@ -90,7 +91,8 @@ void settings_restore(uint8_t restore_flag) {
 	settings.acceleration[Z_AXIS] = DEFAULT_Z_ACCELERATION;
 	settings.max_travel[X_AXIS] = (-DEFAULT_X_MAX_TRAVEL);
 	settings.max_travel[Y_AXIS] = (-DEFAULT_Y_MAX_TRAVEL);
-	settings.max_travel[Z_AXIS] = (-DEFAULT_Z_MAX_TRAVEL);    
+	settings.max_travel[Z_AXIS] = (-DEFAULT_Z_MAX_TRAVEL);
+
 
 	write_global_settings();
   }
@@ -198,6 +200,7 @@ uint8_t settings_store_global_setting(uint8_t parameter, float value) {
             break;
           case 2: settings.acceleration[parameter] = value*60*60; break; // Convert to mm/min^2 for grbl internal use.
           case 3: settings.max_travel[parameter] = -value; break;  // Store as negative for grbl internal use.
+
         }
         break; // Exit while-loop after setting has been configured and proceed to the EEPROM write call.
       } else {
@@ -265,6 +268,7 @@ uint8_t settings_store_global_setting(uint8_t parameter, float value) {
       case 25: settings.homing_seek_rate = value; break;
       case 26: settings.homing_debounce_delay = int_value; break;
       case 27: settings.homing_pulloff = value; break;
+      case 28: settings.distance = value; break;
       default: 
         return(STATUS_INVALID_STATEMENT);
     }

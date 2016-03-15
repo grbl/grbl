@@ -34,6 +34,14 @@ void mc_line(float *target, float feed_rate, uint8_t invert_feed_rate, int32_t l
 void mc_line(float *target, float feed_rate, uint8_t invert_feed_rate);
 #endif
 
+#ifdef SEGMENTED_LINES
+#ifdef USE_LINE_NUMBERS
+  void mc_segmented_line(float *position, float *target, float feed_rate, uint8_t invert_feed_rate, int32_t line_number);
+#else
+  void mc_segmented_line(float *position, float *target, float feed_rate, uint8_t invert_feed_rate);
+#endif
+#endif
+
 // Execute an arc in offset mode format. position == current xyz, target == target xyz, 
 // offset == offset from current xyz, axis_XXX defines circle plane in tool space, axis_linear is
 // the direction of helical travel, radius == circle radius, is_clockwise_arc boolean. Used

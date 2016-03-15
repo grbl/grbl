@@ -83,6 +83,7 @@ typedef struct {
   float acceleration[N_AXIS];
   float max_travel[N_AXIS];
 
+
   // Remaining Grbl settings
   uint8_t pulse_microseconds;
   uint8_t step_invert_mask;
@@ -91,6 +92,9 @@ typedef struct {
   uint8_t status_report_mask; // Mask to indicate desired report data.
   float junction_deviation;
   float arc_tolerance;
+#ifdef POLAR
+  float distance; //Distance between motors
+#endif
   
   uint8_t flags;  // Contains default boolean settings
 
