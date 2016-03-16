@@ -71,6 +71,8 @@
     plan_buffer_line(target, feed_rate, invert_feed_rate, line_number);
   #else
 #ifdef POLAR
+
+    //Change from cartessian to polar coordinates
     float target_polar[N_AXIS];
     float x= settings.distance-target[X_AXIS];
     target_polar[X_AXIS]=sqrt(labs(target[X_AXIS]*target[X_AXIS]+target[Y_AXIS]*target[Y_AXIS]));
@@ -87,14 +89,15 @@
 #endif
 }
 
+//Segment straight lines to ensure linear movement when the coordinates system is changed
 #ifdef SEGMENTED_LINES
 #ifdef USE_LINE_NUMBERS
   void mc_segmented_line(float *position, float *target, float feed_rate, uint8_t invert_feed_rate, int32_t line_number)
 #else
   void mc_segmented_line(float *position, float *target, float feed_rate, uint8_t invert_feed_rate)
 #endif
-  {
-  float mm_per_line_segment=2; //posar a settings
+{
+  float mm_per_line_segment=2;  //TODO: move to settings
   float mm_of_travel = hypot(target[X_AXIS] - position[X_AXIS],
 		  target[Y_AXIS] - position[Y_AXIS]);
   if (mm_of_travel < 0.001)  return;
@@ -108,24 +111,21 @@
       float linear_per_segmentX = (target[X_AXIS] - position[X_AXIS])/segments;
       float linear_per_segmentY = (target[Y_AXIS] - position[Y_AXIS])/segments;
 
-  uint16_t i;
+      uint16_t i;
 	  for (i = 1; i<segments; i++) { // Increment (segments-1).
-
-			// Update arc_target location
-			position[X_AXIS] += linear_per_segmentX;
-			position[Y_AXIS] += linear_per_segmentY;
-
-			#ifdef USE_LINE_NUMBERS
-			  mc_line(position, feed_rate, invert_feed_rate, line_number);
-			#else
-			  mc_line(position, feed_rate, invert_feed_rate);
-			#endif
-
-			// Bail mid-circle on system abort. Runtime command check already performed by mc_line.
-			if (sys.abort) { return; }
-		  }
+		// Update arc_target location
+		position[X_AXIS] += linear_per_segmentX;
+		position[Y_AXIS] += linear_per_segmentY;
+		#ifdef USE_LINE_NUMBERS
+		  mc_line(position, feed_rate, invert_feed_rate, line_number);
+		#else
+		  mc_line(position, feed_rate, invert_feed_rate);
+		#endif
+		// Bail mid-circle on system abort. Runtime command check already performed by mc_line.
+		if (sys.abort) { return; }
+	  }
   }
-  }
+}
 #endif
 
 
@@ -312,19 +312,12 @@ void mc_homing_cycle()
   gc_sync_position();
 #else
   gc_sync_position();
-  gc_state.position[X_AXIS]=1000;
-  gc_state.position[Y_AXIS]=-500;
+  //TODO:put in settings
+  float offsetX=1000; //Desired initial position in cartessian coord's
+  float offsetY=-500;
+  gc_state.position[X_AXIS]=offsetX;
+  gc_state.position[Y_AXIS]=offsetY;
 
-
-/*
-
-    printString("\nFi Homing");
-    printString("\n sys:");
-    printFloat_CoordValue(sys.position[X_AXIS]/settings.steps_per_mm[X_AXIS]);
-    printFloat_CoordValue(sys.position[Y_AXIS]/settings.steps_per_mm[Y_AXIS]);
-    printString("\n gc:");
-    printFloat_CoordValue(gc_state.position[X_AXIS]);
-    printFloat_CoordValue(gc_state.position[Y_AXIS]);*/
 #endif
   // If hard limits feature enabled, re-enable hard limits pin change register after homing cycle.
   limits_init();

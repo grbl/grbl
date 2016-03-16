@@ -72,10 +72,10 @@ uint8_t limits_get_state()
   uint8_t pin = (LIMIT_PIN & LIMIT_MASK);
   if (bit_isfalse(settings.flags,BITFLAG_INVERT_LIMIT_PINS)) { pin ^= LIMIT_MASK; }
   if (pin) {  
-	uint8_t idx;
-	for (idx=0; idx<N_AXIS; idx++) {
-	  if (pin & get_limit_pin_mask(idx)) { limit_state |= (1 << idx); }
-	}
+    uint8_t idx;
+    for (idx=0; idx<N_AXIS; idx++) {
+      if (pin & get_limit_pin_mask(idx)) { limit_state |= (1 << idx); }
+    }
   }
   return(limit_state);
 }
@@ -213,37 +213,36 @@ void limits_go_home(uint8_t cycle_mask)
     
     st_prep_buffer(); // Prep and fill segment buffer from newly planned block.
     st_wake_up(); // Initiate motion
-	do {
-	  if (approach) {
-		// Check limit state. Lock out cycle axes when they change.
-		limit_state = limits_get_state();
-		for (idx=0; idx<N_AXIS; idx++) {
-		  if (axislock & step_pin[idx]) {
+    do {
+      if (approach) {
+      // Check limit state. Lock out cycle axes when they change.
+      limit_state = limits_get_state();
+      for (idx=0; idx<N_AXIS; idx++) {
+          if (axislock & step_pin[idx]) {
 			if (limit_state & (1 << idx)) { axislock &= ~(step_pin[idx]); }
-		  }
-		}
-		sys.homing_axis_lock = axislock;
-	  }
+          }
+        }
+        sys.homing_axis_lock = axislock;
+      }
 
-	  st_prep_buffer(); // Check and prep segment buffer. NOTE: Should take no longer than 200us.
+      st_prep_buffer(); // Check and prep segment buffer. NOTE: Should take no longer than 200us.
 
-	  // Exit routines: No time to run protocol_execute_realtime() in this loop.
-	  if (sys_rt_exec_state & (EXEC_SAFETY_DOOR | EXEC_RESET | EXEC_CYCLE_STOP)) {
-	    // Homing failure: Limit switches are still engaged after pull-off motion
-		if ( (sys_rt_exec_state & (EXEC_SAFETY_DOOR | EXEC_RESET)) ||  // Safety door or reset issued
-		     (!approach && (limits_get_state() & cycle_mask)) ||  // Limit switch still engaged after pull-off motion
-		     ( approach && (sys_rt_exec_state & EXEC_CYCLE_STOP)) ) { // Limit switch not found during approach.
-     	  mc_reset(); // Stop motors, if they are running.
-		  protocol_execute_realtime();
-		  return;
-		} else {
-		  // Pull-off motion complete. Disable CYCLE_STOP from executing.
+      // Exit routines: No time to run protocol_execute_realtime() in this loop.
+      if (sys_rt_exec_state & (EXEC_SAFETY_DOOR | EXEC_RESET | EXEC_CYCLE_STOP)) {
+        // Homing failure: Limit switches are still engaged after pull-off motion
+	if ( (sys_rt_exec_state & (EXEC_SAFETY_DOOR | EXEC_RESET)) ||  // Safety door or reset issued
+           (!approach && (limits_get_state() & cycle_mask)) ||  // Limit switch still engaged after pull-off motion
+           ( approach && (sys_rt_exec_state & EXEC_CYCLE_STOP)) ) { // Limit switch not found during approach.
+          mc_reset(); // Stop motors, if they are running.
+          protocol_execute_realtime();
+	  return;
+	} else {
+	  // Pull-off motion complete. Disable CYCLE_STOP from executing.
           bit_false_atomic(sys_rt_exec_state,EXEC_CYCLE_STOP);
-		  break;
-		} 
-	  }
-
-	} while (STEP_MASK & axislock);
+	  break;
+	} 
+      }
+    } while (STEP_MASK & axislock);
 
     st_reset(); // Immediately force kill steppers and reset step segment buffer.
     plan_reset(); // Reset planner buffer to zero planner current position and to clear previous motions.
@@ -310,13 +309,15 @@ void limits_go_home(uint8_t cycle_mask)
     
   // sys.state = STATE_HOMING; // Ensure system state set as homing before returning. 
 }
-#else
+
+// POLAR CONFIGURATION: a machine working with polar coordinates needs to now which is its position
+// at any time. Therefore we need to do the homing cycle in order to initialize the machine.
+#else 
 void limits_go_home(uint8_t cycle_mask)
 {
   if (sys.abort) { return; } // Block if system reset has been issued.
-  //uint8_t n_AXIS=2;
   // Initialize
-  uint8_t n_cycle = 1;//(2*N_HOMING_LOCATE_CYCLE+1);
+  uint8_t n_cycle = 1;
   uint8_t step_pin[AXIS_HOMING];
   float target[N_AXIS];
   target[Z_AXIS]=0.0;
@@ -326,8 +327,8 @@ void limits_go_home(uint8_t cycle_mask)
   uint8_t current_axis=X_AXIS;
   uint8_t opposite_axis=Y_AXIS;
   for (idx=0; idx<AXIS_HOMING; idx++) {
-    // Initialize step pin masks
-	  if ((idx==X_AXIS)||(idx==Y_AXIS)){ step_pin[idx] = (get_step_pin_mask(X_AXIS)|get_step_pin_mask(Y_AXIS));}
+  // Initialize step pin masks
+    if ((idx==X_AXIS)||(idx==Y_AXIS)){ step_pin[idx] = (get_step_pin_mask(X_AXIS)|get_step_pin_mask(Y_AXIS));}
 
     if (idx==current_axis) {
       // Set target based on max_travel setting. Ensure homing switches engaged with search scalar.
@@ -350,20 +351,18 @@ void limits_go_home(uint8_t cycle_mask)
 
     // Initialize and declare variables needed for homing routine.
     axislock = 0;
-
     n_active_axis=2;
+
     sys.position[current_axis] = 0;
     sys.position[opposite_axis] = 0;
-            // Set target direction based on cycle mask and homing cycle approach state.
-            // NOTE: This happens to compile smaller than any other implementation tried.
+    // Set target direction based on cycle mask and homing cycle approach state.
+    // NOTE: This happens to compile smaller than any other implementation tried.
     if (bit_istrue(settings.homing_dir_mask,bit(current_axis))) {
-         if (approach) { target[current_axis] = max_travel; target[opposite_axis] = -max_travel; }
-          else { target[current_axis] = max_travel; target[opposite_axis] = -max_travel;  }
-            } else {
-              if (approach) { target[current_axis] = -max_travel; target[opposite_axis] = max_travel; }
-              else { target[current_axis] = -max_travel; target[opposite_axis] = max_travel; }
-            }
-            // Apply axislock to the step port pins active in this cycle.
+      target[current_axis] = max_travel; target[opposite_axis] = -max_travel; 
+    } else {
+      target[current_axis] = -max_travel; target[opposite_axis] = max_travel; 
+    }
+    // Apply axislock to the step port pins active in this cycle.
     axislock |= step_pin[current_axis];
     homing_rate *= sqrt(n_active_axis); // [sqrt(N_AXIS)] Adjust so individual axes all move at homing rate.
     sys.homing_axis_lock = axislock;
@@ -379,69 +378,69 @@ void limits_go_home(uint8_t cycle_mask)
 
     st_prep_buffer(); // Prep and fill segment buffer from newly planned block.
     st_wake_up(); // Initiate motion
-	do {
-	  if (approach) {
-		// Check limit state. Lock out cycle axes when they change.
-		limit_state = limits_get_state();
-		for (idx=0; idx<AXIS_HOMING; idx++) {
-		  if (axislock & step_pin[idx]) {
-			if (limit_state & (1 << idx)) { axislock &= ~(step_pin[idx]); }
-		  }
-		}
-		sys.homing_axis_lock = axislock;
-	  }
+    do {
+      if (approach) {
+      // Check limit state. Lock out cycle axes when they change.
+      limit_state = limits_get_state();
+      for (idx=0; idx<AXIS_HOMING; idx++) {
+	if (axislock & step_pin[idx]) {
+	  if (limit_state & (1 << idx)) { axislock &= ~(step_pin[idx]); }
+	}
+      }
+      sys.homing_axis_lock = axislock;
+     }
 
-	  st_prep_buffer(); // Check and prep segment buffer. NOTE: Should take no longer than 200us.
+     st_prep_buffer(); // Check and prep segment buffer. NOTE: Should take no longer than 200us.
 
 
-	  // Exit routines: No time to run protocol_execute_realtime() in this loop.
-	  if (sys_rt_exec_state & (EXEC_SAFETY_DOOR | EXEC_RESET | EXEC_CYCLE_STOP)){
-	    // Homing failure: Limit switches are still engaged after pull-off motion
-		if ( (sys_rt_exec_state & (EXEC_SAFETY_DOOR | EXEC_RESET)) ||  // Safety door or reset issued
-		     (!approach && (limits_get_state() & (1<<current_axis))) || // Limit switch still engaged after pull-off motion
-		     ( approach && (sys_rt_exec_state & EXEC_CYCLE_STOP)) ) { // Limit switch not found during approach.
+     // Exit routines: No time to run protocol_execute_realtime() in this loop.
+     if (sys_rt_exec_state & (EXEC_SAFETY_DOOR | EXEC_RESET | EXEC_CYCLE_STOP)){
+     // Homing failure: Limit switches are still engaged after pull-off motion
+	if ( (sys_rt_exec_state & (EXEC_SAFETY_DOOR | EXEC_RESET)) ||  // Safety door or reset issued
+	   (!approach && (limits_get_state() & (1<<current_axis))) || // Limit switch still engaged after pull-off motion
+	   ( approach && (sys_rt_exec_state & EXEC_CYCLE_STOP)) ) { // Limit switch not found during approach.
      	  mc_reset(); // Stop motors, if they are running.
 		  protocol_execute_realtime();
 		  return;
-		} else {
+	} else {
 		  // Pull-off motion complete. Disable CYCLE_STOP from executing.
           bit_false_atomic(sys_rt_exec_state,EXEC_CYCLE_STOP);
-		  break;
-		}
-	  }
+	  break;
+	}
+      }
 
 
-	} while (STEP_MASK & axislock);
+    } while (STEP_MASK & axislock);
 
     st_reset(); // Immediately force kill steppers and reset step segment buffer.
     plan_reset(); // Reset planner buffer to zero planner current position and to clear previous motions.
 
     delay_ms(settings.homing_debounce_delay); // Delay to allow transient dynamics to dissipate.
-    //max_travel=-max_travel;
-    //max_travel2 = -max_travel2;
     homing_rate = settings.homing_seek_rate;
+    
+    // first axis is situated
     current_axis=Y_AXIS;
     opposite_axis=X_AXIS;
 
 
   } while (n_cycle-- > 0);
   sys.position[Y_AXIS]=0;
+  //Idle situated
   printString("\n sys:");
   printFloat_CoordValue(sys.position[X_AXIS]/settings.steps_per_mm[X_AXIS]);
   printFloat_CoordValue(sys.position[Y_AXIS]/settings.steps_per_mm[Y_AXIS]);
   report_realtime_status();
   plan_sync_position(); // Sync planner position to homed machine position.
 
-
-  float offsetX=1000;
+  //TODO: put in settings
+  float offsetX=1000; //Desired initial position in cartesian coord's
   float offsetY=-500;
-
-  //settings.distance=780;
-
+  float dist_to_endstopX=100; //distance from the X motor to the endstop
+  float dist_to_endstopY=100; //distance from the Y motor to the endstop
 
   float target2[N_AXIS];
-  target2[X_AXIS]=(sqrt((offsetX*offsetX)+(offsetY*offsetY)))-100;
-  target2[Y_AXIS]=(sqrt((settings.distance-offsetX)*(settings.distance-offsetX)+(offsetY*offsetY)))-100;
+  target2[X_AXIS]=(sqrt((offsetX*offsetX)+(offsetY*offsetY)))-dist_to_endstopX;
+  target2[Y_AXIS]=(sqrt((settings.distance-offsetX)*(settings.distance-offsetX)+(offsetY*offsetY)))-dist_to_endstopY00;
   target2[Z_AXIS]=0.000;
 
   printString("\n trg:");

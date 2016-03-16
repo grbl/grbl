@@ -29,12 +29,29 @@
 #define config_h
 #include "grbl.h" // For Arduino IDE compatibility.
 
+
+/* If POLAR is enabled the coordinates of the machine movement are changed to polar.
+ * To active this feature is required to know the distance (d) between the two motors
+ * 		___d___
+		\     /       |
+	x_pol\   / y_pol  | y
+		  \ /         |
+	   ___ +
+ *	    x
+ */
 #define POLAR
+
+//Segment straight lines to ensure linear movement when the coordinates system is changed
+#define SEGMENTED_LINES
+
+//Spindle is controled by a servo.Use the PIN D11 to drive the servo. Use the commands M03 Sxxx (xxx between 0 and 255)
+//to rotate the servo between 0-180. The command M05 turn the servo to zero degrees.
+#define RC_SERVO
+
 // Default settings. Used when resetting EEPROM. Change to desired name in defaults.h
 //#define DEFAULTS_GENERIC
 #define DEFAULTS_POLAR
 
-#define SEGMENTED_LINES
 
 // Serial baud rate
 #define BAUD_RATE 115200
@@ -263,7 +280,7 @@
 // NOTE: BEWARE! The Arduino bootloader toggles the D13 pin when it powers up. If you flash Grbl with
 // a programmer (you can use a spare Arduino as "Arduino as ISP". Search the web on how to wire this.), 
 // this D13 LED toggling should go away. We haven't tested this though. Please report how it goes!
-// #define USE_SPINDLE_DIR_AS_ENABLE_PIN // Default disabled. Uncomment to enable.
+ //#define USE_SPINDLE_DIR_AS_ENABLE_PIN // Default disabled. Uncomment to enable.
 
 // With this enabled, Grbl sends back an echo of the line it has received, which has been pre-parsed (spaces
 // removed, capitalized letters, no comments) and is to be immediately executed by Grbl. Echoes will not be 
