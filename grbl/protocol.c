@@ -335,13 +335,12 @@ void protocol_execute_realtime()
     // cycle reinitializations. The stepper path should continue exactly as if nothing has happened.   
     // NOTE: EXEC_CYCLE_STOP is set by the stepper subsystem when a cycle or feed hold completes.
     if (rt_exec & EXEC_CYCLE_STOP) {
-      if (sys.state & (STATE_HOLD | STATE_SAFETY_DOOR)) {
+      if (sys.state & (STATE_HOLD | STATE_SAFETY_DOOR) && !(sys.soft_limit)) {
         // Hold complete. Set to indicate ready to resume.  Remain in HOLD or DOOR states until user
         // has issued a resume command or reset.
         if (sys.suspend & SUSPEND_ENERGIZE) { // De-energize system if safety door has been opened.
           spindle_stop();
           coolant_stop();
-          // TODO: Install parking motion here.
         }
         bit_true(sys.suspend,SUSPEND_ENABLE_READY);
       } else { // Motion is complete. Includes CYCLE, HOMING, and MOTION_CANCEL states.

@@ -1,4 +1,22 @@
 ----------------
+Date: 2016-03-03
+Author: Sonny Jeon
+Subject: Bug fixes and more limit configurability
+
+- Strange sizeof() bug in the most recent releases. Manifested as an
+alarm upon a power up even when homing was disabled. Fixed by declaring
+sizeof() with struct types, rather than variable names, even though
+they were validated to give the same value.
+
+- Spindle speed zero should disable the spindle. Now fixed.
+
+- New configuration option for inverting certain limit pins. Handy for
+mixed NO and NC switch machines. See config.h for details.
+
+- Incremented version and pre-build firmware link.
+
+
+----------------
 Date: 2015-12-18
 Author: Sonny Jeon
 Subject: Minor bug fixes.
