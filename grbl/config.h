@@ -72,9 +72,11 @@
 // on separate pin, but homed in one cycle. Also, it should be noted that the function of hard limits 
 // will not be affected by pin sharing.
 // NOTE: Defaults are set for a traditional 3-axis CNC machine. Z-axis first to clear, followed by X & Y.
-#define HOMING_CYCLE_0 (1<<C_AXIS)                // REQUIRED: First move Z to clear workspace.
-#define HOMING_CYCLE_1 ((1<<A_AXIS)|(1<<B_AXIS))  // OPTIONAL: Then move X,Y at the same time.
-// #define HOMING_CYCLE_2                         // OPTIONAL: Uncomment and add axes mask to enable
+#define HOMING_CYCLE_0 ((1<<C_AXIS)|(1<<B_AXIS))
+#define HOMING_CYCLE_1 (1<<D_AXIS)
+#define HOMING_CYCLE_2 (1<<A_AXIS)
+#define HOMING_CYCLE_3 (1<<E_AXIS)
+#define HOMING_CYCLE_4 ((1<<G_AXIS)|(1<<F_AXIS))
 
 // Number of homing cycles performed after when the machine initially jogs to limit switches.
 // This help in preventing overshoot and should improve repeatability. This value should be one or 

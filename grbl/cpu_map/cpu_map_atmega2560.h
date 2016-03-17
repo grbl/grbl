@@ -75,13 +75,13 @@
 #define LIMIT_DDR       DDRL
 #define LIMIT_PORT      PORTL
 #define LIMIT_PIN       PINL
-#define A_LIMIT_BIT     7 // MEGA2560 Digital Pin 48
-#define B_LIMIT_BIT     6 // MEGA2560 Digital Pin 47
-#define C_LIMIT_BIT     5 // MEGA2560 Digital Pin 46
-#define D_LIMIT_BIT     4 // MEGA2560 Digital Pin 45
-#define E_LIMIT_BIT     3 // MEGA2560 Digital Pin 44
-#define F_LIMIT_BIT     2 // MEGA2560 Digital Pin 43
-#define G_LIMIT_BIT     1 // MEGA2560 Digital Pin 42
+#define A_LIMIT_BIT     1 // MEGA2560 Digital Pin 48
+#define B_LIMIT_BIT     2 // MEGA2560 Digital Pin 47
+#define C_LIMIT_BIT     2 // MEGA2560 Digital Pin 47
+#define D_LIMIT_BIT     3 // MEGA2560 Digital Pin 46
+#define E_LIMIT_BIT     4 // MEGA2560 Digital Pin 45
+#define F_LIMIT_BIT     5 // MEGA2560 Digital Pin 44
+#define G_LIMIT_BIT     5 // MEGA2560 Digital Pin 44
 #define LIMIT_INT       PCIE0  // Pin change interrupt enable pin
 #define LIMIT_INT_vect  PCINT0_vect 
 #define LIMIT_PCMSK     PCMSK0 // Pin change interrupt register
@@ -90,7 +90,7 @@
 // Define spindle enable and spindle direction output pins.
 #define SPINDLE_ENABLE_DDR      DDRL
 #define SPINDLE_ENABLE_PORT     PORTL
-#define SPINDLE_ENABLE_BIT      0 // MEGA2560 Digital Pin 41
+#define SPINDLE_ENABLE_BIT      0 // MEGA2560 Digital Pin 49
 #define SPINDLE_DIRECTION_DDR   DDRE
 #define SPINDLE_DIRECTION_PORT  PORTE
 #define SPINDLE_DIRECTION_BIT   3 // MEGA2560 Digital Pin 5

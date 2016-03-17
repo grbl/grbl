@@ -318,7 +318,7 @@ uint8_t get_step_pin_mask(uint8_t axis_idx)
   if ( axis_idx == A_AXIS ) { return((1<<A_STEP_BIT)); }
   if ( axis_idx == B_AXIS ) { return((1<<B_STEP_BIT)); }
   if ( axis_idx == C_AXIS ) { return((1<<C_STEP_BIT)); }
-  if ( axis_idx == D_AXIS ) { return((1<<F_STEP_BIT)); }
+  if ( axis_idx == D_AXIS ) { return((1<<D_STEP_BIT)); }
   if ( axis_idx == E_AXIS ) { return((1<<E_STEP_BIT)); }
   if ( axis_idx == F_AXIS ) { return((1<<F_STEP_BIT)); }
   return((1<<G_STEP_BIT));
