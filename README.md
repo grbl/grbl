@@ -1,13 +1,18 @@
 # grbl-polar
 
 ***
-Graffiti robot firmware base on Grbl v0.9.
+Graffiti robot firmware base on [Grbl v0.9](https://github.com/grbl/grbl)
 
 The implemented kinematics allow a 2 string + gravity system (as in [hektor](http://juerglehni.com/works/hektor)), and the pwm support allows triggering the spray using a servo-motor.
 
-  define POLAR: changes the input gcode cartesian coordinates to polar machine movement. To active this feature is                      required to know the distance between the two motors and to do the homing cycle when the machine is                     initialized because is needed to know the idle position at anytime.
+additional features:
+  * define POLAR: swaps from cartesian to polar kinematics. It's required to set up the distance between the motors. Homing at startup is essential, otherwisse positioning can not be achieved.
+  * define RC_SERVO: Use PIN D11 to drive the servo. Use the commands M03 Sxxx (xxx between 0 and 255) to rotate the servo between 0-180. The command M05 turns the servo to zero degrees. [source](https://github.com/robottini/grbl-servo)
+  * 
   
-  define RC_SERVO: Use the PIN D11 to drive the servo. Use the commands M03 Sxxx (xxx between 0 and 255) to rotate the                     servo between 0-180. The command M05 turn the servo to zero degrees. (https://github.com/robottini/grbl-servo)
-  
-  GRBL: (https://github.com/grbl/grbl)
+![alt text](https://github.com/ilaro-org/grbl-polar/blob/master/v0.jpg "first test at hangar.org")
+
+
+
+GPLv3 license
 
