@@ -88,9 +88,9 @@
 #define LIMIT_MASK ((1<<A_LIMIT_BIT)|(1<<B_LIMIT_BIT)|(1<<C_LIMIT_BIT)|(1<<D_LIMIT_BIT)|(1<<E_LIMIT_BIT)|(1<<F_LIMIT_BIT)|(1<<G_LIMIT_BIT)) // All limit bits
 
 // Define spindle enable and spindle direction output pins.
-#define SPINDLE_ENABLE_DDR      DDRL
-#define SPINDLE_ENABLE_PORT     PORTL
-#define SPINDLE_ENABLE_BIT      0 // MEGA2560 Digital Pin 49
+#define SPINDLE_ENABLE_DDR      DDRH
+#define SPINDLE_ENABLE_PORT     PORTH
+#define SPINDLE_ENABLE_BIT      4 // MEGA2560 Digital Pin 49
 #define SPINDLE_DIRECTION_DDR   DDRE
 #define SPINDLE_DIRECTION_PORT  PORTE
 #define SPINDLE_DIRECTION_BIT   3 // MEGA2560 Digital Pin 5
