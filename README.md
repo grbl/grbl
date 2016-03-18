@@ -27,7 +27,7 @@ Grbl includes full acceleration management with look ahead. That means the contr
 ***
 
 _**Master Branch:**_
-* [Grbl v0.9j Atmega328p 16mhz 115200baud with generic defaults](http://bit.ly/1I8Ey4S) _(2016-03-16)_
+* [Grbl v0.9j Atmega328p 16mhz 115200baud with generic defaults](http://bit.ly/1I8Ey4S) _(2016-03-17)_
   - **IMPORTANT INFO WHEN UPGRADING TO GRBL v0.9 :** 
   - Baudrate is now **115200** (Up from 9600). 
   - Homing cycle updated. Located based on switch trigger, rather than release point.
@@ -48,6 +48,8 @@ _**Archives:**_
 
 ##Update Summary for v0.9j
   - **Restore EEPROM feature:** A new set of restore EEPROM features to help OEMs and users reset their Grbl installation to the build defaults. See Configuring Grbl Wiki for details.
+  - **More configuration options for input pins**
+  - **Bug fixes including:** Soft limit error handling, disable spindle when S0, g-code reporting of G38.x.
   
 ##Update Summary for v0.9i
   - **IMPORTANT:**
