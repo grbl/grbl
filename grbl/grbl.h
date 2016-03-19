@@ -23,7 +23,7 @@
 
 // Grbl versioning system
 #define GRBL_VERSION "1.0c"
-#define GRBL_VERSION_BUILD "20160311"
+#define GRBL_VERSION_BUILD "20160319"
 
 // Define standard libraries used by Grbl.
 #include <avr/io.h>
