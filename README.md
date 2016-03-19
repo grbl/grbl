@@ -3,17 +3,19 @@
 
 ***
 
-_**This is the development branch for Grbl v1.0's upcoming release. In general, the new features here are beta, so use with caution. If you'd like to help, please report any bugs or oddities that you find! Thanks!**_
+_**This is the development branch for Grbl v1.0 for the Arduino Mega2560 only. All Arduino Uno(328p) references have been stripped and will not work. The intent is to expand Grbl's functionalities without the flash and memory constraints of the smaller 328p. Most changes here will be mirrored onto the main Grbl repo when it makes sense to, and vice versa.**_
+
+_**Please keep in mind, this version of Grbl is currently beta, so use with caution. If you'd like to help, please report any bugs or oddities that you find! Thanks!**_
 
 ***
 
-Grbl is a no-compromise, high performance, low cost alternative to parallel-port-based motion control for CNC milling. It will run on a vanilla Arduino (Duemillanove/Uno) as long as it sports an Atmega 328. 
+Grbl is a no-compromise, high performance, low cost alternative to parallel-port-based motion control for CNC milling. This version of Grbl runs on an Arduino Mega2560 only.
 
 The controller is written in highly optimized C utilizing every clever feature of the AVR-chips to achieve precise timing and asynchronous operation. It is able to maintain up to 30kHz of stable, jitter free control pulses.
 
 It accepts standards-compliant g-code and has been tested with the output of several CAM tools with no problems. Arcs, circles and helical motion are fully supported, as well as, all other primary g-code commands. Macro functions, variables, and most canned cycles are not supported, but we think GUIs can do a much better job at translating them into straight g-code anyhow.
 
-Grbl includes full acceleration management with look ahead. That means the controller will look up to 18 motions into the future and plan its velocities ahead to deliver smooth acceleration and jerk-free cornering.
+Grbl includes full acceleration management with look ahead. That means the controller will look up to 24 motions into the future and plan its velocities ahead to deliver smooth acceleration and jerk-free cornering.
 
 * [Licensing](https://github.com/grbl/grbl/wiki/Licensing): Grbl is free software, released under the GPLv3 license.
 
@@ -21,7 +23,7 @@ Grbl includes full acceleration management with look ahead. That means the contr
 
 * Lead Developer [_2011 - Current_]: Sungeun(Sonny) K. Jeon, Ph.D. (USA) aka @chamnit
 
-* Lead Developer [_2009 - 2011_]: Simen Svale Skogsrud (Norway). aka The Originator/Creator/Pioneer/Father of Grbl.
+* Lead Developer [_2009 - 2011_]: Simen Svale Skogsrud (Norway)
 
 ***
 
@@ -65,8 +67,3 @@ List of Supported G-Codes in Grbl v0.9 Master:
   - Spindle Control: M3, M4, M5
   - Valid Non-Command Words: F, I, J, K, L, N, P, R, S, T, X, Y, Z
 ```
-
--------------
-Grbl is an open-source project and fueled by the free-time of our intrepid administrators and altruistic users. If you'd like to donate, all proceeds will be used to help fund supporting hardware and testing equipment. Thank you!
-
-[![Donate](https://www.paypalobjects.com/en_US/i/btn/btn_donate_LG.gif)](https://www.paypal.com/cgi-bin/webscr?cmd=_s-xclick&hosted_button_id=CUGXJHXA36BYW)
