@@ -25,11 +25,7 @@
 
 // The number of linear motions that can be in the plan at any give time
 #ifndef BLOCK_BUFFER_SIZE
-  #ifdef USE_LINE_NUMBERS
-    #define BLOCK_BUFFER_SIZE 16
-  #else
-    #define BLOCK_BUFFER_SIZE 18
-  #endif
+  #define BLOCK_BUFFER_SIZE 36
 #endif
 
 #define PLAN_OK true
@@ -55,9 +51,7 @@ typedef struct {
   float millimeters;             // The remaining distance for this block to be executed in (mm)
   // uint8_t max_override;       // Maximum override value based on axis speed limits
 
-  #ifdef USE_LINE_NUMBERS
-    int32_t line_number;
-  #endif
+  int32_t line_number;
 } plan_block_t;
 
       
@@ -67,11 +61,7 @@ void plan_reset();
 // Add a new linear movement to the buffer. target[N_AXIS] is the signed, absolute target position 
 // in millimeters. Feed rate specifies the speed of the motion. If feed rate is inverted, the feed
 // rate is taken to mean "frequency" and would complete the operation in 1/feed_rate minutes.
-#ifdef USE_LINE_NUMBERS
-  uint8_t plan_buffer_line(float *target, float feed_rate, uint8_t invert_feed_rate, uint8_t is_parking_motion, int32_t line_number);
-#else
-  uint8_t plan_buffer_line(float *target, float feed_rate, uint8_t invert_feed_rate, uint8_t is_parking_motion);
-#endif
+uint8_t plan_buffer_line(float *target, float feed_rate, uint8_t invert_feed_rate, uint8_t is_parking_motion, int32_t line_number);
 
 // Called when the current block is no longer needed. Discards the block and makes the memory
 // availible for new blocks.

@@ -24,9 +24,7 @@
 void coolant_init()
 {
   COOLANT_FLOOD_DDR |= (1 << COOLANT_FLOOD_BIT);
-  #ifdef ENABLE_M7
-    COOLANT_MIST_DDR |= (1 << COOLANT_MIST_BIT);
-  #endif
+  COOLANT_MIST_DDR |= (1 << COOLANT_MIST_BIT);
   coolant_stop();
 }
 
@@ -34,9 +32,7 @@ void coolant_init()
 void coolant_stop()
 {
   COOLANT_FLOOD_PORT &= ~(1 << COOLANT_FLOOD_BIT);
-  #ifdef ENABLE_M7
-    COOLANT_MIST_PORT &= ~(1 << COOLANT_MIST_BIT);
-  #endif
+  COOLANT_MIST_PORT &= ~(1 << COOLANT_MIST_BIT);
 }
 
 
@@ -46,12 +42,8 @@ void coolant_set_state(uint8_t mode)
   
   if (mode == COOLANT_FLOOD_ENABLE) {
     COOLANT_FLOOD_PORT |= (1 << COOLANT_FLOOD_BIT);
-
-  #ifdef ENABLE_M7  
-    } else if (mode == COOLANT_MIST_ENABLE) {
-      COOLANT_MIST_PORT |= (1 << COOLANT_MIST_BIT);
-  #endif
-
+  } else if (mode == COOLANT_MIST_ENABLE) {
+    COOLANT_MIST_PORT |= (1 << COOLANT_MIST_BIT);
   } else {
     coolant_stop();
   }

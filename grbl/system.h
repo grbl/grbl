@@ -77,18 +77,11 @@
 #define STEP_CONTROL_EXECUTE_PARK           bit(3)
 
 // Define control pin index for Grbl internal use. Pin maps may change, but these values don't.
-#ifdef ENABLE_SAFETY_DOOR_INPUT_PIN
-  #define N_CONTROL_PIN 4
-  #define CONTROL_PIN_INDEX_SAFETY_DOOR   bit(0)
-  #define CONTROL_PIN_INDEX_RESET         bit(1)
-  #define CONTROL_PIN_INDEX_FEED_HOLD     bit(2)
-  #define CONTROL_PIN_INDEX_CYCLE_START   bit(3)
-#else
-  #define N_CONTROL_PIN 3
-  #define CONTROL_PIN_INDEX_RESET         bit(0)
-  #define CONTROL_PIN_INDEX_FEED_HOLD     bit(1)
-  #define CONTROL_PIN_INDEX_CYCLE_START   bit(2)
-#endif
+#define N_CONTROL_PIN 4
+#define CONTROL_PIN_INDEX_SAFETY_DOOR   bit(0)
+#define CONTROL_PIN_INDEX_RESET         bit(1)
+#define CONTROL_PIN_INDEX_FEED_HOLD     bit(2)
+#define CONTROL_PIN_INDEX_CYCLE_START   bit(3)
 
 
 // Define global system variables

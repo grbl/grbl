@@ -69,10 +69,8 @@ void report_status_message(uint8_t status_code)
         printPgmString(PSTR("Homing not enabled")); break;
         case STATUS_OVERFLOW:
         printPgmString(PSTR("Line overflow")); break;
-        #ifdef MAX_STEP_RATE_HZ
-          case STATUS_MAX_STEP_RATE_EXCEEDED: 
-          printPgmString(PSTR("Step rate > 30kHz")); break;
-        #endif
+        case STATUS_MAX_STEP_RATE_EXCEEDED: 
+        printPgmString(PSTR("Step rate > 30kHz")); break;
         case STATUS_CHECK_DOOR:
         printPgmString(PSTR("Check Door")); break;
         // Common g-code parser errors.
@@ -373,9 +371,7 @@ void report_gcode_modes()
   switch (gc_state.modal.coolant) {
     case COOLANT_DISABLE : printPgmString(PSTR(" M9")); break;
     case COOLANT_FLOOD_ENABLE : printPgmString(PSTR(" M8")); break;
-    #ifdef ENABLE_M7
-      case COOLANT_MIST_ENABLE : printPgmString(PSTR(" M7")); break;
-    #endif
+    case COOLANT_MIST_ENABLE : printPgmString(PSTR(" M7")); break;
   }
   
   printPgmString(PSTR(" T"));
@@ -384,10 +380,8 @@ void report_gcode_modes()
   printPgmString(PSTR(" F"));
   printFloat_RateValue(gc_state.feed_rate);
   
-  #ifdef VARIABLE_SPINDLE
-    printPgmString(PSTR(" S"));
-    printFloat_RPMValue(gc_state.spindle_speed);
-  #endif
+  printPgmString(PSTR(" S"));
+  printFloat_RPMValue(gc_state.spindle_speed);
 
   printPgmString(PSTR("]\r\n"));
 }
@@ -485,22 +479,18 @@ void report_realtime_status()
     print_uint8_base10(serial_get_rx_buffer_count());
   }
     
-  #ifdef USE_LINE_NUMBERS
-    // Report current line number
-    printPgmString(PSTR(",Ln:")); 
-    int32_t ln=0;
-    plan_block_t * pb = plan_get_current_block();
-    if(pb != NULL) {
-      ln = pb->line_number;
-    } 
-    printInteger(ln);
-  #endif
+  // Report current line number
+  printPgmString(PSTR(",Ln:")); 
+  int32_t ln=0;
+  plan_block_t * pb = plan_get_current_block();
+  if(pb != NULL) {
+    ln = pb->line_number;
+  } 
+  printInteger(ln);
     
-  #ifdef REPORT_REALTIME_RATE
-    // Report realtime rate 
-    printPgmString(PSTR(",F:")); 
-    printFloat_RateValue(st_get_realtime_rate());
-  #endif    
+  // Report realtime rate 
+  printPgmString(PSTR(",F:")); 
+  printFloat_RateValue(st_get_realtime_rate());    
   
   #ifdef REPORT_ALL_PIN_STATES
     if (bit_istrue(settings.status_report_mask,

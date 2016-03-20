@@ -286,28 +286,18 @@ uint8_t gc_execute_line(char *line)
               case 2: case 30: gc_block.modal.program_flow = PROGRAM_FLOW_COMPLETED; break; // Program end and reset 
             }
             break;
-          #ifndef USE_SPINDLE_DIR_AS_ENABLE_PIN
-            case 4: 
-          #endif
-          case 3: case 5:
+          case 4: case 3: case 5:
             word_bit = MODAL_GROUP_M7; 
             switch(int_value) {
               case 3: gc_block.modal.spindle = SPINDLE_ENABLE_CW; break;
-              #ifndef USE_SPINDLE_DIR_AS_ENABLE_PIN
-                case 4: gc_block.modal.spindle = SPINDLE_ENABLE_CCW; break;
-              #endif
+              case 4: gc_block.modal.spindle = SPINDLE_ENABLE_CCW; break;
               case 5: gc_block.modal.spindle = SPINDLE_DISABLE; break;
             }
             break;            
-         #ifdef ENABLE_M7  
-          case 7:
-         #endif
-          case 8: case 9:
+          case 7: case 8: case 9:
             word_bit = MODAL_GROUP_M8; 
             switch(int_value) {      
-             #ifdef ENABLE_M7
               case 7: gc_block.modal.coolant = COOLANT_MIST_ENABLE; break;
-             #endif
               case 8: gc_block.modal.coolant = COOLANT_FLOOD_ENABLE; break;
               case 9: gc_block.modal.coolant = COOLANT_DISABLE; break;
             }
@@ -931,17 +921,9 @@ uint8_t gc_execute_line(char *line)
       // Move to intermediate position before going home. Obeys current coordinate system and offsets 
       // and absolute and incremental modes.
       if (axis_command) {
-        #ifdef USE_LINE_NUMBERS
-          mc_line(gc_block.values.xyz, -1.0, false, gc_state.line_number);
-        #else
-          mc_line(gc_block.values.xyz, -1.0, false);
-        #endif
+        mc_line(gc_block.values.xyz, -1.0, false, gc_state.line_number);
       }
-      #ifdef USE_LINE_NUMBERS
-        mc_line(parameter_data, -1.0, false, gc_state.line_number); 
-      #else
-        mc_line(parameter_data, -1.0, false); 
-      #endif
+      mc_line(parameter_data, -1.0, false, gc_state.line_number); 
       memcpy(gc_state.position, parameter_data, sizeof(parameter_data));
       break;
     case NON_MODAL_SET_HOME_0: 
@@ -967,66 +949,32 @@ uint8_t gc_execute_line(char *line)
     if (axis_command == AXIS_COMMAND_MOTION_MODE) {
       switch (gc_state.modal.motion) {
         case MOTION_MODE_SEEK:
-          #ifdef USE_LINE_NUMBERS
-            mc_line(gc_block.values.xyz, -1.0, false, gc_state.line_number);
-          #else
-            mc_line(gc_block.values.xyz, -1.0, false);
-          #endif
+          mc_line(gc_block.values.xyz, -1.0, false, gc_state.line_number);
           break;
         case MOTION_MODE_LINEAR:
-          #ifdef USE_LINE_NUMBERS
-            mc_line(gc_block.values.xyz, gc_state.feed_rate, gc_state.modal.feed_rate, gc_state.line_number);
-          #else
-            mc_line(gc_block.values.xyz, gc_state.feed_rate, gc_state.modal.feed_rate);
-          #endif
+          mc_line(gc_block.values.xyz, gc_state.feed_rate, gc_state.modal.feed_rate, gc_state.line_number);
           break;
         case MOTION_MODE_CW_ARC: 
-          #ifdef USE_LINE_NUMBERS
-            mc_arc(gc_state.position, gc_block.values.xyz, gc_block.values.ijk, gc_block.values.r, 
-              gc_state.feed_rate, gc_state.modal.feed_rate, axis_0, axis_1, axis_linear, true, gc_state.line_number);  
-          #else
-            mc_arc(gc_state.position, gc_block.values.xyz, gc_block.values.ijk, gc_block.values.r, 
-              gc_state.feed_rate, gc_state.modal.feed_rate, axis_0, axis_1, axis_linear, true); 
-          #endif
+          mc_arc(gc_state.position, gc_block.values.xyz, gc_block.values.ijk, gc_block.values.r, 
+            gc_state.feed_rate, gc_state.modal.feed_rate, axis_0, axis_1, axis_linear, true, gc_state.line_number);  
           break;        
         case MOTION_MODE_CCW_ARC:
-          #ifdef USE_LINE_NUMBERS
-            mc_arc(gc_state.position, gc_block.values.xyz, gc_block.values.ijk, gc_block.values.r, 
-              gc_state.feed_rate, gc_state.modal.feed_rate, axis_0, axis_1, axis_linear, false, gc_state.line_number);  
-          #else
-            mc_arc(gc_state.position, gc_block.values.xyz, gc_block.values.ijk, gc_block.values.r, 
-              gc_state.feed_rate, gc_state.modal.feed_rate, axis_0, axis_1, axis_linear, false); 
-          #endif
+          mc_arc(gc_state.position, gc_block.values.xyz, gc_block.values.ijk, gc_block.values.r, 
+            gc_state.feed_rate, gc_state.modal.feed_rate, axis_0, axis_1, axis_linear, false, gc_state.line_number);  
           break;
         case MOTION_MODE_PROBE_TOWARD: 
           // NOTE: gc_block.values.xyz is returned from mc_probe_cycle with the updated position value. So
           // upon a successful probing cycle, the machine position and the returned value should be the same.
-          #ifdef USE_LINE_NUMBERS
-            mc_probe_cycle(gc_block.values.xyz, gc_state.feed_rate, gc_state.modal.feed_rate, false, false, gc_state.line_number);
-          #else
-            mc_probe_cycle(gc_block.values.xyz, gc_state.feed_rate, gc_state.modal.feed_rate, false, false);
-          #endif
+          mc_probe_cycle(gc_block.values.xyz, gc_state.feed_rate, gc_state.modal.feed_rate, false, false, gc_state.line_number);
           break;
         case MOTION_MODE_PROBE_TOWARD_NO_ERROR:
-          #ifdef USE_LINE_NUMBERS
-            mc_probe_cycle(gc_block.values.xyz, gc_state.feed_rate, gc_state.modal.feed_rate, false, true, gc_state.line_number);
-          #else
-            mc_probe_cycle(gc_block.values.xyz, gc_state.feed_rate, gc_state.modal.feed_rate, false, true);
-          #endif
+          mc_probe_cycle(gc_block.values.xyz, gc_state.feed_rate, gc_state.modal.feed_rate, false, true, gc_state.line_number);
           break;
         case MOTION_MODE_PROBE_AWAY:
-          #ifdef USE_LINE_NUMBERS
-            mc_probe_cycle(gc_block.values.xyz, gc_state.feed_rate, gc_state.modal.feed_rate, true, false, gc_state.line_number);
-          #else
-            mc_probe_cycle(gc_block.values.xyz, gc_state.feed_rate, gc_state.modal.feed_rate, true, false);
-          #endif
+          mc_probe_cycle(gc_block.values.xyz, gc_state.feed_rate, gc_state.modal.feed_rate, true, false, gc_state.line_number);
           break;
         case MOTION_MODE_PROBE_AWAY_NO_ERROR:
-          #ifdef USE_LINE_NUMBERS
-            mc_probe_cycle(gc_block.values.xyz, gc_state.feed_rate, gc_state.modal.feed_rate, true, true, gc_state.line_number);
-          #else        
-            mc_probe_cycle(gc_block.values.xyz, gc_state.feed_rate, gc_state.modal.feed_rate, true, true);
-          #endif
+          mc_probe_cycle(gc_block.values.xyz, gc_state.feed_rate, gc_state.modal.feed_rate, true, true, gc_state.line_number);
       }
     
       // As far as the parser is concerned, the position is now == target. In reality the

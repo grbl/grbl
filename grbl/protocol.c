@@ -67,15 +67,7 @@ void protocol_main_loop()
   for (;;) {
 
     // Process one line of incoming serial data, as the data becomes available. Performs an
-    // initial filtering by removing spaces and comments and capitalizing all letters.
-    
-    // NOTE: While comment, spaces, and block delete(if supported) handling should technically 
-    // be done in the g-code parser, doing it here helps compress the incoming data into Grbl's
-    // line buffer, which is limited in size. The g-code standard actually states a line can't
-    // exceed 256 characters, but the Arduino Uno does not have the memory space for this.
-    // With a better processor, it would be very easy to pull this initial parsing out as a 
-    // seperate task to be shared by the g-code parser and Grbl's system commands.
-    
+    // initial filtering by removing spaces and comments and capitalizing all letters.    
     while((c = serial_read()) != SERIAL_NO_DATA) {
       if ((c == '\n') || (c == '\r')) { // End of line reached
 

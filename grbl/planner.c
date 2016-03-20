@@ -121,9 +121,8 @@ static uint8_t plan_prev_block_index(uint8_t block_index)
   motion(s) distance per block to a desired tolerance. The more combined distance the planner has to use,
   the faster it can go. (3) Maximize the planner buffer size. This also will increase the combined distance
   for the planner to compute over. It also increases the number of computations the planner has to perform
-  to compute an optimal plan, so select carefully. The Arduino 328p memory is already maxed out, but future
-  ARM versions should have enough memory and speed for look-ahead blocks numbering up to a hundred or more.
-
+  to compute an optimal plan, so select carefully. 
+  
 */
 static void planner_recalculate() 
 {   
@@ -262,11 +261,7 @@ uint8_t plan_check_full_buffer()
    head. It avoids changing the planner state and preserves the buffer to ensure subsequent gcode
    motions are still planned correctly, while the stepper module only points to the block buffer head 
    to execute the parking motion. */
-#ifdef USE_LINE_NUMBERS   
-  uint8_t plan_buffer_line(float *target, float feed_rate, uint8_t invert_feed_rate, uint8_t is_parking_motion, int32_t line_number) 
-#else
-  uint8_t plan_buffer_line(float *target, float feed_rate, uint8_t invert_feed_rate, uint8_t is_parking_motion) 
-#endif
+uint8_t plan_buffer_line(float *target, float feed_rate, uint8_t invert_feed_rate, uint8_t is_parking_motion, int32_t line_number) 
 {
   // Prepare and initialize new block
   plan_block_t *block = &block_buffer[block_buffer_head];
@@ -274,9 +269,7 @@ uint8_t plan_check_full_buffer()
   block->millimeters = 0;
   block->direction_bits = 0;
   block->acceleration = SOME_LARGE_VALUE; // Scaled down to maximum acceleration later
-  #ifdef USE_LINE_NUMBERS
-    block->line_number = line_number;
-  #endif
+  block->line_number = line_number;
 
   // Compute and store initial move distance data.
   // TODO: After this for-loop, we don't touch the stepper algorithm data. Might be a good idea

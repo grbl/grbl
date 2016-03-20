@@ -30,11 +30,7 @@
 // segments, must pass through this routine before being passed to the planner. The seperation of
 // mc_line and plan_buffer_line is done primarily to place non-planner-type functions from being
 // in the planner and to let backlash compensation or canned cycle integration simple and direct.
-#ifdef USE_LINE_NUMBERS
-  void mc_line(float *target, float feed_rate, uint8_t invert_feed_rate, int32_t line_number)
-#else
-  void mc_line(float *target, float feed_rate, uint8_t invert_feed_rate)
-#endif
+void mc_line(float *target, float feed_rate, uint8_t invert_feed_rate, int32_t line_number)
 {
   // If enabled, check for soft limit violations. Placed here all line motions are picked up
   // from everywhere in Grbl.
@@ -68,11 +64,7 @@
 
   // Plan and queue motion into planner buffer
   // uint8_t plan_status; // Not used in normal operation.
-  #ifdef USE_LINE_NUMBERS
-    plan_buffer_line(target, feed_rate, invert_feed_rate, false, line_number);
-  #else
-    plan_buffer_line(target, feed_rate, invert_feed_rate, false);
-  #endif
+  plan_buffer_line(target, feed_rate, invert_feed_rate, false, line_number);
 }
 
 
@@ -83,13 +75,8 @@
 // The arc is approximated by generating a huge number of tiny, linear segments. The chordal tolerance
 // of each segment is configured in settings.arc_tolerance, which is defined to be the maximum normal
 // distance from segment to the circle when the end points both lie on the circle.
-#ifdef USE_LINE_NUMBERS
-  void mc_arc(float *position, float *target, float *offset, float radius, float feed_rate, 
-    uint8_t invert_feed_rate, uint8_t axis_0, uint8_t axis_1, uint8_t axis_linear, uint8_t is_clockwise_arc, int32_t line_number)
-#else
-  void mc_arc(float *position, float *target, float *offset, float radius, float feed_rate,
-    uint8_t invert_feed_rate, uint8_t axis_0, uint8_t axis_1, uint8_t axis_linear, uint8_t is_clockwise_arc)
-#endif
+void mc_arc(float *position, float *target, float *offset, float radius, float feed_rate, 
+  uint8_t invert_feed_rate, uint8_t axis_0, uint8_t axis_1, uint8_t axis_linear, uint8_t is_clockwise_arc, int32_t line_number)
 {
   float center_axis0 = position[axis_0] + offset[axis_0];
   float center_axis1 = position[axis_1] + offset[axis_1];
@@ -181,22 +168,14 @@
       position[axis_1] = center_axis1 + r_axis1;
       position[axis_linear] += linear_per_segment;
       
-      #ifdef USE_LINE_NUMBERS
-        mc_line(position, feed_rate, invert_feed_rate, line_number);
-      #else
-        mc_line(position, feed_rate, invert_feed_rate);
-      #endif
+      mc_line(position, feed_rate, invert_feed_rate, line_number);
       
       // Bail mid-circle on system abort. Runtime command check already performed by mc_line.
       if (sys.abort) { return; }
     }
   }
   // Ensure last segment arrives at target location.
-  #ifdef USE_LINE_NUMBERS
-    mc_line(target, feed_rate, invert_feed_rate, line_number);
-  #else
-    mc_line(target, feed_rate, invert_feed_rate);
-  #endif
+  mc_line(target, feed_rate, invert_feed_rate, line_number);
 }
 
 
@@ -255,13 +234,8 @@ void mc_homing_cycle()
 
 // Perform tool length probe cycle. Requires probe switch.
 // NOTE: Upon probe failure, the program will be stopped and placed into ALARM state.
-#ifdef USE_LINE_NUMBERS
-  void mc_probe_cycle(float *target, float feed_rate, uint8_t invert_feed_rate, uint8_t is_probe_away, 
-    uint8_t is_no_error, int32_t line_number)
-#else
-  void mc_probe_cycle(float *target, float feed_rate, uint8_t invert_feed_rate, uint8_t is_probe_away,
-    uint8_t is_no_error)
-#endif
+void mc_probe_cycle(float *target, float feed_rate, uint8_t invert_feed_rate, uint8_t is_probe_away, 
+  uint8_t is_no_error, int32_t line_number)
 { 
   // TODO: Need to update this cycle so it obeys a non-auto cycle start.
   if (sys.state == STATE_CHECK_MODE) { return; }
@@ -282,11 +256,7 @@ void mc_homing_cycle()
   if (sys.abort) { return; } // Return if system reset has been issued.
 
   // Setup and queue probing motion. Auto cycle-start should not start the cycle.
-  #ifdef USE_LINE_NUMBERS
-    mc_line(target, feed_rate, invert_feed_rate, line_number);
-  #else
-    mc_line(target, feed_rate, invert_feed_rate);
-  #endif
+  mc_line(target, feed_rate, invert_feed_rate, line_number);
   
   // Activate the probing state monitor in the stepper module.
   sys_probe_state = PROBE_ACTIVE;
@@ -333,11 +303,7 @@ void mc_parking_motion(float *parking_target, float feed_rate)
 {
   if (sys.abort) { return; } // Block during abort.
   
-  #ifdef USE_LINE_NUMBERS
-    uint8_t plan_status = plan_buffer_line(parking_target, feed_rate, false, true, PARKING_MOTION_LINE_NUMBER);
-  #else
-    uint8_t plan_status = plan_buffer_line(parking_target, feed_rate, false, true);
-  #endif
+  uint8_t plan_status = plan_buffer_line(parking_target, feed_rate, false, true, PARKING_MOTION_LINE_NUMBER);
   if (plan_status) {
 		bit_true(sys.step_control, STEP_CONTROL_EXECUTE_PARK); 
 		bit_false(sys.step_control, STEP_CONTROL_END_MOTION); // Allow parking motion to execute, if feed hold is active.

@@ -927,12 +927,10 @@ void st_prep_buffer()
 // however is not exactly the current speed, but the speed computed in the last step segment
 // in the segment buffer. It will always be behind by up to the number of segment blocks (-1)
 // divided by the ACCELERATION TICKS PER SECOND in seconds. 
-#ifdef REPORT_REALTIME_RATE
-  float st_get_realtime_rate()
-  {
-     if (sys.state & (STATE_CYCLE | STATE_HOMING | STATE_HOLD | STATE_MOTION_CANCEL | STATE_SAFETY_DOOR)){
-       return prep.current_speed;
-     }
-    return 0.0f;
-  }
-#endif
+float st_get_realtime_rate()
+{
+   if (sys.state & (STATE_CYCLE | STATE_HOMING | STATE_HOLD | STATE_MOTION_CANCEL | STATE_SAFETY_DOOR)){
+     return prep.current_speed;
+   }
+  return 0.0f;
+}

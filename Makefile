@@ -28,8 +28,8 @@
 #                is connected.
 # FUSES ........ Parameters for avrdude to flash the fuses appropriately.
 
-DEVICE     ?= atmega328p
-CLOCK      = 16000000
+DEVICE     ?= atmega2560
+CLOCK      = 16000000L
 PROGRAMMER ?= -c avrisp2 -P usb
 SOURCE    = main.c motion_control.c gcode.c spindle_control.c coolant_control.c serial.c \
              protocol.c stepper.c eeprom.c settings.c planner.c nuts_bolts.c limits.c \
@@ -53,7 +53,7 @@ $(BUILDDIR)/%.o: $(SOURCEDIR)/%.c
 	$(COMPILE) -MMD -MP -c $< -o $@
 
 .S.o:
-	$(COMPILE) -x assembler-with-cpp -c $< -o $(BUILDDIR)/$@
+	$(COMPILE) -x assembler-with-cpp -c $< -o $(BUILDDIR)/$@ 
 # "-x assembler-with-cpp" should not be necessary since this is the default
 # file type for the .S (with capital S) extension. However, upper case
 # characters are not always preserved on Windows. To ensure WinAVR

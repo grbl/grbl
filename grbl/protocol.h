@@ -23,13 +23,8 @@
 #define protocol_h
 
 // Line buffer size from the serial input stream to be executed.
-// NOTE: Not a problem except for extreme cases, but the line buffer size can be too small
-// and g-code blocks can get truncated. Officially, the g-code standards support up to 256
-// characters. In future versions, this will be increased, when we know how much extra
-// memory space we can invest into here or we re-write the g-code parser not to have this 
-// buffer.
 #ifndef LINE_BUFFER_SIZE
-  #define LINE_BUFFER_SIZE 80
+  #define LINE_BUFFER_SIZE 256
 #endif
 
 // Starts Grbl main loop. It handles all incoming characters from the serial port and executes

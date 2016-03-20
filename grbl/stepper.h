@@ -23,7 +23,7 @@
 #define stepper_h 
 
 #ifndef SEGMENT_BUFFER_SIZE
-  #define SEGMENT_BUFFER_SIZE 6
+  #define SEGMENT_BUFFER_SIZE 10
 #endif
 
 // Initialize and setup the stepper motor subsystem
@@ -54,8 +54,6 @@ void st_prep_buffer();
 void st_update_plan_block_parameters();
 
 // Called by realtime status reporting if realtime rate reporting is enabled in config.h.
-#ifdef REPORT_REALTIME_RATE
 float st_get_realtime_rate();
-#endif
 
 #endif

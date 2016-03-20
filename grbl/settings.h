@@ -56,9 +56,6 @@
 #define SETTINGS_RESTORE_BUILD_INFO bit(3)
 
 // Define EEPROM memory address location values for Grbl settings and parameters
-// NOTE: The Atmega328p has 1KB EEPROM. The upper half is reserved for parameters and
-// the startup script. The lower half contains the global settings and space for future 
-// developments.
 #define EEPROM_ADDR_GLOBAL         1U
 #define EEPROM_ADDR_PARAMETERS     512U
 #define EEPROM_ADDR_STARTUP_BLOCK  768U
