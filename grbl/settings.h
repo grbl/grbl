@@ -24,6 +24,9 @@
 
 #include "grbl.h"
 
+#ifndef EEPROM_LINE_SIZE
+  #define EEPROM_LINE_SIZE 80
+#endif
 
 // Version of the EEPROM data. Will be used to migrate existing data from older versions of Grbl
 // when firmware is upgraded. Always stored in byte 0 of eeprom

@@ -108,6 +108,12 @@
 // homing cycle while on the limit switch and not have to move the machine off of it.
 // #define LIMITS_TWO_SWITCHES_ON_AXES
 
+// Allows GRBL to track and report gcode line numbers and real-time feed rate. Both of these may
+// be toggled to be visible when their status report mask setting when enabled.
+// NOTE: The option to disable these will be removed soon, as these will be added permanently.
+#define REPORT_REALTIME_LINE_NUMBERS // Enabled by default. Comment to disable.
+#define REPORT_REALTIME_RATE // Enabled by default. Comment to disable.
+
 // Upon a successful probe cycle, this option provides immediately feedback of the probe coordinates
 // through an automatically generated message. If disabled, users can still access the last probe
 // coordinates through Grbl '$#' print parameters.
@@ -315,6 +321,12 @@
 // NOTE: Buffer size values must be greater than zero and less than 256.
 // #define RX_BUFFER_SIZE 256 // Uncomment to override defaults in serial.h
 // #define TX_BUFFER_SIZE 128
+
+// The maximum line length of a data string stored in EEPROM. Used by startup lines and build
+// info. This size differs from the LINE_BUFFER_SIZE as the EEPROM is usually limited in size.
+// NOTE: Be very careful when changing this value. Check EEPROM address locations to make sure
+// these string storage locations won't corrupt one another.
+// #define EEPROM_LINE_SIZE 80 // Uncomment to override defaults in settings.h
   
 // Toggles XON/XOFF software flow control for serial communications. Not officially supported
 // due to problems involving the Atmega8U2 USB-to-serial chips on current Arduinos. The firmware

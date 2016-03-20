@@ -1,0 +1,27 @@
+----------------
+Date: 2016-03-19
+Author: Sonny Jeon
+Subject: Removed 328p-related code. Enabled options by default.
+
+- Removed all of the 328p-related code, which seemed to clean up things
+quite a bit without all those ifdefs everywhere.
+
+- Since the 328p was very memory and flash limited, lots of
+compile-time options were disabled by default. These have been now been
+enabled by default. As they are considered generally helpful and does
+not significantly impact how Grbl runs.
+
+- For example, status reports can now report back real time feed rate
+and line number being executed. Variable spindle is standard with a
+separate spindle enable pin. Grbl will now check if a user setting has
+exceeded the maximum step frequency and report an error, if so. And
+finally, M7 flood coolant is enabled.
+
+- In addition, all buffers have been significantly increased to take
+advantage of the additional memory available. The planner buffer can
+plan up to 36 motions. The serial buffers have been doubled in size
+(256/128 bytes RX/TX). And the longest line Grbl can accept is 256
+bytes, per the g-code standard (Grbl 328p is limited to 80).
+
+- Removed the cpu_map folder, since this version is strictly Mega2560.
+

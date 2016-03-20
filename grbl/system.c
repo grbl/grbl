@@ -192,6 +192,7 @@ uint8_t system_execute_line(char *line)
             do {
               line[char_counter-helper_var] = line[char_counter];
             } while (line[char_counter++] != 0);
+            if (char_counter > (EEPROM_LINE_SIZE-helper_var)) { return(STATUS_LINE_LENGTH_EXCEEDED); }
             settings_store_build_info(line);
           }
           break; 
@@ -233,9 +234,10 @@ uint8_t system_execute_line(char *line)
             do {
               line[char_counter-helper_var] = line[char_counter];
             } while (line[char_counter++] != 0);
+            if (char_counter > EEPROM_LINE_SIZE) { return(STATUS_LINE_LENGTH_EXCEEDED); }
             // Execute gcode block to ensure block is valid.
             helper_var = gc_execute_line(line); // Set helper_var to returned status code.
-            if (helper_var) { return(helper_var); }
+            if (helper_var) { return(helper_var); } // Return error.
             else { 
               helper_var = trunc(parameter); // Set helper_var to int value of parameter
               settings_store_startup_line(helper_var,line);
