@@ -312,6 +312,25 @@ uint8_t gc_execute_line(char *line)
               case 9: gc_block.modal.coolant = COOLANT_DISABLE; break;
             }
             break;
+          case 95:
+            if (bit_istrue(settings.flags,BITFLAG_HOMING_ENABLE)) { 
+              sys.state = STATE_HOMING; // Set system state variable
+              // Only perform homing if Grbl is idle or lost.
+              
+              // TODO: Likely not required.
+              if (system_check_safety_door_ajar()) { // Check safety door switch before homing.
+                bit_true(sys_rt_exec_state, EXEC_SAFETY_DOOR);
+                protocol_execute_realtime(); // Enter safety door mode.
+              }
+              
+              
+              mc_homing_cycle(); 
+              if (!sys.abort) {  // Execute startup scripts after successful homing.
+                sys.state = STATE_IDLE; // Set to IDLE when complete.
+                st_go_idle(); // Set steppers to the settings idle state before returning.
+              }
+            } else { return(STATUS_SETTING_DISABLED); }
+            break;
           default: FAIL(STATUS_GCODE_UNSUPPORTED_COMMAND); // [Unsupported M command]
         }
       
