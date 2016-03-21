@@ -75,7 +75,7 @@
 #define LIMIT_DDR       DDRL
 #define LIMIT_PORT      PORTL
 #define LIMIT_PIN       PINL
-#define A_LIMIT_BIT     1 // MEGA2560 Digital Pin 48
+#define A_LIMIT_BIT     6 // MEGA2560 Digital Pin 43
 #define B_LIMIT_BIT     2 // MEGA2560 Digital Pin 47
 #define C_LIMIT_BIT     2 // MEGA2560 Digital Pin 47
 #define D_LIMIT_BIT     3 // MEGA2560 Digital Pin 46
