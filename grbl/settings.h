@@ -58,6 +58,7 @@
 // the startup script. The lower half contains the global settings and space for future 
 // developments.
 #define EEPROM_ADDR_GLOBAL         1U
+#define EEPROM_ADDR_PROFILE        500U
 #define EEPROM_ADDR_PARAMETERS     512U
 #define EEPROM_ADDR_STARTUP_BLOCK  768U
 #define EEPROM_ADDR_BUILD_INFO     942U
@@ -74,6 +75,17 @@
 #define AXIS_N_SETTINGS          4
 #define AXIS_SETTINGS_START_VAL  100 // NOTE: Reserving settings values >= 100 for axis settings. Up to 255.
 #define AXIS_SETTINGS_INCREMENT  10  // Must be greater than the number of axis settings
+
+#define SETTINGS_SIZE 45 // size of eeprom settings (see settings_t type);
+
+typedef enum
+{
+  EEPROM_PROFILE_0 = (uint8_t)0,
+  EEPROM_PROFILE_1,
+  EEPROM_PROFILE_2,
+  NUMBER_OF_EEPROM_PROFILES
+} profile_t;
+extern profile_t eeprom_profile;
 
 // Global persistent settings (Stored from byte EEPROM_ADDR_GLOBAL onwards)
 typedef struct {
@@ -137,6 +149,12 @@ uint8_t get_direction_pin_mask(uint8_t i);
 
 // Returns the limit pin mask according to Grbl's internal axis numbering
 uint8_t get_limit_pin_mask(uint8_t i);
+
+// Return the current selected eeprom profile
+uint8_t get_eeprom_profile(void);
+
+// Stores the current selected eeprom profile
+void set_eeprom_profile(uint8_t profile);
 
 
 #endif
