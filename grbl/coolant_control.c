@@ -33,9 +33,18 @@ void coolant_init()
 
 void coolant_stop()
 {
-  COOLANT_FLOOD_PORT &= ~(1 << COOLANT_FLOOD_BIT);
+  #ifdef INVERT_COOLANT_ENABLE_PIN
+    COOLANT_FLOOD_PORT |= (1<<COOLANT_FLOOD_BIT);
+  #else
+    COOLANT_FLOOD_PORT &= ~(1<<COOLANT_FLOOD_BIT);
+  #endif
+  
   #ifdef ENABLE_M7
-    COOLANT_MIST_PORT &= ~(1 << COOLANT_MIST_BIT);
+    #ifdef INVERT_COOLANT_ENABLE_PIN
+      COOLANT_MIST_PORT |= (1<<COOLANT_MIST_BIT);
+    #else
+      COOLANT_MIST_PORT &= ~(1<<COOLANT_MIST_BIT);
+    #endif
   #endif
 }
 
@@ -43,11 +52,21 @@ void coolant_stop()
 void coolant_set_state(uint8_t mode)
 {
   if (mode == COOLANT_FLOOD_ENABLE) {
-    COOLANT_FLOOD_PORT |= (1 << COOLANT_FLOOD_BIT);
+	  
+    #ifdef INVERT_COOLANT_ENABLE_PIN
+      COOLANT_FLOOD_PORT &= ~(1<<COOLANT_FLOOD_BIT);
+    #else
+      COOLANT_FLOOD_PORT |= (1<<COOLANT_FLOOD_BIT);
+    #endif
 
   #ifdef ENABLE_M7  
     } else if (mode == COOLANT_MIST_ENABLE) {
-      COOLANT_MIST_PORT |= (1 << COOLANT_MIST_BIT);
+		
+	  #ifdef INVERT_COOLANT_ENABLE_PIN
+        COOLANT_MIST_PORT &= ~(1<<COOLANT_MIST_BIT);
+      #else
+        COOLANT_MIST_PORT |= (1<<COOLANT_MIST_BIT);
+      #endif
   #endif
 
   } else {
