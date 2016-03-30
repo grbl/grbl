@@ -30,15 +30,15 @@
 #include "grbl.h" // For Arduino IDE compatibility.
 
 
-// Default settings. Used when resetting EEPROM. Change to desired name in defaults.h
+// Define CPU pin map and default settings.
+// NOTE: OEMs can avoid the need to maintain/update the defaults.h and cpu_map.h files and use only
+// one configuration file by placing their specific defaults and pin map at the bottom of this file.
+// If doing so, simply comment out these two defines and see instructions below.
 #define DEFAULTS_GENERIC
+#define CPU_MAP_ATMEGA328P // Arduino Uno CPU
 
 // Serial baud rate
 #define BAUD_RATE 115200
-
-// Default cpu mappings. Grbl officially supports the Arduino Uno only. Other processor types
-// may exist from user-supplied templates or directly user-defined in cpu_map.h
-#define CPU_MAP_ATMEGA328P // Arduino Uno CPU
 
 // Define realtime command special characters. These characters are 'picked-off' directly from the
 // serial read data stream and are not passed to the grbl line execution parser. Select characters
@@ -151,11 +151,12 @@
 // have the same steps per mm internally.
 // #define COREXY // Default disabled. Uncomment to enable.
 
-// Inverts pin logic of the control command pins. This essentially means when this option is enabled
-// you can use normally-closed switches, rather than the default normally-open switches.
-// NOTE: If you require individual control pins inverted, keep this macro disabled and simply alter
-//   the CONTROL_INVERT_MASK definition in cpu_map.h files.
-// #define INVERT_ALL_CONTROL_PINS // Default disabled. Uncomment to enable.
+// Inverts pin logic of the control command pins based on a mask. This essentially means you can use
+// normally-closed switches on the specified pins, rather than the default normally-open switches.
+// NOTE: The top option will mask and invert all control pins. The bottom option is an example of
+// inverting only two control pins, the safety door and reset. See cpu_map.h for other bit definitions.
+// #define INVERT_CONTROL_PIN_MASK CONTROL_MASK // Default disabled. Uncomment to disable.
+// #define INVERT_CONTROL_PIN_MASK ((1<<CONTROL_SAFETY_DOOR_BIT)|(CONTROL_RESET_BIT)) // Default disabled.
 
 // Inverts select limit pin states based on the following mask. This effects all limit pin functions, 
 // such as hard limits and homing. However, this is different from overall invert limits setting. 
@@ -164,7 +165,6 @@
 // normally-open(NO) and normally-closed(NC) switches installed on their machine.
 // NOTE: PLEASE DO NOT USE THIS, unless you have a situation that needs it.
 // #define INVERT_LIMIT_PIN_MASK ((1<<X_LIMIT_BIT)|(1<<Y_LIMIT_BIT)) // Default disabled. Uncomment to enable.
-
 
 // Inverts the spindle enable pin from low-disabled/high-enabled to low-enabled/high-disabled. Useful
 // for some pre-built electronic boards.
@@ -443,7 +443,18 @@
   #endif
 #endif
 
-// ---------------------------------------------------------------------------------------
+/* ---------------------------------------------------------------------------------------
+   OEM Single File Configuration Option
+   
+   Instructions: Paste the cpu_map and default setting definitions below without an enclosing
+   #ifdef. Comment out the CPU_MAP_xxx and DEFAULT_xxx defines at the top of this file, and
+   the compiler will ignore the contents of defaults.h and cpu_map.h and use the definitions
+   below.
+*/
+
+// Paste CPU_MAP definitions here.
+
+// Paste default settings definitions here.
 
 
 #endif

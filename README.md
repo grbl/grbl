@@ -42,6 +42,8 @@ Grbl includes full acceleration management with look ahead. That means the contr
 
 - Updated G28 and G30 behavior from NIST to LinuxCNC g-code description. In short, if a intermediate motion is specified, only the axes specified will move to the stored coordinates, not all axes as before.
 
+- **NOTE:** Arduino Mega2560 support has been moved to an active, official Grbl-Mega [project](http://www.github.com/gnea/grbl-Mega/). All new developments here and there will be synced when it makes sense to.
+
 - A few bug fixes and lots of refactoring to make the code more efficient and flexible.
 
 

@@ -1,4 +1,15 @@
 ----------------
+Date: 2016-03-19
+Author: Sonny Jeon
+Subject: No variable spindle and spindle speed fix.
+
+- Soft limit errors were stuck in a feed hold without notifying the
+user why it was in a hold. When resumed, the soft limit error would
+kick in. Issue should be fixed to behave as intended to automatically
+hold and issue a soft limit alarm once the machine has come to a stop.
+
+
+----------------
 Date: 2016-03-11
 Author: Sonny Jeon
 Subject: Soft limit error bug fix.
