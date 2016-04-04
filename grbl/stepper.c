@@ -197,25 +197,23 @@ void st_wake_up()
   if (bit_istrue(settings.flags,BITFLAG_INVERT_ST_ENABLE)) { STEPPERS_DISABLE_PORT |= (1<<STEPPERS_DISABLE_BIT); }
   else { STEPPERS_DISABLE_PORT &= ~(1<<STEPPERS_DISABLE_BIT); }
 
-//   if (sys.state & (STATE_CYCLE | STATE_HOMING)){
-    // Initialize stepper output bits
-    st.dir_outbits = dir_port_invert_mask; 
-    st.step_outbits = step_port_invert_mask;
-    
-    // Initialize step pulse timing from settings. Here to ensure updating after re-writing.
-    #ifdef STEP_PULSE_DELAY
-      // Set total step pulse time after direction pin set. Ad hoc computation from oscilloscope.
-      st.step_pulse_time = -(((settings.pulse_microseconds+STEP_PULSE_DELAY-2)*TICKS_PER_MICROSECOND) >> 3);
-      // Set delay between direction pin write and step command.
-      OCR0A = -(((settings.pulse_microseconds)*TICKS_PER_MICROSECOND) >> 3);
-    #else // Normal operation
-      // Set step pulse time. Ad hoc computation from oscilloscope. Uses two's complement.
-      st.step_pulse_time = -(((settings.pulse_microseconds-2)*TICKS_PER_MICROSECOND) >> 3);
-    #endif
+  // Initialize stepper output bits
+  st.dir_outbits = dir_port_invert_mask; 
+  st.step_outbits = step_port_invert_mask;
+  
+  // Initialize step pulse timing from settings. Here to ensure updating after re-writing.
+  #ifdef STEP_PULSE_DELAY
+    // Set total step pulse time after direction pin set. Ad hoc computation from oscilloscope.
+    st.step_pulse_time = -(((settings.pulse_microseconds+STEP_PULSE_DELAY-2)*TICKS_PER_MICROSECOND) >> 3);
+    // Set delay between direction pin write and step command.
+    OCR0A = -(((settings.pulse_microseconds)*TICKS_PER_MICROSECOND) >> 3);
+  #else // Normal operation
+    // Set step pulse time. Ad hoc computation from oscilloscope. Uses two's complement.
+    st.step_pulse_time = -(((settings.pulse_microseconds-2)*TICKS_PER_MICROSECOND) >> 3);
+  #endif
 
-    // Enable Stepper Driver Interrupt
-    TIMSK1 |= (1<<OCIE1A);
-//   }
+  // Enable Stepper Driver Interrupt
+  TIMSK1 |= (1<<OCIE1A);
 }
 
 
@@ -929,8 +927,5 @@ void st_prep_buffer()
 // divided by the ACCELERATION TICKS PER SECOND in seconds. 
 float st_get_realtime_rate()
 {
-   if (sys.state & (STATE_CYCLE | STATE_HOMING | STATE_HOLD | STATE_MOTION_CANCEL | STATE_SAFETY_DOOR)){
-     return prep.current_speed;
-   }
-  return 0.0f;
+  return prep.current_speed;
 }

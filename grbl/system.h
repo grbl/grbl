@@ -35,6 +35,7 @@
 #define EXEC_RESET          bit(4) // bitmask 00010000
 #define EXEC_SAFETY_DOOR    bit(5) // bitmask 00100000
 #define EXEC_MOTION_CANCEL  bit(6) // bitmask 01000000
+#define EXEC_SLEEP          bit(7) // bitmask 10000000
 
 // Alarm executor bit map.
 // NOTE: EXEC_CRITICAL_EVENT is an optional flag that must be set with an alarm flag. When enabled,
@@ -47,17 +48,17 @@
 #define EXEC_ALARM_PROBE_FAIL   bit(4) // bitmask 00010000
 #define EXEC_ALARM_HOMING_FAIL  bit(5) // bitmask 00100000
 
-// Define system state bit map. The state variable primarily tracks the individual functions
-// of Grbl to manage each without overlapping. It is also used as a messaging flag for
-// critical events.
+// Define system state map. The state variable primarily tracks the individual functions
+// of Grbl to manage each without overlapping.
 #define STATE_IDLE          0      // Must be zero. No flags.
 #define STATE_ALARM         bit(0) // In alarm state. Locks out all g-code processes. Allows settings access.
 #define STATE_CHECK_MODE    bit(1) // G-code check mode. Locks out planner and motion only.
-#define STATE_HOMING        bit(2) // Performing homing cycle
-#define STATE_CYCLE         bit(3) // Cycle is running or motions are being executed.
-#define STATE_HOLD          bit(4) // Active feed hold
-#define STATE_SAFETY_DOOR   bit(5) // Safety door is ajar. Feed holds and de-energizes system.
-#define STATE_MOTION_CANCEL bit(6) // Motion cancel by feed hold and return to idle. 
+#define STATE_MOTION_CANCEL bit(2) // Motion cancel by feed hold and return to idle. 
+#define STATE_HOMING        bit(3) // Performing homing cycle
+#define STATE_CYCLE         bit(4) // Cycle is running or motions are being executed.
+#define STATE_HOLD          bit(5) // Active feed hold
+#define STATE_SAFETY_DOOR   bit(6) // Safety door is ajar. Feed holds and de-energizes system.
+#define STATE_SLEEP         bit(7) // Sleep mode is active.
 
 // Define system suspend flags. Used in various ways to manage suspend states and procedures.
 #define SUSPEND_DISABLE           0      // Must be zero.
@@ -66,7 +67,7 @@
 #define SUSPEND_RETRACT_COMPLETE  bit(2) // (Safety door only) Indicates retraction and de-energizing is complete.
 #define SUSPEND_INITIATE_RESTORE  bit(3) // (Safety door only) Flag to initiate resume procedures from a cycle start.
 #define SUSPEND_RESTORE_COMPLETE  bit(4) // (Safety door only) Indicates ready to resume normal operation.
-#define SUSPEND_SAFETY_DOOR_AJAR  bit(5) // Indicates suspend was initiated by a safety door state.
+#define SUSPEND_SAFETY_DOOR_AJAR  bit(5) // Tracks safety door state for resuming.
 #define SUSPEND_MOTION_CANCEL     bit(6) // Indicates a canceled resume motion. Currently used by probing routine.
 
 // Define step segment generator state flags.
@@ -90,7 +91,7 @@ typedef struct {
   uint8_t state;                 // Tracks the current state of Grbl.
   uint8_t suspend;               // System suspend bitflag variable that manages holds, cancels, and safety door.
   uint8_t soft_limit;            // Tracks soft limit errors for the state machine (Boolean)
-  uint8_t step_control;
+  uint8_t step_control;          // Regulates the step segment generator based on state.
 
   int32_t position[N_AXIS];      // Real-time machine (aka home) position vector in steps. 
                                  // NOTE: This may need to be a volatile variable, if problems arise.                             

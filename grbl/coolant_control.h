@@ -26,5 +26,6 @@ void coolant_init();
 void coolant_stop();
 void coolant_set_state(uint8_t mode);
 void coolant_run(uint8_t mode);
+uint8_t coolant_is_enabled();
 
 #endif

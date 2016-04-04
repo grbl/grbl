@@ -72,6 +72,7 @@
 #define MESSAGE_SAFETY_DOOR_AJAR 6
 #define MESSAGE_PROGRAM_END 7
 #define MESSAGE_RESTORE_DEFAULTS 8
+#define MESSAGE_SLEEP_MODE 9
 
 // Prints system status messages.
 void report_status_message(uint8_t status_code);

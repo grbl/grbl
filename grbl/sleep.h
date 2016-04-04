@@ -1,9 +1,8 @@
 /*
-  spindle_control.h - spindle control methods
+  sleep.h - Sleep methods header file
   Part of Grbl
-
-  Copyright (c) 2012-2015 Sungeun K. Jeon
-  Copyright (c) 2009-2011 Simen Svale Skogsrud
+  
+  Copyright (c) 2016 Sungeun K. Jeon  
 
   Grbl is free software: you can redistribute it and/or modify
   it under the terms of the GNU General Public License as published by
@@ -17,24 +16,19 @@
 
   You should have received a copy of the GNU General Public License
   along with Grbl.  If not, see <http://www.gnu.org/licenses/>.
-*/ 
+*/
 
-#ifndef spindle_control_h
-#define spindle_control_h 
+#ifndef sleep_h
+#define sleep_h
+
+#include "grbl.h"
 
 
-// Initializes spindle pins and hardware PWM, if enabled.
-void spindle_init();
+// Initialize sleep timer
+void sleep_init();
 
-// Sets spindle direction and spindle rpm via PWM, if enabled.
-void spindle_run(uint8_t direction, float rpm);
-
-void spindle_set_state(uint8_t state, float rpm);
-
-// Kills spindle.
-void spindle_stop();
-
-// Returns a boolean on spindle enabled state.
-uint8_t spindle_is_enabled();
+// Checks running conditions for sleep. If satisfied, enables sleep countdown and executes
+// sleep mode upon elapse.
+void sleep_check();
 
 #endif

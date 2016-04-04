@@ -59,6 +59,7 @@ void protocol_main_loop()
     
   // ---------------------------------------------------------------------------------  
   // Primary loop! Upon a system abort, this exits back to main() to reset the system. 
+  // This is also where Grbl idles while waiting for something to do.
   // ---------------------------------------------------------------------------------  
   
   uint8_t line_flags = 0;
@@ -152,6 +153,10 @@ void protocol_main_loop()
     protocol_execute_realtime();  // Runtime command check point.
     if (sys.abort) { return; } // Bail to main() program loop to reset system.
               
+    #ifdef SLEEP_ENABLE
+      // Check for sleep conditions and execute auto-park, if timeout duration elapses.
+      sleep_check();    
+    #endif
   }
   
   return; /* Never reached */
@@ -182,7 +187,12 @@ void protocol_buffer_synchronize()
 // when one of these conditions exist respectively: There are no more blocks sent (i.e. streaming 
 // is finished, single commands), a command that needs to wait for the motions in the buffer to 
 // execute calls a buffer sync, or the planner buffer is full and ready to go.
-void protocol_auto_cycle_start() { system_set_exec_state_flag(EXEC_CYCLE_START); } 
+void protocol_auto_cycle_start() 
+{
+  if (plan_get_current_block() != NULL) { // Check if there are any blocks in the buffer.
+    system_set_exec_state_flag(EXEC_CYCLE_START); // If so, execute them!
+  } 
+}
 
 
 // This function is the general interface to Grbl's real-time command execution system. It is called
@@ -266,12 +276,12 @@ void protocol_exec_rt_system()
     // NOTE: The math involved to calculate the hold should be low enough for most, if not all, 
     // operational scenarios. Once hold is initiated, the system enters a suspend state to block
     // all main program processes until either reset or resumed.
-    if (rt_exec & (EXEC_MOTION_CANCEL | EXEC_FEED_HOLD | EXEC_SAFETY_DOOR)) {
+    if (rt_exec & (EXEC_MOTION_CANCEL | EXEC_FEED_HOLD | EXEC_SAFETY_DOOR | EXEC_SLEEP)) {
   
       // TODO: CHECK MODE? How to handle this? Likely nothing, since it only works when IDLE and then resets Grbl.
             
       // State check for allowable states for hold methods.
-      if ((sys.state == STATE_IDLE) || (sys.state & (STATE_CYCLE | STATE_HOMING | STATE_MOTION_CANCEL | STATE_HOLD | STATE_SAFETY_DOOR))) {
+      if (!(sys.state & (STATE_ALARM & STATE_CHECK_MODE))) {
 
         // If in CYCLE state, all hold states immediately initiate a motion HOLD.
         if (sys.state == STATE_CYCLE) {
@@ -296,9 +306,8 @@ void protocol_exec_rt_system()
 
         // Execute a feed hold with deceleration, if required. Then, suspend system.
         if (rt_exec & EXEC_FEED_HOLD) {
-          // Block SAFETY_DOOR state from prematurely changing back to HOLD, which should only
-          // occur if the safety door switch closes.
-          if (sys.state != STATE_SAFETY_DOOR) { sys.state = STATE_HOLD; }
+          // Block SAFETY_DOOR and SLEEP states from changing to HOLD state.
+          if (!(sys.state & (STATE_SAFETY_DOOR|STATE_SLEEP))) { sys.state = STATE_HOLD; }
         }
 
         // Execute a safety door stop with a feed hold and disable spindle/coolant.
@@ -308,8 +317,8 @@ void protocol_exec_rt_system()
           report_feedback_message(MESSAGE_SAFETY_DOOR_AJAR); 
         
           // Check if the safety re-opened during a restore parking motion only. Ignore if 
-          // already retracting or parked.
-          if (sys.suspend & SUSPEND_SAFETY_DOOR_AJAR) {
+          // already retracting, parked or in sleep state.
+          if (sys.state == STATE_SAFETY_DOOR) {
             if (sys.suspend & SUSPEND_INITIATE_RESTORE) { // Actively restoring
               #ifdef PARKING_ENABLE 
                 // Set hold and reset appropriate control flags to restart parking sequence.
@@ -327,12 +336,16 @@ void protocol_exec_rt_system()
           // NOTE: This flag doesn't change when the door closes, unlike sys.state. Ensures any parking motions
           // are executed if the door switch closes and the state returns to HOLD.          
           sys.suspend |= SUSPEND_SAFETY_DOOR_AJAR; 
-          sys.state = STATE_SAFETY_DOOR;
+          if (sys.state != STATE_SLEEP) { sys.state = STATE_SAFETY_DOOR; }
+        }
+        
+        if (rt_exec & EXEC_SLEEP) {
+          sys.state = STATE_SLEEP;
         }
      
       }
   
-      system_clear_exec_state_flag((EXEC_MOTION_CANCEL | EXEC_FEED_HOLD | EXEC_SAFETY_DOOR));      
+      system_clear_exec_state_flag((EXEC_MOTION_CANCEL | EXEC_FEED_HOLD | EXEC_SAFETY_DOOR | EXEC_SLEEP));      
     }
     
     // Execute a cycle start by starting the stepper interrupt to begin executing the blocks in queue.
@@ -340,35 +353,31 @@ void protocol_exec_rt_system()
       // Block if called at same time as the hold commands: feed hold, motion cancel, and safety door.
       // Ensures auto-cycle-start doesn't resume a hold without an explicit user-input.
       if (!(rt_exec & (EXEC_FEED_HOLD | EXEC_MOTION_CANCEL | EXEC_SAFETY_DOOR))) { 
+        // Resume door state when parking motion has retracted and door has been closed.
+        if ((sys.state == STATE_SAFETY_DOOR) && !(sys.suspend & SUSPEND_SAFETY_DOOR_AJAR)) {
+          if (sys.suspend & SUSPEND_RESTORE_COMPLETE) {
+            sys.state = STATE_IDLE; // Set to IDLE to immediately resume the cycle.
+          } else if (sys.suspend & SUSPEND_RETRACT_COMPLETE) {
+            // Flag to re-energize powered components and restore original position, if disabled by SAFETY_DOOR.
+            // NOTE: For a safety door to resume, the switch must be closed, as indicated by HOLD state, and
+            // the retraction execution is complete, which implies the initial feed hold is not active. To 
+            // restore normal operation, the restore procedures must be initiated by the following flag. Once,
+            // they are complete, it will call CYCLE_START automatically to resume and exit the suspend.
+            sys.suspend |= SUSPEND_INITIATE_RESTORE;
+          }
+        } 
         // Cycle start only when IDLE or when a hold is complete and ready to resume.
-        // NOTE: SAFETY_DOOR is implicitly blocked. It reverts to HOLD when the door is closed.
-        if ((sys.state == STATE_IDLE) || ((sys.state & (STATE_HOLD | STATE_MOTION_CANCEL)) && (sys.suspend & SUSPEND_HOLD_COMPLETE))) { 
-          if (sys.suspend & SUSPEND_SAFETY_DOOR_AJAR) {
-            if (sys.suspend & SUSPEND_RETRACT_COMPLETE) {
-              if bit_isfalse(sys.suspend,SUSPEND_RESTORE_COMPLETE) {
-                // Flag to re-energize powered components and restore original position, if disabled by SAFETY_DOOR.
-                // NOTE: For a safety door to resume, the switch must be closed, as indicated by HOLD state, and
-                // the retraction execution is complete, which implies the initial feed hold is not active. To 
-                // restore normal operation, the restore procedures must be initiated by the following flag. Once,
-                // they are complete, it will call CYCLE_START automatically to resume and exit the suspend.
-                sys.suspend |= SUSPEND_INITIATE_RESTORE;
-              } else {
-                bit_false(sys.suspend,SUSPEND_SAFETY_DOOR_AJAR);
-              }
-            }
-          } 
-          if (!(sys.suspend & SUSPEND_SAFETY_DOOR_AJAR)) {          
-            // Start cycle only if queued motions exist in planner buffer and the motion is not canceled.
-            sys.step_control = STEP_CONTROL_NORMAL_OP; // Restore step control to normal operation
-            if (plan_get_current_block() && bit_isfalse(sys.suspend,SUSPEND_MOTION_CANCEL)) {
-              sys.suspend = SUSPEND_DISABLE; // Break suspend state.
-              sys.state = STATE_CYCLE;
-              st_prep_buffer(); // Initialize step segment buffer before beginning cycle.
-              st_wake_up();
-            } else { // Otherwise, do nothing. Set and resume IDLE state.
-              sys.suspend = SUSPEND_DISABLE; // Break suspend state.
-              sys.state = STATE_IDLE;
-            }
+        if ((sys.state == STATE_IDLE) || ((sys.state & (STATE_HOLD | STATE_MOTION_CANCEL)) && (sys.suspend & SUSPEND_HOLD_COMPLETE))) {
+          // Start cycle only if queued motions exist in planner buffer and the motion is not canceled.
+          sys.step_control = STEP_CONTROL_NORMAL_OP; // Restore step control to normal operation
+          if (plan_get_current_block() && bit_isfalse(sys.suspend,SUSPEND_MOTION_CANCEL)) {
+            sys.suspend = SUSPEND_DISABLE; // Break suspend state.
+            sys.state = STATE_CYCLE;
+            st_prep_buffer(); // Initialize step segment buffer before beginning cycle.
+            st_wake_up();
+          } else { // Otherwise, do nothing. Set and resume IDLE state.
+            sys.suspend = SUSPEND_DISABLE; // Break suspend state.
+            sys.state = STATE_IDLE;
           }
         }
       }    
@@ -381,13 +390,15 @@ void protocol_exec_rt_system()
       // NOTE: Bresenham algorithm variables are still maintained through both the planner and stepper
       // cycle reinitializations. The stepper path should continue exactly as if nothing has happened.   
       // NOTE: EXEC_CYCLE_STOP is set by the stepper subsystem when a cycle or feed hold completes.
-      if ((sys.state & (STATE_HOLD | STATE_SAFETY_DOOR)) && !(sys.soft_limit)) {
+      if ((sys.state & (STATE_HOLD | STATE_SAFETY_DOOR | STATE_SLEEP)) && !(sys.soft_limit)) {
         // Hold complete. Set to indicate ready to resume.  Remain in HOLD or DOOR states until user
         // has issued a resume command or reset.
         plan_cycle_reinitialize();
         if (sys.step_control & STEP_CONTROL_EXECUTE_HOLD) { sys.suspend |= SUSPEND_HOLD_COMPLETE; } 
         bit_false(sys.step_control,(STEP_CONTROL_EXECUTE_HOLD | STEP_CONTROL_EXECUTE_PARK));
-      } else { // Motion is complete. Includes CYCLE, HOMING, and MOTION_CANCEL states.
+      } else { 
+        // Motion is complete. Includes CYCLE, HOMING, and MOTION_CANCEL states. Also if a soft limit
+        // error has occurred, force an IDLE state to indicate the motion has completed.        
         sys.suspend = SUSPEND_DISABLE;
         sys.state = STATE_IDLE;
       }  
@@ -399,7 +410,7 @@ void protocol_exec_rt_system()
   // are realtime and require a direct and controlled interface to the main stepper program.
 
   // Reload step segment buffer
-  if (sys.state & (STATE_CYCLE | STATE_HOLD | STATE_MOTION_CANCEL | STATE_SAFETY_DOOR | STATE_HOMING)) { 
+  if (sys.state & (STATE_CYCLE|STATE_HOLD|STATE_MOTION_CANCEL|STATE_SAFETY_DOOR|STATE_SLEEP|STATE_HOMING)) { 
     st_prep_buffer(); 
   }
 
@@ -424,8 +435,9 @@ static void protocol_exec_rt_suspend()
   
     if (sys.abort) { return; }
     
-    // Safety door manager. Handles de/re-energizing, switch state checks, and parking motions.
-    if ((sys.suspend & SUSPEND_SAFETY_DOOR_AJAR) && (sys.suspend & SUSPEND_HOLD_COMPLETE)) { 
+    // Parking manager. Handles de/re-energizing, switch state checks, and parking motions for 
+    // the safety door and sleep states.
+    if ((sys.state & (STATE_SAFETY_DOOR | STATE_SLEEP)) && (sys.suspend & SUSPEND_HOLD_COMPLETE)) { 
   
       // Handles retraction motions and de-energizing.
       if (bit_isfalse(sys.suspend,SUSPEND_RETRACT_COMPLETE)) { 
@@ -483,10 +495,10 @@ static void protocol_exec_rt_suspend()
       } else {    
 
         // Allows resuming from parking/safety door. Actively checks if safety door is closed and ready to resume.
-        // NOTE: This unlocks the SAFETY_DOOR state to a HOLD state, such that CYCLE_START can activate a resume.
+        // NOTE: Block the sleep state from resuming a park. User must reset to exit sleep.
         if (sys.state == STATE_SAFETY_DOOR) {
           if (!(system_check_safety_door_ajar())) {
-            sys.state = STATE_HOLD; // Update to HOLD state to indicate door is closed and ready to resume.
+            sys.suspend &= ~(SUSPEND_SAFETY_DOOR_AJAR); // Reset door ajar flag to denote ready to resume.
           }
         }
         
@@ -497,9 +509,9 @@ static void protocol_exec_rt_suspend()
             // Execute fast restore motion to the pull-out position. Parking requires homing enabled.
             // NOTE: State is will remain DOOR, until the de-energizing and retract is complete.
             if (bit_istrue(settings.flags,BITFLAG_HOMING_ENABLE)) {
-              // Check to ensure the motion doesn't move below pull-out position.            
+              // Check to ensure the motion doesn't move below pull-out position.       
               if (parking_target[PARKING_AXIS] <= PARKING_TARGET) {
-                parking_target[PARKING_AXIS] = retract_waypoint;
+                parking_target[PARKING_AXIS] = retract_waypoint;     
                 mc_parking_motion(parking_target, PARKING_RATE);
               }
             }
@@ -542,6 +554,13 @@ static void protocol_exec_rt_suspend()
    
       }
     }
+    
+    #ifdef SLEEP_ENABLE
+      // Check for sleep conditions and execute auto-park, if timeout duration elapses.
+      // Sleep is valid for both hold and door states, if the spindle or coolant are on or
+      // set to be re-enabled.
+      sleep_check();
+    #endif
 
     protocol_exec_rt_system();
   }

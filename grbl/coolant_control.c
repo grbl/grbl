@@ -2,7 +2,7 @@
   coolant_control.c - coolant control methods
   Part of Grbl
 
-  Copyright (c) 2012-2015 Sungeun K. Jeon
+  Copyright (c) 2012-2016 Sungeun K. Jeon
 
   Grbl is free software: you can redistribute it and/or modify
   it under the terms of the GNU General Public License as published by
@@ -23,16 +23,40 @@
 
 void coolant_init()
 {
-  COOLANT_FLOOD_DDR |= (1 << COOLANT_FLOOD_BIT);
-  COOLANT_MIST_DDR |= (1 << COOLANT_MIST_BIT);
+  COOLANT_FLOOD_DDR |= (1 << COOLANT_FLOOD_BIT); // Configure as output pin.
+  COOLANT_MIST_DDR |= (1 << COOLANT_MIST_BIT); // Configure as output pin.
   coolant_stop();
+}
+
+
+uint8_t coolant_is_enabled()
+{
+  #ifdef INVERT_COOLANT_FLOOD_PIN
+    if (!(COOLANT_FLOOD_PORT & (1<<COOLANT_FLOOD_BIT))) { return(true); }
+  #else
+    if (COOLANT_FLOOD_PORT & (1<<COOLANT_FLOOD_BIT)) { return(true); }
+  #endif
+  #ifdef INVERT_COOLANT_MIST_PIN
+    if (!(COOLANT_MIST_PORT & (1<<COOLANT_MIST_BIT))) { return(true); }
+  #else
+    if (COOLANT_MIST_PORT & (1<<COOLANT_MIST_BIT)) { return(true); }
+  #endif
+  return(false); 
 }
 
 
 void coolant_stop()
 {
-  COOLANT_FLOOD_PORT &= ~(1 << COOLANT_FLOOD_BIT);
-  COOLANT_MIST_PORT &= ~(1 << COOLANT_MIST_BIT);
+  #ifdef INVERT_COOLANT_FLOOD_PIN
+    COOLANT_FLOOD_PORT |= (1 << COOLANT_FLOOD_BIT);
+  #else
+    COOLANT_FLOOD_PORT &= ~(1 << COOLANT_FLOOD_BIT);
+  #endif
+  #ifdef INVERT_COOLANT_MIST_PIN
+    COOLANT_MIST_PORT |= (1 << COOLANT_MIST_BIT);
+  #else
+    COOLANT_MIST_PORT &= ~(1 << COOLANT_MIST_BIT);
+  #endif
 }
 
 
@@ -41,9 +65,17 @@ void coolant_set_state(uint8_t mode)
   if (sys.abort) { return; } // Block during abort.
   
   if (mode == COOLANT_FLOOD_ENABLE) {
-    COOLANT_FLOOD_PORT |= (1 << COOLANT_FLOOD_BIT);
+    #ifdef INVERT_COOLANT_FLOOD_PIN
+      COOLANT_FLOOD_PORT &= ~(1 << COOLANT_FLOOD_BIT);
+    #else
+      COOLANT_FLOOD_PORT |= (1 << COOLANT_FLOOD_BIT);
+    #endif
   } else if (mode == COOLANT_MIST_ENABLE) {
-    COOLANT_MIST_PORT |= (1 << COOLANT_MIST_BIT);
+    #ifdef INVERT_COOLANT_MIST_PIN
+      COOLANT_MIST_PORT &= ~(1 << COOLANT_MIST_BIT);
+    #else
+      COOLANT_MIST_PORT |= (1 << COOLANT_MIST_BIT);
+    #endif
   } else {
     coolant_stop();
   }

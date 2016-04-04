@@ -142,6 +142,8 @@ void report_feedback_message(uint8_t message_code)
     printPgmString(PSTR("Pgm End")); break;
     case MESSAGE_RESTORE_DEFAULTS:
     printPgmString(PSTR("Restoring defaults")); break;
+    case MESSAGE_SLEEP_MODE:
+    printPgmString(PSTR("Sleep Mode"));
   }
   printPgmString(PSTR("]\r\n"));
 }
@@ -422,105 +424,239 @@ void report_echo_line_received(char *line)
  // especially during g-code programs with fast, short line segments and high frequency reports (5-20Hz).
 void report_realtime_status()
 {
-  // **Under construction** Bare-bones status report. Provides real-time machine position relative to 
-  // the system power on location (0,0,0) and work coordinate position (G54 and G92 applied). Eventually
-  // to be added are distance to go on block, processed block id, and feed rate. Also a settings bitmask
-  // for a user to select the desired real-time data.
   uint8_t idx;
   int32_t current_position[N_AXIS]; // Copy current state of the system position variable
   memcpy(current_position,sys.position,sizeof(sys.position));
   float print_position[N_AXIS];
- 
-  // Report current machine state
-  switch (sys.state) {
-    case STATE_IDLE: printPgmString(PSTR("<Idle")); break;
-    case STATE_MOTION_CANCEL: // Report run state.
-    case STATE_CYCLE: printPgmString(PSTR("<Run")); break;
-    case STATE_HOLD: printPgmString(PSTR("<Hold")); break;
-    case STATE_HOMING: printPgmString(PSTR("<Home")); break;
-    case STATE_ALARM: printPgmString(PSTR("<Alarm")); break;
-    case STATE_CHECK_MODE: printPgmString(PSTR("<Check")); break;
-    case STATE_SAFETY_DOOR: printPgmString(PSTR("<Door")); break;
-  }
- 
-  // If reporting a position, convert the current step count (current_position) to millimeters.
-  if (bit_istrue(settings.status_report_mask,(BITFLAG_RT_STATUS_MACHINE_POSITION | BITFLAG_RT_STATUS_WORK_POSITION))) {
-    system_convert_array_steps_to_mpos(print_position,current_position);
-  }
-  
-  // Report machine position
-  if (bit_istrue(settings.status_report_mask,BITFLAG_RT_STATUS_MACHINE_POSITION)) {
-    printPgmString(PSTR(",MPos:")); 
-    for (idx=0; idx< N_AXIS; idx++) {
-      printFloat_CoordValue(print_position[idx]);
-      if (idx < (N_AXIS-1)) { printPgmString(PSTR(",")); }
-    }
-  }
-  
-  // Report work position
-  if (bit_istrue(settings.status_report_mask,BITFLAG_RT_STATUS_WORK_POSITION)) {
-    printPgmString(PSTR(",WPos:")); 
-    for (idx=0; idx< N_AXIS; idx++) {
-      // Apply work coordinate offsets and tool length offset to current position.
-      print_position[idx] -= gc_state.coord_system[idx]+gc_state.coord_offset[idx];
-      if (idx == TOOL_LENGTH_OFFSET_AXIS) { print_position[idx] -= gc_state.tool_length_offset; }    
-      printFloat_CoordValue(print_position[idx]);
-      if (idx < (N_AXIS-1)) { printPgmString(PSTR(",")); }
-    }
-  }
-        
-  // Returns the number of active blocks are in the planner buffer.
-  if (bit_istrue(settings.status_report_mask,BITFLAG_RT_STATUS_PLANNER_BUFFER)) {
-    printPgmString(PSTR(",Buf:"));
-    print_uint8_base10(plan_get_block_buffer_count());
-  }
 
-  // Report serial read buffer status
-  if (bit_istrue(settings.status_report_mask,BITFLAG_RT_STATUS_SERIAL_RX)) {
-    printPgmString(PSTR(",RX:"));
-    print_uint8_base10(serial_get_rx_buffer_count());
-  }
+  #ifdef USE_CLASSIC_REALTIME_REPORT
+    // -----------------------------------
+    //   Classic realtime status report
+    // -----------------------------------
+
+    // Report current machine state
+    switch (sys.state) {
+      case STATE_IDLE: printPgmString(PSTR("<Idle")); break;
+      case STATE_MOTION_CANCEL: // Report run state.
+      case STATE_CYCLE: printPgmString(PSTR("<Run")); break;
+      case STATE_HOLD: printPgmString(PSTR("<Hold")); break;
+      case STATE_HOMING: printPgmString(PSTR("<Home")); break;
+      case STATE_ALARM: printPgmString(PSTR("<Alarm")); break;
+      case STATE_CHECK_MODE: printPgmString(PSTR("<Check")); break;
+      case STATE_SAFETY_DOOR:
+        if (!(sys.suspend & SUSPEND_RETRACT_COMPLETE)) {
+          printPgmString(PSTR("<Door"));        
+        } else {
+          if (sys.suspend & SUSPEND_SAFETY_DOOR_AJAR) { printPgmString(PSTR("<Door")); }
+          else { printPgmString(PSTR("<Hold")); }
+        }
+        break;
+      case STATE_SLEEP: printPgmString(PSTR("<Sleep")); break;
+    }
+ 
+    // If reporting a position, convert the current step count (current_position) to millimeters.
+    if (bit_istrue(settings.status_report_mask,(BITFLAG_RT_STATUS_MACHINE_POSITION | BITFLAG_RT_STATUS_WORK_POSITION))) {
+      system_convert_array_steps_to_mpos(print_position,current_position);
+    }
+  
+    // Report machine position
+    if (bit_istrue(settings.status_report_mask,BITFLAG_RT_STATUS_MACHINE_POSITION)) {
+      printPgmString(PSTR(",MPos:")); 
+      for (idx=0; idx< N_AXIS; idx++) {
+        printFloat_CoordValue(print_position[idx]);
+        if (idx < (N_AXIS-1)) { printPgmString(PSTR(",")); }
+      }
+    }
+  
+    // Report work position
+    if (bit_istrue(settings.status_report_mask,BITFLAG_RT_STATUS_WORK_POSITION)) {
+      printPgmString(PSTR(",WPos:")); 
+      for (idx=0; idx< N_AXIS; idx++) {
+        // Apply work coordinate offsets and tool length offset to current position.
+        print_position[idx] -= gc_state.coord_system[idx]+gc_state.coord_offset[idx];
+        if (idx == TOOL_LENGTH_OFFSET_AXIS) { print_position[idx] -= gc_state.tool_length_offset; }    
+        printFloat_CoordValue(print_position[idx]);
+        if (idx < (N_AXIS-1)) { printPgmString(PSTR(",")); }
+      }
+    }
+        
+    // Returns the number of active blocks are in the planner buffer.
+    if (bit_istrue(settings.status_report_mask,BITFLAG_RT_STATUS_PLANNER_BUFFER)) {
+      printPgmString(PSTR(",Buf:"));
+      print_uint8_base10(plan_get_block_buffer_count());
+    }
+
+    // Report serial read buffer status
+    if (bit_istrue(settings.status_report_mask,BITFLAG_RT_STATUS_SERIAL_RX)) {
+      printPgmString(PSTR(",RX:"));
+      print_uint8_base10(serial_get_rx_buffer_count());
+    }
     
-  #ifdef REPORT_REALTIME_LINE_NUMBERS  
-    // Report current line number
-    printPgmString(PSTR(",Ln:")); 
-    int32_t ln=0;
-    plan_block_t * pb = plan_get_current_block();
-    if(pb != NULL) {
-      ln = pb->line_number;
-    } 
-    printInteger(ln);
-  #endif
+    #ifdef REPORT_REALTIME_LINE_NUMBERS  
+      // Report current line number
+      printPgmString(PSTR(",Ln:")); 
+      int32_t ln=0;
+      plan_block_t * pb = plan_get_current_block();
+      if(pb != NULL) {
+        ln = pb->line_number;
+      } 
+      printInteger(ln);
+    #endif
   
-  #ifdef REPORT_REALTIME_RATE
-    // Report realtime rate 
-    printPgmString(PSTR(",F:")); 
-    printFloat_RateValue(st_get_realtime_rate());    
-  #endif
+    #ifdef REPORT_REALTIME_RATE
+      // Report realtime rate 
+      printPgmString(PSTR(",F:")); 
+      printFloat_RateValue(st_get_realtime_rate());    
+    #endif
   
-  #ifdef REPORT_ALL_PIN_STATES
-    if (bit_istrue(settings.status_report_mask,
-          ( BITFLAG_RT_STATUS_LIMIT_PINS| BITFLAG_RT_STATUS_PROBE_PIN | BITFLAG_RT_STATUS_CONTROL_PINS ))) {
-      printPgmString(PSTR(",Pin:"));
-      if (bit_istrue(settings.status_report_mask,BITFLAG_RT_STATUS_LIMIT_PINS)) { 
+    #ifdef REPORT_ALL_PIN_STATES
+      if (bit_istrue(settings.status_report_mask,
+            ( BITFLAG_RT_STATUS_LIMIT_PINS| BITFLAG_RT_STATUS_PROBE_PIN | BITFLAG_RT_STATUS_CONTROL_PINS ))) {
+        printPgmString(PSTR(",Pin:"));
+        if (bit_istrue(settings.status_report_mask,BITFLAG_RT_STATUS_LIMIT_PINS)) { 
+          print_unsigned_int8(limits_get_state(),2,N_AXIS);
+        }
+        printPgmString(PSTR("|"));
+        if (bit_istrue(settings.status_report_mask,BITFLAG_RT_STATUS_PROBE_PIN)) {
+          if (probe_get_state()) { printPgmString(PSTR("1")); }
+          else { printPgmString(PSTR("0")); }
+        }
+        printPgmString(PSTR("|"));
+        if (bit_istrue(settings.status_report_mask,BITFLAG_RT_STATUS_CONTROL_PINS)) {
+          print_unsigned_int8(system_control_get_state(),2,N_CONTROL_PIN);
+        }
+      }
+    #else
+      if (bit_istrue(settings.status_report_mask,BITFLAG_RT_STATUS_LIMIT_PINS)) {
+        printPgmString(PSTR(",Lim:"));
         print_unsigned_int8(limits_get_state(),2,N_AXIS);
       }
-      printPgmString(PSTR("|"));
-      if (bit_istrue(settings.status_report_mask,BITFLAG_RT_STATUS_PROBE_PIN)) {
-        if (probe_get_state()) { printPgmString(PSTR("1")); }
-        else { printPgmString(PSTR("0")); }
-      }
-      printPgmString(PSTR("|"));
-      if (bit_istrue(settings.status_report_mask,BITFLAG_RT_STATUS_CONTROL_PINS)) {
-        print_unsigned_int8(system_control_get_state(),2,N_CONTROL_PIN);
-      }
-    }
+    #endif
+  
   #else
-    if (bit_istrue(settings.status_report_mask,BITFLAG_RT_STATUS_LIMIT_PINS)) {
-      printPgmString(PSTR(",Lim:"));
-      print_unsigned_int8(limits_get_state(),2,N_AXIS);
+    // -----------------------------------
+    // New realtime status report proposal
+    // -----------------------------------
+        
+    // Report current machine state
+    switch (sys.state) {
+      case STATE_IDLE: printPgmString(PSTR("<Idle")); break;
+      case STATE_MOTION_CANCEL: // Report run state.
+      case STATE_CYCLE: printPgmString(PSTR("<Run")); break;
+      case STATE_HOLD: printPgmString(PSTR("<Hold:"));
+        if (sys.suspend & SUSPEND_HOLD_COMPLETE) { printPgmString(PSTR("0")); } // Ready to resume
+        else { printPgmString(PSTR("1")); } // Actively holding
+        break;
+      case STATE_HOMING: printPgmString(PSTR("<Home")); break;
+      case STATE_ALARM: printPgmString(PSTR("<Alarm")); break;
+      case STATE_CHECK_MODE: printPgmString(PSTR("<Check")); break;
+      case STATE_SAFETY_DOOR:
+        printPgmString(PSTR("<Door:"));
+        if (sys.suspend & SUSPEND_INITIATE_RESTORE) { 
+          printPgmString(PSTR("3")); // Restoring 
+        } else {
+          if (sys.suspend & SUSPEND_RETRACT_COMPLETE) {
+            if (sys.suspend & SUSPEND_SAFETY_DOOR_AJAR) { 
+              printPgmString(PSTR("1")); // Door ajar
+            } else { 
+              printPgmString(PSTR("0")); 
+            } // Door closed and ready to resume
+          } else { 
+            printPgmString(PSTR("2")); // Retracting
+          }
+        }
+        break;
+      case STATE_SLEEP: printPgmString(PSTR("<Sleep:")); 
+        if (sys.suspend & SUSPEND_RETRACT_COMPLETE) { printPgmString(PSTR("0")); } // Parked
+        else { printPgmString(PSTR("1")); } // Actively holding and retracting
+        break;
     }
+ 
+    // If reporting a position, convert the current step count (current_position) to millimeters.
+    if (bit_istrue(settings.status_report_mask,(BITFLAG_RT_STATUS_MACHINE_POSITION | BITFLAG_RT_STATUS_WORK_POSITION))) {
+      system_convert_array_steps_to_mpos(print_position,current_position);
+    }
+  
+    // Report machine position
+    if (bit_istrue(settings.status_report_mask,BITFLAG_RT_STATUS_MACHINE_POSITION)) {
+      printPgmString(PSTR("|MPos:")); 
+      for (idx=0; idx< N_AXIS; idx++) {
+        printFloat_CoordValue(print_position[idx]);
+        if (idx < (N_AXIS-1)) { printPgmString(PSTR(",")); }
+      }
+    }
+  
+    // Report work position
+    if (bit_istrue(settings.status_report_mask,BITFLAG_RT_STATUS_WORK_POSITION)) {
+      printPgmString(PSTR("|WPos:")); 
+      for (idx=0; idx< N_AXIS; idx++) {
+        // Apply work coordinate offsets and tool length offset to current position.
+        print_position[idx] -= gc_state.coord_system[idx]+gc_state.coord_offset[idx];
+        if (idx == TOOL_LENGTH_OFFSET_AXIS) { print_position[idx] -= gc_state.tool_length_offset; }    
+        printFloat_CoordValue(print_position[idx]);
+        if (idx < (N_AXIS-1)) { printPgmString(PSTR(",")); }
+      }
+    }
+        
+    // Returns the number of active blocks are in the planner buffer.
+    if (bit_istrue(settings.status_report_mask,BITFLAG_RT_STATUS_PLANNER_BUFFER)) {
+      printPgmString(PSTR("|Buf:"));
+      print_uint8_base10(plan_get_block_buffer_count());
+    }
+
+    // Report serial read buffer status
+    if (bit_istrue(settings.status_report_mask,BITFLAG_RT_STATUS_SERIAL_RX)) {
+      printPgmString(PSTR("|RX:"));
+      print_uint8_base10(serial_get_rx_buffer_count());
+    }
+    
+    #ifdef REPORT_REALTIME_LINE_NUMBERS  
+      // Report current line number
+      printPgmString(PSTR("|Ln:")); 
+      int32_t ln=0;
+      plan_block_t * pb = plan_get_current_block();
+      if(pb != NULL) {
+        ln = pb->line_number;
+      } 
+      printInteger(ln);
+    #endif
+  
+    #ifdef REPORT_REALTIME_RATE
+      // Report realtime rate 
+      printPgmString(PSTR("|F:")); 
+      printFloat_RateValue(st_get_realtime_rate());    
+    #endif
+  
+    #ifdef REPORT_ALL_PIN_STATES
+      if (bit_istrue(settings.status_report_mask,
+            ( BITFLAG_RT_STATUS_LIMIT_PINS| BITFLAG_RT_STATUS_PROBE_PIN | BITFLAG_RT_STATUS_CONTROL_PINS ))) {
+        printPgmString(PSTR("|Pin:"));
+        if (bit_istrue(settings.status_report_mask,BITFLAG_RT_STATUS_LIMIT_PINS)) { 
+          print_unsigned_int8(limits_get_state(),2,N_AXIS);
+        }
+        printPgmString(PSTR(","));
+        if (bit_istrue(settings.status_report_mask,BITFLAG_RT_STATUS_PROBE_PIN)) {
+          if (probe_get_state()) { printPgmString(PSTR("1")); }
+          else { printPgmString(PSTR("0")); }
+        }
+        printPgmString(PSTR(","));
+        if (bit_istrue(settings.status_report_mask,BITFLAG_RT_STATUS_CONTROL_PINS)) {
+          print_unsigned_int8(system_control_get_state(),2,N_CONTROL_PIN);
+        }
+      }
+    #else
+      if (bit_istrue(settings.status_report_mask,BITFLAG_RT_STATUS_LIMIT_PINS)) {
+        printPgmString(PSTR("|Lim:"));
+        print_unsigned_int8(limits_get_state(),2,N_AXIS);
+      }
+    #endif
+  
   #endif
   
   printPgmString(PSTR(">\r\n"));
 }
+
+
+
+
+

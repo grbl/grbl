@@ -26,9 +26,9 @@ void spindle_init()
 {    
   // Configure variable spindle PWM and enable pin, if required.
   SPINDLE_PWM_DDR |= (1<<SPINDLE_PWM_BIT); // Configure as PWM output pin.
-  TCCRA_REGISTER = TCCRA_INIT_MASK; // Configure PWM output compare timer
-  TCCRB_REGISTER = TCCRB_INIT_MASK;
-  OCRA_REGISTER = OCRA_TOP_VALUE; // Set the top value for 16-bit fast PWM mode
+  SPINDLE_TCCRA_REGISTER = SPINDLE_TCCRA_INIT_MASK; // Configure PWM output compare timer
+  SPINDLE_TCCRB_REGISTER = SPINDLE_TCCRB_INIT_MASK;
+  SPINDLE_OCRA_REGISTER = SPINDLE_OCRA_TOP_VALUE; // Set the top value for 16-bit fast PWM mode
   SPINDLE_ENABLE_DDR |= (1<<SPINDLE_ENABLE_BIT); // Configure as output pin.
   SPINDLE_DIRECTION_DDR |= (1<<SPINDLE_DIRECTION_BIT); // Configure as output pin.
 
@@ -36,9 +36,21 @@ void spindle_init()
 }
 
 
+uint8_t spindle_is_enabled()
+{
+  #ifdef INVERT_SPINDLE_ENABLE_PIN
+    if ((SPINDLE_ENABLE_PORT) & (1<<SPINDLE_ENABLE_BIT)) { return(true); }
+    else { return(false); }
+  #else
+    if ((SPINDLE_ENABLE_PORT) & (1<<SPINDLE_ENABLE_BIT)) { return(false); }
+    else { return(true); }
+  #endif
+}
+
+
 void spindle_stop()
 {
-  TCCRA_REGISTER &= ~(1<<COMB_BIT); // Disable PWM. Output voltage is zero.
+  SPINDLE_TCCRA_REGISTER &= ~(1<<SPINDLE_COMB_BIT); // Disable PWM. Output voltage is zero.
   #ifdef INVERT_SPINDLE_ENABLE_PIN
     SPINDLE_ENABLE_PORT |= (1<<SPINDLE_ENABLE_BIT);  // Set pin to high
   #else
@@ -71,21 +83,21 @@ void spindle_set_state(uint8_t state, float rpm)
     else {
       if (settings.rpm_max <= settings.rpm_min) {
         // No PWM range possible. Set simple on/off spindle control pin state.
-        current_pwm = PWM_MAX_VALUE;
+        current_pwm = SPINDLE_PWM_MAX_VALUE;
       } else {
         if (rpm > settings.rpm_max) { rpm = settings.rpm_max; }
         if (rpm < settings.rpm_min) { rpm = settings.rpm_min; }
         #ifdef SPINDLE_MINIMUM_PWM
-          float pwm_gradient = (PWM_MAX_VALUE-SPINDLE_MINIMUM_PWM)/(settings.rpm_max-settings.rpm_min);
+          float pwm_gradient = (SPINDLE_PWM_MAX_VALUE-SPINDLE_MINIMUM_PWM)/(settings.rpm_max-settings.rpm_min);
           current_pwm = floor( (rpm-settings.rpm_min)*pwm_gradient + (SPINDLE_MINIMUM_PWM+0.5));
         #else
-          float pwm_gradient = (PWM_MAX_VALUE)/(settings.rpm_max-settings.rpm_min);
+          float pwm_gradient = (SPINDLE_PWM_MAX_VALUE)/(settings.rpm_max-settings.rpm_min);
           current_pwm = floor( (rpm-settings.rpm_min)*pwm_gradient + 0.5);
         #endif
       }
    
-      OCR_REGISTER = current_pwm; // Set PWM output level.
-      TCCRA_REGISTER |= (1<<COMB_BIT); // Ensure PWM output is enabled.
+      SPINDLE_OCR_REGISTER = current_pwm; // Set PWM output level.
+      SPINDLE_TCCRA_REGISTER |= (1<<SPINDLE_COMB_BIT); // Ensure PWM output is enabled.
  
       #ifdef INVERT_SPINDLE_ENABLE_PIN
         SPINDLE_ENABLE_PORT &= ~(1<<SPINDLE_ENABLE_BIT);

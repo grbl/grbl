@@ -2,7 +2,7 @@
   config.h - compile time configuration
   Part of Grbl
 
-  Copyright (c) 2012-2015 Sungeun K. Jeon
+  Copyright (c) 2012-2016 Sungeun K. Jeon
   Copyright (c) 2009-2011 Simen Svale Skogsrud
 
   Grbl is free software: you can redistribute it and/or modify
@@ -30,8 +30,12 @@
 #include "grbl.h" // For Arduino IDE compatibility.
 
 
-// Default settings. Used when resetting EEPROM. Change to desired name in defaults.h
+// Define CPU pin map and default settings.
+// NOTE: OEMs can avoid the need to maintain/update the defaults.h and cpu_map.h files and use only
+// one configuration file by placing their specific defaults and pin map at the bottom of this file.
+// If doing so, simply comment out these two defines and see instructions below.
 #define DEFAULTS_GENERIC
+#define CPU_MAP_2560_INITIAL
 
 // Serial baud rate
 #define BAUD_RATE 115200
@@ -133,11 +137,12 @@
 // have the same steps per mm internally.
 // #define COREXY // Default disabled. Uncomment to enable.
 
-// Inverts pin logic of the control command pins. This essentially means when this option is enabled
-// you can use normally-closed switches, rather than the default normally-open switches.
-// NOTE: If you require individual control pins inverted, keep this macro disabled and simply alter
-//   the CONTROL_INVERT_MASK definition in cpu_map.h files.
-// #define INVERT_ALL_CONTROL_PINS // Default disabled. Uncomment to enable.
+// Inverts pin logic of the control command pins based on a mask. This essentially means you can use
+// normally-closed switches on the specified pins, rather than the default normally-open switches.
+// NOTE: The top option will mask and invert all control pins. The bottom option is an example of
+// inverting only two control pins, the safety door and reset. See cpu_map.h for other macro definitions.
+// #define INVERT_CONTROL_PIN_MASK CONTROL_MASK // Default disabled. Uncomment to disable.
+// #define INVERT_CONTROL_PIN_MASK ((1<<CONTROL_SAFETY_DOOR_BIT)|(CONTROL_RESET_BIT)) // Default disabled.
 
 // Inverts select limit pin states based on the following mask. This effects all limit pin functions, 
 // such as hard limits and homing. However, this is different from overall invert limits setting. 
@@ -145,7 +150,7 @@
 // will be applied to all of them. This is useful when a user has a mixed set of limit pins with both
 // normally-open(NO) and normally-closed(NC) switches installed on their machine.
 // NOTE: PLEASE DO NOT USE THIS, unless you have a situation that needs it.
-// #define INVERT_LIMIT_PIN_MASK ((1<<X_LIMIT_BIT)|(1<<Y_LIMIT_BIT)) // Default disabled. Uncomment to enable.
+// #define INVERT_LIMIT_PIN_MASK ((1<<X_LIMIT_BIT)|(1<<Y_LIMIT_BIT)) // Default disabled.
 
 // Inverts the spindle enable pin from low-disabled/high-enabled to low-enabled/high-disabled. Useful
 // for some pre-built electronic boards.
@@ -153,6 +158,11 @@
 // spindle enable are combined to one pin. If you need both this option and spindle speed PWM, 
 // uncomment the config option USE_SPINDLE_DIR_AS_ENABLE_PIN below.
 // #define INVERT_SPINDLE_ENABLE_PIN // Default disabled. Uncomment to enable.
+
+// Inverts the selected coolant pin from low-disabled/high-enabled to low-enabled/high-disabled. Useful
+// for some pre-built electronic boards.
+// #define INVERT_COOLANT_MIST_PIN // Default disabled. Uncomment to enable.
+// #define INVERT_COOLANT_FLOOD_PIN // Default disabled. Uncomment to enable.
 
 // Enable all pin states feedback in status reports. Configurable with Grbl settings to print only
 // the desired data, which is presented as simple binary reading of each pin as (0 (low) or 1(high)).
@@ -171,6 +181,10 @@
 
 // ---------------------------------------------------------------------------------------
 // ADVANCED CONFIGURATION OPTIONS:
+
+// Realtime reports will be altered soon, and the current proposed report may be used by commenting 
+// out the following define.
+#define USE_CLASSIC_REALTIME_REPORT // Will be disabled in upcoming releases.
 
 // Enables minimal reporting feedback mode for GUIs, where human-readable strings are not as important.
 // This saves nearly 2KB of flash space and may allow enough space to install other/future features.
@@ -390,6 +404,15 @@
 #define PARKING_PULLOUT_INCREMENT 5.0 // Spindle pull-out and plunge distance in mm. Incremental distance.
                                       // Must be positive value or equal to zero.
 
+// Enables and configures Grbl's sleep mode feature. If the spindle or coolant are powered and Grbl 
+// is not actively moving or receiving any commands, a sleep timer will start. Once elasped without 
+// receiving any new data or commands, Grbl will execute the sleep mode by shutting down the spindle
+// and coolant and entering a safe sleep state. If parking is enabled, Grbl will park the machine as
+// well. While in sleep mode, only a hard/soft reset will exit it and the job will be unrecoverable.
+// NOTE: Sleep mode is a safety feature, primarily to address communication disconnect problems.
+// #define SLEEP_ENABLE  // Default disabled. Uncomment to enable.
+#define SLEEP_DURATION 5.0 // Seconds before sleep auto-park and power down procedures are executed.
+
 
 // ---------------------------------------------------------------------------------------
 // COMPILE-TIME ERROR CHECKING OF DEFINE VALUES:
@@ -404,7 +427,17 @@
   #endif
 #endif
 
-// ---------------------------------------------------------------------------------------
+/* ---------------------------------------------------------------------------------------
+   OEM Single File Configuration Option
+   
+   Instructions: Paste the cpu_map and default setting definitions below without an enclosing
+   #ifdef. Comment out the CPU_MAP_xxx and DEFAULT_xxx defines at the top of this file, and
+   the compiler will ignore the contents of defaults.h and cpu_map.h and use the definitions
+   below.
+*/
 
+// Paste CPU_MAP definitions here.
+
+// Paste default settings definitions here.
 
 #endif
