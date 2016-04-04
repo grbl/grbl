@@ -1,4 +1,39 @@
 ----------------
+Date: 2016-04-03
+Author: chamnit
+Subject: Sleep feature. General re-org and bug fixes.
+
+- New sleep safety feature. If powered components (spindle/coolant) are
+enabled and if there is no motion, incoming data, or commands, Grbl
+will start a short sleep countdown. Upon elapse, Grbl will depower and
+enter a sleep state. If parking is enabled, sleep will also park the
+machine. Only a reset will exit sleep and the job will be
+unrecoverable. This is purely a safety feature to address serial
+disconnection problems.
+
+- Re-organized the cpu-map and default files and put them back into
+single files. Makes it easier for OEMs to just drop in their
+configuration files for a custom build.
+
+- Introduced a single-file configuration method for OEMs. See config.h
+for details. Basically just add the cpu_map and default files to the
+bottom of config.h.
+
+- Moved the control pin invert mask to config.h
+
+- Refactored some cpu_map defines to be more descriptive of what they
+belong to.
+
+- Added invert coolant pins options to config.h
+
+- Added a new realtime status report. Only a proposal at this time, and
+the old classic report is enabled by default. Comment out the
+USE_CLASSIC_REALTIME_REPORT define in config.h to use the new report.
+Please note that the new report is not finalized and is subject to
+change.
+
+
+----------------
 Date: 2016-03-20
 Author: chamnit
 Subject: EEPROM string checks and re-added some compile options.

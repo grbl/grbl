@@ -405,13 +405,15 @@
                                       // Must be positive value or equal to zero.
 
 // Enables and configures Grbl's sleep mode feature. If the spindle or coolant are powered and Grbl 
-// is not actively moving or receiving any commands, a sleep timer will start. Once elasped without 
-// receiving any new data or commands, Grbl will execute the sleep mode by shutting down the spindle
+// is not actively moving or receiving any commands, a sleep timer will start. If any data or commands
+// are received, the sleep timer will reset and restart until the above condition are not satisfied.
+// If the sleep timer elaspes, Grbl will immediately execute the sleep mode by shutting down the spindle
 // and coolant and entering a safe sleep state. If parking is enabled, Grbl will park the machine as
 // well. While in sleep mode, only a hard/soft reset will exit it and the job will be unrecoverable.
-// NOTE: Sleep mode is a safety feature, primarily to address communication disconnect problems.
+// NOTE: Sleep mode is a safety feature, primarily to address communication disconnect problems. To 
+// keep Grbl from sleeping, employ a stream of '?' status report commands as a connection "heartbeat".
 // #define SLEEP_ENABLE  // Default disabled. Uncomment to enable.
-#define SLEEP_DURATION 5.0 // Seconds before sleep auto-park and power down procedures are executed.
+#define SLEEP_DURATION 5.0 // Float (0.25 - 61.0) seconds before sleep mode is executed.
 
 
 // ---------------------------------------------------------------------------------------

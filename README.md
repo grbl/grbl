@@ -33,16 +33,22 @@ Grbl includes full acceleration management with look ahead. That means the contr
 
 ***
 
-##Update Summary for v1.0c
+##Update Summary for v1.0d
 - **IMPORTANT:** Your EEPROM will be wiped and restored with new settings. This is due to the addition of two new spindle speed '$' settings.
 
 - Altered limit pin status reports from `Lim:000` to `Pin:000|0|0000`, where the `|` delimiters separate the new probe state and control pin states. Each new field may be disabled by the `$10` Grbl setting. NOTE: Commenting `REPORT_ALL_PIN_STATES` in config.h reverts to old `Lim:` reports, if needed.
 
+- New status report proposal (not enabled by default) to help clean up and standardize the report. Essentially, use '|' as data field delimiters and ',' as multiple data value delimiters only. So, `,Pin:000|0|0000,` will be `|Pin:000,0,0000|` instead.
+
 - New safety door parking motion as a compile-option. Grbl will retract, disable the spindle/coolant, and park near Z max. When resumed, it will perform these task in reverse order and continue the program. Highly configurable. See config.h for details.
+
+- New sleep mode with optional auto-parking. If the spindle or coolant are powered and communication is lost or is idle, Grbl will shut these down and go into a sleep mode. Useful for USB disconnects.
 
 - New '$' Grbl settings for max and min spindle rpm. Allows for tweaking the PWM output to more closely match true spindle rpm. When max rpm is set to zero or less than min rpm, the PWM pin D11 will act like a simple enable on/off output.
 
 - Updated G28 and G30 behavior from NIST to LinuxCNC g-code description. In short, if a intermediate motion is specified, only the axes specified will move to the stored coordinates, not all axes as before.
+
+- Single file configuration for custom firmware.
 
 - A few bug fixes and lots of refactoring to make the code more efficient and flexible.
 
