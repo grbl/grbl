@@ -281,7 +281,7 @@ void protocol_exec_rt_system()
       // TODO: CHECK MODE? How to handle this? Likely nothing, since it only works when IDLE and then resets Grbl.
             
       // State check for allowable states for hold methods.
-      if (!(sys.state & (STATE_ALARM & STATE_CHECK_MODE))) {
+      if (!(sys.state & (STATE_ALARM | STATE_CHECK_MODE))) {
 
         // If in CYCLE state, all hold states immediately initiate a motion HOLD.
         if (sys.state == STATE_CYCLE) {

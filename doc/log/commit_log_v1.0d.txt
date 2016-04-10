@@ -1,4 +1,10 @@
 ----------------
+Date: 2016-04-04
+Author: Sonny Jeon
+Subject: Update readme and sleep documentation.
+
+
+----------------
 Date: 2016-04-03
 Author: chamnit
 Subject: Sleep feature. General re-org and bug fixes.
@@ -81,21 +87,4 @@ plan up to 36 motions. The serial buffers have been doubled in size
 bytes, per the g-code standard (Grbl 328p is limited to 80).
 
 - Removed the cpu_map folder, since this version is strictly Mega2560.
-
-
-----------------
-Date: 2016-03-19
-Author: chamnit
-Subject: Update README
-
-
-----------------
-Date: 2016-03-19
-Author: Sonny Jeon
-Subject: No variable spindle and spindle speed fix.
-
-- Soft limit errors were stuck in a feed hold without notifying the
-user why it was in a hold. When resumed, the soft limit error would
-kick in. Issue should be fixed to behave as intended to automatically
-hold and issue a soft limit alarm once the machine has come to a stop.
 
