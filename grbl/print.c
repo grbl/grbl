@@ -145,7 +145,7 @@ void printFloat(float n, uint8_t decimal_places)
   n += 0.5; // Add rounding factor. Ensures carryover through entire value.
     
   // Generate digits backwards and store in string.
-  unsigned char buf[10]; 
+  unsigned char buf[13]; 
   uint8_t i = 0;
   uint32_t a = (long)n;  
   buf[decimal_places] = '.'; // Place decimal point, even if decimal places are zero.
