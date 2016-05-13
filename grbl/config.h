@@ -270,6 +270,25 @@
 // this D13 LED toggling should go away. We haven't tested this though. Please report how it goes!
 // #define USE_SPINDLE_DIR_AS_ENABLE_PIN // Default disabled. Uncomment to enable.
 
+// Use variable spindle output to control a servo motor. Variying the spindle RPM will vary the servo position
+// where SPINDLE_MIN_RPM would be the minimun and SPINDLE_MAX_RPM would be the maximum position respectively.
+// What the min and max position are for the servo can be controlled with parameters SERVO_MIN_PULSE_WIDTH
+// and SERVO_MAX_PULSE_WIDTH defined bellow. The default values work for a common HXT-900. Movemennt direction
+// can be inverted using INVERT_SERVO_ENABLE.
+#define SPINDLE_SERVO_CONTROL
+
+// Used by the SPINDLE_SERVO_CONTROL only.
+#ifdef SPINDLE_SERVO_CONTROL
+  // SERVO_MIN_PULSE_WIDTH determines minimun position for servo.
+  // Default 500 value should work for most servos.
+  #define SERVO_MIN_PULSE_WIDTH 500
+  // SERVO_MAX_PULSE WIDTH determines maximun position for servo.
+  // default 2000 value should work for most servos.
+  #define SERVO_MAX_PULSE_WIDTH 2000
+  // Invert servo movement direction
+  // #define INVERT_SERVO_ENABLE
+#endif
+
 // With this enabled, Grbl sends back an echo of the line it has received, which has been pre-parsed (spaces
 // removed, capitalized letters, no comments) and is to be immediately executed by Grbl. Echoes will not be 
 // sent upon a line buffer overflow, but should for all normal lines sent to Grbl. For example, if a user 
@@ -405,6 +424,10 @@
 
 #if defined(USE_SPINDLE_DIR_AS_ENABLE_PIN) && !defined(CPU_MAP_ATMEGA328P)
   #error "USE_SPINDLE_DIR_AS_ENABLE_PIN may only be used with a 328p processor"
+#endif
+
+#if defined(SPINDLE_SERVO_CONTROL) && defined(MINIMUM_SPINDLE_PWM)
+  #error "MINIMUM_SPINDLE_PWM can't be used with SPINDLE_SERVO_CONTROL"
 #endif
 
 // ---------------------------------------------------------------------------------------
