@@ -368,6 +368,7 @@ void protocol_execute_realtime()
     }
   }
 
+  SLEEP_CHECK();
   } while(sys.suspend); // Check for system suspend state before exiting.
   
 }  

@@ -410,5 +410,25 @@
 
 // ---------------------------------------------------------------------------------------
 
+// SLEEP_AFTER, if defined, takes a number of seconds before the steppers are
+// disabled. This should let enough time during manual tool change, without
+// losing steps, or inadvertantly moving any axis.
+// This only works for stepper_idle_lock_time = 255 (always on).
+// Comment the following line to have the default behavior.
+#define SLEEP_AFTER 300
+
+#ifdef SLEEP_AFTER
+#   define SLEEP_SEC 75519UL
+#   define SLEEP_LAST_ACTIVITY_DECL() uint32_t sleep_last_activity = 0
+#   define SLEEP_UPDATE() { sleep_last_activity = 0; }
+#   define SLEEP_CHECK() { if(settings.stepper_idle_lock_time == 0xff) { if(sleep_last_activity == SLEEP_SEC*SLEEP_AFTER) { uint8_t t = settings.stepper_idle_lock_time; settings.stepper_idle_lock_time = 1; st_go_idle(); settings.stepper_idle_lock_time = t; sleep_last_activity++; report_feedback_message(MESSAGE_DISABLED); } else if(sleep_last_activity < SLEEP_SEC*SLEEP_AFTER) { sleep_last_activity++; } } }
+
+extern uint32_t sleep_last_activity;
+
+#else // SLEEP_AFTER
+#   define SLEEP_LAST_ACTIVITY_DECL()
+#   define SLEEP_UPDATE()
+#   define SLEEP_CHECK()
+#endif
 
 #endif

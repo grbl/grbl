@@ -341,6 +341,7 @@ void mc_homing_cycle()
 // realtime abort command and hard limits. So, keep to a minimum.
 void mc_reset()
 {
+  SLEEP_UPDATE();
   // Only this function can set the system reset. Helps prevent multiple kill calls.
   if (bit_isfalse(sys_rt_exec_state, EXEC_RESET)) {
     bit_true_atomic(sys_rt_exec_state, EXEC_RESET);
