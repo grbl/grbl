@@ -20,7 +20,8 @@
 */
 
 #include "grbl.h"
-
+int costyx=1;
+int costyy=1;
 
 // Some useful constants.
 #define DT_SEGMENT (1.0/(ACCELERATION_TICKS_PER_SECOND*60.0)) // min/segment 
@@ -359,8 +360,37 @@ ISR(TIMER1_COMPA_vect)
   if (st.counter_x > st.exec_block->step_event_count) {
     st.step_outbits |= (1<<X_STEP_BIT);
     st.counter_x -= st.exec_block->step_event_count;
-    if (st.exec_block->direction_bits & (1<<X_DIRECTION_BIT)) { sys.position[X_AXIS]--; }
-    else { sys.position[X_AXIS]++; }
+    if (st.exec_block->direction_bits & (1<<X_DIRECTION_BIT)) { sys.position[X_AXIS]--; 
+      
+      //UDR0=65;
+      //DDRD=255;
+      costyx=costyx-1;
+      if (costyx < 1) costyx=8;
+      if (costyx==1)   PORTD=0B100000;
+      if (costyx==2)   PORTD=0B110000;
+      if (costyx==3)   PORTD=0B010000;
+      if (costyx==4)   PORTD=0B011000;
+      if (costyx==5)  PORTD=0B001000;
+      if (costyx==6)  PORTD=0B001100;
+      if (costyx==7)  PORTD=0B000100;
+      if (costyx==8) PORTD=0B100100;
+      
+    }
+    else { sys.position[X_AXIS]++; 
+      // UDR0=66;
+      //DDRD=255;
+      costyx=costyx+1;
+      if (costyx > 8) costyx=1;
+      if (costyx==1)   PORTD=0B100000;
+      if (costyx==2)   PORTD=0B110000;
+      if (costyx==3)   PORTD=0B010000;
+      if (costyx==4)   PORTD=0B011000;
+      if (costyx==5)  PORTD=0B001000;
+      if (costyx==6)  PORTD=0B001100;
+      if (costyx==7)  PORTD=0B000100;
+      if (costyx==8) PORTD=0B100100;
+      
+    }
   }
   #ifdef ADAPTIVE_MULTI_AXIS_STEP_SMOOTHING
     st.counter_y += st.steps[Y_AXIS];
@@ -370,8 +400,34 @@ ISR(TIMER1_COMPA_vect)
   if (st.counter_y > st.exec_block->step_event_count) {
     st.step_outbits |= (1<<Y_STEP_BIT);
     st.counter_y -= st.exec_block->step_event_count;
-    if (st.exec_block->direction_bits & (1<<Y_DIRECTION_BIT)) { sys.position[Y_AXIS]--; }
-    else { sys.position[Y_AXIS]++; }
+    if (st.exec_block->direction_bits & (1<<Y_DIRECTION_BIT)) { sys.position[Y_AXIS]--; 
+      
+      //DDRB=255;
+      costyy=costyy-1;
+      if (costyy < 1) costyy=8;
+      if (costyy==1)   PORTC=0B1000;
+      if (costyy==2)   PORTC=0B1100;
+      if (costyy==3)   PORTC=0B0100;
+      if (costyy==4)   PORTC=0B0110;
+      if (costyy==5)  PORTC=0B0010;
+      if (costyy==6)  PORTC=0B0011;
+      if (costyy==7)  PORTC=0B0001;
+      if (costyy==8) PORTC=0B1001;
+      
+    }
+    else { sys.position[Y_AXIS]++; 
+      //DDRB=255;
+      costyy=costyy+1;
+      if (costyy > 8) costyy=1;
+      if (costyy==1)   PORTC=0B1000;
+      if (costyy==2)   PORTC=0B1100;
+      if (costyy==3)   PORTC=0B0100;
+      if (costyy==4)   PORTC=0B0110;
+      if (costyy==5)  PORTC=0B0010;
+      if (costyy==6)  PORTC=0B0011;
+      if (costyy==7)  PORTC=0B0001;
+      if (costyy==8) PORTC=0B1001;
+    }
   }
   #ifdef ADAPTIVE_MULTI_AXIS_STEP_SMOOTHING
     st.counter_z += st.steps[Z_AXIS];
