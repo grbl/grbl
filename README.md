@@ -13,6 +13,14 @@ additional features:
 ![alt text](https://github.com/ilaro-org/grbl-polar/blob/master/v0.jpg "first test at hangar.org")
 
 
+##Flashing
+
+##Gcode
+
+To generate the G-code you can use any slicing program and slice any vectorial drawing. We used Inkscape because it is opensource and you can do vectorial drawings and slice them directly with the [Laser Plug-In](https://jtechphotonics.com/?page_id=2012). You have to take into account when sittuating the drawing in the page that the center (0,0) of the robot is situated on the left motor.
+
+To send G-code to the robot we had used http://chilipeppr.com/grbl or [Universal G-code Sender](https://github.com/winder/Universal-G-Code-Sender)
+
+
 
 GPLv3 license
-
