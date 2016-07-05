@@ -15,6 +15,19 @@ additional features:
 
 ##Flashing
 
+To flash the grbl to arduino we did it through terminal. To compile the code:   
+    
+    make clean
+    make grbl.hex
+
+And to flash it:   
+    
+    (AVRDUDE-PATH)/avrdude -C(AVRDUDE.CONF-PATH)/avrdude.conf -v -patmega328p -carduino -P/dev/(USB) -b(BAUTRATE) -D -Uflash:w:(GRBLPOLAR-PATH)/grbl.hex:i
+   
+e.g:
+   /home/Applications/arduino/hardware/tools/avr/bin/avrdude -C/home/Applications/arduino/hardware/tools/avr/etc/avrdude.conf -v -patmega328p -carduino -P/dev/ttyUSB0 -b57600 -D -Uflash:w:/POLAR/grbl-polar/grbl.hex:i 
+
+
 ##Gcode
 
 To generate the G-code you can use any slicing program and slice a vectorial drawing. We used Inkscape because it is opensource and you can do vectorial drawings and slice them directly with the [Laser Plug-In](https://jtechphotonics.com/?page_id=2012). You have to take into account when sittuating the drawing in the page that the center (0,0) of the robot is situated on the left motor.
