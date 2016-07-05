@@ -8,7 +8,7 @@ The implemented kinematics allow a 2 string + gravity system (as in [hektor](htt
 additional features:
   * define POLAR: swaps from cartesian to polar kinematics. It's required to set up the distance between the motors. Homing at startup is essential, otherwisse positioning can not be achieved.
   * define RC_SERVO: Use PIN D11 to drive the servo. Use the commands M03 Sxxx (xxx between 0 and 255) to rotate the servo between 0-180. The command M05 turns the servo to zero degrees. [source](https://github.com/robottini/grbl-servo)
-  * 
+  
   
 ![alt text](https://github.com/ilaro-org/grbl-polar/blob/master/v0.jpg "first test at hangar.org")
 
@@ -22,10 +22,11 @@ To flash the grbl to arduino we did it through terminal. To compile the code:
 
 And to flash it:   
     
-    (AVRDUDE-PATH)/avrdude -C(AVRDUDE.CONF-PATH)/avrdude.conf -v -patmega328p -carduino -P/dev/(USB) -b(BAUTRATE) -D -Uflash:w:(GRBLPOLAR-PATH)/grbl.hex:i
+    (AVRDUDE-PATH)/avrdude -C(AVRDUDE.CONF-PATH)/avrdude.conf -v -patmega328p -carduino -P/dev/(USB) -b(BAUTRATE) -D   
+    -Uflash:w:(GRBLPOLAR-PATH)/grbl.hex:i
    
 e.g:
-   /home/Applications/arduino/hardware/tools/avr/bin/avrdude -C/home/Applications/arduino/hardware/tools/avr/etc/avrdude.conf -v -patmega328p -carduino -P/dev/ttyUSB0 -b57600 -D -Uflash:w:/POLAR/grbl-polar/grbl.hex:i 
+   /home/Applications/arduino/hardware/tools/avr/bin/avrdude -C/home/Applications/arduino/hardware/tools/avr/etc/avrdude.conf   -v -patmega328p -carduino -P/dev/ttyUSB0 -b57600 -D -Uflash:w:/POLAR/grbl-polar/grbl.hex:i 
 
 
 ##Gcode
