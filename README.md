@@ -22,8 +22,7 @@ To flash the grbl to arduino we did it through terminal. To compile the code:
 
 And to flash it:   
     
-    (AVRDUDE-PATH)/avrdude -C(AVRDUDE.CONF-PATH)/avrdude.conf -v -patmega328p -carduino -P/dev/(USB) -b(BAUTRATE) 
-    -D -Uflash:w:(GRBLPOLAR-PATH)/grbl.hex:i
+    (AVRDUDE-PATH)/avrdude -C(AVRDUDE.CONF-PATH)/avrdude.conf -v -patmega328p -carduino -P/dev/(USB) -b(BAUTRATE) -D -Uflash:w:(GRBLPOLAR-PATH)/grbl.hex:i
    
 e.g:   
     
