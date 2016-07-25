@@ -185,13 +185,12 @@ void limits_go_home(uint8_t cycle_mask)
       if (bit_istrue(cycle_mask,bit(idx))) {
         n_active_axis++;
         #ifdef COREXY
-          int32_t axis_position;
           if (idx == X_AXIS) {
-            axis_position = system_convert_corexy_to_x_axis_steps(sys.position);
+            int32_t axis_position = system_convert_corexy_to_y_axis_steps(sys.position);
             sys.position[A_MOTOR] = axis_position;
             sys.position[B_MOTOR] = -axis_position;
           } else if (idx == Y_AXIS) {
-            axis_position = system_convert_corexy_to_y_axis_steps(sys.position);
+            int32_t axis_position = system_convert_corexy_to_x_axis_steps(sys.position);
             sys.position[A_MOTOR] = sys.position[B_MOTOR] = axis_position;
           } else { 
             sys.position[Z_AXIS] = 0; 
@@ -306,7 +305,7 @@ void limits_go_home(uint8_t cycle_mask)
         }
       #endif
       
-      #ifdef COREXY
+      #ifdef COREXY    
         if (idx==X_AXIS) { 
           int32_t off_axis_position = system_convert_corexy_to_y_axis_steps(sys.position);
           sys.position[A_MOTOR] = set_axis_position + off_axis_position;

@@ -292,9 +292,9 @@ uint8_t plan_check_full_buffer()
       }
       block->step_event_count = max(block->step_event_count, block->steps[idx]);
       if (idx == A_MOTOR) {
-        delta_mm = ((target_steps[X_AXIS]-pl.position[X_AXIS]) + (target_steps[Y_AXIS]-pl.position[Y_AXIS]))/settings.steps_per_mm[idx];
+        delta_mm = (target_steps[X_AXIS]-pl.position[X_AXIS] + target_steps[Y_AXIS]-pl.position[Y_AXIS])/settings.steps_per_mm[idx];
       } else if (idx == B_MOTOR) {
-        delta_mm = ((target_steps[X_AXIS]-pl.position[X_AXIS]) - (target_steps[Y_AXIS]-pl.position[Y_AXIS]))/settings.steps_per_mm[idx];
+        delta_mm = (target_steps[X_AXIS]-pl.position[X_AXIS] - target_steps[Y_AXIS]+pl.position[Y_AXIS])/settings.steps_per_mm[idx];
       } else {
         delta_mm = (target_steps[idx] - pl.position[idx])/settings.steps_per_mm[idx];
       }
