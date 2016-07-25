@@ -264,10 +264,10 @@ float system_convert_axis_steps_to_mpos(int32_t *steps, uint8_t idx)
 {
   float pos;
   #ifdef COREXY
-    if (idx==A_MOTOR) { 
-      pos = 0.5*((steps[A_MOTOR] + steps[B_MOTOR])/settings.steps_per_mm[idx]);
-    } else if (idx==B_MOTOR) {
-      pos = 0.5*((steps[A_MOTOR] - steps[B_MOTOR])/settings.steps_per_mm[idx]);
+    if (idx==X_AXIS) { 
+      pos = (float)system_convert_corexy_to_x_axis_steps(steps) / settings.steps_per_mm[idx];
+    } else if (idx==Y_AXIS) {
+      pos = (float)system_convert_corexy_to_y_axis_steps(steps) / settings.steps_per_mm[idx];
     } else {
       pos = steps[idx]/settings.steps_per_mm[idx];
     }
@@ -276,7 +276,7 @@ float system_convert_axis_steps_to_mpos(int32_t *steps, uint8_t idx)
   #endif
   return(pos);
 }
-  
+
 
 void system_convert_array_steps_to_mpos(float *position, int32_t *steps)
 {
@@ -286,3 +286,16 @@ void system_convert_array_steps_to_mpos(float *position, int32_t *steps)
   }
   return;
 }
+
+
+int32_t system_convert_corexy_to_x_axis_steps(int32_t *steps)
+{
+  return( (steps[A_MOTOR] + steps[B_MOTOR])/2 );
+}
+
+
+int32_t system_convert_corexy_to_y_axis_steps(int32_t *steps)
+{
+  return( (steps[A_MOTOR] - steps[B_MOTOR])/2 );
+}
+
