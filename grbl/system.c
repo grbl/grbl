@@ -289,12 +289,14 @@ void system_convert_array_steps_to_mpos(float *position, int32_t *steps)
 
 
 // CoreXY calculation only. Returns x or y-axis "steps" based on CoreXY motor steps.
-int32_t system_convert_corexy_to_x_axis_steps(int32_t *steps)
-{
-  return( (steps[A_MOTOR] + steps[B_MOTOR])/2 );
-}
-int32_t system_convert_corexy_to_y_axis_steps(int32_t *steps)
-{
-  return( (steps[A_MOTOR] - steps[B_MOTOR])/2 );
-}
+#ifdef COREXY
+  int32_t system_convert_corexy_to_x_axis_steps(int32_t *steps)
+  {
+    return( (steps[A_MOTOR] + steps[B_MOTOR])/2 );
+  }
+  int32_t system_convert_corexy_to_y_axis_steps(int32_t *steps)
+  {
+    return( (steps[A_MOTOR] - steps[B_MOTOR])/2 );
+  }
+#endif
 

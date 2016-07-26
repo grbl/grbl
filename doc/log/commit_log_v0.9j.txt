@@ -1,6 +1,17 @@
 ----------------
 Date: 2016-07-26
 Author: chamnit
+Subject: Fixed homing on CoreXY machines only.
+
+- The homing routine for CoreXY/H-Bot CNC machines has been fixed.
+
+- Version date bumped, but this update does NOT effect any normal
+users. Only CoreXY users.
+
+
+----------------
+Date: 2016-07-26
+Author: chamnit
 Subject: Merge branch 'master-corexy'
 
 
