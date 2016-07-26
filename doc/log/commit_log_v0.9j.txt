@@ -1,4 +1,33 @@
 ----------------
+Date: 2016-07-26
+Author: chamnit
+Subject: Merge branch 'master-corexy'
+
+
+----------------
+Date: 2016-07-25
+Author: chamnit
+Subject: CoreXY homing bug fix attempt 2.
+
+
+----------------
+Date: 2016-07-25
+Author: chamnit
+Subject: CoreXY homing fix attempt.
+
+
+----------------
+Date: 2016-03-17
+Author: Sonny Jeon
+Subject: No variable spindle and spindle speed fix.
+
+- When VARIABLE_SPINDLE output is disabled in config.h, the last commit
+would keep the spindle enable pin disabled when spindle speed is not
+defined (S0). This is now ignored and will enable with S0, as spindle
+speed is ignored in this mode.
+
+
+----------------
 Date: 2016-03-16
 Author: Sonny Jeon
 Subject: Soft limit handling bug fix
