@@ -80,6 +80,7 @@ int main(void)
     sys.abort = false;
     sys_rt_exec_state = 0;
     sys_rt_exec_alarm = 0;
+    sys.step_control = STEP_CONTROL_NORMAL_OP;
     sys.suspend = false;
     sys.soft_limit = false;
           

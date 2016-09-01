@@ -1,4 +1,16 @@
 ----------------
+Date: 2016-05-10
+Author: chamnit
+Subject: Planner and printFloat update.
+
+- Planner model update. Improves performance for machines with
+different accelerations on each axes. Particularly for 3D carving.
+
+- Print float update to print 13 (from 10) characters. Help reduce
+print errors for unusually long floating point values.
+
+
+----------------
 Date: 2016-04-10
 Author: chamnit
 Subject: Alarm and safety door bug fix.
