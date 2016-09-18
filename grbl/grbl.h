@@ -24,6 +24,8 @@
 // Grbl versioning system
 #define GRBL_VERSION "0.9j"
 #define GRBL_VERSION_BUILD "20160726"
+#define GRBL_SOURCE_CODE_URL "https://github.com/grbl/grbl"
+#define GRBL_MACHINE_NAME "G-CODE-PARSER"
 
 // Define standard libraries used by Grbl.
 #include <avr/io.h>
