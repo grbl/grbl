@@ -17,10 +17,10 @@
 
   You should have received a copy of the GNU General Public License
   along with Grbl.  If not, see <http://www.gnu.org/licenses/>.
-*/ 
+*/
 
 #ifndef spindle_control_h
-#define spindle_control_h 
+#define spindle_control_h
 
 
 // Initializes spindle pins and hardware PWM, if enabled.
@@ -33,5 +33,9 @@ void spindle_set_state(uint8_t state, float rpm);
 
 // Kills spindle.
 void spindle_stop();
+
+// Used to dynamically set the speed at run time
+// Mustly used for image rastering
+void SetSpindleSpeed(float rpm);
 
 #endif
