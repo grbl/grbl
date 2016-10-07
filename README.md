@@ -26,7 +26,7 @@ Grbl includes full acceleration management with look ahead. That means the contr
 
 ***
 
-_**This Fork**_
+_**This Fork:**_
 * I ported all changes regarding real time spindle control originally implemented by Nick Williams (Laser Ink) to the current GRBL Master 0.9j.
 * Real Time Laser Power control is now possible by using the S command: G01X10Y10S150 will now do that move with exactly 150 laser power at the speed with which the gcode sender can spit out more gcodes. Works well with 50mm/second and 0.1mm pixel size.
 
