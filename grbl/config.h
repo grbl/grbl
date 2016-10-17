@@ -153,6 +153,9 @@
 
 // Inverts pin logic of the control command pins. This essentially means when this option is enabled
 // you can use normally-closed switches, rather than the default normally-open switches.
+// As of v0.9, you can invert specific control pin groups from the serial interface.  See the v0.9 wiki
+// for more information.
+//
 // NOTE: If you require individual control pins inverted, keep this macro disabled and simply alter
 //   the CONTROL_INVERT_MASK definition in cpu_map.h files.
 // #define INVERT_ALL_CONTROL_PINS // Default disabled. Uncomment to enable.
