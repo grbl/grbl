@@ -1,5 +1,8 @@
 ![GitHub Logo](/doc/media/Grbl Logo 250px.png)
+***
 
+### Grbl v1.1 has been released [here](https://github.com/gnea/grbl/releases)!
+### Notice: This site will be phased out and moved to the new one!
 
 ***
 
