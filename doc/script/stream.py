@@ -11,6 +11,7 @@ response from the computer. This effectively adds another
 buffer layer to prevent buffer starvation.
 
 CHANGELOG:
+- 20161212: Added push message feedback for simple streaming
 - 20140714: Updated baud rate to 115200. Added a settings
   write mode via simple streaming method. MIT-licensed.
 
@@ -20,7 +21,7 @@ TODO:
 ---------------------
 The MIT License (MIT)
 
-Copyright (c) 2012-2014 Sungeun K. Jeon
+Copyright (c) 2012-2016 Sungeun K. Jeon
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
 of this software and associated documentation files (the "Software"), to deal
@@ -98,8 +99,13 @@ if settings_mode:
         l_block = line.strip() # Strip all EOL characters for consistency
         if verbose: print 'SND: ' + str(l_count) + ':' + l_block,
         s.write(l_block + '\n') # Send g-code block to grbl
-        grbl_out = s.readline().strip() # Wait for grbl response with carriage return
-        if verbose: print 'REC:',grbl_out
+        while 1:
+            grbl_out = s.readline().strip() # Wait for grbl response with carriage return
+            if grbl_out.find('ok') < 0 and grbl_out.find('error') < 0 :
+                print "\n  Debug: ",grbl_out,
+            else : 
+                if verbose: print 'REC:',grbl_out
+                break
 else:    
     # Send g-code program via a more agressive streaming protocol that forces characters into
     # Grbl's serial read buffer to ensure Grbl has immediate access to the next g-code command

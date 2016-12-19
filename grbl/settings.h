@@ -1,10 +1,10 @@
 /*
-  settings.h - eeprom configuration handling 
+  settings.h - eeprom configuration handling
   Part of Grbl
 
-  Copyright (c) 2011-2015 Sungeun K. Jeon
+  Copyright (c) 2011-2016 Sungeun K. Jeon for Gnea Research LLC
   Copyright (c) 2009-2011 Simen Svale Skogsrud
-  
+
   Grbl is free software: you can redistribute it and/or modify
   it under the terms of the GNU General Public License as published by
   the Free Software Foundation, either version 3 of the License, or
@@ -34,7 +34,7 @@
 
 // Define bit flag masks for the boolean settings in settings.flag.
 #define BITFLAG_REPORT_INCHES      bit(0)
-// #define BITFLAG_AUTO_START         bit(1) // Obsolete. Don't alter to keep back compatibility.
+#define BITFLAG_LASER_MODE         bit(1)
 #define BITFLAG_INVERT_ST_ENABLE   bit(2)
 #define BITFLAG_HARD_LIMIT_ENABLE  bit(3)
 #define BITFLAG_HOMING_ENABLE      bit(4)
@@ -43,20 +43,17 @@
 #define BITFLAG_INVERT_PROBE_PIN   bit(7)
 
 // Define status reporting boolean enable bit flags in settings.status_report_mask
-#define BITFLAG_RT_STATUS_MACHINE_POSITION  bit(0)
-#define BITFLAG_RT_STATUS_WORK_POSITION     bit(1)
-#define BITFLAG_RT_STATUS_PLANNER_BUFFER    bit(2)
-#define BITFLAG_RT_STATUS_SERIAL_RX         bit(3)
-#define BITFLAG_RT_STATUS_LIMIT_PINS        bit(4)
-#define BITFLAG_RT_STATUS_PROBE_PIN         bit(5)
-#define BITFLAG_RT_STATUS_CONTROL_PINS      bit(6)
+#define BITFLAG_RT_STATUS_POSITION_TYPE     bit(0)
+#define BITFLAG_RT_STATUS_BUFFER_STATE      bit(1)
 
 // Define settings restore bitflags.
-#define SETTINGS_RESTORE_ALL 0xFF // All bitflags
 #define SETTINGS_RESTORE_DEFAULTS bit(0)
 #define SETTINGS_RESTORE_PARAMETERS bit(1)
 #define SETTINGS_RESTORE_STARTUP_LINES bit(2)
 #define SETTINGS_RESTORE_BUILD_INFO bit(3)
+#ifndef SETTINGS_RESTORE_ALL
+  #define SETTINGS_RESTORE_ALL 0xFF // All bitflags
+#endif
 
 // Define EEPROM memory address location values for Grbl settings and parameters
 #define EEPROM_ADDR_GLOBAL         1U

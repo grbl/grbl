@@ -2,7 +2,7 @@
   stepper.h - stepper motor driver: executes motion plans of planner.c using the stepper motors
   Part of Grbl
 
-  Copyright (c) 2011-2015 Sungeun K. Jeon
+  Copyright (c) 2011-2016 Sungeun K. Jeon for Gnea Research LLC
   Copyright (c) 2009-2011 Simen Svale Skogsrud
 
   Grbl is free software: you can redistribute it and/or modify
@@ -20,7 +20,7 @@
 */
 
 #ifndef stepper_h
-#define stepper_h 
+#define stepper_h
 
 #ifndef SEGMENT_BUFFER_SIZE
   #define SEGMENT_BUFFER_SIZE 10
@@ -38,7 +38,7 @@ void st_go_idle();
 // Generate the step and direction port invert masks.
 void st_generate_step_dir_invert_masks();
 
-// Reset the stepper subsystem variables       
+// Reset the stepper subsystem variables
 void st_reset();
 
 // Changes the run state of the step segment buffer to execute the special parking motion.
@@ -46,7 +46,7 @@ void st_parking_setup_buffer();
 
 // Restores the step segment buffer to the normal run state after a parking motion.
 void st_parking_restore_buffer();
-             
+
 // Reloads step segment buffer. Called continuously by realtime execution system.
 void st_prep_buffer();
 

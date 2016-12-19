@@ -1,4 +1,14 @@
 ----------------
+Date: 2016-08-31
+Author: chamnit
+Subject: Minor bug fix to certain safety conditions.
+
+- Grbl would become unresponsive, if a safety door is reset when active
+and then homed immediately after. A system variable was not properly
+restored. Now fixed.
+
+
+----------------
 Date: 2016-05-10
 Author: chamnit
 Subject: Planner and printFloat update.
@@ -81,4 +91,49 @@ rate reporting. This is to ensure backward support for GUIs for the
 time being. These removal options will go away eventually before they
 become hard-coded in. (They will be toggle-able with the status report
 mask in settings though.)
+
+
+----------------
+Date: 2016-03-19
+Author: Sonny Jeon
+Subject: Removed 328p-related code. Enabled options by default.
+
+- Removed all of the 328p-related code, which seemed to clean up things
+quite a bit without all those ifdefs everywhere.
+
+- Since the 328p was very memory and flash limited, lots of
+compile-time options were disabled by default. These have been now been
+enabled by default. As they are considered generally helpful and does
+not significantly impact how Grbl runs.
+
+- For example, status reports can now report back real time feed rate
+and line number being executed. Variable spindle is standard with a
+separate spindle enable pin. Grbl will now check if a user setting has
+exceeded the maximum step frequency and report an error, if so. And
+finally, M7 flood coolant is enabled.
+
+- In addition, all buffers have been significantly increased to take
+advantage of the additional memory available. The planner buffer can
+plan up to 36 motions. The serial buffers have been doubled in size
+(256/128 bytes RX/TX). And the longest line Grbl can accept is 256
+bytes, per the g-code standard (Grbl 328p is limited to 80).
+
+- Removed the cpu_map folder, since this version is strictly Mega2560.
+
+
+----------------
+Date: 2016-03-19
+Author: chamnit
+Subject: Update README
+
+
+----------------
+Date: 2016-03-19
+Author: Sonny Jeon
+Subject: No variable spindle and spindle speed fix.
+
+- Soft limit errors were stuck in a feed hold without notifying the
+user why it was in a hold. When resumed, the soft limit error would
+kick in. Issue should be fixed to behave as intended to automatically
+hold and issue a soft limit alarm once the machine has come to a stop.
 

@@ -1,9 +1,8 @@
 /*
-  limits.h - code pertaining to limit-switches and performing the homing cycle
+  jog.h - Jogging methods
   Part of Grbl
 
-  Copyright (c) 2012-2016 Sungeun K. Jeon for Gnea Research LLC
-  Copyright (c) 2009-2011 Simen Svale Skogsrud
+  Copyright (c) 2016 Sungeun K. Jeon for Gnea Research LLC
 
   Grbl is free software: you can redistribute it and/or modify
   it under the terms of the GNU General Public License as published by
@@ -19,23 +18,15 @@
   along with Grbl.  If not, see <http://www.gnu.org/licenses/>.
 */
 
-#ifndef limits_h
-#define limits_h
+#ifndef jog_h
+#define jog_h
 
+#include "gcode.h"
 
-// Initialize the limits module
-void limits_init();
+// System motion line numbers must be zero.
+#define JOG_LINE_NUMBER 0
 
-// Disables hard limits.
-void limits_disable();
-
-// Returns limit state as a bit-wise uint8 variable.
-uint8_t limits_get_state();
-
-// Perform one portion of the homing cycle based on the input settings.
-void limits_go_home(uint8_t cycle_mask);
-
-// Check for soft limit violations
-void limits_soft_check(float *target);
+// Sets up valid jog motion received from g-code parser, checks for soft-limits, and executes the jog.
+uint8_t jog_execute(plan_line_data_t *pl_data, parser_block_t *gc_block);
 
 #endif
