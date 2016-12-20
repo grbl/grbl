@@ -18,7 +18,7 @@
   You should have received a copy of the GNU General Public License
   along with Grbl.  If not, see <http://www.gnu.org/licenses/>.
 */
-  
+
 // This file contains compile-time configurations for Grbl's internal system. For the most part,
 // users will not need to directly modify these, but they are here for specific needs, i.e.
 // performance tuning or adjusting to non-typical machines.

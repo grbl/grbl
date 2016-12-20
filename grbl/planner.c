@@ -327,7 +327,7 @@ uint8_t plan_buffer_line(float *target, plan_line_data_t *pl_data)
   uint8_t idx;
 
   // Copy position data based on type of motion being planned.
-    if (block->condition & PL_COND_FLAG_SYSTEM_MOTION) { 
+  if (block->condition & PL_COND_FLAG_SYSTEM_MOTION) { 
     #ifdef COREXY
       position_steps[X_AXIS] = system_convert_corexy_to_x_axis_steps(sys_position);
       position_steps[Y_AXIS] = system_convert_corexy_to_y_axis_steps(sys_position);
@@ -383,8 +383,8 @@ uint8_t plan_buffer_line(float *target, plan_line_data_t *pl_data)
   block->millimeters = convert_delta_vector_to_unit_vector(unit_vec);
   block->acceleration = limit_value_by_axis_maximum(settings.acceleration, unit_vec);
   block->rapid_rate = limit_value_by_axis_maximum(settings.max_rate, unit_vec);
-  
-    // Store programmed rate.
+
+  // Store programmed rate.
   if (block->condition & PL_COND_FLAG_RAPID_MOTION) { block->programmed_rate = block->rapid_rate; }
   else { 
     block->programmed_rate = pl_data->feed_rate;

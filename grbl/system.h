@@ -23,10 +23,10 @@
 
 #include "grbl.h"
 
-// Define system executor bit map. Used internally by realtime protocol as realtime command flags, 
+// Define system executor bit map. Used internally by realtime protocol as realtime command flags,
 // which notifies the main program to execute the specified realtime command asynchronously.
 // NOTE: The system executor uses an unsigned 8-bit volatile variable (8 flag limit.) The default
-// flags are always false, so the realtime protocol only needs to check for a non-zero value to 
+// flags are always false, so the realtime protocol only needs to check for a non-zero value to
 // know when there is a realtime command to execute.
 #define EXEC_STATUS_REPORT  bit(0) // bitmask 00000001
 #define EXEC_CYCLE_START    bit(1) // bitmask 00000010
@@ -186,7 +186,7 @@ uint8_t system_check_travel_limits(float *target);
 void system_set_exec_state_flag(uint8_t mask);
 void system_clear_exec_state_flag(uint8_t mask);
 void system_set_exec_alarm(uint8_t code);
-void system_clear_exec_alarm_flag(uint8_t mask);
+void system_clear_exec_alarm();
 void system_set_exec_motion_override_flag(uint8_t mask);
 void system_set_exec_accessory_override_flag(uint8_t mask);
 void system_clear_exec_motion_overrides();

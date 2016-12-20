@@ -32,7 +32,7 @@ static char line[LINE_BUFFER_SIZE]; // Line to be executed. Zero-terminated.
 static void protocol_exec_rt_suspend();
 
 
-/* 
+/*
   GRBL PRIMARY LOOP:
 */
 void protocol_main_loop()
@@ -197,13 +197,13 @@ void protocol_auto_cycle_start()
 
 
 // This function is the general interface to Grbl's real-time command execution system. It is called
-// from various check points in the main program, primarily where there may be a while loop waiting 
-// for a buffer to clear space or any point where the execution time from the last check point may 
-// be more than a fraction of a second. This is a way to execute realtime commands asynchronously 
+// from various check points in the main program, primarily where there may be a while loop waiting
+// for a buffer to clear space or any point where the execution time from the last check point may
+// be more than a fraction of a second. This is a way to execute realtime commands asynchronously
 // (aka multitasking) with grbl's g-code parsing and planning functions. This function also serves
 // as an interface for the interrupts to set the system realtime flags, where only the main program
 // handles them, removing the need to define more computationally-expensive volatile variables. This
-// also provides a controlled way to execute certain tasks without having two or more instances of 
+// also provides a controlled way to execute certain tasks without having two or more instances of
 // the same task, such as the planner recalculating the buffer upon a feedhold or overrides.
 // NOTE: The sys_rt_exec_state variable flags are set by any process, step or serial interrupts, pinouts,
 // limit switches, or the main program.
@@ -239,7 +239,7 @@ void protocol_exec_rt_system()
         // lost, continued streaming could cause a serious crash if by chance it gets executed.
       } while (bit_isfalse(sys_rt_exec_state,EXEC_RESET));
     }
-    system_clear_exec_alarm_flag(0xFF); // Clear all alarm flags
+    system_clear_exec_alarm(); // Clear alarm
   }
 
   rt_exec = sys_rt_exec_state; // Copy volatile sys_rt_exec_state.

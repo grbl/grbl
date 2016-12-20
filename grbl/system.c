@@ -58,7 +58,7 @@ uint8_t system_control_get_state()
 // only the realtime command execute variable to have the main program execute these when
 // its ready. This works exactly like the character-based realtime commands when picked off
 // directly from the incoming serial data stream.
-ISR(CONTROL_INT_vect) 
+ISR(CONTROL_INT_vect)
 {
   uint8_t pin = system_control_get_state();
   if (pin) {
@@ -101,11 +101,11 @@ void system_execute_startup(char *line)
 
 
 // Directs and executes one line of formatted input from protocol_process. While mostly
-// incoming streaming g-code blocks, this also executes Grbl internal commands, such as 
+// incoming streaming g-code blocks, this also executes Grbl internal commands, such as
 // settings, initiating the homing cycle, and toggling switch states. This differs from
-// the realtime command module by being susceptible to when Grbl is ready to execute the 
+// the realtime command module by being susceptible to when Grbl is ready to execute the
 // next line during a cycle, so for switches like block delete, the switch only effects
-// the lines that are processed afterward, not necessarily real-time during a cycle, 
+// the lines that are processed afterward, not necessarily real-time during a cycle,
 // since there are motions already stored in the buffer. However, this 'lag' should not
 // be an issue, since these commands are not typically used during a cycle.
 uint8_t system_execute_line(char *line)
@@ -153,22 +153,10 @@ uint8_t system_execute_line(char *line)
             sys.state = STATE_IDLE;
             // Don't run startup script. Prevents stored moves in startup from causing accidents.
           } // Otherwise, no effect.
-          break;                   
-    //  case 'J' : break;  // Jogging methods
-          // TODO: Here jogging can be placed for execution as a seperate subprogram. It does not need to be 
-          // susceptible to other realtime commands except for e-stop. The jogging function is intended to
-          // be a basic toggle on/off with controlled acceleration and deceleration to prevent skipped 
-          // steps. The user would supply the desired feedrate, axis to move, and direction. Toggle on would
-          // start motion and toggle off would initiate a deceleration to stop. One could 'feather' the
-          // motion by repeatedly toggling to slow the motion to the desired location. Location data would 
-          // need to be updated real-time and supplied to the user through status queries.
-          //   More controlled exact motions can be taken care of by inputting G0 or G1 commands, which are 
-          // handled by the planner. It would be possible for the jog subprogram to insert blocks into the
-          // block buffer without having the planner plan them. It would need to manage de/ac-celerations 
-          // on its own carefully. This approach could be effective and possibly size/memory efficient.  
+          break;
       }
       break;
-    default : 
+    default :
       // Block any system command that requires the state as IDLE/ALARM. (i.e. EEPROM, homing)
       if ( !(sys.state == STATE_IDLE || sys.state == STATE_ALARM) ) { return(STATUS_IDLE_ERROR); }
       switch( line[1] ) {
@@ -375,10 +363,10 @@ void system_set_exec_alarm(uint8_t code) {
   SREG = sreg;
 }
 
-void system_clear_exec_alarm_flag(uint8_t mask) {
+void system_clear_exec_alarm() {
   uint8_t sreg = SREG;
   cli();
-  sys_rt_exec_alarm &= ~(mask);
+  sys_rt_exec_alarm = 0;
   SREG = sreg;
 }
 

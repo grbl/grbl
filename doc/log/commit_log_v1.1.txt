@@ -1,6 +1,15 @@
 ----------------
 Date: 2016-12-19
 Author: Sonny Jeon
+Subject: Spindle PWM update for Mega2560
+
+- Spindle PWM is set with a 16-bit value, rather than 8-bit on a 328p.
+Updated stepper.c to reflect this change.
+
+
+----------------
+Date: 2016-12-19
+Author: Sonny Jeon
 Subject: Grbl v1.1e port to Mega2560 branch
 
 - v1.1e

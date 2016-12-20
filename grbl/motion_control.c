@@ -43,19 +43,19 @@ void mc_line(float *target, plan_line_data_t *pl_data)
 
   // NOTE: Backlash compensation may be installed here. It will need direction info to track when
   // to insert a backlash line motion(s) before the intended line motion and will require its own
-  // plan_check_full_buffer() and check for system abort loop. Also for position reporting 
+  // plan_check_full_buffer() and check for system abort loop. Also for position reporting
   // backlash steps will need to be also tracked, which will need to be kept at a system level.
   // There are likely some other things that will need to be tracked as well. However, we feel
   // that backlash compensation should NOT be handled by Grbl itself, because there are a myriad
   // of ways to implement it and can be effective or ineffective for different CNC machines. This
   // would be better handled by the interface as a post-processor task, where the original g-code
-  // is translated and inserts backlash motions that best suits the machine. 
+  // is translated and inserts backlash motions that best suits the machine.
   // NOTE: Perhaps as a middle-ground, all that needs to be sent is a flag or special command that
   // indicates to Grbl what is a backlash compensation motion, so that Grbl executes the move but
   // doesn't update the machine position values. Since the position values used by the g-code
   // parser and planner are separate from the system machine positions, this is doable.
 
-  // If the buffer is full: good! That means we are well ahead of the robot. 
+  // If the buffer is full: good! That means we are well ahead of the robot.
   // Remain in this loop until there is room in the buffer.
   do {
     protocol_execute_realtime(); // Check for any run-time commands
@@ -70,7 +70,7 @@ void mc_line(float *target, plan_line_data_t *pl_data)
 }
 
 
-// Execute an arc in offset mode format. position == current xyz, target == target xyz, 
+// Execute an arc in offset mode format. position == current xyz, target == target xyz,
 // offset == offset from current xyz, axis_X defines circle plane in tool space, axis_linear is
 // the direction of helical travel, radius == circle radius, isclockwise boolean. Used
 // for vector transformation direction.
@@ -86,7 +86,7 @@ void mc_arc(float *target, plan_line_data_t *pl_data, float *position, float *of
   float r_axis1 = -offset[axis_1];
   float rt_axis0 = target[axis_0] - center_axis0;
   float rt_axis1 = target[axis_1] - center_axis1;
-  
+
   // CCW angle between position and target from circle center. Only one atan2() trig computation required.
   float angular_travel = atan2(r_axis0*rt_axis1-r_axis1*rt_axis0, r_axis0*rt_axis0+r_axis1*rt_axis1);
   if (is_clockwise_arc) { // Correct atan2 output per direction
@@ -104,7 +104,7 @@ void mc_arc(float *target, plan_line_data_t *pl_data, float *position, float *of
 
   if (segments) {
     // Multiply inverse feed_rate to compensate for the fact that this movement is approximated
-    // by a number of discrete segments. The inverse feed_rate should be correct for the sum of 
+    // by a number of discrete segments. The inverse feed_rate should be correct for the sum of
     // all segments.
     if (pl_data->condition & PL_COND_FLAG_INVERSE_TIME) { 
       pl_data->feed_rate *= segments; 
@@ -359,8 +359,9 @@ void mc_reset()
     // violated, by which, all bets are off.
     if ((sys.state & (STATE_CYCLE | STATE_HOMING | STATE_JOG)) ||
     		(sys.step_control & (STEP_CONTROL_EXECUTE_HOLD | STEP_CONTROL_EXECUTE_SYS_MOTION))) {
-      if (sys.state == STATE_HOMING) { system_set_exec_alarm(EXEC_ALARM_HOMING_FAIL_RESET); }
-      else { system_set_exec_alarm(EXEC_ALARM_ABORT_CYCLE); }
+      if (sys.state == STATE_HOMING) { 
+        if (!sys_rt_exec_alarm) {system_set_exec_alarm(EXEC_ALARM_HOMING_FAIL_RESET); }
+      } else { system_set_exec_alarm(EXEC_ALARM_ABORT_CYCLE); }
       st_go_idle(); // Force kill steppers. Position has likely been lost.
     }
   }

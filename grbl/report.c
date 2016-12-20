@@ -18,11 +18,11 @@
   along with Grbl.  If not, see <http://www.gnu.org/licenses/>.
 */
 
-/* 
-  This file functions as the primary feedback interface for Grbl. Any outgoing data, such 
+/*
+  This file functions as the primary feedback interface for Grbl. Any outgoing data, such
   as the protocol status messages, feedback messages, and status reports, are stored here.
-  For the most part, these functions primarily are called from protocol.c methods. If a 
-  different style feedback is desired (i.e. JSON), then a user can change these following 
+  For the most part, these functions primarily are called from protocol.c methods. If a
+  different style feedback is desired (i.e. JSON), then a user can change these following
   methods to accomodate their needs.
 */
 
@@ -104,8 +104,8 @@ static void report_util_float_setting(uint8_t n, float val, uint8_t n_decimal) {
 
 
 // Handles the primary confirmation protocol response for streaming interfaces and human-feedback.
-// For every incoming line, this method responds with an 'ok' for a successful command or an 
-// 'error:'  to indicate some error event with the line or some critical system error during 
+// For every incoming line, this method responds with an 'ok' for a successful command or an
+// 'error:'  to indicate some error event with the line or some critical system error during
 // operation. Errors events can originate from the g-code parser, settings module, or asynchronously
 // from a critical error, such as a triggered hard limit. Interface should always monitor for these
 // responses.
@@ -122,7 +122,7 @@ void report_status_message(uint8_t status_code)
 }
 
 // Prints alarm messages.
-void report_alarm_message(int8_t alarm_code)
+void report_alarm_message(uint8_t alarm_code)
 {
   printPgmString(PSTR("ALARM:"));
   print_uint8_base10(alarm_code);
