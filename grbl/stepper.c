@@ -78,7 +78,7 @@ typedef struct {
   #else
     uint8_t prescaler;      // Without AMASS, a prescaler is required to adjust for slow timing.
   #endif
-  uint8_t spindle_pwm;
+  uint16_t spindle_pwm;
 } segment_t;
 static segment_t segment_buffer[SEGMENT_BUFFER_SIZE];
 
@@ -152,7 +152,7 @@ typedef struct {
   float decelerate_after; // Deceleration ramp start measured from end of block (mm)
 
   float inv_rate;    // Used by PWM laser mode to speed up segment calculations.
-  uint8_t current_spindle_pwm; 
+  uint16_t current_spindle_pwm; 
 } st_prep_t;
 static st_prep_t prep;
 

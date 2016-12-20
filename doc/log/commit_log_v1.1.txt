@@ -1,0 +1,13 @@
+----------------
+Date: 2016-12-19
+Author: Sonny Jeon
+Subject: Grbl v1.1e port to Mega2560 branch
+
+- v1.1e
+
+- Ported all current changes from the main Grbl 328p repo to the
+Mega2560 branch. Main differences are increased planner, RX, TX, and
+line buffers. And an optional sleep timeout feature.
+
+- WARNING: Code compiles, but has not been tested.
+
