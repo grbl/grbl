@@ -1,6 +1,16 @@
 ----------------
 Date: 2016-12-19
 Author: Sonny Jeon
+Subject: Alarm handling bug fix.
+
+- Applied an alarm handling bug fix that would not show the correct
+alarm code, nor clear the alarm. It would occasionally go into an
+infinite loop and would usually happen during a homing cycle fail.
+
+
+----------------
+Date: 2016-12-19
+Author: Sonny Jeon
 Subject: Spindle PWM update for Mega2560
 
 - Spindle PWM is set with a 16-bit value, rather than 8-bit on a 328p.

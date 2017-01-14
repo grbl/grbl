@@ -174,6 +174,7 @@ Every G-code block sent to Grbl and Grbl `$` system command that is terminated w
 | **`35`** | A `G2` or `G3` arc, traced with the offset definition, is missing the `IJK` offset word in the selected plane to trace the arc.|
 | **`36`** | There are unused, leftover G-code words that aren't used by any command in the block.|
 | **`37`** | The `G43.1` dynamic tool length offset command cannot apply an offset to an axis other than its configured axis. The Grbl default axis is the Z-axis.|
+| **`38`** | Tool number greater than max supported value.|
 
 
 ----------------------
@@ -567,6 +568,8 @@ Feedback messages provide non-critical information on what Grbl is doing, what i
         
         - The usage of this data is generally for debugging an interface, but is known to be used to control some GUI-specific tasks. While this is disabled by default, GUIs should expect this data field to appear, but they may ignore it, if desired.
         
+        	- IMPORTANT: Do not use this buffer data to control streaming. During a stream, the reported buffer will often be out-dated and may be incorrect by the time it has been received by the GUI. Instead, please use the streaming protocols outlined. They use Grbl's responses as a direct way to accurately determine the buffer state.
+        	        
         - NOTE: The buffer state values changed from showing "in-use" blocks or bytes to "available". This change does not require the GUI knowing how many block/bytes Grbl has been compiled with.
 
         - This data field appears:

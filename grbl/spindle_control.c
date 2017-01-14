@@ -72,17 +72,11 @@ void spindle_stop()
 // and stepper ISR. Keep routine small and efficient.
 void spindle_set_speed(uint16_t pwm_value)
 {
+  SPINDLE_OCR_REGISTER = pwm_value; // Set PWM output level.
   if (pwm_value == SPINDLE_PWM_OFF_VALUE) {
-    spindle_stop();
+    SPINDLE_TCCRA_REGISTER &= ~(1<<SPINDLE_COMB_BIT); // Disable PWM. Output voltage is zero.
   } else {
-    SPINDLE_OCR_REGISTER = pwm_value; // Set PWM output level.
     SPINDLE_TCCRA_REGISTER |= (1<<SPINDLE_COMB_BIT); // Ensure PWM output is enabled.
-
-    #ifdef INVERT_SPINDLE_ENABLE_PIN
-      SPINDLE_ENABLE_PORT &= ~(1<<SPINDLE_ENABLE_BIT);
-    #else
-      SPINDLE_ENABLE_PORT |= (1<<SPINDLE_ENABLE_BIT);
-    #endif
   }
 }
 
@@ -139,6 +133,12 @@ void spindle_set_state(uint8_t state, float rpm)
       if (state == SPINDLE_ENABLE_CCW) { rpm = 0.0; } // TODO: May need to be rpm_min*(100/MAX_SPINDLE_SPEED_OVERRIDE);
     }
     spindle_set_speed(spindle_compute_pwm_value(rpm));
+
+		#ifdef INVERT_SPINDLE_ENABLE_PIN
+			SPINDLE_ENABLE_PORT &= ~(1<<SPINDLE_ENABLE_BIT);
+		#else
+			SPINDLE_ENABLE_PORT |= (1<<SPINDLE_ENABLE_BIT);
+		#endif   
   
   }
   

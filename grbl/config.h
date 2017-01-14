@@ -448,6 +448,10 @@
 // work well and are cheap to find) and wire in a low-pass circuit into each limit pin.
 // #define ENABLE_SOFTWARE_DEBOUNCE // Default disabled. Uncomment to enable.
 
+// Configures the position after a probing cycle during Grbl's check mode. Disabled sets
+// the position to the probe target, when enabled sets the position to the start position.
+// #define SET_CHECK_MODE_PROBE_TO_START // Default disabled. Uncomment to enable.
+
 // Force Grbl to check the state of the hard limit switches when the processor detects a pin
 // change inside the hard limit ISR routine. By default, Grbl will trigger the hard limits
 // alarm upon any pin change, since bouncing switches can cause a state check like this to
