@@ -1,0 +1,852 @@
+----------------
+Date: 2015-06-25
+Author: Sonny Jeon
+Subject: Restore parameters minor bug fix.
+
+- `$RST=#` was not wiping the G30 positions from EEPROM. Minor but now
+fixed.
+
+
+----------------
+Date: 2015-06-20
+Author: Sonny Jeon
+Subject: New EEPROM restore functions.
+
+- Tweaked the previous EEPROM restore implementation and added new
+functionality.
+
+- `$RST=$` restores the `$$` grbl settings back to firmware defaults,
+which are set when compiled.
+
+- `$RST=#` restores the `$#` parameters in EEPROM. At times it’s useful
+to clear these and start over, rather than manually writing each entry.
+
+-`$RST=*` wipe all of the data in EEPROM that Grbl uses and restores
+them to defaults. This includes `$$` settings, `$#` parameters, `$N`
+startup lines, and `$i` build info string.
+
+NOTE: This doesn’t write zeros throughout the EEPROM. It only writes
+where Grbl looks for data. For a complete wipe, please use the Arduino
+IDE’s EEPROM clear example.
+
+- Refactored the restore and wipe functions in settings.c to
+accommodate the new commands.
+
+
+----------------
+Date: 2015-06-18
+Author: Sonny Jeon
+Subject: Updated README
+
+
+----------------
+Date: 2015-06-18
+Author: Sonny Jeon
+Subject: Added restore settings defaults command.
+
+- New restore setting defaults command. Only wipes ‘$$’ setting in
+EEPROM and reloads them based on the defaults used when Grbl was
+compiled. Used with a `$RST` command
+
+NOTE: `$RST` is intentionally not listed in the Grbl ‘$’ help message.
+
+
+----------------
+Date: 2015-05-29
+Author: Sonny Jeon
+Subject: Added G61 exact path support.
+
+- G61 exact path is the Grbl default path control mode, so it’s now
+added as a supported g-code.
+
+
+----------------
+Date: 2015-05-27
+Author: Sonny Jeon
+Subject: Another git case-sensitive folder fix.
+
+- I’m now officially annoyed.
+
+
+----------------
+Date: 2015-05-27
+Author: Sonny Jeon
+Subject: Added X-Carve defaults.
+
+- Added X-Carve 500mm and 1000mm default files.
+
+- Tweaked all default files. Removed obsolete AUTO_START and updated
+some JUNCTION_DEVIATION defaults after testing showed these needed to
+be reduced slightly.
+
+
+----------------
+Date: 2015-05-27
+Author: Sonny Jeon
+Subject: Merge pull request #710 from buserror/fix-directory-case-sensitivity
+
+Rename Grbl to grbl
+
+----------------
+Date: 2015-05-27
+Author: Michel Pollet
+Subject: Rename Grbl to grbl
+
+Otherwise compilation fails on linux, or other case sensitive systems
+
+Signed-off-by: Michel Pollet <buserror@gmail.com>
+
+
+----------------
+Date: 2015-05-26
+Author: Sonny Jeon
+Subject: Updated README
+
+
+----------------
+Date: 2015-05-26
+Author: Sonny Jeon
+Subject: Merge pull request #706 from grbl/edge
+
+Merge edge branch.
+
+----------------
+Date: 2015-05-23
+Author: Sonny Jeon
+Subject: CoreXY planner bug fix.
+
+- CoreXY motions were moving to the negative value of the intended
+target. Now fixed.
+
+
+----------------
+Date: 2015-05-23
+Author: Sonny Jeon
+Subject: Moved cpu_map.
+
+- Moved cpu_map files to a cpu_map directory, like the defaults file
+organization.
+
+
+----------------
+Date: 2015-05-23
+Author: Sonny Jeon
+Subject: Homing and limit updates. Minor bug fixes.
+
+- Updated new homing cycle to error out when a pull-off motion detects
+the limit is still active.
+
+- Created a limits_get_state() function to centralize it. It reports
+state as a bit-wise booleans according to axis numbering.
+
+- Updated the print uint8 functions. Generalized it to allow both base2
+and base10 printouts, while allowing base2 prints with N_AXIS digits
+for limit state status reports. Doing this saved about 100bytes of
+flash as well.
+
+- Applied CoreXY status reporting bug fix by @phd0. Thanks!
+
+
+----------------
+Date: 2015-05-22
+Author: Sonny Jeon
+Subject: Merge pull request #702 from ashelly/default-split
+
+Moving defaults to individual files in subdirectory
+
+----------------
+Date: 2015-05-22
+Author: ashelly
+Subject: Moving defaults to individual files in subdirectory
+
+
+----------------
+Date: 2015-05-22
+Author: Sonny Jeon
+Subject: Merge pull request #700 from ashelly/header-split
+
+Header split
+
+----------------
+Date: 2015-05-22
+Author: ashelly
+Subject: Fixing up comment blocks in headers
+
+
+----------------
+Date: 2015-05-22
+Author: ashelly
+Subject: Splitting Cpu map into separate files.
+
+Makes comparison, addition of new ones easier
+
+
+----------------
+Date: 2015-05-17
+Author: Sonny Jeon
+Subject: Critical M0/2/30 fix. Homing updates.
+
+- Critical fix for M0 program pause. Due to its recent change, it would
+cause Grbl to suspend but wouldn’t notify the user of why Grbl was not
+doing anything. The state would show IDLE and a cycle start would
+resume it. Grbl now enters a HOLD state to better indicate the state
+change.
+
+- Critical fix for M2 and M30 program end. As with M0, the state
+previously would show IDLE while suspended. Grbl now does not suspend
+upon program end and leaves job control to the GUI. Grbl simply reports
+a `[Pgm End]` as a feedback message and resets certain g-code modes.
+
+- M2/30 g-code reseting fix. Previously Grbl would soft-reset after an
+M2/30, but this was not complaint to the (linuxcnc) g-code standard. It
+simply resets [G1,G17,G90,G94,G40,G54,M5,M9,M48] and keeps all other
+modes the same.
+
+- M0/M2/M30 check-mode fix. It now does not suspend the machine during
+check-mode.
+
+- Minor bug fix related to commands similar to G90.1, but not G90.1,
+not reporting an unsupported command.
+
+- Homing cycle refactoring. To help reduce the chance of users
+misunderstanding their limit switch wiring, Grbl only moves a short
+distance for the locate cycles only. In addition, the homing cycle
+pulls-off the limit switch by the pull-off distance to re-engage and
+locate home. This should improve its accuracy.
+
+- HOMING_FORCE_ORIGIN now sets the origin to the pull-off location,
+rather than where the limit switch was triggered.
+
+- Updated default junction deviation to 0.01mm. Recent tests showed
+that this improves Grbl’s cornering behavior a bit.
+
+- Added the ShapeOko3 defaults.
+
+- Added new feedback message `[Pgm End]` for M2/30 notification.
+
+- Limit pin reporting is now a $10 status report option. Requested by
+OEMs to help simplify support troubleshooting.
+
+
+----------------
+Date: 2015-03-29
+Author: Sonny Jeon
+Subject: Fix for limit pin reporting compile-option
+
+- The limit pin reporting wasn’t working correctly due to calling the
+wrong similarly-named function. Verified to be working now.
+
+
+----------------
+Date: 2015-03-29
+Author: Sonny Jeon
+Subject: Commit history, logo license, full-arc fix.
+
+- Commit history added to repo, as an easier way for people to see view
+the changes over time.
+
+- Grbl logo copyright license added. All rights reserved with regards
+to the Grbl logo.
+
+- G2/3 full circles would sometime not execute. The problem was due to
+numerical round-off of a trig calculation. Added a machine epsilon
+define to help detect and correct for this problem. Tested and should
+not effect general operation of arcs.
+
+
+----------------
+Date: 2015-03-27
+Author: Sungeun Jeon
+Subject: Compile-option for inverting spindle enable.
+
+- Installed a compile-option for inverting the spindle enable pin for
+certain electronics boards users have reported needing this.
+
+
+----------------
+Date: 2015-03-27
+Author: Sungeun Jeon
+Subject: New compile options and inverse time bug fix.
+
+- Apparently inverse time motion were not working for quite some time.
+Goes to show how many people actually use it. The calculation was bad
+and is now fixed in this update. It should now work correctly.
+
+- `;` comment type is now supported. This is standard on LinuxCNC and
+common on 3d printers. It was previously not supported due to not
+existing in the NIST standard, which is out-dated.
+
+- New compile-option to ECHO the line received. This should help users
+experiencing very weird problems and help diagnose if there is
+something amiss in the communication to Grbl.
+
+- New compile-option to use the spindle direction pin D13 as a spindle
+enable pin with PWM spindle speed on D11. This feature has been
+requested often from the laser cutter community. Since spindle
+direction isn’t really of much use, it seemed like good good trade.
+Note that M4 spindle enable counter-clock-wise support is removed for
+obvious reasons, while M3 and M5 still work.
+
+
+----------------
+Date: 2015-03-27
+Author: Sonny Jeon
+Subject: Update README.md
+
+----------------
+Date: 2015-03-26
+Author: Sonny Jeon
+Subject: Update README.md
+
+----------------
+Date: 2015-03-16
+Author: Sonny Jeon
+Subject: Update README.md
+
+----------------
+Date: 2015-03-15
+Author: Sungeun Jeon
+Subject: Updated README
+
+
+----------------
+Date: 2015-03-15
+Author: Sonny Jeon
+Subject: Create README.md
+
+----------------
+Date: 2015-03-15
+Author: Sungeun Jeon
+Subject: Merge branch 'edge'
+
+
+----------------
+Date: 2015-03-15
+Author: Sungeun Jeon
+Subject: Updated README.
+
+- Also altered the G38.X reporting to save some bytes.
+
+
+----------------
+Date: 2015-03-14
+Author: Sungeun Jeon
+Subject: Cleaned-up limit pin reporting and comments.
+
+- Cleaned up the limit pin state reporting option to display only the
+state per axis, rather than the whole port. It’s organized by an XYZ
+order, 0(low)-1(high), and generally looks like `Lim:001`.
+
+- Separated the control pin state reporting from limit state reporting
+as a new compile option. This stayed the same in terms of showing the
+entire port in binary, since it’s not anticipated that this will be
+used much, if at all.
+
+- Updated some of the gcode source comments regarding supported g-codes.
+
+
+----------------
+Date: 2015-03-07
+Author: Sonny Jeon
+Subject: Another homing cycle fix.
+
+- The homing cycle should be working again. Reverted it back to how it
+was about a month ago before I started to fiddle with it. Turns out
+that my past self knew what he was doing.
+
+
+----------------
+Date: 2015-03-04
+Author: Sonny Jeon
+Subject: Arduino IDE compatibility and minor homing fixes
+
+- Added an include in the right spot, if a user tries to compile and
+upload Grbl through the Arduino IDE with the old way.
+
+- Fixed a minor bug with homing max travel calculations. It was causing
+simultaneous axes homing to move slow than it did before.
+
+
+----------------
+Date: 2015-02-25
+Author: Sonny Jeon
+Subject: G91.1 support. Fixed a config.h option.
+
+- G91.1 support added. This g-code sets the arc IJK distance mode to
+incremental, which is the default already. This simply  helps reduce
+parsing errors with certain CAM programs that output this command.
+
+- Max step rate checks weren’t being compiled in if the option was
+enabled. Fixed now.
+
+- Alarm codes were not displaying correctly when GUI reporting mode was
+enabled. Due to unsigned int problem. Changed codes to positive values
+since they aren’t shared with other codes.
+
+
+----------------
+Date: 2015-02-23
+Author: Sonny Jeon
+Subject: Fixed config.h to Grbl release defaults.
+
+- REPORT_GUI_MODE was accidentally enabled, when it shouldn’t have.
+
+
+----------------
+Date: 2015-02-23
+Author: Sonny Jeon
+Subject: New configuration options.
+
+- New configuration option at compile-time:
+ - Force alarm upon power-up or hard reset. When homing is enabled,
+this is already the default behavior. This simply forces this all of
+the time.
+ - GUI reporting mode. Removes most human-readable strings that GUIs
+don’t need. This saves nearly 2KB in flash space that can be used for
+other features.
+ - Hard limit force state check: In the hard limit pin change ISR, Grbl
+by default sets the hard limit alarm upon any pin change to guarantee
+the alarm is set. If this option is set, it’ll check the state within
+the ISR, but can’t guarantee the pin will be read correctly if the
+switch is bouncing. This option makes hard limit behavior a little less
+annoying if you have a good buffered switch circuit that removes
+bouncing and electronic noise.
+
+- Software debounce bug fix. It was reading the pin incorrectly for the
+setting.
+
+- Re-factored some of the ‘$’ settings code.
+
+
+----------------
+Date: 2015-02-15
+Author: Sonny Jeon
+Subject: Improved homing limit search handling.
+
+- Instead of a single overall max travel for a search distance for the
+homing limit switches. The homing cycle now applies the max travel of
+each axis to the search target. Generally makes more sense this way and
+saved more than a 100bytes of flash too.
+
+
+----------------
+Date: 2015-02-15
+Author: Sonny Jeon
+Subject: Homing alarm upon no switch. Licensing update.
+
+- Homing cycle failure reports alarm feedback when the homing cycle is
+exited via a reset, interrupted by a safety door switch, or does not
+find the limit switch.
+
+- Homing cycle bug fix when not finding the limit switch. It would just
+idle before, but now will exit with an alarm.
+
+- Licensing update. Corrected licensing according to lawyer
+recommendations. Removed references to other Grbl versions.
+
+
+----------------
+Date: 2015-02-13
+Author: Sonny Jeon
+Subject: Merge pull request #593 from poelstra/fix_makefile_deps
+
+Fix generating header dependencies, merge with 'normal' compile, force r...
+
+----------------
+Date: 2015-02-13
+Author: Sonny Jeon
+Subject: Updated README with new logo sized for github.
+
+
+----------------
+Date: 2015-02-13
+Author: Sonny Jeon
+Subject: Update README.md
+
+----------------
+Date: 2015-02-13
+Author: Sonny Jeon
+Subject: Doc re-org. New Grbl Logos!
+
+
+----------------
+Date: 2015-02-13
+Author: Sonny Jeon
+Subject: Merge pull request #591 from EliteEng/edge
+
+Safety Door Update for Mega2560
+
+----------------
+Date: 2015-02-13
+Author: Sonny Jeon
+Subject: Merge pull request #592 from poelstra/fix_softlimit
+
+Fix EXEC_ALARM_* flags: soft limit would lead to hard limit error.
+
+----------------
+Date: 2015-02-13
+Author: Sonny Jeon
+Subject: Merge pull request #594 from poelstra/fix_sim_build
+
+Fix function signature of print_uint32_base10(), necessary for compiling simulator.
+
+----------------
+Date: 2015-02-13
+Author: Martin Poelstra
+Subject: Fix function signature of print_uint32_base10(), necessary for compiling simulator.
+
+
+----------------
+Date: 2015-02-13
+Author: Martin Poelstra
+Subject: Fix generating header dependencies, merge with 'normal' compile, force recompile when files are removed.
+
+
+----------------
+Date: 2015-02-13
+Author: Martin Poelstra
+Subject: Fix EXEC_ALARM_* flags: soft limit would lead to hard limit error.
+
+
+----------------
+Date: 2015-02-13
+Author: Rob Brown
+Subject: Safety Door Update for Mega2560
+
+
+----------------
+Date: 2015-02-11
+Author: Sonny Jeon
+Subject: Overhauled state machine. New safety door feature.
+
+- Overhauled the state machine and cleaned up its overall operation.
+This involved creating a new ‘suspend’ state for what all external
+commands, except real-time commands, are ignored. All hold type states
+enter this suspend state.
+
+- Removed ‘auto cycle start’ setting from Grbl. This was not used by
+users in its intended way and is somewhat redundant, as GUI manage the
+cycle start by streaming. It also muddled up how Grbl should interpret
+how and when to execute a g-code block. Removing it made everything
+much much simpler.
+
+- Fixed a program pause bug when used with other buffer_sync commands.
+
+- New safety door feature for OEMs. Immediately forces a feed hold and
+then de-energizes the machine. Resuming is blocked until the door is
+closed. When it is, it re-energizes the system and then resumes on the
+normal toolpath.
+
+- Safety door input pin is optional and uses the feed hold pin on A1.
+Enabled by config.h define.
+
+- Spindle and coolant re-energizing upon a safety door resume has a
+programmable delay time to allow for complete spin up to rpm and
+turning on the coolant before resuming motion.
+
+- Safety door-style feed holds can be used instead of regular feed hold
+(doesn’t de-energize the machine) with a ‘@‘ character. If the safety
+door input pin is not enabled, the system can be resumed at any time.
+
+
+----------------
+Date: 2015-02-10
+Author: Sonny Jeon
+Subject: Git fix for empty directory. Makefile updated.
+
+- ‘build’ directory was not being synced by git because it was empty.
+Added a .gitignore file in the ‘build’ directory to force git to sync
+it but keep it empty.
+
+- Updated the Makefile to not erase the .gitignore.
+
+
+----------------
+Date: 2015-02-10
+Author: Sonny Jeon
+Subject: File re-organization. New Makefile.
+
+- Re-organized source code files into a ‘grbl’ directory to lessen one
+step in compiling Grbl through the Arduino IDE.
+
+- Added an ‘examples’ directory with an upload .INO sketch to further
+simplify compiling and uploading Grbl via the Arduino IDE.
+
+- Updated the Makefile with regard to the source code no longer being
+in the root directory. All files generated by compiling is placed in a
+separate ‘build’ directory to keep things tidy. The makefile should
+operate in the same way as it did before.
+
+
+----------------
+Date: 2015-02-10
+Author: Sonny Jeon
+Subject: Bug fix for certain motions. Re-org of includes.
+
+- Critical bug fix for diagonal motions that continue on the same
+direction or return in the exact opposite direction. This issue could
+cause Grbl to crash intermittently due to a numerical round-off error.
+Grbl versions prior to v0.9g shouldn’t have this issue.
+
+- Reorganized all of the includes used by Grbl. Centralized it into a
+single “grbl.h” include. This will help simplify the compiling and
+uploading process through the Arduino IDE.
+
+- Added an example .INO file for users to simply open and run when
+compiling and uploading through the IDE. More to come later.
+
+
+----------------
+Date: 2015-02-06
+Author: Sonny Jeon
+Subject: Limit/control pin state reporting option
+
+- As a setup feature, users can compile-in input pin status reporting.
+Doesn’t do anything special, just prints the binary for the port. 0’s
+and 1’s indicate low and high signals on the pins. It’s a bit cryptic
+right now, but it’s just a start.
+
+- Added a max step rate check when writing step/mm and max rate
+settings. Should help avoid people misdiagnosing problems associated
+with going over the 30kHz step rate limit. Right now not enabled. Takes
+up over 100k of flash. Need that room for other things right now.
+
+
+----------------
+Date: 2015-02-04
+Author: Sonny Jeon
+Subject: Rare planner bug fix and added simulator defaults.
+
+- Planner bug when moving along a diagonal back and forth on the same
+path. Rare for the fact that most CAM programs don’t program this type
+of motion, neither does jogging. Fixed in this update.
+
+- Added grbl_sim defaults for testing purposes.
+
+
+----------------
+Date: 2015-01-17
+Author: Sonny Jeon
+Subject: Fully configurable pins for NO or NC switches.
+
+- All pins, which include limits, control command, and probe pins, can
+now all be configured to trigger as active-low or active-high and
+whether the pin has its internal pull-up resistor enabled. This should
+allow for just about all types of NO and NC switch configurations.
+
+- The probe pin invert setting hasn’t been added to the Grbl settings,
+like the others, and will have to wait until v1.0. But for now, it’s
+available as a compile-time option in config.h.
+
+- Fixed a variable spindle bug.
+
+
+----------------
+Date: 2015-01-14
+Author: Sonny Jeon
+Subject: Lot of refactoring for the future. CoreXY support.
+
+- Rudimentary CoreXY kinematics support. Didn’t test, but homing and
+feed holds should work. See config.h. Please report successes and
+issues as we find bugs.
+
+- G40 (disable cutter comp) is now “supported”. Meaning that Grbl will
+no longer issue an error when typically sent in g-code program header.
+
+- Refactored coolant and spindle state setting into separate functions
+for future features.
+
+- Configuration option for fixing homing behavior when there are two
+limit switches on the same axis sharing an input pin.
+
+- Created a new “grbl.h” that will eventually be used as the main
+include file for Grbl. Also will help simply uploading through the
+Arduino IDE
+
+- Separated out the alarms execution flags from the realtime (used be
+called runtime) execution flag variable. Now reports exactly what
+caused the alarm. Expandable for new alarms later on.
+
+- Refactored the homing cycle to support CoreXY.
+
+- Applied @EliteEng updates to Mega2560 support. Some pins were
+reconfigured.
+
+- Created a central step to position and vice versa function. Needed
+for non-traditional cartesian machines. Should make it easier later.
+
+- Removed the new CPU map for the Uno. No longer going to used. There
+will be only one configuration to keep things uniform.
+
+
+----------------
+Date: 2014-11-05
+Author: Sonny Jeon
+Subject: Update README.md
+
+----------------
+Date: 2014-10-29
+Author: Sonny Jeon
+Subject: Update README.md
+
+----------------
+Date: 2014-10-28
+Author: Sonny Jeon
+Subject: Update README.md
+
+----------------
+Date: 2014-10-28
+Author: Sonny Jeon
+Subject: Update README.md
+
+----------------
+Date: 2014-10-01
+Author: Sonny Jeon
+Subject: Updated variable spindle and new probing. Minor bug fixes.
+
+- Minor bug fix for variable spindle PWM output. Values smaller than
+the minimum RPM for the spindle would overflow the PWM value. Thanks
+Rob!
+
+- Created an optional minimum spindle PWM low-mark value as a
+compile-time option. This is for special circumstances when the PWM has
+to be at a certain level to be read by the spindle controller.
+
+- Refactored the new probing commands (G38.3, G38.4, G38.5) code to
+work better with the rest of Grbl’s systems.
+
+- Refactored mc_probe() and mc_arc() to accept the mode of the command,
+i.e. clockwise vs counter, toward vs away, etc. This is to make these
+functions independent of gcode state variables.
+
+- Removed the pull off motion in the probing cycle. This is not an
+official operation and was added for user simplicity, but wrongly did
+so. So bye bye.
+
+- Created a configure probe invert mask function to handle the
+different probe pin setting and probing cycle modes with a single mask.
+
+ - Minor bug fix with reporting motion modes via $G. G38.2 wasn’t
+showing up. It now does, along with the other new probing commands.
+
+- Refactored some of the new pin configurations for the future of Grbl.
+
+-
+
+
+----------------
+Date: 2014-09-25
+Author: Sonny Jeon
+Subject: Merge pull request #491 from tmpvar/G38.2+
+
+G38.2+
+
+----------------
+Date: 2014-09-22
+Author: Elijah Insua
+Subject: report probe_succeeded with probe status
+
+
+----------------
+Date: 2014-09-22
+Author: Elijah Insua
+Subject: add probe_finalize to keep things DRY
+
+this allows the PRB report to be valid when in "no errors" mode and the probe fails
+
+----------------
+Date: 2014-09-22
+Author: Elijah Insua
+Subject: hop over probe pull-off sequence after probe miss
+
+and while "no errors" is enabled (G38.3, G38.5)
+
+
+----------------
+Date: 2014-09-22
+Author: Elijah Insua
+Subject: add/install probe_errors_enabled in mc_probe_cycle
+
+
+----------------
+Date: 2014-09-22
+Author: Elijah Insua
+Subject: bump mantissa to uint16_t to enable G38.5
+
+----------------
+Date: 2014-09-22
+Author: Elijah Insua
+Subject: test only for & PROBE_ACTIVE
+
+
+----------------
+Date: 2014-09-22
+Author: Elijah Insua
+Subject: cleanup global var and push probe mode into probe_get_state
+
+
+----------------
+Date: 2014-09-20
+Author: Sonny Jeon
+Subject: Edit hard limit check at start of homing cycle
+
+
+----------------
+Date: 2014-09-20
+Author: Sonny Jeon
+Subject: Merge pull request #494 from ashelly/homing-alarm
+
+Alarm if limits engaged on homing start.
+
+----------------
+Date: 2014-09-20
+Author: Sonny Jeon
+Subject: Merge pull request #493 from alpharesearch/edge
+
+If variable spindle is defined print S value via $G command.
+
+----------------
+Date: 2014-09-20
+Author: Sonny Jeon
+Subject: Minor settings number overflow bug fix.
+
+- The `x` in `$x=val` would overflow when a value larger than 255 was
+entered and passed to Grbl. This resulted with unintended parameters
+being set by the overflow value. To fix, simply check for values larger
+than 255 and error out.
+
+
+----------------
+Date: 2014-09-17
+Author: ashelly
+Subject: No false alarm if other bits in port are set.
+
+----------------
+Date: 2014-09-17
+Author: Markus Schulz
+Subject: If variable spindle is defined print S value via $G command.
+
+
+----------------
+Date: 2014-09-14
+Author: Elijah Insua
+Subject: utilize MOTION_MODE_PROBE_NO_ERROR
+
+
+----------------
+Date: 2014-09-14
+Author: Elijah Insua
+Subject: install G38.{3,4,5}
+
+
+----------------
+Date: 2014-09-14
+Author: Elijah Insua
+Subject: add MOTION_MODE_PROBE_NO_ERROR
+
+
+----------------
+Date: 2014-09-08
+Author: ashelly
+Subject: Alarm if limits engaged on homing
+

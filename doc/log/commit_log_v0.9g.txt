@@ -1,0 +1,2409 @@
+----------------
+Date: 2014-09-05
+Author: Sonny Jeon
+Subject: Minor bug fix and CPU pin map update.
+
+- Sometime I HATE github. This push is just here to be able to describe
+the last two pushes today that had a merging conflict and lost all of
+the commit comments before.
+
+- Setting $10 would cause $11 to be the same value. Missed a break
+statement in the switch-case. Oops! Now fixed.
+
+- CPU pin map for the future versions of Grbl introduced, but not yet
+finalized. Still working on it and it’s subject to change.
+
+- Added a new high-speed machining test g-code routine written by Todd
+Fleming. Mills a pocket at 15,000mm/min. Do not use when connected to
+your machine! You’ve been warned!
+
+
+----------------
+Date: 2014-09-05
+Author: Sonny Jeon
+Subject: Updated README.md
+
+
+----------------
+Date: 2014-09-05
+Author: Sonny Jeon
+Subject: Merge branch 'master' of https://github.com/grbl/grbl
+
+Conflicts:
+	README.md
+
+
+----------------
+Date: 2014-08-24
+Author: Sonny Jeon
+Subject: Merge pull request #472 from BinaryConstruct/edge
+
+Add defaults for OX CNC
+
+----------------
+Date: 2014-08-24
+Author: BinaryConstruct
+Subject: Add defaults for OX CNC
+
+
+----------------
+Date: 2014-08-22
+Author: Sonny Jeon
+Subject: Update README.md
+
+----------------
+Date: 2014-08-22
+Author: Sonny Jeon
+Subject: Updated build date.
+
+
+----------------
+Date: 2014-08-22
+Author: Sonny Jeon
+Subject: WPos report bug fix when MPos disabled.
+
+
+----------------
+Date: 2014-08-18
+Author: Sonny Jeon
+Subject: Update README.md
+
+----------------
+Date: 2014-08-17
+Author: Sonny Jeon
+Subject: Update README.md
+
+----------------
+Date: 2014-08-17
+Author: Sonny Jeon
+Subject: Updated bitly link to master firmware
+
+
+----------------
+Date: 2014-08-17
+Author: Sonny Jeon
+Subject: Merge branch 'master' into edge
+
+
+----------------
+Date: 2014-08-17
+Author: Sonny Jeon
+Subject: Final minor updates for master release.
+
+- Updated ShapeOko2 defaults based on machine testing of the basic
+model provided by Inventables. (or close to it.) Should be pretty
+conservative but much faster than before. For example, X and Y axes are
+set at (10x) faster at 5000mm/min. It can run much faster than this,
+but this seems like a safe speed for everyone.
+
+- Updated README for master release.
+
+- Added some new settings methods for clearing the EEPROM when changing
+versions. Needs some more work, but it should ok for master release.
+Should work on it more for the next version.
+
+
+----------------
+Date: 2014-08-13
+Author: Sonny Jeon
+Subject: Added EEPROM force clear.
+
+- When updating from v0.8, the settings will wipe the startup lines and
+build info locations so that it won’t use whatever is already there in
+the EEPROM. Parameters (coord offsets) are retained. They should be ok
+during an upgrade.
+
+
+----------------
+Date: 2014-08-13
+Author: Sonny Jeon
+Subject: Update README.md
+
+----------------
+Date: 2014-08-13
+Author: Sonny Jeon
+Subject: G28/30 bug fix. Block '$$' during cycle. SO2 defaults.
+
+- A G28/30 bug would cause it to move to machine coordinate [0,0,0] if
+no axis words were sent. It was a typo in the new g-code parser. Fixed
+and slightly re-written to be more consistent with the program flow.
+
+- Updated the ShapeOko2 defaults based on testing on the real machine.
+A little conservative, but it might change again after some more
+testing.
+
+- Now blocks ‘$$’ command during a motion, because the printout takes
+too long and can starve the segment buffer.
+
+
+----------------
+Date: 2014-08-08
+Author: Sonny Jeon
+Subject: XON/XOFF flow control variable typo.
+
+
+----------------
+Date: 2014-08-07
+Author: Sonny Jeon
+Subject: Moved Grbl Sim to its own repo.
+
+
+----------------
+Date: 2014-08-07
+Author: Sonny Jeon
+Subject: Updated licensing
+
+
+----------------
+Date: 2014-08-05
+Author: Sonny Jeon
+Subject: Update README.md
+
+----------------
+Date: 2014-08-05
+Author: Sonny Jeon
+Subject: Fixed bug related to very very low feed rates.
+
+- A very very low feed rate command like `G1 X100 F0.01`  would cause
+some floating-point round-off error and freeze Grbl into an infinite
+loop. To fix it, introduced a MINIMUM_FEED_RATE parameter in config.h
+to ensure motions always complete.
+
+- MINIMUM_FEED_RATE is set at 1.0 mm/min by default. It’s recommended
+that no rates are below this value, but 0.1mm/min may be ok in some
+situations.
+
+
+----------------
+Date: 2014-08-04
+Author: Sonny Jeon
+Subject: Allow '$$' in check mode.
+
+- Now allows the ‘$$’ view Grbl settings while in check mode
+
+- Updated the version build date
+
+
+----------------
+Date: 2014-08-04
+Author: Sonny Jeon
+Subject: Update README.md
+
+----------------
+Date: 2014-08-04
+Author: Sonny Jeon
+Subject: Fixed probe position sync error.
+
+- Restored probe position syncing. Had removed a pull-off motion after
+a probe cycle completes, but ended up de-synchronizing the g-code
+parser and probing cycle positions. Putting the pull-off motion back
+fixed the problem.
+
+
+----------------
+Date: 2014-08-03
+Author: Sonny Jeon
+Subject: Update README.md
+
+----------------
+Date: 2014-08-03
+Author: Sonny Jeon
+Subject: Probing cycle and view build info bug fixes.
+
+- Probing cycle would drop into a QUEUED state, if multiple G38.2 are
+sent. It would not honor the auto cycle start flags. To fix, the auto
+cycle start state is saved at the beginning of the probing cycle and
+restored at the end, since the feed hold it uses to stop a triggered
+probe will disable the auto start flag. For now it’s a patch, rather
+than a permanent fix.
+
+- protocol_buffer_synchronize() also has a failure case. Auto cycle
+start does not get executed when the system is waiting in here, so if
+it’s in a QUEUED state already, it won’t resume. Patched here, but not
+fully resolved.
+
+- Fixed a problem with the “view build info” command. The EEPROM write
+would do weird things and corrupt the EEPROM. Not sure exactly what
+caused it, but it’s likely a compiler problem with an improperly
+defined EEPROM address. It didn’t have enough room to store a full
+string. To fix, the build info EEPROM range was increased and the max
+number of STARTUP_BLOCKS was reduced to 2 from 3.
+
+- Lastly, when a $I view build info is used for the first time, it
+would normally show an EEPROM read error, since it wasn’t cleared or
+wasn’t therein the first place. It will now not show that error. A
+patch rather than a permanent fix again.
+
+
+----------------
+Date: 2014-08-01
+Author: Sonny Jeon
+Subject: Update README.md
+
+----------------
+Date: 2014-08-01
+Author: Sonny Jeon
+Subject: Minor bug fixes.
+
+- Bug fix for step and direction invert masks not immediately being in
+effect. Now regenerates the masks when a user changes this setting.
+
+- Bug fix for probing cycle. G-code standard mandates that there is an
+error if the probe is already triggered when the cycle is commanded.
+However, Grbl may have motions to pull off a previous probing cycle in
+queue and can falsely lead to errors. To fix this, the triggered check
+is performed within the probing cycle itself, right after the planner
+buffer is synced. If there is an error, it will now alarm out as a
+probe fail.
+
+
+----------------
+Date: 2014-07-28
+Author: Sonny Jeon
+Subject: Compile in Atmel Studio fix.
+
+
+----------------
+Date: 2014-07-28
+Author: Sonny Jeon
+Subject: Update README.md
+
+----------------
+Date: 2014-07-27
+Author: Sonny Jeon
+Subject: Added build info feedback in help
+
+- `$I` prints the Grbl build info and version number. NOTE: `$I=xxx`
+stores an additional 30 character string into EEPROM, which will be
+printed with the build info the next time it’s run. This is for
+identification purposes for users that have more than one system using
+Grbl.
+
+
+----------------
+Date: 2014-07-26
+Author: Sonny Jeon
+Subject: Updates to allow Arduino IDE direct compiling.
+
+- Only minor changes were required to make the Arduino IDE compile all
+of the Grbl’s source code (correctly using the C-compiler). Tested in
+Windows and Mac and with the normal USB upload and with a programmer.
+
+
+----------------
+Date: 2014-07-26
+Author: Sonny Jeon
+Subject: Settings refactoring. Bug fixes. Misc new features.
+
+This is likely the last major change to the v0.9 code base before push
+to master. Only two minor things remain on the agenda (CoreXY support,
+force clear EEPROM, and an extremely low federate bug).
+
+- NEW! Grbl is now compile-able and may be flashed directly through the
+Arduino IDE. Only minor changes were required for this compatibility.
+See the Wiki to learn how to do it.
+
+- New status reporting mask to turn on and off what Grbl sends back.
+This includes machine coordinates, work coordinates, serial RX buffer
+usage, and planner buffer usage. Expandable to more information on user
+request, but that’s it for now.
+
+- Settings have been completely renumbered to allow for future new
+settings to be installed without having to constantly reshuffle and
+renumber all of the settings every time.
+
+- All settings masks have been standardized to mean bit 0 = X, bit 1 =
+Y, and bit 2 = Z, to reduce confusion on how they work. The invert
+masks used by the internal Grbl system were updated to accommodate this
+change as well.
+
+- New invert probe pin setting, which does what it sounds like.
+
+- Fixed a probing cycle bug, where it would freeze intermittently, and
+removed some redundant code.
+
+- Homing may now be set to the origin wherever the limit switches are.
+Traditionally machine coordinates should always be in negative space,
+but when limit switches on are on the opposite side, the machine
+coordinate would be set to -max_travel for the axis. Now you can always
+make it [0,0,0] via a compile-time option in config.h. (Soft limits
+routine was updated to account for this as well.)
+
+ - Probe coordinate message immediately after a probing cycle may now
+be turned off via a compile-time option in config.h. By default the
+probing location is always reported.
+
+- Reduced the N_ARC_CORRECTION default value to reflect the changes in
+how circles are generated by an arc tolerance, rather than a fixed arc
+segment setting.
+
+- Increased the incoming line buffer limit from 70 to 80 characters.
+Had some extra memory space to invest into this.
+
+- Fixed a bug where tool number T was not being tracked and reported
+correctly.
+
+- Added a print free memory function for debugging purposes. Not used
+otherwise.
+
+- Realtime rate report should now work during feed holds, but it hasn’t
+been tested yet.
+
+- Updated the streaming scripts with MIT-license and added the simple
+streaming to the main stream.py script to allow for settings to be sent.
+
+- Some minor code refactoring to improve flash efficiency. Reduced the
+flash by several hundred KB, which was re-invested in some of these new
+features.
+
+
+----------------
+Date: 2014-07-17
+Author: Sonny Jeon
+Subject: Update README.md
+
+----------------
+Date: 2014-07-12
+Author: Sonny Jeon
+Subject: Update README.md
+
+----------------
+Date: 2014-07-12
+Author: Sonny Jeon
+Subject: Update README.md
+
+----------------
+Date: 2014-07-12
+Author: Sonny Jeon
+Subject: Update README.md
+
+----------------
+Date: 2014-07-12
+Author: Sonny Jeon
+Subject: Updated README
+
+
+----------------
+Date: 2014-07-11
+Author: Sonny Jeon
+Subject: Updated README
+
+
+----------------
+Date: 2014-07-11
+Author: Sonny Jeon
+Subject: Merge pull request #441 from ashelly/edge-simfix
+
+Fixes for simulator in alternate configurations.
+
+----------------
+Date: 2014-07-10
+Author: ashelly
+Subject: Restore changes made only for testing.
+
+
+----------------
+Date: 2014-07-10
+Author: ashelly
+Subject: Bug fixes for timers, added some wdt support for limit debounce.
+
+- Typo in timer def,
+- Handle 8 bit timers correctly,
+- Don't skip TOP count in CTC mode
+- added SREG for atomic bit operations
+
+
+----------------
+Date: 2014-07-09
+Author: Sonny Jeon
+Subject: Merge branch 'dev' into edge
+
+Conflicts:
+	sim/simulator.c
+	sim/simulator.h
+
+
+----------------
+Date: 2014-07-09
+Author: Sonny Jeon
+Subject: Added test g-code programs.
+
+
+----------------
+Date: 2014-07-06
+Author: Sonny Jeon
+Subject: Version and build update.
+
+- Incremented from v0.9e to v0.9f due to the new g-codes, velocity
+reporting option, decimal printing refactoring, grbl-sim updates, and
+G0/G1 bug fix.
+
+- Settings version was also incremented since settings.decimal_places
+is now gone.
+
+
+----------------
+Date: 2014-07-06
+Author: Sonny Jeon
+Subject: Isolate atomic bit flag for execution.
+
+- Denoted bit_true_atomic only for sys.execute bit settings. All other
+bit_true type calls are for local variables only and don’t need atomic
+access. Still looking into other ways of setting these flags without
+requiring atomic access, but this is a patch for now.
+
+
+----------------
+Date: 2014-07-06
+Author: Sonny Jeon
+Subject: Merge pull request #436 from kfoltman/dev
+
+Fixed atomic access to flags in sys.execute.
+
+----------------
+Date: 2014-07-06
+Author: Sonny Jeon
+Subject: Syntax fix for gcode.c
+
+- Whoops! Missed a bracket and it wasn’t compiling. Now fixed.
+
+- Updated the unsupported gcodes listed at the end of the gcode.c file.
+
+
+----------------
+Date: 2014-07-06
+Author: Sonny Jeon
+Subject: G43.1/G49 tool length offset installed. Minor bug fix.
+
+- Minor bug fix that caused G92.1 not to work. The mantissa of G92.1
+was not computed correctly due to floating point round-off errors and
+the use of trunc(). Fixed it by changing the computation with round().
+
+- Installed tool length offsets with G43.1 and G49! True tool length
+offsets via G43 are not supported, because these require us to store
+tool data that we don’t have space for. But we’ve come up with a good
+solution for users that need this. Instead we are strictly using the
+dynamic version G43.1 via linuxcnc.org. Visit their website for more
+details on the command.
+
+- G43.1 operates by requiring an axis word and value to offset the
+configured tool length axis, which can be configured for any axis
+(default Z-axis) in config.h. For example, ```G43.1 Z0.5``` will offset
+the work coordinates from Z0.0 to Z-0.5.
+
+- G49 will cancel the last tool length offset value and reset it to
+zero.
+
+- Tweaked the ‘$#’ parameters report. `Probe` is now `PRB` and a new
+value `TLO` states the tool length offset value.
+
+
+----------------
+Date: 2014-07-05
+Author: Sonny Jeon
+Subject: Merge branch 'ashelly-sim-update' into dev
+
+
+----------------
+Date: 2014-07-05
+Author: Sonny Jeon
+Subject: Merge grbl-sim updates for v0.9.
+
+- Removed some conflicting code in the main Grbl firmware source.
+
+- Temporary patch for coolant and spindle control with streaming
+applied.
+
+
+----------------
+Date: 2014-07-05
+Author: Sonny Jeon
+Subject: New G43.1/G49 gcodes. Not working yet!!
+
+- Pushed this uncompleted code to merge a conflicting pull request.
+
+- New G43.1 and G49 g-codes to be installed. The beginnings of it are
+in place. These g-codes are intended to be used in conjunction with
+probing and allow GUIs to set tool length offsets without Grbl needing
+to store a tool table.
+
+- G43.1 is defined as a dynamic tool length offset that is not stored
+in memory. Rather, when commanded, these are applied to the work
+coordinates until a reset or disabled by G49. This works much like G92.
+
+
+----------------
+Date: 2014-07-05
+Author: ashelly
+Subject: formatting
+
+----------------
+Date: 2014-07-05
+Author: ashelly
+Subject: Update readme.md
+
+----------------
+Date: 2014-07-04
+Author: ashelly
+Subject: Don't need kbhit.h
+
+----------------
+Date: 2014-07-04
+Author: Adam Shelly
+Subject: minor tweaks for mingw.
+
+
+----------------
+Date: 2014-07-04
+Author: Sonny Jeon
+Subject: Realtime rate reporting. Updated decimal places.
+
+- Added a new optional compile-time feature for ‘realtime’ (within
+50ms) feed rate reporting. When querying for a status report, a new
+data value will state the current operating rate. It’s only beta at the
+moment and has some kinks to work out.
+
+- Updated the code for printing floating point values to N decimal
+places. Generalized the main floating point print code to accept a new
+decimal places value and created a set of handler functions to print
+certain floating point value types used in Grbl, like position, rates,
+coordinate offsets, etc. All of these have different decimal
+requirements and change when printed in mm or inches mode.
+
+- Number of decimal places for the different value types can be
+re-defined in config.h, but there shouldn’t be a need for this, as
+these are physically limited.
+
+- Removed the decimal places settings, as this was now obsoleted by the
+new decimal places code.
+
+- The new decimal places code also saves almost 300kB in flash space,
+as it’s more efficient.
+
+
+----------------
+Date: 2014-07-04
+Author: ashelly
+Subject: reduce diffs with dev branch
+
+
+----------------
+Date: 2014-07-04
+Author: ashelly
+Subject: Total rework of simulator for dev branch.  Create separate thread for interrupt processes.  Tick-accurate simulation of timers.  Non-blocking character input for running in realtime mode. Decouple hardware sim from grbl code as much as possible. Expanded command line options. Provisions for cross-platform solution.
+
+
+----------------
+Date: 2014-07-03
+Author: Sonny Jeon
+Subject: Update README.md
+
+----------------
+Date: 2014-07-03
+Author: Sonny Jeon
+Subject: G18 reporting bug fix.
+
+- G18 wasn’t getting reported back to the user correctly, even though
+it has been set internally. Fixed the reporting code to reflect this
+accurately.
+
+
+----------------
+Date: 2014-07-03
+Author: Sonny Jeon
+Subject: G-code parser G0/G1 bug fix.
+
+- Although stated as invalid in the NIST g-code standard, most g-code
+parsers, including linuxcnc, allow G0 and G1 to be commanded without
+axis words present. For example, something like ‘G1 F100.0’ to preset
+the motion mode and feed rate without a motion commanded. Older CNC
+controllers actually required this for feed rate settings. This update
+should now allow this type of behavior.
+
+
+----------------
+Date: 2014-07-02
+Author: Sonny Jeon
+Subject: Minor bug fixes and updates. Line number tracking.
+
+- Line number tracking was getting truncated at 255, since it was using
+wrong variable type. Fixed it with a trunc().
+
+- Increased the max number line allowed by Grbl to 9999999 from the
+g-code standard 99999. The latter seems to be an arbitrary number, so
+we are allowing larger ones for at least one known use case scenario.
+
+- Created a new test directory to contain some testing g-code to proof
+the firmware. Only got started with one test case so far. More will be
+inserted as needed.
+
+- Some other commenting updates to clarify certain aspects of the code.
+
+
+----------------
+Date: 2014-06-26
+Author: Krzysztof Foltman
+Subject: Fixed atomic access to flags in sys.execute.
+
+This seems to fix the bug that caused Grbl to hang during some operations,
+especially jogging.
+
+
+----------------
+Date: 2014-05-31
+Author: Sonny Jeon
+Subject: Arc error-checking update.
+
+- Updated offset-mode arc error-checking to EMC2’s version: The old
+NIST definition required the radii to the current location and target
+location to differ no more than 0.002mm. This proved to be problematic
+and probably why LinuxCNC(EMC2) updated it to be 0.005mm AND 0.1%
+radius OR 0.5mm.
+
+
+----------------
+Date: 2014-05-31
+Author: Sonny Jeon
+Subject: Various minor g-code parser fixes.
+
+- Updated the mantissa calculation that checks for non-integer values
+and GXX.X commands that aren’t supported. There was a potential uint8
+overflow issue.
+
+- Fixed g-code parser bug related to not using the correct modal
+struct. G10 P0 not selecting the current coordinate system when a
+G55-59 is issued in the same line.
+
+- Fixed g-code parser bug related to not using the correct modal
+struct. Target position locations were not computed correctly when
+G90/91 distance modes were changed in the same line. It was using the
+previous state, rather than the current block.
+
+
+----------------
+Date: 2014-05-29
+Author: Sonny Jeon
+Subject: Fixed spindle/coolant/dwell state check.
+
+
+----------------
+Date: 2014-05-25
+Author: Sonny Jeon
+Subject: Major g-code parser overhaul. 100%* compliant. Other related updates.
+
+- Completely overhauled the g-code parser. It’s now 100%* compliant. (*
+may have some bugs). Being compliant, here are some of the major
+differences.
+
+- SMALLER and JUST AS FAST! A number of optimizations were found that
+sped things up and allowed for the more thorough error-checking to be
+installed without a speed hit. Trimmed a lot of ‘fat’ in the parser and
+still was able to make it significantly smaller than it was.
+
+- No default feed rate setting! Removed completely! This doesn’t exist
+in the g-code standard. So, it now errors out whenever it’s undefined
+for motions that require it (G1/2/3/38.2).
+
+- Any g-code parser error expunges the ENTIRE block. This means all
+information is lost and not passed on to the running state. Before some
+of the states would remain, which could have led to some problems.
+
+- If the g-code block passes all of the error-checks, the g-code state
+is updated and all motions are executed according to the order of
+execution.
+
+- Changes in spindle speed, when already running, will update the
+output pin accordingly. This fixes a bug, where it wouldn’t update the
+speed.
+
+- Update g-code parser error reporting. Errors now return detailed
+information of what exact went wrong. The most common errors return a
+short text description. For less common errors, the parser reports
+‘Invalid gcode ID:20’, where 20 is a error ID. A list of error code IDs
+and their descriptions will be documented for user reference elsewhere
+to save flash space.
+
+- Other notable changes:
+
+- Added a print integer routine for uint8 variables. This saved
+significant flash space by switching from a heavier universal print
+integer routine.
+
+- Saved some flash space with our own short hypotenuse calculation
+
+- Some arc computation flash and memory optimizations.
+
+
+----------------
+Date: 2014-05-18
+Author: Jens Geisler
+Subject: Merge pull request #408 from chamnit/master
+
+MIT-Licensing change.
+
+----------------
+Date: 2014-05-18
+Author: Sonny Jeon
+Subject: MIT-licensing change.
+
+
+----------------
+Date: 2014-05-18
+Author: Sonny Jeon
+Subject: MIT-licensing change
+
+
+----------------
+Date: 2014-04-28
+Author: Sonny Jeon
+Subject: Merge pull request #391 from paulkaplan/master
+
+Update Shapeoko 2 defaults
+
+----------------
+Date: 2014-04-14
+Author: Paul Kaplan
+Subject: updated shapeoko2 defaults
+
+
+----------------
+Date: 2014-03-14
+Author: Sonny Jeon
+Subject: Update README.md
+
+----------------
+Date: 2014-03-13
+Author: Sonny Jeon
+Subject: Comment corrections and function call update.
+
+
+----------------
+Date: 2014-03-13
+Author: Sonny Jeon
+Subject: Merge pull request #373 from EliteEng/dev
+
+Added Probing to Mega2560 and fixed Shapeoko2 compile error
+
+----------------
+Date: 2014-03-11
+Author: Rob Brown
+Subject: Added Probing to Mega2560 and fixed Shapeoko2 compile error
+
+
+----------------
+Date: 2014-03-07
+Author: henols
+Subject: Probing command gets stuck in hold if several g38.2 are submitted
+Ex.
+G0 X0 Y0 Z0
+G38.2 Z-10 F100
+G10 L20 P0 Z0
+G0 Z2
+G38.2 Z-1 F50
+G10 L20 P0 Z0
+G0 Z2
+G0 X0 Y0
+G38.2 Z-1 F100
+G0 Z2
+
+
+----------------
+Date: 2014-03-10
+Author: Sonny Jeon
+Subject: Merge pull request #372 from martinstingl/master
+
+Corrected units of default acceleration values
+
+----------------
+Date: 2014-03-10
+Author: Martin Stingl
+Subject: Corrected units of default acceleration values
+
+
+----------------
+Date: 2014-03-07
+Author: Sonny Jeon
+Subject: Merge pull request #368 from henols/dev
+
+Probing command gets stuck in hold if several g38.2 are submitted
+
+----------------
+Date: 2014-03-07
+Author: henols
+Subject: Probing command gets stuck in hold if several g38.2 are submitted
+Ex.
+G0 X0 Y0 Z0
+G38.2 Z-10 F100
+G10 L20 P0 Z0
+G0 Z2
+G38.2 Z-1 F50
+G10 L20 P0 Z0
+G0 Z2
+G0 X0 Y0
+G38.2 Z-1 F100
+G0 Z2
+
+
+----------------
+Date: 2014-02-28
+Author: Sonny Jeon
+Subject: G38.2 probe feature rough draft installed. Working but needs testing.
+
+- G38.2 straight probe now supported. Rough draft. May be tweaked more
+as testing ramps up.
+
+- G38.2 requires at least one axis word. Multiple axis words work too.
+When commanded, the probe cycle will move at the last ‘F’ feed rate
+specified in a straight line.
+
+- During a probe cycle: If the probe pin goes low (normal high), Grbl
+will record that immediate position and engage a feed hold. Meaning
+that the CNC machine will move a little past the probe switch point, so
+keep federates low to stop sooner. Once stopped, Grbl will issue a move
+to go back to the recorded probe trigger point.
+
+- During a probe cycle: If the probe switch does not engage by the time
+the machine has traveled to its target coordinates, Grbl will issue an
+ALARM and the user will be forced to reset Grbl. (Currently G38.3 probe
+without error isn’t supported, but would be easy to implement later.)
+
+- After a successful probe, Grbl will send a feedback message
+containing the recorded probe coordinates in the machine coordinate
+system. This is as the g-code standard on probe parameters specifies.
+
+- The recorded probe parameters are retained in Grbl memory and can be
+viewed with the ‘$#’ print parameters command. Upon a power-cycle, not
+a soft-reset, Grbl will re-zero these values.
+
+- Moved ‘$#’ command to require IDLE or ALARM mode, because it accesses
+EEPROM to fetch the coordinate system offsets.
+
+- Updated the Grbl version to v0.9d.
+
+- The probe cycle is subject to change upon testing or user-feedback.
+
+
+----------------
+Date: 2014-02-27
+Author: Sonny Jeon
+Subject: Probe cycle line numbers ifdef fixes to get it to compile.
+
+- Updated some of the ifdefs when disabling line numbers feature.
+Getting messy with this compile-time option. This will likely get
+cleaned up later.
+
+- This is just a push to get the new probing code to compile. Testing
+and optimization of the code will soon follow and be pushed next.
+
+
+----------------
+Date: 2014-02-27
+Author: Sonny Jeon
+Subject: Merge pull request #362 from robgrz/dev
+
+Minimal probing cycle working.  Supports both G38.2 for error and G38.3 ...
+
+----------------
+Date: 2014-02-26
+Author: Sonny Jeon
+Subject: Added grbl planner Matlab simulator for test reference. Updated line number compile-time option.
+
+- Added a grbl planner simulation tool that was written in Matlab and
+Python. It was used to visualize the inner workings of the planner as a
+program is streamed to it. The simulation assumes that the planner
+buffer is empty, then filled, and kept filled. This is mainly for users
+to see how the planner works.
+
+- Updated some of the compile-time ifdefs when enabling line numbers.
+The leaving the un-used line numbers in the function calls eats a
+non-neglible amount of flash memory. So the new if-defs remove them.
+
+
+----------------
+Date: 2014-02-25
+Author: Robert Grzesek
+Subject: Minimal probing cycle working.  Supports both G38.2 for error and G38.3 when no errors are desired.
+
+
+----------------
+Date: 2014-02-19
+Author: Sonny Jeon
+Subject: Minor updates to line number feature.
+
+- Changed line number integer types from unsigned to signed int32.
+G-code mandates values cannot exceed 99999. Negative values can be used
+to indicate certain modes.
+
+- Homing cycle line number changed to -1, as an indicator.
+
+- Fixed a reporting define for the spindle states that was broken by
+the last merge.
+
+
+----------------
+Date: 2014-02-19
+Author: Sonny Jeon
+Subject: Merge pull request #356 from robgrz/dev
+
+Line number reporting as compile-time option.
+
+----------------
+Date: 2014-02-19
+Author: Sonny Jeon
+Subject: Commenting updates. Minor bug fix with exit of soft limit event.
+
+
+----------------
+Date: 2014-02-18
+Author: Robert Grzesek
+Subject: Merge commit 'cd71a90ce8a770e0030ed6c9bac805b89724e275' into dev
+
+Conflicts:
+	limits.c
+	motion_control.c
+	report.c
+
+
+----------------
+Date: 2014-02-15
+Author: Sonny Jeon
+Subject: Homing and feed hold bug fixes.
+
+WARNING: Bugs may still exist. This branch is a work in progress and
+will be pushed to the edge branch when at beta stability. Use at your
+own risk.
+
+- Homing freezing issue fixed. Had to do with the cycle stop flag being
+set incorrectly after the homing cycles and before the pull-off
+maneuver. Now resets the stepper motors before this can happen.
+
+- Fixed an issue with a rare feed hold failure. Had to do with feed
+hold ending exactly at the end of a block. The runtime protocol now
+sets the QUEUED and IDLE states appropriately when this occurs. Still
+need to clean this code up however, as it’s patched rather than written
+well.
+
+- Updated version build via $I command.
+
+- Forgot to comment on a new feature for the last commit. Since steps
+are integers and millimeters traveled are floats, the old step segment
+generator ignored the step fraction differences in generating the
+segment velocities. Didn’t see like it would be much of a big deal, but
+there were instances that this would be a problem, especially for very
+slow feed rates. The stepper algorithm now micro-adjusts the segment
+velocities based on the step fractions not executed from the previous
+segment. This ensures that Grbl generates the velocity profiles EXACTLY
+and noticeably improves overall acceleration performance.
+
+
+----------------
+Date: 2014-02-09
+Author: Sonny Jeon
+Subject: Refactoring and lots of bug fixes. Updated homing cycle.
+
+WARNING: There are still some bugs to be worked out. Please use caution
+if you test this firmware.
+
+- Feed holds work much better, but there are still some failure
+conditions that need to be worked out. This is the being worked on
+currently and a fix is planned to be pushed next.
+
+- Homing cycle refactoring: Slight adjustment of the homing cycle to
+allow for limit pins to be shared by different axes, as long as the
+shared limit pins are not homed on the same cycle. Also, removed the
+LOCATE_CYCLE portion of the homing cycle configuration. It was
+redundant.
+
+- Limit pin sharing: (See above). To clear up one or two limit pins for
+other IO, limit pins can now be shared. For example, the Z-limit can be
+shared with either X or Y limit pins, because it’s on a separate homing
+cycle. Hard limit will still work exactly as before.
+
+- Spindle pin output fixed. The pins weren’t getting initialized
+correctly.
+
+- Fixed a cycle issue where streaming was working almost like a single
+block mode. This was caused by a problem with the spindle_run() and
+coolant_run() commands and issuing an unintended planner buffer sync.
+
+- Refactored the cycle_start, feed_hold, and other runtime routines
+into the runtime command module, where they should be handled here
+only. These were redundant.
+
+- Moved some function calls around into more appropriate source code
+modules.
+
+- Fixed the reporting of spindle state.
+
+
+----------------
+Date: 2014-02-06
+Author: Robert Grzesek
+Subject: Made line number reporting optional via config.h
+
+
+----------------
+Date: 2014-02-06
+Author: Robert Grzesek
+Subject: Initial line number reporting
+
+
+----------------
+Date: 2014-02-02
+Author: Sonny Jeon
+Subject: Update README.md
+
+----------------
+Date: 2014-01-28
+Author: Jens Geisler
+Subject: Merge pull request #337 from michmerr/edge
+
+Make sure that cycle_start state is set before simulating steps.
+
+----------------
+Date: 2014-01-28
+Author: michmerr
+Subject: Simplify setting of STATE_CYCLE and ISR interval.
+
+Set sys.state to STATE_CYCLE directly instead of calling back to
+st_wakeup().
+
+Convert get_step_time() to a constant and rename it to ISR_INTERVAL.
+
+
+----------------
+Date: 2014-01-22
+Author: michmerr
+Subject: Make sure that cycle_start state is set before simulating steps.
+
+
+----------------
+Date: 2014-01-15
+Author: Sonny Jeon
+Subject: Update README.md
+
+----------------
+Date: 2014-01-14
+Author: Sonny Jeon
+Subject: Update README.md
+
+----------------
+Date: 2014-01-10
+Author: Sonny Jeon
+Subject: Lots of re-organization and cleaning-up. Some bug fixes.
+
+- Added a new source and header file called system. These files contain
+the system commands and variables, as well as all of the system headers
+and standard libraries Grbl uses. Centralizing some of the code.
+
+- Re-organized the include headers throughout the source code.
+
+- ENABLE_M7 define was missing from config.h. Now there.
+
+- SPINDLE_MAX_RPM and SPINDLE_MIN_RPM now defined in config.h. No
+uncommenting to prevent user issues. Minimum spindle RPM now provides
+the lower, near 0V, scale adjustment, i.e. some spindles can go really
+slow so why use up our 256 voltage bins for them?
+
+- Remove some persistent variables from coolant and spindle control.
+They were redundant.
+
+- Removed a VARIABLE_SPINDLE define in cpu_map.h that shouldn’t have
+been there.
+
+- Changed the DEFAULT_ARC_TOLERANCE to 0.002mm to improve arc tracing.
+Before we had issues with performance, no longer.
+
+- Fixed a bug with the hard limits and the software debounce feature
+enabled. The invert limit pin setting wasn’t honored.
+
+- Fixed a bug with the homing direction mask. Now is like it used to
+be. At least for now.
+
+- Re-organized main.c to serve as only as the reset/initialization
+routine. Makes things a little bit clearer in terms of execution
+procedures.
+
+- Re-organized protocol.c as the overall master control unit for
+execution procedures. Not quite there yet, but starting to make a
+little more sense in how things are run.
+
+- Removed updating of old settings records. So many new settings have
+been added that it’s not worth adding the code to migrate old user
+settings.
+
+- Tweaked spindle_control.c a bit and made it more clear and consistent
+with other parts of Grbl.
+
+- Tweaked the stepper disable bit code in stepper.c. Requires less
+flash memory.
+
+
+----------------
+Date: 2014-01-05
+Author: Sonny Jeon
+Subject: Updates to some stepper algorithm commenting
+
+
+----------------
+Date: 2014-01-05
+Author: Sonny Jeon
+Subject: New build info feature. (per @Analogreality request)
+
+- New build info feature. Hidden command ‘$I’ will print the build info
+for your Grbl firmware. Users may also write an identifying message
+within it via ‘$I=‘ with up to 32 characters. (no more, or else it will
+break).
+
+- Adjusted the max number of startup lines to 3. Majority of people
+will only need one.
+
+- Fixed a compile error with spindle_control.c. A rogue #endif was
+causing problems.
+
+
+----------------
+Date: 2014-01-04
+Author: Sonny Jeon
+Subject: Variable spindle output. Resolved conflicts in last push.
+
+Resolve conflicts.
+
+
+----------------
+Date: 2014-01-04
+Author: Sonny Jeon
+Subject: Cleaned up variable spindle output (PWM). Code and config comments.
+
+- Variable spindle speed output as a configuration option. Thanks
+@EliteEng! When enabled, the Z-limit (D11) and spindle enable(D12) pins
+switch to allow access to the hardware PWM output on pin D11.
+Otherwise, everything should work as it does.
+
+- Removed option for inverting the spindle and coolant enable pins.
+This is a safety hazard, especially for the spindle. When Grbl
+initializes, all pins are momentarily low until it finishes booting. If
+an invert is enabled, this means the spindles can be energized briefly
+during this time. If users need signal inversion, it’s recommended to
+just wire in an inversion circuit instead.
+
+- Cleared out references to spindle variable output in terms of step
+signal. This isn’t complete and requires more deliberation before
+installing.
+
+- Cleared up and cleaned up some code and config comments.
+
+
+----------------
+Date: 2014-01-03
+Author: Sonny Jeon
+Subject: Merge pull request #322 from EliteEng/dev
+
+Update to fix compile error
+
+----------------
+Date: 2014-01-03
+Author: Rob Brown
+Subject: Update to fix compile error
+
+Update to fix compile error
+
+
+----------------
+Date: 2014-01-02
+Author: Sonny Jeon
+Subject: Merge pull request #318 from EliteEng/dev
+
+PWM Spindle Control and Invert Spindle & Coolant Pins
+
+----------------
+Date: 2014-01-03
+Author: Rob Brown
+Subject: Update spindle_control.c
+
+Updated spindle_control.c due to compile error.
+
+----------------
+Date: 2014-01-02
+Author: Sonny Jeon
+Subject: Fix for M7/8/9 modal group checks. Updated AMASS frequency cutoffs and code cleaned.
+
+- Updated Grbl version to 0.9c and build number.
+
+- G-code parser was missing modal group violation checks for M7/8/9
+commands. Added them.
+
+- Updated the Adaptive Multi-Axis Step Smoothing (AMASS) cutoff
+frequencies so that the trade between the 16-bit Timer1 accuracy and
+the level step smoothing are somewhat better balanced. (Smoothing isn’t
+free, but a higher accuracy timer would provide high cutoff
+frequencies.)
+
+
+----------------
+Date: 2014-01-02
+Author: Sonny Jeon
+Subject: Update README.md
+
+----------------
+Date: 2014-01-02
+Author: Rob Brown
+Subject: PWM Spindle Control and Invert Spindle & Coolant Pins
+
+PWM Spindle Control and Invert Spindle & Coolant Pins
+
+
+----------------
+Date: 2013-12-30
+Author: Sonny Jeon
+Subject: Minor bug fixes: Homing travel calculations. Cycle resuming after spindle and dwell commands.
+
+- Homing travel calculations fixed. It was computing the min travel
+rather than max.
+
+- Auto-start disable and pausing after spindle or dwell commands.
+Related to plan_synchronize() function call. Now fixed, but still need
+to work on the system state.
+
+- Pushed a fix to make this branch more Arduino IDE compatible. Removed
+extern call in nuts_bolts.c
+
+- Updated the stepper configuration option of enabling or disabling the
+new Adaptive Multi-Axis Step Smoothing Algorithm. Now works either way.
+
+- Updated some copyright info.
+
+
+----------------
+Date: 2013-12-30
+Author: Sonny Jeon
+Subject: Merge pull request #201 from Protoneer/master
+
+Made a few changes to make the code compatible with the Arduino IDE. Sorry about the tardiness!
+
+----------------
+Date: 2013-12-30
+Author: Sonny Jeon
+Subject: Incomplete push but working. Lots more stuff. More to come.
+
+- NEW! An active multi-axis step smoothing algorithm that automatically
+adjusts dependent on step frequency. This solves the long standing
+issue to aliasing when moving with multiple axes. Similar in scheme to
+Smoothieware, but more advanced in ensuring a more consistent CPU
+overhead throughout all frequencies while maintaining step exactness.
+
+- Switched from Timer2 to Timer0 for the Step Port Reset Interrupt.
+Mainly to free up hardware PWM pins.
+
+- Seperated the direction and step pin assignments, so we can now move
+them to seperate ports. This means that we can more easily support 4+
+axes in the future.
+
+- Added a setting for inverting the limit pins, as so many users have
+request. Better late than never.
+
+- Bug fix related to EEPROM calls when in cycle. The EEPROM would kill
+the stepper motion. Now protocol mandates that the system be either in
+IDLE or ALARM to access or change any settings.
+
+- Bug fix related to resuming the cycle after a spindle or dwell
+command if auto start has been disabled. This fix is somewhat temporary
+or more of a patch. Doesn’t work with a straight call-response
+streaming protocol, but works fine with serial buffer pre-filling
+streaming that most clients use.
+
+- Renamed the pin_map.h to cpu_map.h to more accurately describe what
+the file is.
+
+- Pushed an auto start bug fix upon re-initialization.
+
+- Much more polishing to do!
+
+
+----------------
+Date: 2013-12-29
+Author: Sonny Jeon
+Subject: Incomplete dev code push, but working. Lots of updates/fixes/improvements. Much still to polish.
+
+- Ugh. Github just erased my list of improvements and changes due to a
+conflict and forcing me to resolve it. Hope this goes through.
+
+- Major stepper algorithm change. Trashed the old v0.9 edge
+branch-style stepper algorithm. It’s fine, but it was susceptible to
+aliasing noise when moving very slow or very fast. It also had a bit of
+CPU overhead. It was written to solve a standing issue with v0.8
+master, where it couldn’t generate a smooth acceleration abocve
+10-15kHz. But, with new step segment buffer in v0.9c, it inadvertently
+fixed the acceleration problem with v0.8 stepper algorithm. So, what
+does it mean for you? Smoother stepper pulses and likely higher step
+frequencies.
+
+- Stepper algorithm now uses Timer1 and Timer2, instead of Timer0 and
+Timer2. Timers 0 and 2 can be swapped if there is an issue.
+
+- With the old v0.8 stepper algorithm, the STEP_DELAY_PULSE
+configuration option is also back.
+
+- NEW! Hard limit software debouncing. Grbl now employs the AVR’s
+watchdog timer as a way to monitor the hard limit pins and checking
+their states after a delay. This is a simple software debouncing
+technique and may help alleviate some of the false trigger some users
+have been complaining about. BUT, this won’t fix electric noise issues!
+
+- Fixed an issue with the new homing cycle routine where it wasn’t
+honoring the acceleration and axis speed limits depending on the homing
+cycle mask. Now does. Also, updated the homing direction mask code to
+be a little cleaner.
+
+- Moved the main part of the homing cycle control and execution to
+motion_control.c, where it fits better.
+
+- Removed the STATE_INIT system state as it was redundant. Made the
+system states into bitflags so multiple system states can be checked
+via one if statement.
+
+- Reorganized the power-up routine to work with the new system states.
+
+
+----------------
+Date: 2013-12-29
+Author: Sonny Jeon
+Subject: Merge branch 'dev' of https://github.com/grbl/grbl into dev
+
+Conflicts:
+	limits.c
+
+
+----------------
+Date: 2013-12-29
+Author: Sonny Jeon
+Subject: Merge branch 'dev' of https://github.com/grbl/grbl into dev
+
+Conflicts:
+	limits.c
+
+
+----------------
+Date: 2013-12-27
+Author: Sonny Jeon
+Subject: Merge pull request #312 from scottrcarlson/dev
+
+Fixed homing_dir_mask functionality in the re-written homing_cycle.
+
+----------------
+Date: 2013-12-27
+Author: Scott R Carlson
+Subject: Hard Limits configured for active high.
+
+Added the use of homing_dir_mask to homing_cycle
+
+
+----------------
+Date: 2013-12-10
+Author: Sonny Jeon
+Subject: Update README.md
+
+----------------
+Date: 2013-12-10
+Author: Sonny Jeon
+Subject: Revamped homing cycle. Axis limits and max travel bug fixes. Build info. Refactored config.h.
+
+- Revamped and improved homing cycle. Now tied directly into the main
+planner and stepper code, which enables much faster homing seek rates.
+Also dropped the compiled flash size by almost 1KB, meaning 1KB more
+for other features.
+
+- Refactored config.h. Removed obsolete defines and configuration
+options. Moved lots of “advanced” options into the advanced area of the
+file.
+
+- Updated defaults.h with the new homing cycle. Also updated the
+Sherline 5400 defaults and added the ShapeOko2 defaults per user
+submissions.
+
+- Fixed a bug where the individual axes limits on velocity and
+acceleration were not working correctly. Caused by abs() returning a
+int, rather than a float. Corrected with fabs(). Duh.
+
+- Added build version/date to the Grbl welcome message to help indicate
+which version a user is operating on.
+
+- Max travel settings were not being defaulted into the settings EEPROM
+correctly. Fixed.
+
+- To stop a single axis during a multi-axes homing move, the stepper
+algorithm now has a simple axis lock mask which inhibits the desired
+axes from moving. Meaning, if one of the limit switches engages before
+the other, we stop that one axes and keep moving the other.
+
+
+----------------
+Date: 2013-12-10
+Author: Sonny Jeon
+Subject: Merge pull request #301 from shapeoko/master
+
+added shapeoko2 profile
+
+----------------
+Date: 2013-12-10
+Author: Edward
+Subject: added shapeoko2 profile
+
+shapeoko 2 uses 2mm GT2 belting and 20tooth pulleys
+
+
+----------------
+Date: 2013-12-07
+Author: Sonny Jeon
+Subject: Deceleration to zero speed improvements. Update defaults.
+
+- A minor issue with deceleration ramps when close to zero velocity.
+Should be virtually unnoticeable for most CNC systems, but fixed in
+this push and accurate to physics.
+
+- Updated some of the junction deviation defaults. Because the new
+stepper algorithm can easily maximize a CNC machine’s capabilities or
+simply go much faster, this means the speed in which it enters
+junctions has to be a little more constrained. Meaning that, we have to
+slow a little bit down more so that we don’t exceed the acceleration
+limits of the stepper motors.
+
+
+----------------
+Date: 2013-12-07
+Author: Sonny Jeon
+Subject: Pushed bug fixes. Updated readme.
+
+- G18 plane select fix from XZ-plane to ZX-plane per right hand rule.
+
+- Added volatile declaration for rx_buffer_tail in serial.c. No real
+effect to operation as avr-gcc adds this upon compilation. Helps with
+porting issues when using a different compiler.
+
+
+----------------
+Date: 2013-12-07
+Author: Sonny Jeon
+Subject: Pushed limits active high option. Updated defaults.h. Misc bug fixes. Cleaned up codebase.
+
+- Pushed limit switch active high option (i.e. NC switches).
+
+- Updated defaults.h to be in-line with the new settings.
+
+- Refactored feed hold handling and step segment buffer to be more
+generalized in effort to make adding feedrate overrides easier in the
+future. Also made it a little more clean.
+
+- Fixed G18 plane select issue. Now ZX-plane, rather than XZ-plane, per
+right hand rule.
+
+- Cleaned some of the system settings by more accurately renaming some
+of the variables and removing old obsolete ones.
+
+- Declared serial.c rx_buffer_tail to be volatile. No effect, since
+avr-gcc automatically does this during compilation. Helps with porting
+when using other compilers.
+
+- Updated version number to v0.9b.
+
+- Updates to README.md
+
+
+----------------
+Date: 2013-12-04
+Author: Sonny Jeon
+Subject: Reinstated feed holds into new stepper algorithm and planner. Rough draft, but working.
+
+- Reinstated the feed hold feature with the new stepper algorithm and
+new optimized planner. It works, but will be re-factored a bit soon to
+clean up the code.
+
+- At this point, feedrate overrides may need to be installed in the
+v1.0 version of grbl, while this version will likely be pushed to the
+edge branch soon and pushed to master after the bugs have been squashed.
+
+- Measured the overall performance of the new planner and stepper
+algorithm on an oscilloscope. The new planner is about 4x faster than
+before, where it is completing a plan in around 1ms. The stepper
+algorithm itself is minutely faster, as it is a little lighter. The
+trade-off in the increased planner performance comes from the new step
+segment buffer. However, even in the worse case scenario, the step
+segment buffer generates a new segment with a typical 0.2 ms, and the
+worse case is 1ms upon a new block or replanning the active block.
+Added altogether, it’s argubly still twice as efficient as the old one.
+
+
+----------------
+Date: 2013-11-23
+Author: Sonny Jeon
+Subject: Merge pull request #289 from Travis-Snoozy/master
+
+Add support for active-high limit switches
+
+----------------
+Date: 2013-11-22
+Author: Travis Snoozy
+Subject: Add support for active-high limit switches
+
+
+----------------
+Date: 2013-11-22
+Author: Sonny Jeon
+Subject: Yet another major stepper algorithm and planner overhaul.
+
+- Overhauled the stepper algorithm and planner again. This time
+concentrating on the decoupling of the stepper ISR completely. It is
+now dumb, relying on the segment generator to provide the number of
+steps to execute and how fast it needs to go. This freed up lots of
+memory as well because it made a lot tracked variables obsolete.
+
+- The segment generator now computes the velocity profile of the
+executing planner block on the fly in floating point math, instead of
+allowing the stepper algorithm to govern accelerations in the previous
+code. What this accomplishes is the ability and framework to (somewhat)
+easily install a different physics model for generating a velocity
+profile, i.e. s-curves.
+
+- Made some more planner enhancements and increased efficiency a bit.
+
+- The changes also did not increase the compiled size of Grbl, but
+decreased it slightly as well.
+
+- Cleaned up a lot of the commenting.
+
+- Still much to do, but this push works and still is missing feedholds
+(coming next.)
+
+
+----------------
+Date: 2013-10-29
+Author: Sonny Jeon
+Subject: Another merge fix.
+
+
+----------------
+Date: 2013-10-29
+Author: Sonny Jeon
+Subject: Merge fixes.
+
+
+----------------
+Date: 2013-10-29
+Author: Sonny Jeon
+Subject: Merge branch 'dev_2' into dev
+
+Conflicts:
+	README.md
+	gcode.c
+	motion_control.c
+	planner.c
+	planner.h
+	protocol.c
+	report.c
+	settings.c
+	settings.h
+	stepper.c
+	stepper.h
+
+
+----------------
+Date: 2013-10-29
+Author: Sonny Jeon
+Subject: Merge branch 'dev_2' into dev
+
+Conflicts:
+README.md
+gcode.c
+motion_control.c
+planner.c
+planner.h
+protocol.c
+report.c
+settings.c
+settings.h
+stepper.c
+stepper.h
+
+
+----------------
+Date: 2013-10-29
+Author: Sonny Jeon
+Subject: Planner function call fix. More clean up.
+
+
+----------------
+Date: 2013-10-29
+Author: Sonny Jeon
+Subject: Updated comments. Changed stepper variable names to be more understandable. Added step locking note.
+
+- Updated config comments and stepper code comments for the new changes.
+
+- Changed stepper algorithm variable names to be more understandable in
+what they actually do.
+
+- Added a stepper lock note in default.h per user request.
+
+- Started some code layout in handling feed holds and refactoring the
+homing routine to use the main stepper algorithm instead of a seperate
+version.
+
+
+----------------
+Date: 2013-10-24
+Author: Sonny Jeon
+Subject: Cleaned up stepper and planner code.
+
+- Added some compile-time error checking. Will add more in future
+pushes to ensure settings are correct and within parameters that won't
+break anything.
+
+- Pushed some master branch changes with MEGA pin settings.
+
+- Cleaned up planner code and comments to clarify some of the new
+changes. Still much to do here.
+
+- Cleaned up the new stepper code. May need to abstract some of the
+segment buffer more to fix the feed holds (and integrate homing into
+the main stepper routine). With what's planned, this should make the
+stepper algorithm easier to attach other types of processes to it,
+where it is now tightly integrated with the planner buffer and nothing
+else.
+
+
+----------------
+Date: 2013-10-21
+Author: Sonny Jeon
+Subject: Merge pull request #279 from EliteEng/master
+
+Changed Stepper Pins
+
+----------------
+Date: 2013-10-18
+Author: Rob Brown
+Subject: Changed Stepper Pins
+
+Changed Stepper Pins so the Step Port Invert Mask matches the UNO
+
+
+----------------
+Date: 2013-10-17
+Author: Sonny Jeon
+Subject: Merge pull request #278 from EliteEng/master
+
+Update Pin Change Interrupts on Mega 2560
+
+----------------
+Date: 2013-10-17
+Author: Rob Brown
+Subject: Update Pin Change Interrupts so it works
+
+PCIE1 - Interrupt 8 on the Mega is attached to USART0 RX so when any
+serial communication was transmitted it was triggering the Reset
+Interrupt
+
+
+----------------
+Date: 2013-10-14
+Author: Sonny Jeon
+Subject: Fine tuning of new stepper algorithm with protected planner. Adaptive step prediction for segment buffer.
+
+- Cleaned up the new stepper algorithm code with more commenting and
+better logic flow.
+
+- The new segment buffer now predicts the number of steps each segment
+should have to execute over about 8 milliseconds each (based on the
+ACCELERATION_TICKS_PER_SECOND setting). So, for when the whole segment
+buffer is full, the stepper algorithm has roughly 40 milliseconds of
+steps queued before it needs to refilled by the main program.
+
+- Readjusted the max supported step rate back to 30kHz from the lower
+development 20kHz. Everything still works amazing great and the test
+CNC machine still runs twice as fast with the new stepper algorithm and
+planner.
+
+- Upped the standard serial baudrate to 115200 baud, as it is clear
+that the bottleneck is the serial interface. Will now support this, as
+well as the old 9600 baud, in new firmware builds.
+
+
+----------------
+Date: 2013-10-12
+Author: Sonny Jeon
+Subject: New stepper subsystem bug fixes.
+
+- New stepper algorithm with the new optimized planner seems to be
+working nearly twice as fast as the previous algorithm.
+
+- For one, the planner computation overhead is probably a fraction of
+what it used to be with the worst case being about half still.
+
+- Secondly, anytime the planner plans back to the first executing
+block, it no longer overwrites the block conditions and allows it to
+complete without lost steps. So no matter if the streams slows, the
+protected planner should keep the steppers moving without risk of lost
+steps (although this still needs to be tested thoroughly and may
+audibly sound weird when this happens.)
+
+- It now seems that the bottleneck is the serial baudrate (which is
+good!)
+
+
+----------------
+Date: 2013-10-09
+Author: Sonny Jeon
+Subject: Protected buffer works! Vast improvements to planner efficiency.  Many things still broken with overhaul.
+
+Development push. Lots still broken.
+
+- Protected planner concept works! This is a critical precursor to
+enabling feedrate overrides in allowing the planner buffer and the
+stepper execution operate atomically. This is done through a
+intermediary segment buffer.
+
+- Still lots of work to be done, as this was a complete overhaul of the
+planner and stepper subsystems. The code can be cleaned up quite a bit,
+re-enabling some of the broken features like feed holds, and finishing
+up some of the concepts
+
+- Pushed some of the fixes from the master and edge branch to here, as
+this will likely replace the edge branch when done.
+
+
+----------------
+Date: 2013-08-25
+Author: Sonny Jeon
+Subject: Merge pull request #263 from 0xPIT/master
+
+remove mcu argument for avr-size in makefile as it is not present in GNU...
+
+----------------
+Date: 2013-08-25
+Author: 0xPIT
+Subject: remove mcu argument for avr-size in makefile as it is not present in GNU Binutils 2.22
+
+
+----------------
+Date: 2013-08-20
+Author: Sonny Jeon
+Subject: Pin map definition cleanup.
+
+
+----------------
+Date: 2013-08-19
+Author: Sonny Jeon
+Subject: Processor-independent pin mapping feature.
+
+- Cleaned up and organized pin mapping concept by @elmom.
+
+- pin_map.h allows for user-supplied pin mapping and port vector
+definitions in a centralized file. With more processor types, more
+definitions could be added.
+
+
+----------------
+Date: 2013-08-19
+Author: Sonny Jeon
+Subject: Merge pull request #260 from elmom/master
+
+Thanks for the contribution! Looks good. Will update some of the semantics shortly, but the idea is solid.
+
+----------------
+Date: 2013-08-19
+Author: Sonny Jeon
+Subject: Push old dev_2 draft to work on other things.
+
+- **NON-FUNCTIONAL**
+- Contains an old draft of separating the stepper driver direct access
+to the planner buffer. This is designed to keep the stepper and planner
+modules independent and prevent overwriting or other complications. In
+this way, feedrate override should be able to be installed as well.
+- A number of planner optimizations are installed too.
+- Not sure where the bugs are. Either in the new planner optimizations,
+new stepper module updates, or in both. Or it just could be that the
+Arduino AVR is choking with the new things it has to do.
+
+
+----------------
+Date: 2013-08-19
+Author: Sonny Jeon
+Subject: Merge pull request #229 from 0xPIT/patch-1
+
+fix command line parameter for avr-size
+
+----------------
+Date: 2013-07-21
+Author: Elmo Mäntynen
+Subject: Refactor config.h to allow defaults for chips/boards with different pin mappings
+
+
+----------------
+Date: 2013-07-21
+Author: Elmo Mäntynen
+Subject: Added pin mapping list to docs, useful for porting
+
+
+----------------
+Date: 2013-07-21
+Author: Elmo Mäntynen
+Subject: Make serial work with most chips by default
+
+
+----------------
+Date: 2013-05-16
+Author: 0xPIT
+Subject: fix command line parameter for avr-size
+
+----------------
+Date: 2013-04-05
+Author: Sonny Jeon
+Subject: Updated readme
+
+
+----------------
+Date: 2013-04-05
+Author: Sonny Jeon
+Subject: Increased g-code parser line buffer. Added line overflow feedback.
+
+- Increased g-code parser line buffer from 50 to 70 characters. Should
+fix most all issues with long arc statements, provided that they are 8
+digits(float) long only.
+
+- Added a line buffer overflow feedback error to let the user know when
+it encounters this problem. Resets the line whenever this occurs.
+(Thanks @BHSPitMonkey!)
+
+
+----------------
+Date: 2013-04-05
+Author: Sonny Jeon
+Subject: Updates to edge/dev. Line buffer increased/planner buffer decreased. Line overflow feedback.
+
+- Increased g-code parser line buffer to 70 characters (from 50) to
+prevent some long arc commands from getting truncated.
+
+- Decreased planner buffer from 18 to 17 blocks to free up memory for
+line buffer.
+
+- Added a line buffer overflow feedback error (Thanks @BHSPitMonkey!)
+
+
+----------------
+Date: 2013-03-28
+Author: Sonny Jeon
+Subject: Minor updates to code and commenting.
+
+
+----------------
+Date: 2013-03-22
+Author: Sonny Jeon
+Subject: Update README.md
+
+----------------
+Date: 2013-03-21
+Author: Sonny Jeon
+Subject: Untested! Soft limits, max travel, homing changes, new settings.
+
+- WARNING: Completely untested. Will later when there is time. Settings
+WILL be overwritten, as there are new settings.
+
+- Soft limits installed. Homing must be enabled for soft limits to work
+correctly. Errors out much like a hard limit, locking out everything
+and bringing up the alarm mode. Only difference is it forces a feed
+hold before doing so. Position is not lost.
+
+- IMPORTANT: Homing had to be updated so that soft limits work better
+with less CPU overhead. When homing completes, all axes are assumed to
+exist in negative space. If your limit switch is other side, the homing
+cycle with set this axis location to the max travel value, rather than
+zero.
+
+- Update mc_line() to accept an array, rather than individual variables.
+
+- Added an mc_auto_cycle_start() function handle this feature.
+Organization only.
+
+-
+
+
+----------------
+Date: 2013-03-19
+Author: Sonny Jeon
+Subject: Update README.md
+
+----------------
+Date: 2013-03-19
+Author: Sonny Jeon
+Subject: G-code updates for G10 L2 and L20
+
+- Updated g-codes G10 L2 and G10 L20 to the new descriptions on
+linuxcnc.org
+
+
+----------------
+Date: 2013-03-19
+Author: Sonny Jeon
+Subject: G-code updates for G10 L2 and L20.
+
+- LinuxCNC's g-code definitions changed for G10. Updated to their
+descriptions.
+
+
+----------------
+Date: 2013-03-13
+Author: Bertus Kruger
+Subject: Update planner.c
+
+Removed inline from all functions. 
+
+If this is really needed is there another way that we can get 
+around using it? (The Arduino IDE does not recognize it) 
+
+----------------
+Date: 2013-03-13
+Author: Bertus Kruger
+Subject: Update nuts_bolts.c
+
+Removed __floatunsisf and used normal casting on line 81. 
+This makes it compatible with the Arduino IDE.
+
+----------------
+Date: 2013-03-12
+Author: Sonny Jeon
+Subject: Pushed minor changes. Thanks @Protoneer!
+
+
+----------------
+Date: 2013-03-12
+Author: Sonny Jeon
+Subject: Merge pull request #200 from Protoneer/master
+
+Fixed small bug.
+
+----------------
+Date: 2013-03-13
+Author: Bertus Kruger
+Subject: Update gcode.c
+
+Removed the home_select variable.
+
+----------------
+Date: 2013-03-13
+Author: Bertus Kruger
+Subject: Update eeprom.h
+
+Fixed the function signature.
+
+----------------
+Date: 2013-03-13
+Author: Bertus Kruger
+Subject: Update eeprom.c
+
+Changed back
+
+----------------
+Date: 2013-03-12
+Author: Bertus Kruger
+Subject: Update gcode.c
+
+home_select defined out of scope. Moved it outside the switch 
+so the rest of the switch can see it properly. 
+
+----------------
+Date: 2013-03-12
+Author: Bertus Kruger
+Subject: Update eeprom.c
+
+Function eeprom_put_char's parameters did not align with the .h file.
+
+----------------
+Date: 2013-03-01
+Author: Sonny Jeon
+Subject: Bug fix to-do note on soft limit checks. Not yet completed.
+
+
+----------------
+Date: 2013-03-01
+Author: Sonny Jeon
+Subject: Minor changes and added notes to soft limits routines.
+
+- Changed up mc_line to accept an array rather than individual x,y,z
+coordinates. Makes some of the position data handling more effective,
+especially for a 4th-axis later on.
+
+- Changed up some soft limits variable names.
+
+
+----------------
+Date: 2013-02-26
+Author: Sonny Jeon
+Subject: Merge pull request #193 from bungao/soft_limts
+
+integrating soft limits
+
+----------------
+Date: 2013-02-26
+Author: Jens Geisler
+Subject: bugfix: uninitiallized curr_block->new_entry_speed_sqr lead to step loss
+in some cases
+
+----------------
+Date: 2013-02-26
+Author: bungao
+Subject: integrating soft limits
+
+
+----------------
+Date: 2013-02-22
+Author: Sonny Jeon
+Subject: Added some prelimary notes to new changes.
+
+
+----------------
+Date: 2013-02-22
+Author: Sonny Jeon
+Subject: Push additional updates from @jgeisler0303
+
+
+----------------
+Date: 2013-02-22
+Author: Jens Geisler
+Subject: changed atomic access for updating the acceleration profile
+the stepper interrupt is only halted when necessary and for the shortest
+time possible (8% cycle time)
+
+----------------
+Date: 2013-02-20
+Author: Sonny Jeon
+Subject: Merge pull request #188 from jgeisler0303/new_planner
+
+New planner commits merge into dev branch.
+
+----------------
+Date: 2013-02-20
+Author: Sonny Jeon
+Subject: Update README.md
+
+----------------
+Date: 2013-02-20
+Author: Jens Geisler
+Subject: added counter for planner steps
+
+----------------
+Date: 2013-02-20
+Author: Jens Geisler
+Subject: implemented a mixture of Sonny's MATLAB and my previous grbl planner
+ontop of the edge planner
+examples run byte for byte identical old and new version
+
+----------------
+Date: 2013-01-18
+Author: Sonny Jeon
+Subject: Merge pull request #169 from silasb/fix-execute-bit-on-files
+
+Removing executable bit on the files
+
+----------------
+Date: 2013-01-18
+Author: Sonny Jeon
+Subject: Merge bug fixes from recent v0.8c push. Added readme for Grbl Sim.
+
+
+----------------
+Date: 2013-01-18
+Author: Sonny Jeon
+Subject: Merge pull request #167 from tmpvar/simulator-mac
+
+Fix sim makefile so it works on mac
+
+----------------
+Date: 2013-01-18
+Author: Elijah Insua
+Subject: Fix sim makefile so it works on mac
+
+These changes include a path separator fix and the removal of --gc-sections which causes ld failures, and is not needed on a pc.
+
+This patch also changes how a compiler is selected.  The makefile will now select the system compiler , which should work fine
+under mingw and linux.
+
+
+----------------
+Date: 2013-01-17
+Author: Silas Baronda
+Subject: Removing executable bit on the files
+
+
+----------------
+Date: 2013-01-17
+Author: Sonny Jeon
+Subject: Merge pull request #112 from jgeisler0303/simulator
+
+Grbl Simulator. Oh yeah. 
+
+----------------
+Date: 2013-01-17
+Author: Jens Geisler
+Subject: relaunch ontop of latest grbl edge
+code very messy but tested
+
+----------------
+Date: 2013-01-09
+Author: Sonny Jeon
+Subject: Merge pull request #160 from daapp/edge
+
+Replace some constants with N_AXIS.
+
+----------------
+Date: 2013-01-10
+Author: Alexander Danilov
+Subject: Replace some constants with N_AXIS.
+
+
+----------------
+Date: 2013-01-06
+Author: Sonny Jeon
+Subject: Fixed bug with homing and polling at the same time. Updated readme.
+
+
+----------------
+Date: 2013-01-06
+Author: Sonny Jeon
+Subject: Minor changes.
+
+- Changed some names up and removed a plan_reset() function that is
+never used.
+
+
+----------------
+Date: 2012-12-21
+Author: Sonny Jeon
+Subject: Readme link to edge build 2012-12-21
+
+
+----------------
+Date: 2012-12-21
+Author: Sonny Jeon
+Subject: Updated README. Max step rate back at 30kHz. Acceleration minor bug fix.
+
+- Returned the max step rate to 30kHz. The new arc algorithm works uses
+so much less CPU overhead, because the segments are longer, that the
+planner has no problem computing through them.
+
+- Fixed an issue with the acceleration independence scaling. Should now
+work with accelerations above 400mm/sec^2 or so.
+
+- Updated README
+
+
+----------------
+Date: 2012-12-19
+Author: Sonny Jeon
+Subject: Arc mm_per_segment removed, now in terms of tolerance. Stepper ramp counter variable type corrected.
+
+- Arc mm_per_segment parameter was removed and replaced with an
+arc_tolerance parameter, which scales all arc segments automatically to
+radius, such that the line segment error doesn't exceed the tolerance.
+Significantly improves arc performance through larger radius arc,
+because the segments are much longer and the planner buffer has more to
+work with.
+
+- Moved n_arc correction from the settings to config.h. Mathematically
+this doesn't need to be a setting anymore, as the default config value
+will work for all known CNC applications. The error does not accumulate
+as much anymore, since the small angle approximation used by the arc
+generation has been updated to a third-order approximation and how the
+line segment length scale with radius and tolerance now. Left in
+config.h for extraneous circumstances.
+
+- Corrected the st.ramp_count variable (acceleration tick counter) to a
+8-bit vs. 32-bit variable. Should make the stepper algorithm just a
+touch faster overall.
+
+
+----------------
+Date: 2012-12-16
+Author: Sonny Jeon
+Subject: Slow trailing steps fix. Added more defaults.
+
+- Fixed an issue (hopefully) with slow trailing steps after a
+triangular velocity profile move. Sets the trapezoid tick cycle counter
+to the correct value for an accurate reproduction of the deceleration
+curve. Keeps it from arriving too early to the target position, which
+causes the slow trailing steps.
+
+- Added Zen Toolworks 7x7 to default settings.
+
+- Updated readme with new edge build.
+
+
+----------------
+Date: 2012-12-16
+Author: Sonny Jeon
+Subject: Max velocity axes independence installed. Fixed intermittent slow trailing steps. Timer0 disable fix.
+
+- Maximum velocity for each axis is now configurable in settings. All
+rapids/seek move at these maximums. All feed rates(including rapids)
+may be limited and scaled down so that no axis does not exceed their
+limits.
+
+- Moved around auto-cycle start. May change later, but mainly to ensure
+the planner buffer is completely full before cycle starting a streaming
+program. Otherwise it should auto-start when there is a break in the
+serial stream.
+
+- Reverted old block->max_entry_speed_sqr calculations. Feedrate
+overrides not close to ready at all.
+
+- Fixed intermittent slow trailing steps for some triangle velocity
+profile moves. The acceleration tick counter updating was corrected to
+be exact for that particular transition. Should be ok for normal
+trapezoidal profiles.
+
+- Fixed the Timer0 disable after a step pulse falling edge. Thanks
+@blinkenlight!
+
+
+----------------
+Date: 2012-12-14
+Author: Sonny Jeon
+Subject: Acceleration independence installed. Initial re-work of planner for feedrate overrides.
+
+NOTE: This push is a work-in-progress and there are known bugs that
+need to be fixed, like homing acceleration being incompatible. Released
+for testing. Settings will definitely be overwritten, as new settings
+were needed.
+
+- Acceleration independence installed in planner. Each axis can now
+have different accelerations and Grbl will maximize the accelerations
+depending on the direction its moving. Very useful for users like on
+the ShapeOko with vastly different Z-axis properties.
+
+- More planner optimizations and re-factoring. Slightly improved some
+of the older calculations, but new acceleration calculations offset
+these improvements. Overall no change in processing speed.
+
+- Removed planner nominal length checks. It was arguable whether or not
+this improved planner efficiency, especially in the worst case scenario
+of arcs.
+
+- Updated readme and changed to markdown format.
+
+
+----------------
+Date: 2012-12-12
+Author: Sonny Jeon
+Subject: Update README.md
+
+----------------
+Date: 2012-12-12
+Author: Sonny Jeon
+Subject: Changed README to markdown
+
+
+----------------
+Date: 2012-12-12
+Author: Sonny Jeon
+Subject: Added download links to README.
+
+
+----------------
+Date: 2012-12-12
+Author: Sonny Jeon
+Subject: Moved compiled builds to different repo.
+
+
+----------------
+Date: 2012-12-11
+Author: Sonny Jeon
+Subject: Added builds folder.
+
+Because the Downloads section has been removed, added a builds folder
+for users to download pre-compiled firmware without needing to compile
+it themselves.
+
+
+----------------
+Date: 2012-12-11
+Author: Sonny Jeon
+Subject: Added builds folder.
+
+In light of the downloads section in Github being removed, added a
+builds folder for all of the .hex files. Hopefully these won't be
+removed either.
+
+
+----------------
+Date: 2012-12-11
+Author: Sonny Jeon
+Subject: Planner optimizations.
+
+- Improved planner execution speed by 5% or more. Re-factored most of
+the calculations in terms of the square of velocity. This removed a lot
+of sqrt() calculations for every planner_recalculate.
+
+
+----------------
+Date: 2012-12-10
+Author: Sonny Jeon
+Subject: (Another) Planner bug fix.
+
+- Oops again. Thought the new planner changes made things much better,
+but there was a bug. Improvements we on the order of 20% execution time
+reduction, rather than half. The increase to 30kHz Ranade timer
+frequency also increased the overall overhead, so the total planner
+change? Zero. But, it's still better.
+
+
+----------------
+Date: 2012-12-10
+Author: Sonny Jeon
+Subject: Planner bug fix.
+
+- Oops! Misplace an if-then statement. Should work as advertised now.
+(Hopefully)
+
+
+----------------
+Date: 2012-12-10
+Author: Sonny Jeon
+Subject: Planner execution time halved and bug fixes. Increased step rate limit to 30kHz.
+
+- Planner execute speed has been more than halved from 4ms to 1.9ms
+when computing a plan for a single line segment during arc generation.
+This means that Grbl can now run through an arc (or complex curve)
+twice as fast as before without starving the buffer. For 0.1mm arc
+segments, this means about the theoretical feed rate limit is about
+3000mm/min for arcs now.
+
+- Increased the Ranade timer frequency to 30kHz, as there doesn't seem
+to be any problems with increasing the frequency. This means that the
+maximum step frequency is now back at 30kHz.
+
+- Added Zen Toolworks 7x7 defaults.
+
+
+----------------
+Date: 2012-12-08
+Author: Sonny Jeon
+Subject: New stepper algorithm. Optimized planner.
+
+- Brand-new stepper algorithm. Based on the Pramod Ranade inverse time
+algorithm, but modified to ensure step events are exact. Currently
+limited to about 15kHz step rates, much more to be done to enable 30kHz
+again.
+
+- Removed Timer1. Stepper algorithm now uses Timer0 and Timer2.
+
+- Much improved step generation during accelerations. Smoother. Allows
+much higher accelerations (and speeds) than before on the same machine.
+
+- Cleaner algorithm that is more easily portable to other CPU types.
+
+- Streamlined planner calculations. Removed accelerate_until and
+final_rate variables from block buffer since the new stepper algorithm
+is that much more accurate.
+
+- Improved planner efficiency by about 15-20% during worst case
+scenarios (arcs).
+
+- New config.h options to tune new stepper algorithm.
+
