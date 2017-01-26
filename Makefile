@@ -1,28 +1,20 @@
 #  Part of Grbl
 #
-#  The MIT License (MIT)
-#
-#  Grbl(tm) - Embedded CNC g-code interpreter and motion-controller
 #  Copyright (c) 2009-2011 Simen Svale Skogsrud
-#  Copyright (c) 2012 Sungeun K. Jeon
+#  Copyright (c) 2012-2015 Sungeun K. Jeon
 #
-#  Permission is hereby granted, free of charge, to any person obtaining a copy
-#  of this software and associated documentation files (the "Software"), to deal
-#  in the Software without restriction, including without limitation the rights
-#  to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
-#  copies of the Software, and to permit persons to whom the Software is
-#  furnished to do so, subject to the following conditions:
+#  Grbl is free software: you can redistribute it and/or modify
+#  it under the terms of the GNU General Public License as published by
+#  the Free Software Foundation, either version 3 of the License, or
+#  (at your option) any later version.
 #
-#  The above copyright notice and this permission notice shall be included in
-#  all copies or substantial portions of the Software.
+#  Grbl is distributed in the hope that it will be useful,
+#  but WITHOUT ANY WARRANTY; without even the implied warranty of
+#  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+#  GNU General Public License for more details.
 #
-#  THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
-#  IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
-#  FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
-#  AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
-#  LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
-#  OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
-#  THE SOFTWARE.
+#  You should have received a copy of the GNU General Public License
+#  along with Grbl.  If not, see <http://www.gnu.org/licenses/>.
 
 
 # This is a prototype Makefile. Modify it according to your needs.
@@ -39,35 +31,36 @@
 DEVICE     ?= atmega328p
 CLOCK      = 16000000
 PROGRAMMER ?= -c avrisp2 -P usb
-OBJECTS    = main.o motion_control.o gcode.o spindle_control.o coolant_control.o serial.o \
-             protocol.o stepper.o eeprom.o settings.o planner.o nuts_bolts.o limits.o \
-             print.o report.o
+SOURCE    = main.c motion_control.c gcode.c spindle_control.c coolant_control.c serial.c \
+             protocol.c stepper.c eeprom.c settings.c planner.c nuts_bolts.c limits.c \
+             print.c probe.c report.c system.c
+BUILDDIR = build
+SOURCEDIR = grbl
 # FUSES      = -U hfuse:w:0xd9:m -U lfuse:w:0x24:m
 FUSES      = -U hfuse:w:0xd2:m -U lfuse:w:0xff:m
-# update that line with this when programmer is back up:
-# FUSES      = -U hfuse:w:0xd7:m -U lfuse:w:0xff:m
 
 # Tune the lines below only if you know what you are doing:
 
 AVRDUDE = avrdude $(PROGRAMMER) -p $(DEVICE) -B 10 -F
-COMPILE = avr-gcc -Wall -Os -DF_CPU=$(CLOCK) -mmcu=$(DEVICE) -I. -ffunction-sections
+COMPILE = avr-gcc -Wall -Os -DF_CPU=$(CLOCK) -mmcu=$(DEVICE) -I. -ffunction-sections -fdata-sections
+
+OBJECTS = $(addprefix $(BUILDDIR)/,$(notdir $(SOURCE:.c=.o)))
 
 # symbolic targets:
 all:	grbl.hex
 
-.c.o:
-	$(COMPILE) -c $< -o $@
-	@$(COMPILE) -MM  $< > $*.d
+$(BUILDDIR)/%.o: $(SOURCEDIR)/%.c
+	$(COMPILE) -MMD -MP -c $< -o $@
 
 .S.o:
-	$(COMPILE) -x assembler-with-cpp -c $< -o $@
+	$(COMPILE) -x assembler-with-cpp -c $< -o $(BUILDDIR)/$@
 # "-x assembler-with-cpp" should not be necessary since this is the default
 # file type for the .S (with capital S) extension. However, upper case
 # characters are not always preserved on Windows. To ensure WinAVR
 # compatibility define the file type manually.
 
-.c.s:
-	$(COMPILE) -S $< -o $@
+#.c.s:
+	$(COMPILE) -S $< -o $(BUILDDIR)/$@
 
 flash:	all
 	$(AVRDUDE) -U flash:w:grbl.hex:i
@@ -83,26 +76,25 @@ load: all
 	bootloadHID grbl.hex
 
 clean:
-	rm -f grbl.hex main.elf $(OBJECTS) $(OBJECTS:.o=.d)
+	rm -f grbl.hex $(BUILDDIR)/*.o $(BUILDDIR)/*.d $(BUILDDIR)/*.elf
 
 # file targets:
-main.elf: $(OBJECTS)
-	$(COMPILE) -o main.elf $(OBJECTS) -lm -Wl,--gc-sections
+$(BUILDDIR)/main.elf: $(OBJECTS)
+	$(COMPILE) -o $(BUILDDIR)/main.elf $(OBJECTS) -lm -Wl,--gc-sections
 
-grbl.hex: main.elf
+grbl.hex: $(BUILDDIR)/main.elf
 	rm -f grbl.hex
-	avr-objcopy -j .text -j .data -O ihex main.elf grbl.hex
-	avr-size --format=berkeley main.elf
+	avr-objcopy -j .text -j .data -O ihex $(BUILDDIR)/main.elf grbl.hex
+	avr-size --format=berkeley $(BUILDDIR)/main.elf
 # If you have an EEPROM section, you must also create a hex file for the
 # EEPROM and add it to the "flash" target.
 
 # Targets for code debugging and analysis:
 disasm:	main.elf
-	avr-objdump -d main.elf
+	avr-objdump -d $(BUILDDIR)/main.elf
 
 cpp:
-	$(COMPILE) -E main.c
+	$(COMPILE) -E $(SOURCEDIR)/main.c
 
 # include generated header dependencies
--include $(OBJECTS:.o=.d)
-
+-include $(BUILDDIR)/$(OBJECTS:.o=.d)

@@ -1,5 +1,0 @@
-socat -d -d READLINE /dev/tty.usbmodem26221,nonblock=1,clocal=1
-socat -d -d READLINE /dev/tty.usbmodem621,nonblock=1,clocal=1
-socat -d -d READLINE /dev/tty.usbserial-A700e0GO,clocal=1,nonblock=1,cread=1,cs8,ixon=1,ixoff=1
-socat -d -d READLINE /dev/tty.usbserial-A9007QcR,clocal=1,nonblock=1,cread=1,cs8,ixon=1,ixoff=1
-#socat -d -d READLINE /dev/tty.FireFly-A964-SPP-1,clocal=1,nonblock=1,cread=1,cs8,ixon=1,ixoff=1

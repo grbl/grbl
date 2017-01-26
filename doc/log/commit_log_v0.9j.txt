@@ -1,0 +1,123 @@
+----------------
+Date: 2016-07-26
+Author: chamnit
+Subject: Fixed homing on CoreXY machines only.
+
+- The homing routine for CoreXY/H-Bot CNC machines has been fixed.
+
+- Version date bumped, but this update does NOT effect any normal
+users. Only CoreXY users.
+
+
+----------------
+Date: 2016-07-26
+Author: chamnit
+Subject: Merge branch 'master-corexy'
+
+
+----------------
+Date: 2016-07-25
+Author: chamnit
+Subject: CoreXY homing bug fix attempt 2.
+
+
+----------------
+Date: 2016-07-25
+Author: chamnit
+Subject: CoreXY homing fix attempt.
+
+
+----------------
+Date: 2016-03-17
+Author: Sonny Jeon
+Subject: No variable spindle and spindle speed fix.
+
+- When VARIABLE_SPINDLE output is disabled in config.h, the last commit
+would keep the spindle enable pin disabled when spindle speed is not
+defined (S0). This is now ignored and will enable with S0, as spindle
+speed is ignored in this mode.
+
+
+----------------
+Date: 2016-03-16
+Author: Sonny Jeon
+Subject: Soft limit handling bug fix
+
+- Soft limit errors were stuck in a feed hold without notifying the
+user why it was in a hold. When resumed, the soft limit error would
+kick in. Issue should be fixed to behave as intended to automatically
+hold and issue a soft limit alarm once the machine has come to a stop.
+
+
+----------------
+Date: 2016-03-03
+Author: Sonny Jeon
+Subject: Bug fixes and more limit configurability
+
+- Strange sizeof() bug in the most recent releases. Manifested as an
+alarm upon a power up even when homing was disabled. Fixed by declaring
+sizeof() with struct types, rather than variable names, even though
+they were validated to give the same value.
+
+- Spindle speed zero should disable the spindle. Now fixed.
+
+- New configuration option for inverting certain limit pins. Handy for
+mixed NO and NC switch machines. See config.h for details.
+
+- Incremented version and pre-build firmware link.
+
+
+----------------
+Date: 2015-12-18
+Author: Sonny Jeon
+Subject: Minor bug fixes.
+
+- Planner was under-estimating maximum speeds through straight
+junctions in certain cases. The calculations have been updated to be
+more accurate.
+
+- Type declaration fix in probe.c.
+
+ - Commit log for v0.9j generated separately from v0.9i’s.
+
+- Incremented version and updated pre-built firmware link.
+
+
+----------------
+Date: 2015-09-30
+Author: Sonny Jeon
+Subject: Minor bug fixes.
+
+- G38.x was not printing correctly in the $G g-code state reports. Now
+fixed.
+
+- Potential bug regarding volatile variables inside a struct. It has
+never been a problem in v0.9, but ran into this during v1.0
+development. Just to be safe, the fixes are applied here.
+
+- Updated pre-built firmwares with these two bug fixes.
+
+
+----------------
+Date: 2015-08-16
+Author: Sonny Jeon
+Subject: Update README.md
+
+----------------
+Date: 2015-08-14
+Author: Sonny Jeon
+Subject: Individual control pin invert compile-option.
+
+- Control pins may be individually inverted through a
+CONTROL_INVERT_MASK macro. This mask is define in the cpu_map.h file.
+
+
+----------------
+Date: 2015-07-17
+Author: Sonny Jeon
+Subject: Version bump to v0.9j
+
+- Version bump requested by OEMs to easily determine whether the
+firmware supports the new EEPROM reset feature. Other than that, no
+significant changes.
+
