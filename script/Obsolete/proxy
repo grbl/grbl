@@ -1,2 +1,0 @@
-socat -d -d tcp4-listen:5001,fork /dev/tty.usbserial-A4001o6L,clocal=1,nonblock=1,cread=1,cs8,ixon=1,ixoff=1
-
