@@ -20,7 +20,9 @@
 */
   
 #include "grbl.h"
-
+#ifdef CPU_MAP_ATMEGA2560_RAMPS_1_4
+#include "ramps.h"
+#endif
 
 // Homing axis search distance multiplier. Computed by this value times the cycle travel.
 #ifndef HOMING_AXIS_SEARCH_SCALAR
@@ -32,20 +34,24 @@
 
 void limits_init() 
 {
-  LIMIT_DDR &= ~(LIMIT_MASK); // Set as input pins
-
-  #ifdef DISABLE_LIMIT_PIN_PULL_UP
-    LIMIT_PORT &= ~(LIMIT_MASK); // Normal low operation. Requires external pull-down.
+  #ifdef CPU_MAP_ATMEGA2560_RAMPS_1_4
+    rampsInitLimits(bit_istrue(settings.flags,BITFLAG_HARD_LIMIT_ENABLE));
   #else
-    LIMIT_PORT |= (LIMIT_MASK);  // Enable internal pull-up resistors. Normal high operation.
-  #endif
+    LIMIT_DDR &= ~(LIMIT_MASK); // Set as input pins
 
-  if (bit_istrue(settings.flags,BITFLAG_HARD_LIMIT_ENABLE)) {
-    LIMIT_PCMSK |= LIMIT_MASK; // Enable specific pins of the Pin Change Interrupt
-    PCICR |= (1 << LIMIT_INT); // Enable Pin Change Interrupt
-  } else {
-    limits_disable(); 
-  }
+    #ifdef DISABLE_LIMIT_PIN_PULL_UP
+      LIMIT_PORT &= ~(LIMIT_MASK); // Normal low operation. Requires external pull-down.
+    #else
+      LIMIT_PORT |= (LIMIT_MASK);  // Enable internal pull-up resistors. Normal high operation.
+    #endif
+
+    if (bit_istrue(settings.flags,BITFLAG_HARD_LIMIT_ENABLE)) {
+      LIMIT_PCMSK |= LIMIT_MASK; // Enable specific pins of the Pin Change Interrupt
+      PCICR |= (1 << LIMIT_INT); // Enable Pin Change Interrupt
+    } else {
+      limits_disable(); 
+    }
+  #endif // CPU_MAP_ATMEGA2560_RAMPS_1_4
   
   #ifdef ENABLE_SOFTWARE_DEBOUNCE
     MCUSR &= ~(1<<WDRF);
@@ -58,8 +64,12 @@ void limits_init()
 // Disables hard limits.
 void limits_disable()
 {
-  LIMIT_PCMSK &= ~LIMIT_MASK;  // Disable specific pins of the Pin Change Interrupt
-  PCICR &= ~(1 << LIMIT_INT);  // Disable Pin Change Interrupt
+  #ifdef CPU_MAP_ATMEGA2560_RAMPS_1_4
+    rampsLimitsDisableInterrups();
+  #else
+    LIMIT_PCMSK &= ~LIMIT_MASK;  // Disable specific pins of the Pin Change Interrupt
+    PCICR &= ~(1 << LIMIT_INT);  // Disable Pin Change Interrupt
+  #endif // CPU_MAP_ATMEGA2560_RAMPS_1_4
 }
 
 
@@ -69,7 +79,14 @@ void limits_disable()
 uint8_t limits_get_state()
 {
   uint8_t limit_state = 0;
-  uint8_t pin = (LIMIT_PIN & LIMIT_MASK);
+  uint8_t pin = 0;
+
+  #ifdef CPU_MAP_ATMEGA2560_RAMPS_1_4
+    pin = rampsCheckLimits();
+  #else
+    pin = (LIMIT_PIN & LIMIT_MASK);
+  #endif // CPU_MAP_ATMEGA2560_RAMPS_1_4
+
   #ifdef INVERT_LIMIT_PIN_MASK
     pin ^= INVERT_LIMIT_PIN_MASK;
   #endif
@@ -95,32 +112,68 @@ uint8_t limits_get_state()
 // homing cycles and will not respond correctly. Upon user request or need, there may be a
 // special pinout for an e-stop, but it is generally recommended to just directly connect
 // your e-stop switch to the Arduino reset pin, since it is the most correct way to do this.
-#ifndef ENABLE_SOFTWARE_DEBOUNCE
-  ISR(LIMIT_INT_vect) // DEFAULT: Limit pin change interrupt process. 
-  {
-    // Ignore limit switches if already in an alarm state or in-process of executing an alarm.
-    // When in the alarm state, Grbl should have been reset or will force a reset, so any pending 
-    // moves in the planner and serial buffers are all cleared and newly sent blocks will be 
-    // locked out until a homing cycle or a kill lock command. Allows the user to disable the hard
-    // limit setting if their limits are constantly triggering after a reset and move their axes.
-    if (sys.state != STATE_ALARM) { 
-      if (!(sys_rt_exec_alarm)) {
-        #ifdef HARD_LIMIT_FORCE_STATE_CHECK
-          // Check limit pin state. 
-          if (limits_get_state()) {
-            mc_reset(); // Initiate system kill.
-            bit_true_atomic(sys_rt_exec_alarm, (EXEC_ALARM_HARD_LIMIT|EXEC_CRITICAL_EVENT)); // Indicate hard limit critical event
-          }
-        #else
-          mc_reset(); // Initiate system kill.
-          bit_true_atomic(sys_rt_exec_alarm, (EXEC_ALARM_HARD_LIMIT|EXEC_CRITICAL_EVENT)); // Indicate hard limit critical event
-        #endif
-      }
+#ifdef CPU_MAP_ATMEGA2560_RAMPS_1_4
+  #ifndef ENABLE_SOFTWARE_DEBOUNCE // DEFAULT: Limit change interrupt processes
+    ISR(X_MIN_INT_vect)
+    {
+      #ifdef RAMPS_DEBUG_LIMIT_SWITCHES
+      rampsPrintLimitStatus("DEBUG: X_MIN TRIGGERED (NO DEBOUNCE): ", limits_get_state());
+      #endif
+      limits_interrupt_triggered();
     }
-  }  
-#else // OPTIONAL: Software debounce limit pin routine.
-  // Upon limit pin change, enable watchdog timer to create a short delay. 
-  ISR(LIMIT_INT_vect) { if (!(WDTCSR & (1<<WDIE))) { WDTCSR |= (1<<WDIE); } }
+    ISR(Y_MIN_INT_vect)
+    {
+      #ifdef RAMPS_DEBUG_LIMIT_SWITCHES
+      rampsPrintLimitStatus("DEBUG: Y_MIN TRIGGERED (NO DEBOUNCE): ", limits_get_state());
+      #endif
+      limits_interrupt_triggered();
+    }
+    ISR(Z_MAX_INT_vect)
+    {
+      #ifdef RAMPS_DEBUG_LIMIT_SWITCHES
+      rampsPrintLimitStatus("DEBUG: Z_MAX TRIGGERED (NO DEBOUNCE): ", limits_get_state());
+      #endif
+     limits_interrupt_triggered();
+    }
+  #else // OPTIONAL: Software debounce limit pin routine.
+    ISR(X_MIN_INT_vect)
+    {
+      #ifdef RAMPS_DEBUG_LIMIT_SWITCHES
+      rampsPrintLimitStatus("DEBUG: X_MIN TRIGGERED (DEBOUNCE): ", limits_get_state());
+      #endif
+      limits_interrupt_triggered_delayed();
+    }
+    ISR(Y_MIN_INT_vect)
+    {
+      #ifdef RAMPS_DEBUG_LIMIT_SWITCHES
+      rampsPrintLimitStatus("DEBUG: Y_MIN TRIGGERED (DEBOUNCE): ", limits_get_state());
+      #endif
+      limits_interrupt_triggered_delayed();
+    }
+    ISR(Z_MAX_INT_vect)
+    {
+      #ifdef RAMPS_DEBUG_LIMIT_SWITCHES
+      rampsPrintLimitStatus("DEBUG: Z_MAX TRIGGERED (DEBOUNCE): ", limits_get_state());
+      #endif
+      limits_interrupt_triggered_delayed();
+    }
+  #endif
+#else
+  #ifndef ENABLE_SOFTWARE_DEBOUNCE
+    ISR(LIMIT_INT_vect) // DEFAULT: Limit pin change interrupt process. 
+    {
+      limits_interrupt_triggered();
+    }  
+  #else // OPTIONAL: Software debounce limit pin routine.
+    // Upon limit pin change, enable watchdog timer to create a short delay. 
+    ISR(LIMIT_INT_vect) { 
+      limits_interrupt_triggered_delayed();
+    }
+  #endif
+#endif // CPU_MAP_ATMEGA2560_RAMPS_1_4
+
+// Upon limit change, enable watchdog timer to create a short delay. 
+#ifdef ENABLE_SOFTWARE_DEBOUNCE
   ISR(WDT_vect) // Watchdog timer ISR
   {
     WDTCSR &= ~(1<<WDIE); // Disable watchdog timer. 
@@ -128,14 +181,44 @@ uint8_t limits_get_state()
       if (!(sys_rt_exec_alarm)) {
         // Check limit pin state. 
         if (limits_get_state()) {
-          mc_reset(); // Initiate system kill.
-          bit_true_atomic(sys_rt_exec_alarm, (EXEC_ALARM_HARD_LIMIT|EXEC_CRITICAL_EVENT)); // Indicate hard limit critical event
+          hard_limit_critical_event();
         }
       }  
     }
   }
 #endif
 
+// Called when the limit interrupt method(s) are triggered
+void limits_interrupt_triggered() {	
+  // Ignore limit switches if already in an alarm state or in-process of executing an alarm.
+  // When in the alarm state, Grbl should have been reset or will force a reset, so any pending 
+  // moves in the planner and serial buffers are all cleared and newly sent blocks will be 
+  // locked out until a homing cycle or a kill lock command. Allows the user to disable the hard
+  // limit setting if their limits are constantly triggering after a reset and move their axes.
+  if (sys.state != STATE_ALARM) { 
+    if (!(sys_rt_exec_alarm)) {
+      #ifdef HARD_LIMIT_FORCE_STATE_CHECK
+        // Check limit pin state. 
+        if (limits_get_state()) {
+          hard_limit_critical_event();
+        }
+      #else
+        hard_limit_critical_event();
+      #endif
+    }
+  }
+}
+
+// Upon limit change, enable watchdog timer to create a short delay.
+void limits_interrupt_triggered_delayed() {
+  if (!(WDTCSR & (1<<WDIE))) { WDTCSR |= (1<<WDIE); } 
+}
+
+// Indicate hard limit critical event
+void hard_limit_critical_event() {
+  mc_reset(); // Initiate system kill.
+  bit_true_atomic(sys_rt_exec_alarm, (EXEC_ALARM_HARD_LIMIT|EXEC_CRITICAL_EVENT)); // Indicate hard limit critical event
+}
  
 // Homes the specified cycle axes, sets the machine position, and performs a pull-off motion after
 // completing. Homing is a special motion case, which involves rapid uncontrolled stops to locate
