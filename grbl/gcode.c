@@ -312,6 +312,10 @@ uint8_t gc_execute_line(char *line)
               case 9: gc_block.modal.coolant = COOLANT_DISABLE; break;
             }
             break;
+          #ifdef ENABLE_M115
+            case 115:
+            report_status_message(STATUS_GCODE_M115); break;
+          #endif
           default: FAIL(STATUS_GCODE_UNSUPPORTED_COMMAND); // [Unsupported M command]
         }
       

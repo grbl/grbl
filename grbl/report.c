@@ -41,7 +41,11 @@ void report_status_message(uint8_t status_code)
 {
   if (status_code == 0) { // STATUS_OK
     printPgmString(PSTR("ok\r\n"));
-  } else {
+  }
+  else if (STATUS_GCODE_M115) {
+    printPgmString(PSTR("FIRMWARE_NAME:grbl " GRBL_VERSION_BUILD " SOURCE_CODE_URL:" GRBL_SOURCE_CODE_URL " PROTOCOL_VERSION:" GRBL_VERSION " MACHINE_TYPE:" GRBL_MACHINE_NAME));
+  }
+  else {
     printPgmString(PSTR("error: "));
     #ifdef REPORT_GUI_MODE
       print_uint8_base10(status_code);

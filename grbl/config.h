@@ -130,6 +130,11 @@
 // NOTE: The M8 flood coolant control pin on analog pin 3 will still be functional regardless.
 // #define ENABLE_M7 // Disabled by default. Uncomment to enable.
 
+// Enables Firmware Version and Capabilities
+// Request the Firmware Version and Capabilities of the current microcontroller. The details are returned
+// to the host computer as key:value pairs separated by spaces and terminated with a linefeed.
+// #define ENABLE_M115
+
 // This option causes the feed hold input to act as a safety door switch. A safety door, when triggered,
 // immediately forces a feed hold and then safely de-energizes the machine. Resuming is blocked until
 // the safety door is re-engaged. When it is, Grbl will re-energize the machine and then resume on the
