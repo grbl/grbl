@@ -140,6 +140,8 @@ void report_feedback_message(uint8_t message_code)
     printPgmString(PSTR("Pgm End")); break;
     case MESSAGE_RESTORE_DEFAULTS:
     printPgmString(PSTR("Restoring defaults")); break;
+    case MESSAGE_MOTION_PURGE:
+    printPgmString(PSTR("Motion purge")); break;
   }
   printPgmString(PSTR("]\r\n"));
 }
@@ -164,6 +166,7 @@ void report_grbl_help() {
                         "$C (check gcode mode)\r\n"
                         "$X (kill alarm lock)\r\n"
                         "$H (run homing cycle)\r\n"
+                        "- (purge queue)\r\n"
                         "~ (cycle start)\r\n"
                         "! (feed hold)\r\n"
                         "? (current status)\r\n"

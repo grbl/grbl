@@ -39,6 +39,9 @@ void protocol_main_loop();
 // Checks and executes a realtime command at various stop points in main program
 void protocol_execute_realtime();
 
+// Process all pending commands and return when Grbl state is idle or alarm
+void protocol_motion_purge();
+
 // Notify the stepper subsystem to start executing the g-code program in buffer.
 // void protocol_cycle_start();
 
