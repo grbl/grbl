@@ -134,5 +134,5 @@
   
   #define SPINDLE_PWM_DDR		DDRH
   #define SPINDLE_PWM_PORT    PORTH
-  #define SPINDLE_PWM_BIT		4 // MEGA2560 Digital Pin 97
+  #define SPINDLE_PWM_BIT		4 // MEGA2560 Digital Pin 7
 #endif // End of VARIABLE_SPINDLE
