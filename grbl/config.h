@@ -172,6 +172,9 @@
 // uncomment the config option USE_SPINDLE_DIR_AS_ENABLE_PIN below.
 // #define INVERT_SPINDLE_ENABLE_PIN // Default disabled. Uncomment to enable.
 
+// Inverts the coolant output
+#define INVERT_COOLANT_ENABLE_PIN
+
 // Enable control pin states feedback in status reports. The data is presented as simple binary of
 // the control pin port (0 (low) or 1(high)), masked to show only the input pins. Non-control pins on the 
 // port will always show a 0 value. See cpu_map.h for the pin bitmap. As with the limit pin reporting,
