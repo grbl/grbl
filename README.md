@@ -29,6 +29,11 @@ Grbl includes full acceleration management with look ahead. That means the contr
 
 ***
 
+_**This Fork:**_
+* I ported all changes regarding real time spindle control originally implemented by Nick Williams (Laser Ink) to the current GRBL Master 0.9j.
+* Real Time Laser Power control is now possible by using the S command: G01X10Y10S150 will now do that move with exactly 150 laser power at the speed with which the gcode sender can spit out more gcodes. Works well with 50mm/second and 0.1mm pixel size.
+* Designed to work with this board: https://github.com/McNugget6750/K40-grbl-board
+
 _**Master Branch:**_
 * [Grbl v0.9j Atmega328p 16mhz 115200baud with generic defaults](http://bit.ly/1I8Ey4S) _(2016-03-17)_
   - **IMPORTANT INFO WHEN UPGRADING TO GRBL v0.9 :** 
