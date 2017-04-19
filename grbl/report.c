@@ -69,6 +69,8 @@ void report_status_message(uint8_t status_code)
         printPgmString(PSTR("Homing not enabled")); break;
         case STATUS_OVERFLOW:
         printPgmString(PSTR("Line overflow")); break;
+        case STATUS_WRONG_EEPROM_PROFILE:
+        printPgmString(PSTR("Available EEPROM profiles: 0, 1, 2")); break;
         #ifdef MAX_STEP_RATE_HZ
           case STATUS_MAX_STEP_RATE_EXCEEDED: 
           printPgmString(PSTR("Step rate > 30kHz")); break;
@@ -221,7 +223,8 @@ void report_grbl_settings() {
     printPgmString(PSTR(" (homing feed, mm/min)\r\n$25=")); printFloat_SettingValue(settings.homing_seek_rate);
     printPgmString(PSTR(" (homing seek, mm/min)\r\n$26=")); print_uint8_base10(settings.homing_debounce_delay);
     printPgmString(PSTR(" (homing debounce, msec)\r\n$27=")); printFloat_SettingValue(settings.homing_pulloff);
-    printPgmString(PSTR(" (homing pull-off, mm)\r\n"));
+    printPgmString(PSTR(" (homing pull-off, mm)\r\n$30=")); print_uint8_base10(eeprom_profile);
+    printPgmString(PSTR(" (EEPROM profile)\r\n"));
   #endif
   
   // Print axis settings

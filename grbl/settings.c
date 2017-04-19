@@ -22,7 +22,7 @@
 #include "grbl.h"
 
 settings_t settings;
-
+profile_t eeprom_profile;
 
 // Method to store startup lines into EEPROM
 void settings_store_startup_line(uint8_t n, char *line)
@@ -51,7 +51,7 @@ void settings_write_coord_data(uint8_t coord_select, float *coord_data)
 void write_global_settings() 
 {
   eeprom_put_char(0, SETTINGS_VERSION);
-  memcpy_to_eeprom_with_checksum(EEPROM_ADDR_GLOBAL, (char*)&settings, sizeof(settings_t));
+  memcpy_to_eeprom_with_checksum(EEPROM_ADDR_GLOBAL+(eeprom_profile*sizeof(settings_t)), (char*)&settings, sizeof(settings_t));
 }
 
 
@@ -91,6 +91,14 @@ void settings_restore(uint8_t restore_flag) {
 	settings.max_travel[X_AXIS] = (-DEFAULT_X_MAX_TRAVEL);
 	settings.max_travel[Y_AXIS] = (-DEFAULT_Y_MAX_TRAVEL);
 	settings.max_travel[Z_AXIS] = (-DEFAULT_Z_MAX_TRAVEL);    
+
+	eeprom_profile = get_eeprom_profile();
+
+	// Restore default profile 0 if invalid
+	if(eeprom_profile > 2)
+	{
+	    eeprom_profile = EEPROM_PROFILE_0;
+	}
 
 	write_global_settings();
   }
@@ -162,7 +170,7 @@ uint8_t read_global_settings() {
   uint8_t version = eeprom_get_char(0);
   if (version == SETTINGS_VERSION) {
     // Read settings-record and check checksum
-    if (!(memcpy_from_eeprom_with_checksum((char*)&settings, EEPROM_ADDR_GLOBAL, sizeof(settings_t)))) {
+    if (!(memcpy_from_eeprom_with_checksum((char*)&settings, EEPROM_ADDR_GLOBAL+(eeprom_profile*sizeof(settings_t)), sizeof(settings_t)))) {
       return(false);
     }
   } else {
@@ -265,6 +273,12 @@ uint8_t settings_store_global_setting(uint8_t parameter, float value) {
       case 25: settings.homing_seek_rate = value; break;
       case 26: settings.homing_debounce_delay = int_value; break;
       case 27: settings.homing_pulloff = value; break;
+      case 30:
+          if(value > 2) { return(STATUS_WRONG_EEPROM_PROFILE); }
+          else { eeprom_profile = value;
+                 set_eeprom_profile(eeprom_profile);
+                 read_global_settings();
+                 write_global_settings(); } break;
       default: 
         return(STATUS_INVALID_STATEMENT);
     }
@@ -276,11 +290,20 @@ uint8_t settings_store_global_setting(uint8_t parameter, float value) {
 
 // Initialize the config subsystem
 void settings_init() {
-  if(!read_global_settings()) {
-    report_status_message(STATUS_SETTING_READ_FAIL);
-    settings_restore(SETTINGS_RESTORE_ALL); // Force restore all EEPROM data.
-    report_grbl_settings();
+
+  // Read eeprom profiles
+  for(eeprom_profile = EEPROM_PROFILE_0; eeprom_profile < NUMBER_OF_EEPROM_PROFILES; ++eeprom_profile)
+  {
+      if(!read_global_settings()) {
+          report_status_message(STATUS_SETTING_READ_FAIL);
+          settings_restore(SETTINGS_RESTORE_ALL); // Force restore all EEPROM data.
+          report_grbl_settings();
+        }
   }
+
+  // Select eeprom profile according to the profiles index in eeprom
+  eeprom_profile = get_eeprom_profile();
+  read_global_settings();
 
   // NOTE: Checking paramater data, startup lines, and build info string should be done here, 
   // but it seems fairly redundant. Each of these can be manually checked and reset or restored.
@@ -320,4 +343,29 @@ uint8_t get_limit_pin_mask(uint8_t axis_idx)
   if ( axis_idx == X_AXIS ) { return((1<<X_LIMIT_BIT)); }
   if ( axis_idx == Y_AXIS ) { return((1<<Y_LIMIT_BIT)); }
   return((1<<Z_LIMIT_BIT));
+}
+
+// Return the current selected eeprom profile
+uint8_t get_eeprom_profile(void)
+{
+    uint8_t profile;
+    uint8_t retProfile;
+    profile = eeprom_get_char(EEPROM_ADDR_PROFILE);
+    switch(profile){
+        case '0':
+        case '1':
+        case '2':
+            retProfile = profile - '0';
+            break;
+        default:
+            retProfile = 0;
+            break;
+    }
+    return retProfile;
+}
+
+// Stores the current selected eeprom profile
+void set_eeprom_profile(uint8_t profile)
+{
+    return eeprom_put_char(EEPROM_ADDR_PROFILE, profile + '0');
 }
