@@ -116,22 +116,41 @@
 
 
 // Define global system variables
-typedef struct {
-  uint8_t state;               // Tracks the current system state of Grbl.
-  uint8_t abort;               // System abort flag. Forces exit back to main loop for reset.             
-  uint8_t suspend;             // System suspend bitflag variable that manages holds, cancels, and safety door.
-  uint8_t soft_limit;          // Tracks soft limit errors for the state machine. (boolean)
-  uint8_t step_control;        // Governs the step segment generator depending on system state.
-  uint8_t probe_succeeded;     // Tracks if last probing cycle was successful.
-  uint8_t homing_axis_lock;    // Locks axes when limits engage. Used as an axis motion mask in the stepper ISR.
-  uint8_t f_override;          // Feed rate override value in percent
-  uint8_t r_override;          // Rapids override value in percent
-  uint8_t spindle_speed_ovr;   // Spindle speed value in percent
-  uint8_t spindle_stop_ovr;    // Tracks spindle stop override states
-  uint8_t report_ovr_counter;  // Tracks when to add override data to status reports.
-  uint8_t report_wco_counter;  // Tracks when to add work coordinate offset data to status reports.
-  float spindle_speed;
-} system_t;
+#ifdef DEFAULTS_RAMPS_BOARD
+    typedef struct {
+    uint8_t state;               // Tracks the current system state of Grbl.
+    uint8_t abort;               // System abort flag. Forces exit back to main loop for reset.             
+    uint8_t suspend;             // System suspend bitflag variable that manages holds, cancels, and safety door.
+    uint8_t soft_limit;          // Tracks soft limit errors for the state machine. (boolean)
+    uint8_t step_control;        // Governs the step segment generator depending on system state.
+    uint8_t probe_succeeded;     // Tracks if last probing cycle was successful.
+    uint8_t homing_axis_lock[N_AXIS];    // Locks axes when limits engage. Used as an axis motion mask in the stepper ISR.
+    uint8_t f_override;          // Feed rate override value in percent
+    uint8_t r_override;          // Rapids override value in percent
+    uint8_t spindle_speed_ovr;   // Spindle speed value in percent
+    uint8_t spindle_stop_ovr;    // Tracks spindle stop override states
+    uint8_t report_ovr_counter;  // Tracks when to add override data to status reports.
+    uint8_t report_wco_counter;  // Tracks when to add work coordinate offset data to status reports.
+    float spindle_speed;
+  } system_t;
+#else
+  typedef struct {
+    uint8_t state;               // Tracks the current system state of Grbl.
+    uint8_t abort;               // System abort flag. Forces exit back to main loop for reset.             
+    uint8_t suspend;             // System suspend bitflag variable that manages holds, cancels, and safety door.
+    uint8_t soft_limit;          // Tracks soft limit errors for the state machine. (boolean)
+    uint8_t step_control;        // Governs the step segment generator depending on system state.
+    uint8_t probe_succeeded;     // Tracks if last probing cycle was successful.
+    uint8_t homing_axis_lock;    // Locks axes when limits engage. Used as an axis motion mask in the stepper ISR.
+    uint8_t f_override;          // Feed rate override value in percent
+    uint8_t r_override;          // Rapids override value in percent
+    uint8_t spindle_speed_ovr;   // Spindle speed value in percent
+    uint8_t spindle_stop_ovr;    // Tracks spindle stop override states
+    uint8_t report_ovr_counter;  // Tracks when to add override data to status reports.
+    uint8_t report_wco_counter;  // Tracks when to add work coordinate offset data to status reports.
+    float spindle_speed;
+  } system_t;
+#endif // Ramps Board
 extern system_t sys;
 
 // NOTE: These position variables may need to be declared as volatiles, if problems arise.

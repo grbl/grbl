@@ -315,25 +315,55 @@ void settings_init() {
 // Returns step pin mask according to Grbl internal axis indexing.
 uint8_t get_step_pin_mask(uint8_t axis_idx)
 {
-  if ( axis_idx == X_AXIS ) { return((1<<X_STEP_BIT)); }
-  if ( axis_idx == Y_AXIS ) { return((1<<Y_STEP_BIT)); }
-  return((1<<Z_STEP_BIT));
+  #ifdef DEFAULTS_RAMPS_BOARD
+    if ( axis_idx == X_AXIS ) { return((1<<STEP_BIT(X_AXIS))); }
+    if ( axis_idx == Y_AXIS ) { return((1<<STEP_BIT(Y_AXIS))); }
+    return((1<<STEP_BIT(Z_AXIS)));
+  #else
+    if ( axis_idx == X_AXIS ) { return((1<<X_STEP_BIT)); }
+    if ( axis_idx == Y_AXIS ) { return((1<<Y_STEP_BIT)); }
+    return((1<<Z_STEP_BIT));
+  #endif // DEFAULTS_RAMPS_BOARD
 }
 
 
 // Returns direction pin mask according to Grbl internal axis indexing.
 uint8_t get_direction_pin_mask(uint8_t axis_idx)
 {
-  if ( axis_idx == X_AXIS ) { return((1<<X_DIRECTION_BIT)); }
-  if ( axis_idx == Y_AXIS ) { return((1<<Y_DIRECTION_BIT)); }
-  return((1<<Z_DIRECTION_BIT));
+  #ifdef DEFAULTS_RAMPS_BOARD
+    if ( axis_idx == X_AXIS ) { return((1<<DIRECTION_BIT(X_AXIS))); }
+    if ( axis_idx == Y_AXIS ) { return((1<<DIRECTION_BIT(Y_AXIS))); }
+    return((1<<DIRECTION_BIT(Z_AXIS)));
+  #else
+    if ( axis_idx == X_AXIS ) { return((1<<X_DIRECTION_BIT)); }
+    if ( axis_idx == Y_AXIS ) { return((1<<Y_DIRECTION_BIT)); }
+    return((1<<Z_DIRECTION_BIT));
+  #endif // DEFAULTS_RAMPS_BOARD
 }
 
 
 // Returns limit pin mask according to Grbl internal axis indexing.
-uint8_t get_limit_pin_mask(uint8_t axis_idx)
-{
-  if ( axis_idx == X_AXIS ) { return((1<<X_LIMIT_BIT)); }
-  if ( axis_idx == Y_AXIS ) { return((1<<Y_LIMIT_BIT)); }
-  return((1<<Z_LIMIT_BIT));
-}
+
+#ifdef DEFAULTS_RAMPS_BOARD
+  uint8_t get_min_limit_pin_mask(uint8_t axis_idx)
+  {
+    if ( axis_idx == X_AXIS ) { return((1<<MIN_LIMIT_BIT(X_AXIS))); }
+    if ( axis_idx == Y_AXIS ) { return((1<<MIN_LIMIT_BIT(Y_AXIS))); }
+    return((1<<MIN_LIMIT_BIT(Z_AXIS)));
+  }
+
+   uint8_t get_max_limit_pin_mask(uint8_t axis_idx)
+   {
+     if ( axis_idx == X_AXIS ) { return((1<<MAX_LIMIT_BIT(X_AXIS))); }
+     if ( axis_idx == Y_AXIS ) { return((1<<MAX_LIMIT_BIT(Y_AXIS))); }
+     return((1<<MAX_LIMIT_BIT(Z_AXIS)));
+  }
+#else
+  uint8_t get_limit_pin_mask(uint8_t axis_idx)
+  {
+    if ( axis_idx == X_AXIS ) { return((1<<X_LIMIT_BIT)); }
+    if ( axis_idx == Y_AXIS ) { return((1<<Y_LIMIT_BIT)); }
+    return((1<<Z_LIMIT_BIT));
+  }
+#endif //DEFAULTS_RAMPS_BOARD
+
