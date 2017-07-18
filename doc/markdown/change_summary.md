@@ -110,3 +110,5 @@ On a final note, these interface tweaks came about out of necessity, because mor
 
 - Laser mode `$` setting - When enabled, laser mode will move through consecutive G1, G2, and G3 motion commands that have different spindle speed values without stopping. A spindle speed of zero will disable the laser without stopping as well. However, when spindle states change, like M3 or M5, stops are still enforced.
 	- NOTE: Parking motions are automatically disabled when laser mode is enabled to prevent burning.
+	
+- `G56 P1` and `G56 P0` - When enabled in config.h with Grbl's parking motion, these commands enable and disable, respectively, the parking motion. Like all override control commands, these commands are modal and are part of the g-code stream.

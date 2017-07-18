@@ -22,8 +22,8 @@
 #define grbl_h
 
 // Grbl versioning system
-#define GRBL_VERSION "1.1e"
-#define GRBL_VERSION_BUILD "20170114"
+#define GRBL_VERSION "1.1f"
+#define GRBL_VERSION_BUILD "20170717"
 
 // Define standard libraries used by Grbl.
 #include <avr/io.h>
@@ -75,6 +75,12 @@
   #endif
 #endif
 
+#if defined(ENABLE_PARKING_OVERRIDE_CONTROL)
+  #if !defined(PARKING_ENABLE)
+    #error "ENABLE_PARKING_OVERRIDE_CONTROL must be enabled with PARKING_ENABLE."
+  #endif
+#endif
+
 #if defined(SPINDLE_PWM_MIN_VALUE)
   #if !(SPINDLE_PWM_MIN_VALUE > 0)
     #error "SPINDLE_PWM_MIN_VALUE must be greater than zero."
@@ -93,6 +99,7 @@
 #if (REPORT_OVR_REFRESH_IDLE_COUNT < 1)
   #error "Override refresh must be greater than zero."
 #endif
+
 // ---------------------------------------------------------------------------------------
 
 #endif

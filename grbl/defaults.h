@@ -38,9 +38,9 @@
   #define DEFAULT_X_ACCELERATION (10.0*60*60) // 10*60*60 mm/min^2 = 10 mm/sec^2
   #define DEFAULT_Y_ACCELERATION (10.0*60*60) // 10*60*60 mm/min^2 = 10 mm/sec^2
   #define DEFAULT_Z_ACCELERATION (10.0*60*60) // 10*60*60 mm/min^2 = 10 mm/sec^2
-  #define DEFAULT_X_MAX_TRAVEL 200.0 // mm
-  #define DEFAULT_Y_MAX_TRAVEL 200.0 // mm
-  #define DEFAULT_Z_MAX_TRAVEL 200.0 // mm
+  #define DEFAULT_X_MAX_TRAVEL 200.0 // mm NOTE: Must be a positive value.
+  #define DEFAULT_Y_MAX_TRAVEL 200.0 // mm NOTE: Must be a positive value.
+  #define DEFAULT_Z_MAX_TRAVEL 200.0 // mm NOTE: Must be a positive value.
   #define DEFAULT_SPINDLE_RPM_MAX 1000.0 // rpm
   #define DEFAULT_SPINDLE_RPM_MIN 0.0 // rpm
   #define DEFAULT_STEP_PULSE_MICROSECONDS 10
@@ -80,9 +80,9 @@
   #define DEFAULT_X_ACCELERATION (50.0*60*60) // 50*60*60 mm/min^2 = 50 mm/sec^2
   #define DEFAULT_Y_ACCELERATION (50.0*60*60) // 50*60*60 mm/min^2 = 50 mm/sec^2
   #define DEFAULT_Z_ACCELERATION (50.0*60*60) // 50*60*60 mm/min^2 = 50 mm/sec^2
-  #define DEFAULT_X_MAX_TRAVEL 225.0 // mm
-  #define DEFAULT_Y_MAX_TRAVEL 125.0 // mm
-  #define DEFAULT_Z_MAX_TRAVEL 170.0 // mm
+  #define DEFAULT_X_MAX_TRAVEL 225.0 // mm NOTE: Must be a positive value.
+  #define DEFAULT_Y_MAX_TRAVEL 125.0 // mm NOTE: Must be a positive value.
+  #define DEFAULT_Z_MAX_TRAVEL 170.0 // mm NOTE: Must be a positive value.
   #define DEFAULT_SPINDLE_RPM_MAX 2800.0 // rpm
   #define DEFAULT_SPINDLE_RPM_MIN 0.0 // rpm  
   #define DEFAULT_STEP_PULSE_MICROSECONDS 10
@@ -125,9 +125,9 @@
   #define DEFAULT_X_ACCELERATION (15.0*60*60) // 15*60*60 mm/min^2 = 15 mm/sec^2
   #define DEFAULT_Y_ACCELERATION (15.0*60*60) // 15*60*60 mm/min^2 = 15 mm/sec^2
   #define DEFAULT_Z_ACCELERATION (15.0*60*60) // 15*60*60 mm/min^2 = 15 mm/sec^2
-  #define DEFAULT_X_MAX_TRAVEL 200.0 // mm
-  #define DEFAULT_Y_MAX_TRAVEL 200.0 // mm
-  #define DEFAULT_Z_MAX_TRAVEL 200.0 // mm
+  #define DEFAULT_X_MAX_TRAVEL 200.0 // mm NOTE: Must be a positive value.
+  #define DEFAULT_Y_MAX_TRAVEL 200.0 // mm NOTE: Must be a positive value.
+  #define DEFAULT_Z_MAX_TRAVEL 200.0 // mm NOTE: Must be a positive value.
   #define DEFAULT_SPINDLE_RPM_MAX 10000.0 // rpm
   #define DEFAULT_SPINDLE_RPM_MIN 0.0 // rpm
   #define DEFAULT_STEP_PULSE_MICROSECONDS 10
@@ -170,9 +170,9 @@
   #define DEFAULT_X_ACCELERATION (250.0*60*60) // 25*60*60 mm/min^2 = 25 mm/sec^2
   #define DEFAULT_Y_ACCELERATION (250.0*60*60) // 25*60*60 mm/min^2 = 25 mm/sec^2
   #define DEFAULT_Z_ACCELERATION (50.0*60*60) // 25*60*60 mm/min^2 = 25 mm/sec^2
-  #define DEFAULT_X_MAX_TRAVEL 290.0 // mm
-  #define DEFAULT_Y_MAX_TRAVEL 290.0 // mm
-  #define DEFAULT_Z_MAX_TRAVEL 100.0 // mm
+  #define DEFAULT_X_MAX_TRAVEL 290.0 // mm NOTE: Must be a positive value.
+  #define DEFAULT_Y_MAX_TRAVEL 290.0 // mm NOTE: Must be a positive value.
+  #define DEFAULT_Z_MAX_TRAVEL 100.0 // mm NOTE: Must be a positive value.
   #define DEFAULT_SPINDLE_RPM_MAX 10000.0 // rpm
   #define DEFAULT_SPINDLE_RPM_MIN 0.0 // rpm  
   #define DEFAULT_STEP_PULSE_MICROSECONDS 10
@@ -214,9 +214,9 @@
   #define DEFAULT_X_ACCELERATION (400.0*60*60) // 400*60*60 mm/min^2 = 400 mm/sec^2
   #define DEFAULT_Y_ACCELERATION (400.0*60*60) // 400*60*60 mm/min^2 = 400 mm/sec^2
   #define DEFAULT_Z_ACCELERATION (400.0*60*60) // 400*60*60 mm/min^2 = 400 mm/sec^2
-  #define DEFAULT_X_MAX_TRAVEL 425.0 // mm
-  #define DEFAULT_Y_MAX_TRAVEL 465.0 // mm
-  #define DEFAULT_Z_MAX_TRAVEL 80.0 // mm
+  #define DEFAULT_X_MAX_TRAVEL 425.0 // mm NOTE: Must be a positive value.
+  #define DEFAULT_Y_MAX_TRAVEL 465.0 // mm NOTE: Must be a positive value.
+  #define DEFAULT_Z_MAX_TRAVEL 80.0 // mm NOTE: Must be a positive value.
   #define DEFAULT_SPINDLE_RPM_MAX 10000.0 // rpm
   #define DEFAULT_SPINDLE_RPM_MIN 0.0 // rpm
   #define DEFAULT_STEP_PULSE_MICROSECONDS 10
@@ -259,9 +259,9 @@
   #define DEFAULT_X_ACCELERATION (500.0*60*60) // 25*60*60 mm/min^2 = 25 mm/sec^2
   #define DEFAULT_Y_ACCELERATION (500.0*60*60) // 25*60*60 mm/min^2 = 25 mm/sec^2
   #define DEFAULT_Z_ACCELERATION (50.0*60*60) // 25*60*60 mm/min^2 = 25 mm/sec^2
-  #define DEFAULT_X_MAX_TRAVEL 290.0 // mm
-  #define DEFAULT_Y_MAX_TRAVEL 290.0 // mm
-  #define DEFAULT_Z_MAX_TRAVEL 100.0 // mm
+  #define DEFAULT_X_MAX_TRAVEL 290.0 // mm NOTE: Must be a positive value.
+  #define DEFAULT_Y_MAX_TRAVEL 290.0 // mm NOTE: Must be a positive value.
+  #define DEFAULT_Z_MAX_TRAVEL 100.0 // mm NOTE: Must be a positive value.
   #define DEFAULT_SPINDLE_RPM_MAX 10000.0 // rpm
   #define DEFAULT_SPINDLE_RPM_MIN 0.0 // rpm  
   #define DEFAULT_STEP_PULSE_MICROSECONDS 10
@@ -304,9 +304,9 @@
   #define DEFAULT_X_ACCELERATION (500.0*60*60) // 25*60*60 mm/min^2 = 25 mm/sec^2
   #define DEFAULT_Y_ACCELERATION (500.0*60*60) // 25*60*60 mm/min^2 = 25 mm/sec^2
   #define DEFAULT_Z_ACCELERATION (50.0*60*60) // 25*60*60 mm/min^2 = 25 mm/sec^2
-  #define DEFAULT_X_MAX_TRAVEL 740.0 // mm
-  #define DEFAULT_Y_MAX_TRAVEL 790.0 // mm
-  #define DEFAULT_Z_MAX_TRAVEL 100.0 // mm
+  #define DEFAULT_X_MAX_TRAVEL 740.0 // mm NOTE: Must be a positive value.
+  #define DEFAULT_Y_MAX_TRAVEL 790.0 // mm NOTE: Must be a positive value.
+  #define DEFAULT_Z_MAX_TRAVEL 100.0 // mm NOTE: Must be a positive value.
   #define DEFAULT_SPINDLE_RPM_MAX 10000.0 // rpm
   #define DEFAULT_SPINDLE_RPM_MIN 0.0 // rpm  
   #define DEFAULT_STEP_PULSE_MICROSECONDS 10
@@ -347,9 +347,9 @@
   #define DEFAULT_X_ACCELERATION (600.0*60*60) // 600*60*60 mm/min^2 = 600 mm/sec^2
   #define DEFAULT_Y_ACCELERATION (600.0*60*60) // 600*60*60 mm/min^2 = 600 mm/sec^2
   #define DEFAULT_Z_ACCELERATION (600.0*60*60) // 600*60*60 mm/min^2 = 600 mm/sec^2
-  #define DEFAULT_X_MAX_TRAVEL 190.0 // mm
-  #define DEFAULT_Y_MAX_TRAVEL 180.0 // mm
-  #define DEFAULT_Z_MAX_TRAVEL 150.0 // mm
+  #define DEFAULT_X_MAX_TRAVEL 190.0 // mm NOTE: Must be a positive value.
+  #define DEFAULT_Y_MAX_TRAVEL 180.0 // mm NOTE: Must be a positive value.
+  #define DEFAULT_Z_MAX_TRAVEL 150.0 // mm NOTE: Must be a positive value.
   #define DEFAULT_SPINDLE_RPM_MAX 10000.0 // rpm
   #define DEFAULT_SPINDLE_RPM_MIN 0.0 // rpm  
   #define DEFAULT_STEP_PULSE_MICROSECONDS 10
@@ -386,9 +386,9 @@
   #define DEFAULT_X_ACCELERATION (10.0*60*60) // 10*60*60 mm/min^2 = 10 mm/sec^2
   #define DEFAULT_Y_ACCELERATION (10.0*60*60) // 10*60*60 mm/min^2 = 10 mm/sec^2
   #define DEFAULT_Z_ACCELERATION (10.0*60*60) // 10*60*60 mm/min^2 = 10 mm/sec^2
-  #define DEFAULT_X_MAX_TRAVEL 500.0 // mm
-  #define DEFAULT_Y_MAX_TRAVEL 750.0 // mm
-  #define DEFAULT_Z_MAX_TRAVEL 80.0 // mm
+  #define DEFAULT_X_MAX_TRAVEL 500.0 // mm NOTE: Must be a positive value.
+  #define DEFAULT_Y_MAX_TRAVEL 750.0 // mm NOTE: Must be a positive value.
+  #define DEFAULT_Z_MAX_TRAVEL 80.0 // mm NOTE: Must be a positive value.
   #define DEFAULT_SPINDLE_RPM_MAX 1000.0 // rpm
   #define DEFAULT_SPINDLE_RPM_MIN 0.0 // rpm
   #define DEFAULT_STEP_PULSE_MICROSECONDS 10
@@ -425,9 +425,9 @@
   #define DEFAULT_X_ACCELERATION (100.0*60*60) // 10*60*60 mm/min^2 = 10 mm/sec^2
   #define DEFAULT_Y_ACCELERATION (100.0*60*60) // 10*60*60 mm/min^2 = 10 mm/sec^2
   #define DEFAULT_Z_ACCELERATION (100.0*60*60) // 10*60*60 mm/min^2 = 10 mm/sec^2
-  #define DEFAULT_X_MAX_TRAVEL 1000.0 // mm
-  #define DEFAULT_Y_MAX_TRAVEL 1000.0 // mm
-  #define DEFAULT_Z_MAX_TRAVEL 1000.0 // mm
+  #define DEFAULT_X_MAX_TRAVEL 1000.0 // mm NOTE: Must be a positive value.
+  #define DEFAULT_Y_MAX_TRAVEL 1000.0 // mm NOTE: Must be a positive value.
+  #define DEFAULT_Z_MAX_TRAVEL 1000.0 // mm NOTE: Must be a positive value.
   #define DEFAULT_SPINDLE_RPM_MAX 1000.0 // rpm
   #define DEFAULT_SPINDLE_RPM_MIN 0.0 // rpm
   #define DEFAULT_STEP_PULSE_MICROSECONDS 10

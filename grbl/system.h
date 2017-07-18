@@ -130,23 +130,26 @@ typedef struct {
   uint8_t spindle_stop_ovr;    // Tracks spindle stop override states
   uint8_t report_ovr_counter;  // Tracks when to add override data to status reports.
   uint8_t report_wco_counter;  // Tracks when to add work coordinate offset data to status reports.
+  #ifdef ENABLE_PARKING_OVERRIDE_CONTROL
+    uint8_t override_ctrl;     // Tracks override control states.
+  #endif
   float spindle_speed;
 } system_t;
 extern system_t sys;
 
 // NOTE: These position variables may need to be declared as volatiles, if problems arise.
-int32_t sys_position[N_AXIS];      // Real-time machine (aka home) position vector in steps.
-int32_t sys_probe_position[N_AXIS]; // Last probe position in machine coordinates and steps.
+extern int32_t sys_position[N_AXIS];      // Real-time machine (aka home) position vector in steps.
+extern int32_t sys_probe_position[N_AXIS]; // Last probe position in machine coordinates and steps.
 
-volatile uint8_t sys_probe_state;   // Probing state value.  Used to coordinate the probing cycle with stepper ISR.
-volatile uint8_t sys_rt_exec_state;   // Global realtime executor bitflag variable for state management. See EXEC bitmasks.
-volatile uint8_t sys_rt_exec_alarm;   // Global realtime executor bitflag variable for setting various alarms.
-volatile uint8_t sys_rt_exec_motion_override; // Global realtime executor bitflag variable for motion-based overrides.
-volatile uint8_t sys_rt_exec_accessory_override; // Global realtime executor bitflag variable for spindle/coolant overrides.
+extern volatile uint8_t sys_probe_state;   // Probing state value.  Used to coordinate the probing cycle with stepper ISR.
+extern volatile uint8_t sys_rt_exec_state;   // Global realtime executor bitflag variable for state management. See EXEC bitmasks.
+extern volatile uint8_t sys_rt_exec_alarm;   // Global realtime executor bitflag variable for setting various alarms.
+extern volatile uint8_t sys_rt_exec_motion_override; // Global realtime executor bitflag variable for motion-based overrides.
+extern volatile uint8_t sys_rt_exec_accessory_override; // Global realtime executor bitflag variable for spindle/coolant overrides.
 
 #ifdef DEBUG
   #define EXEC_DEBUG_REPORT  bit(0)
-  volatile uint8_t sys_rt_exec_debug;
+  extern volatile uint8_t sys_rt_exec_debug;
 #endif
 
 // Initialize the serial protocol
