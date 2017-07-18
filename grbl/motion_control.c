@@ -65,8 +65,15 @@ void mc_line(float *target, plan_line_data_t *pl_data)
   } while (1);
 
   // Plan and queue motion into planner buffer
-  // uint8_t plan_status; // Not used in normal operation.
-  plan_buffer_line(target, pl_data);
+  if (plan_buffer_line(target, pl_data) == PLAN_EMPTY_BLOCK) {
+    if (bit_istrue(settings.flags,BITFLAG_LASER_MODE)) {
+      // Correctly set spindle state, if there is a coincident position passed. Forces a buffer
+      // sync while in M3 laser mode only.
+      if (pl_data->condition & PL_COND_FLAG_SPINDLE_CW) {
+        spindle_sync(PL_COND_FLAG_SPINDLE_CW, pl_data->spindle_speed);
+      }
+    }
+  }
 }
 
 
@@ -313,29 +320,42 @@ uint8_t mc_probe_cycle(float *target, plan_line_data_t *pl_data, uint8_t parser_
 
 // Plans and executes the single special motion case for parking. Independent of main planner buffer.
 // NOTE: Uses the always free planner ring buffer head to store motion parameters for execution.
-void mc_parking_motion(float *parking_target, plan_line_data_t *pl_data)
-{
-  if (sys.abort) { return; } // Block during abort.
+#ifdef PARKING_ENABLE
+  void mc_parking_motion(float *parking_target, plan_line_data_t *pl_data)
+  {
+    if (sys.abort) { return; } // Block during abort.
 
-  uint8_t plan_status = plan_buffer_line(parking_target, pl_data);
+    uint8_t plan_status = plan_buffer_line(parking_target, pl_data);
 
-  if (plan_status) {
-		bit_true(sys.step_control, STEP_CONTROL_EXECUTE_SYS_MOTION);
-		bit_false(sys.step_control, STEP_CONTROL_END_MOTION); // Allow parking motion to execute, if feed hold is active.
-    st_parking_setup_buffer(); // Setup step segment buffer for special parking motion case
-		st_prep_buffer();
-		st_wake_up();
-		do {
-			protocol_exec_rt_system();
-			if (sys.abort) { return; }
-		} while (sys.step_control & STEP_CONTROL_EXECUTE_SYS_MOTION);
-		st_parking_restore_buffer(); // Restore step segment buffer to normal run state.
-	} else {
-    bit_false(sys.step_control, STEP_CONTROL_EXECUTE_SYS_MOTION);
-		protocol_exec_rt_system();
+    if (plan_status) {
+      bit_true(sys.step_control, STEP_CONTROL_EXECUTE_SYS_MOTION);
+      bit_false(sys.step_control, STEP_CONTROL_END_MOTION); // Allow parking motion to execute, if feed hold is active.
+      st_parking_setup_buffer(); // Setup step segment buffer for special parking motion case
+      st_prep_buffer();
+      st_wake_up();
+      do {
+        protocol_exec_rt_system();
+        if (sys.abort) { return; }
+      } while (sys.step_control & STEP_CONTROL_EXECUTE_SYS_MOTION);
+      st_parking_restore_buffer(); // Restore step segment buffer to normal run state.
+    } else {
+      bit_false(sys.step_control, STEP_CONTROL_EXECUTE_SYS_MOTION);
+      protocol_exec_rt_system();
+    }
+
   }
+#endif
 
-}
+
+#ifdef ENABLE_PARKING_OVERRIDE_CONTROL
+  void mc_override_ctrl_update(uint8_t override_state)
+  {
+    // Finish all queued commands before altering override control state
+    protocol_buffer_synchronize();
+    if (sys.abort) { return; }
+    sys.override_ctrl = override_state;
+  }
+#endif
 
 
 // Method to ready the system to reset by setting the realtime reset command and killing any

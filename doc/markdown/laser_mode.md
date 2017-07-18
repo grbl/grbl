@@ -4,7 +4,7 @@
 
 ----
 
-Outlined in this document is how Grbl alters its running conditions for the new laser mode to provide both improved performance and enforcing some basic user safety precautions.
+Outlined in this document is how Grbl alters its running conditions for the new laser mode to provide both improved performance and attempting to enforce some basic user safety precautions.
 
 ## Laser Mode Overview
 
@@ -29,16 +29,16 @@ The laser is enabled with the `M3` spindle CW and `M4` spindle CCW commands. The
 	
 - **`M3` Constant Laser Power Mode:**
 
-    - Constant laser power mode simply keeps the laser power as programmed, regardless if the machine is moving, accelerating, or stopped. This provides better control of the laser state. With a good g-code program, this can lead to more consistent cuts in more difficult materials. 
+    - Constant laser power mode simply keeps the laser power as programmed, regardless if the machine is moving, accelerating, or stopped. This provides better control of the laser state. With a good G-code program, this can lead to more consistent cuts in more difficult materials. 
     
     - For a clean cut and prevent scorching with `M3` constant power mode, it's a good idea to add lead-in and lead-out motions around the line you want to cut to give some space for the machine to accelerate and decelerate.
 
     - NOTE: `M3` can be used to keep the laser on for focusing.
 
 - **`M4` Dynamic Laser Power Mode:**
-    - Dynamic laser power mode will automatically adjust laser power based on the current speed relative to the programmed rate. It'll essentially ensures the amount of laser energy along a cut is consistent even though the machine may be stopped or actively accelerating. This is very useful for clean, precise engraving and cutting on simple materials across a large range of g-code generation methods by CAM programs. It will generally run faster and may be all you need to use.
+    - Dynamic laser power mode will automatically adjust laser power based on the current speed relative to the programmed rate. It essentially ensures the amount of laser energy along a cut is consistent even though the machine may be stopped or actively accelerating. This is very useful for clean, precise engraving and cutting on simple materials across a large range of G-code generation methods by CAM programs. It will generally run faster and may be all you need to use.
     
-    - Grbl calculates laser power based on the assumption that  laser power is linear with speed and the material. Often, this is not the case. Lasers can cut differently at varying power levels and some materials may not cut well at a particular speed and/power. In short, this means that dynamic power mode may not work for all situations. Always do a test piece prior to using this with a new material or machine.
+    - Grbl calculates laser power based on the assumption that laser power is linear with speed and the material. Often, this is not the case. Lasers can cut differently at varying power levels and some materials may not cut well at a particular speed and/power. In short, this means that dynamic power mode may not work for all situations. Always do a test piece prior to using this with a new material or machine.
 		
     - When not in motion, `M4` dynamic mode turns off the laser. It only turns on when the machine moves. This generally makes the laser safer to operate, because, unlike `M3`, it will never burn a hole through your table, if you stop and forget to turn `M3` off in time.
 
@@ -70,7 +70,7 @@ Describe below are the operational changes to Grbl when laser mode is enabled. P
 	- To have the laser powered during a jog motion, first enable a valid motion mode and spindle state. The following jog motions will inherit and maintain the previous laser state. Please use with caution though. This ability is primarily to allow turning on the laser on a _very low_ power to use the laser dot to jog and visibly locate the start position of a job.
 
 
-- A `S0` spindle speed of zero will turn off the laser. When programmed with a valid laser motion, Grbl will disable the laser instantaneously without stopping for the duration of that motion and future motions until set greater than zero..
+- An `S0` spindle speed of zero will turn off the laser. When programmed with a valid laser motion, Grbl will disable the laser instantaneously without stopping for the duration of that motion and future motions until set greater than zero..
 
 	- `M3` constant laser mode, this is a great way to turn off the laser power while continuously moving between a `G1` laser motion and a `G0` rapid motion without having to stop. Program a short `G1 S0` motion right before the `G0` motion and a `G1 Sxxx` motion is commanded right after to go back to cutting.
 
@@ -78,12 +78,12 @@ Describe below are the operational changes to Grbl when laser mode is enabled. P
 -----
 ###CAM Developer Implementation Notes
 
-TODO: Add some suggestions on how to write laser g-code for Grbl. 
+TODO: Add some suggestions on how to write laser G-code for Grbl. 
 
 - When using `M3` constant laser power mode, try to avoid force-sync conditions during a job whenever possible. Basically every spindle speed change must be accompanied by a valid motion. Any motion is fine, since Grbl will automatically enable and disable the laser based on the modal state. Avoid a `G0` and `G1` command with no axis words in this mode and in the middle of a job.
 
 - Ensure smooth motions throughout by turning the laser on and off without an `M3 M4 M5` spindle state command. There are two ways to do this:
 
-    - _Program a zero spindle speed `S0`_: `S0` is valid g-code and turns off the spindle/laser without changing the spindle state. In laser mode, Grbl will smoothly move through consecutive motions and turn off the spindle. Conversely, you can turn on the laser with a spindle speed `S` greater than zero. Remember that `M3` constant power mode requires any spindle speed `S` change to be programmed with a motion to allow continuous motion, while `M4` dynamic power mode does not.
+    - _Program a zero spindle speed `S0`_: `S0` is valid G-code and turns off the spindle/laser without changing the spindle state. In laser mode, Grbl will smoothly move through consecutive motions and turn off the spindle. Conversely, you can turn on the laser with a spindle speed `S` greater than zero. Remember that `M3` constant power mode requires any spindle speed `S` change to be programmed with a motion to allow continuous motion, while `M4` dynamic power mode does not.
 
     - _Program an unpowered motion between powered motions_: If you are traversing between parts of a raster job that don't need to have the laser powered, program a `G0` rapid between them. `G0` enforces the laser to be disabled automatically. The last spindle speed programmed doesn't change, so if a valid powered motion, like a `G1` is executed after, it'll immediately re-power the laser with the last programmed spindle speed when executing that motion.

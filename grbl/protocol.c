@@ -568,10 +568,16 @@ static void protocol_exec_rt_suspend()
             // Execute slow pull-out parking retract motion. Parking requires homing enabled, the
             // current location not exceeding the parking target location, and laser mode disabled.
             // NOTE: State is will remain DOOR, until the de-energizing and retract is complete.
+            #ifdef ENABLE_PARKING_OVERRIDE_CONTROL
+            if ((bit_istrue(settings.flags,BITFLAG_HOMING_ENABLE)) &&
+                            (parking_target[PARKING_AXIS] < PARKING_TARGET) &&
+                            bit_isfalse(settings.flags,BITFLAG_LASER_MODE) &&
+                            (sys.override_ctrl == OVERRIDE_PARKING_MOTION)) {
+            #else
             if ((bit_istrue(settings.flags,BITFLAG_HOMING_ENABLE)) &&
                             (parking_target[PARKING_AXIS] < PARKING_TARGET) &&
                             bit_isfalse(settings.flags,BITFLAG_LASER_MODE)) {
-
+            #endif
               // Retract spindle by pullout distance. Ensure retraction motion moves away from
               // the workpiece and waypoint motion doesn't exceed the parking target location.
               if (parking_target[PARKING_AXIS] < retract_waypoint) {
@@ -635,7 +641,12 @@ static void protocol_exec_rt_suspend()
             #ifdef PARKING_ENABLE
               // Execute fast restore motion to the pull-out position. Parking requires homing enabled.
               // NOTE: State is will remain DOOR, until the de-energizing and retract is complete.
+              #ifdef ENABLE_PARKING_OVERRIDE_CONTROL
+              if (((settings.flags & (BITFLAG_HOMING_ENABLE|BITFLAG_LASER_MODE)) == BITFLAG_HOMING_ENABLE) &&
+                   (sys.override_ctrl == OVERRIDE_PARKING_MOTION)) {
+              #else
               if ((settings.flags & (BITFLAG_HOMING_ENABLE|BITFLAG_LASER_MODE)) == BITFLAG_HOMING_ENABLE) {
+              #endif
                 // Check to ensure the motion doesn't move below pull-out position.
                 if (parking_target[PARKING_AXIS] <= PARKING_TARGET) {
                   parking_target[PARKING_AXIS] = retract_waypoint;
@@ -669,7 +680,12 @@ static void protocol_exec_rt_suspend()
 
             #ifdef PARKING_ENABLE
               // Execute slow plunge motion from pull-out position to resume position.
+              #ifdef ENABLE_PARKING_OVERRIDE_CONTROL
+              if (((settings.flags & (BITFLAG_HOMING_ENABLE|BITFLAG_LASER_MODE)) == BITFLAG_HOMING_ENABLE) &&
+                   (sys.override_ctrl == OVERRIDE_PARKING_MOTION)) {
+              #else
               if ((settings.flags & (BITFLAG_HOMING_ENABLE|BITFLAG_LASER_MODE)) == BITFLAG_HOMING_ENABLE) {
+              #endif
                 // Block if safety door re-opened during prior restore actions.
                 if (bit_isfalse(sys.suspend,SUSPEND_RESTART_RETRACT)) {
                   // Regardless if the retract parking motion was a valid/safe motion or not, the

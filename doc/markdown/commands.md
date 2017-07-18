@@ -64,7 +64,7 @@ This command prints all of the active gcode modes in Grbl's G-code parser. When 
 
 These active modes determine how the next G-code block or command will be interpreted by Grbl's G-code parser. For those new to G-code and CNC machining, modes sets the parser into a particular state so you don't have to constantly tell the parser how to parse it. These modes are organized into sets called "modal groups" that cannot be logically active at the same time. For example, the units modal group sets whether your G-code program is interpreted in inches or in millimeters.
 
-A short list of the modal groups, supported by Grbl, is shown below, but more complete and detailed descriptions can be found at LinuxCNC's [website](http://www.linuxcnc.org/docs/2.4/html/gcode_overview.html#sec:Modal-Groups). The G-code commands in **bold** indicate the default modes upon powering-up Grbl or resetting it.
+A short list of the modal groups, supported by Grbl, is shown below, but more complete and detailed descriptions can be found at LinuxCNC's [website](http://www.linuxcnc.org/docs/2.4/html/gcode_overview.html#sec:Modal-Groups). The G-code commands in **bold** indicate the default modes upon powering-up Grbl or resetting it. The commands in _italics_ indicate a special Grbl-only command.
 
 | Modal Group Meaning	|  Member Words |
 |:----:|:----:|
@@ -80,6 +80,9 @@ A short list of the modal groups, supported by Grbl, is shown below, but more co
 |Program Mode | **M0**, M1, M2, M30|
 |Spindle State |M3, M4, **M5**|
 |Coolant State	| M7, M8, **M9** |
+|Override Control | _M56_ |
+
+Grbl supports a special _M56_ override control command, where this enables and disables Grbl's parking motion when a `P1` or a `P0` is passed with `M56`, respectively. This command is only available when both parking and this particular option is enabled.
 
 In addition to the G-code parser modes, Grbl will report the active `T` tool number, `S` spindle speed, and `F` feed rate, which all default to 0 upon a reset. For those that are curious, these don't quite fit into nice modal groups, but are just as important for determining the parser state.
 
