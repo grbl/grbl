@@ -123,7 +123,11 @@ typedef struct {
   uint8_t soft_limit;          // Tracks soft limit errors for the state machine. (boolean)
   uint8_t step_control;        // Governs the step segment generator depending on system state.
   uint8_t probe_succeeded;     // Tracks if last probing cycle was successful.
-  uint8_t homing_axis_lock;    // Locks axes when limits engage. Used as an axis motion mask in the stepper ISR.
+  #ifdef DEFAULTS_RAMPS_BOARD
+    uint8_t homing_axis_lock[N_AXIS];    // Locks axes when limits engage. Used as an axis motion mask in the stepper ISR.
+  #else
+    uint8_t homing_axis_lock;    // Locks axes when limits engage. Used as an axis motion mask in the stepper ISR.
+  #endif
   uint8_t f_override;          // Feed rate override value in percent
   uint8_t r_override;          // Rapids override value in percent
   uint8_t spindle_speed_ovr;   // Spindle speed value in percent

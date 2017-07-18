@@ -370,7 +370,11 @@ uint8_t plan_buffer_line(float *target, plan_line_data_t *pl_data)
     unit_vec[idx] = delta_mm; // Store unit vector numerator
 
     // Set direction bits. Bit enabled always means direction is negative.
-    if (delta_mm < 0.0 ) { block->direction_bits |= get_direction_pin_mask(idx); }
+    #ifdef DEFAULTS_RAMPS_BOARD
+      if (delta_mm < 0.0 ) { block->direction_bits[idx] |= get_direction_pin_mask(idx); }
+    #else
+      if (delta_mm < 0.0 ) { block->direction_bits |= get_direction_pin_mask(idx); }
+    #endif // DEFAULTS_RAMPS_BOARD
   }
 
   // Bail if this is a zero-length block. Highly unlikely to occur.

@@ -37,6 +37,10 @@
 #define DEFAULTS_GENERIC
 #define CPU_MAP_2560_INITIAL
 
+// To use with RAMPS 1.4 Board, comment out the above defines and uncomment the next two defines
+//#define DEFAULTS_RAMPS_BOARD
+//#define CPU_MAP_2560_RAMPS_BOARD
+
 // Serial baud rate
 // #define BAUD_RATE 230400
 #define BAUD_RATE 115200
@@ -102,9 +106,15 @@
 // on separate pin, but homed in one cycle. Also, it should be noted that the function of hard limits
 // will not be affected by pin sharing.
 // NOTE: Defaults are set for a traditional 3-axis CNC machine. Z-axis first to clear, followed by X & Y.
-#define HOMING_CYCLE_0 (1<<Z_AXIS)                // REQUIRED: First move Z to clear workspace.
-#define HOMING_CYCLE_1 ((1<<X_AXIS)|(1<<Y_AXIS))  // OPTIONAL: Then move X,Y at the same time.
-// #define HOMING_CYCLE_2                         // OPTIONAL: Uncomment and add axes mask to enable
+#ifdef DEFAULTS_RAMPS_BOARD
+  #define HOMING_CYCLE_0 (1<<X_AXIS)   // Home X axis
+  #define HOMING_CYCLE_1 (1<<Y_AXIS)   // Home Y axis
+  #define HOMING_CYCLE_2 (1<<Z_AXIS)   // OPTIONAL: Home Z axis 
+#else
+  #define HOMING_CYCLE_0 (1<<Z_AXIS)                // REQUIRED: First move Z to clear workspace.
+  #define HOMING_CYCLE_1 ((1<<X_AXIS)|(1<<Y_AXIS))  // OPTIONAL: Then move X,Y at the same time.
+  // #define HOMING_CYCLE_2                         // OPTIONAL: Uncomment and add axes mask to enable
+#endif // DEFAULTS_RAMPS_BOARD
 
 // NOTE: The following are two examples to setup homing for 2-axis machines.
 // #define HOMING_CYCLE_0 ((1<<X_AXIS)|(1<<Y_AXIS))  // NOT COMPATIBLE WITH COREXY: Homes both X-Y in one cycle. 
@@ -193,6 +203,12 @@
 // normally-open(NO) and normally-closed(NC) switches installed on their machine.
 // NOTE: PLEASE DO NOT USE THIS, unless you have a situation that needs it.
 // #define INVERT_LIMIT_PIN_MASK ((1<<X_LIMIT_BIT)|(1<<Y_LIMIT_BIT)) // Default disabled. Uncomment to enable.
+#ifdef DEFAULTS_RAMPS_BOARD
+  // Only enable the following line if you have - (min) limit switches attached
+  //#define INVERT_MIN_LIMIT_PIN_MASK ((1<<X_AXIS) | (1<<Y_AXIS) | (1<<Z_AXIS))
+  // Only enable the following line if you have + (max) limit switches attached
+  //#define INVERT_MAX_LIMIT_PIN_MASK ((1<<X_AXIS) | (1<<Y_AXIS) | (1<<Z_AXIS))  
+#endif
 
 // Inverts the spindle enable pin from low-disabled/high-enabled to low-enabled/high-disabled. Useful
 // for some pre-built electronic boards.
