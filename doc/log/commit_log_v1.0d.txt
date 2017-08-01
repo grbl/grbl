@@ -1,4 +1,100 @@
 ----------------
+Date: 2017-07-17
+Author: Sonny Jeon
+Subject: Merge pull request #28 from docwelch/Ramps-1.4
+
+Add Ramps 1.4 Board Support. Note: This is highly experimental and your mileage may vary. This will be polished soon.
+
+----------------
+Date: 2017-07-17
+Author: Sonny Jeon
+Subject: Merge branch 'edge' into Ramps-1.4
+
+----------------
+Date: 2017-07-17
+Author: Sonny Jeon
+Subject: Syncing mainstream v1.1f
+
+- See details in mainstream commits from 1/14/17 to 7/17/17.
+
+
+----------------
+Date: 2017-06-26
+Author: docwelch
+Subject: Add Ramps 1.4 Board Support
+
+Changes based on @jekhor’s work
+Uses D8 as the spindle pin
+
+
+----------------
+Date: 2017-03-19
+Author: Sonny Jeon
+Subject: Moved Grbl logo files to separate repo.
+
+
+----------------
+Date: 2017-03-19
+Author: Sonny Jeon
+Subject: Update README.md
+
+----------------
+Date: 2017-03-19
+Author: Sonny Jeon
+Subject: Update README.md
+
+----------------
+Date: 2017-01-14
+Author: Sonny Jeon
+Subject: Pulled in Grbl-328p changes.
+
+- [fix] Spindle enable pin behavior corrected to be independent of the
+PWM output. There was some crossover behavior.
+
+- [fix] Tool numbers are now tracking and reporting correctly.
+
+- [fix] G-code parser error when G0 is commanded without a feed rate
+word while in inverse time mode.
+
+- [fix] Config file was missing an option for probing behavior.
+
+- [doc] Updated documentation.
+
+
+----------------
+Date: 2016-12-19
+Author: Sonny Jeon
+Subject: Alarm handling bug fix.
+
+- Applied an alarm handling bug fix that would not show the correct
+alarm code, nor clear the alarm. It would occasionally go into an
+infinite loop and would usually happen during a homing cycle fail.
+
+
+----------------
+Date: 2016-12-19
+Author: Sonny Jeon
+Subject: Spindle PWM update for Mega2560
+
+- Spindle PWM is set with a 16-bit value, rather than 8-bit on a 328p.
+Updated stepper.c to reflect this change.
+
+
+----------------
+Date: 2016-12-19
+Author: Sonny Jeon
+Subject: Grbl v1.1e port to Mega2560 branch
+
+- v1.1e
+
+- Ported all current changes from the main Grbl 328p repo to the
+Mega2560 branch. Main differences are increased planner, RX, TX, and
+line buffers. And an optional sleep timeout feature.
+
+- WARNING: Code compiles, but has not been tested.
+
+
+----------------
 Date: 2016-08-31
 Author: chamnit
 Subject: Minor bug fix to certain safety conditions.
