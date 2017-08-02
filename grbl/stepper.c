@@ -973,15 +973,14 @@ void st_prep_buffer()
       switch (prep.ramp_type) {
         case RAMP_DECEL_OVERRIDE:
           speed_var = pl_block->acceleration*time_var;
-          mm_var = time_var*(prep.current_speed - 0.5*speed_var);
-          mm_remaining -= mm_var;
-          if ((mm_remaining < prep.accelerate_until) || (mm_var <= 0)) {
+          if (prep.current_speed-prep.maximum_speed <= speed_var) {
             // Cruise or cruise-deceleration types only for deceleration override.
-            mm_remaining = prep.accelerate_until; // NOTE: 0.0 at EOB
+            mm_remaining = prep.accelerate_until;
             time_var = 2.0*(pl_block->millimeters-mm_remaining)/(prep.current_speed+prep.maximum_speed);
             prep.ramp_type = RAMP_CRUISE;
             prep.current_speed = prep.maximum_speed;
           } else { // Mid-deceleration override ramp.
+            mm_remaining -= time_var*(prep.current_speed - 0.5*speed_var);
             prep.current_speed -= speed_var;
           }
           break;

@@ -1,4 +1,14 @@
 ----------------
+Date: 2017-08-01
+Author: Sonny Jeon
+Subject: Fixed RAMPS control pin conflict
+
+[fix] RAMPS soft-reset control pin interfered with Z-enable. Shifted
+all control pins by plus one on the analog pins. RAMPS defines these
+pins as belonging to the AUX 2 port, which is assumed to be unused.
+
+
+----------------
 Date: 2017-07-17
 Author: Sonny Jeon
 Subject: Merge pull request #28 from docwelch/Ramps-1.4
