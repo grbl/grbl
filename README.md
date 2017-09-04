@@ -38,7 +38,7 @@ _**Archives:**_
 * [Grbl v0.6b Atmega168 16mhz 9600baud](http://bit.ly/SScWnE)
 * [Grbl v0.51 Atmega168 16mhz 9600baud](http://bit.ly/VXyrYu)
 
-# Building from Source
+## Building from Source
 
 You need avr-gcc and make in your PATH to build, and avrdude to flash. Both come with the Arduino IDE, so the easiest method is to install that and set your path
 to include the path to the included avr tools. On Mac that is:
@@ -61,10 +61,10 @@ make flash
 
 
 ***
-##Update Summary for OpenPnP
+## Update Summary for OpenPnP
   - Additional axis 'C' added.
 
-##Update Summary for v0.9 from v0.8
+## Update Summary for v0.9 from v0.8
   - **IMPORTANT: Default serial baudrate is now 115200! (Up from 9600). And your settings will be over-written! Make sure to have a backup.**
   - **_NEW_ Super Smooth Stepper Algorithm:**  Complete overhaul of the handling of the stepper driver to simplify and reduce task time per ISR tick. Much smoother operation with the new Adaptive Multi-Axis Step Smoothing (AMASS) algorithm which does what its name implies (see stepper.c source for details). Users should immediately see significant improvements in how their machines move and overall performance!
   - **Stability and Robustness Updates:** Grbl's overall stability has been focused on for this version. The planner and step-execution interface has been completely re-written for robustness and incorruptibility by the introduction of an intermediate step segment buffer that "checks-out" steps from the planner buffer in real-time. This means we can now fearlessly drive Grbl to it's highest limits. Combined with the new stepper algorithm and planner optimizations, this translated to **5x to 10x** overall performance increases in our testing! Also, stability and robustness tests have been reported to easily take 1.4 million (yes, **million**) line g-code programs like a champ!
