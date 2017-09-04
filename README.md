@@ -1,4 +1,4 @@
-#OpenPnP-Grbl - An embedded g-code interpreter and motion-controller for the Arduino/AVR328/Mega2560 microcontroller used with the OpenPnP project.
+# OpenPnP-Grbl - An embedded g-code interpreter and motion-controller for the Arduino/AVR328/Mega2560 microcontroller used with the OpenPnP project.
 
 ***
 
@@ -37,6 +37,28 @@ _**Archives:**_
 * [Grbl v0.51 Atmega328p 16mhz 9600baud](http://bit.ly/W75BS1)
 * [Grbl v0.6b Atmega168 16mhz 9600baud](http://bit.ly/SScWnE)
 * [Grbl v0.51 Atmega168 16mhz 9600baud](http://bit.ly/VXyrYu)
+
+# Building from Source
+
+You need avr-gcc and make in your PATH to build, and avrdude to flash. Both come with the Arduino IDE, so the easiest method is to install that and set your path
+to include the path to the included avr tools. On Mac that is:
+
+```
+export PATH=$PATH:/Applications/Arduino.app/Contents/Java/hardware/tools/avr/bin
+```
+
+Then edit the Makefile and change the PROGRAMMER line to include the right serial port for your Arduino:
+```
+PROGRAMMER ?= -c wiring -P /dev/tty.usbmodem1411
+```
+
+Finally, you can build and flash with:
+```
+make clean
+make
+make flash
+```
+
 
 ***
 ##Update Summary for OpenPnP
