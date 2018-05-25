@@ -440,7 +440,7 @@ void limits_go_home(uint8_t cycle_mask)
 
   float target2[N_AXIS];
   target2[X_AXIS]=(sqrt((offsetX*offsetX)+(offsetY*offsetY)))-dist_to_endstopX;
-  target2[Y_AXIS]=(sqrt((settings.distance-offsetX)*(settings.distance-offsetX)+(offsetY*offsetY)))-dist_to_endstopY00;
+  target2[Y_AXIS]=(sqrt((settings.distance-offsetX)*(settings.distance-offsetX)+(offsetY*offsetY)))-dist_to_endstopY;
   target2[Z_AXIS]=0.000;
 
   printString("\n trg:");
