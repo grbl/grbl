@@ -596,7 +596,10 @@ void st_generate_step_dir_invert_masks()
   #ifdef DEFAULTS_RAMPS_BOARD
     for (idx=0; idx<N_AXIS; idx++) {
       if (bit_istrue(settings.step_invert_mask,bit(idx))) { step_port_invert_mask[idx] = get_step_pin_mask(idx); }
+      else { step_port_invert_mask[idx] = 0; }
+
       if (bit_istrue(settings.dir_invert_mask,bit(idx))) { dir_port_invert_mask[idx] = get_direction_pin_mask(idx); }
+      else { dir_port_invert_mask[idx] = 0; }
     }
   #else
     step_port_invert_mask = 0;
