@@ -1,4 +1,51 @@
 ----------------
+Date: 2018-08-13
+Author: Sonny Jeon
+Subject: Merge branch 'edge' of https://github.com/gnea/grbl-Mega into edge
+
+
+----------------
+Date: 2018-08-13
+Author: Sonny Jeon
+Subject: Upstream updates. Spindle/coolant rare bug fixes.
+
+[new] Altered the way default settings are stored and restored. Saved about 300 bytes(!) of flashed size. Should free up enough for certain configurations of CoreXY machines.
+
+[fix] When the optional M7 mist coolant IO was enabled, coolant overrides was not disabling correctly.
+
+[fix] Coolant override states was not restored correctly after a parking motion in certain situations. It would restore programmed state, rather than current overridden state.
+
+[fix] Now allow coolant overrides to operate during jogging motion.
+
+[fix] Invert control pin mask typo.
+
+[new] Added a new build info feedback mechanism for enabling the safety door input pin.
+
+
+----------------
+Date: 2018-08-10
+Author: Sonny Jeon
+Subject: Merge pull request #68 from bgort/gremlinfix
+
+Fixes gremlin where changing step and direction inversion masks made a mess
+
+----------------
+Date: 2018-08-10
+Author: Brian
+Subject: fixes gremlin where changing stepper direction mask didn't work correctly
+because step_port_invert_mask[] (new with the RAMPS modifications)
+wasn't reset to 0 when it should have been.  this made a mess.
+
+
+----------------
+Date: 2017-08-02
+Author: Sonny Jeon
+Subject: Fixed a very rare but critical bug when reducing override rates.
+
+- See main branch commit log for details.
+
+
+----------------
 Date: 2017-08-01
 Author: Sonny Jeon
 Subject: Fixed RAMPS control pin conflict
