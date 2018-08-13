@@ -433,6 +433,7 @@ Feedback messages provide non-critical information on what Grbl is doing, what i
 | **`S`** | Software limit pin debouncing enabled |
 | **`R`** | Parking override control enabled |
 | **`A`** | Allow feed rate overrides in probe cycles |
+| **`+`** | Safety door input pin enabled |
 | **`*`** | Restore all EEPROM disabled |
 | **`$`** | Restore EEPROM `$` settings disabled |
 | **`#`** | Restore EEPROM parameter data disabled |

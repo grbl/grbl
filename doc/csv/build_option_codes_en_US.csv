@@ -12,6 +12,7 @@
 "0","Spindle enable off when speed is zero","Enabled"
 "S","Software limit pin debouncing","Enabled"
 "R","Parking override control","Enabled"
+"+","Safety door input pin","Enabled"
 "*","Restore all EEPROM command","Disabled"
 "$","Restore EEPROM `$` settings command","Disabled"
 "#","Restore EEPROM parameter data command","Disabled"

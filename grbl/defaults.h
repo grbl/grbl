@@ -453,15 +453,21 @@
 #endif
 
 #ifdef DEFAULTS_RAMPS_BOARD
-  #define DEFAULT_X_STEPS_PER_MM 80
-  #define DEFAULT_Y_STEPS_PER_MM 80
-  #define DEFAULT_Z_STEPS_PER_MM 4000
-  #define DEFAULT_X_MAX_RATE 18000.0 // mm/min
-  #define DEFAULT_Y_MAX_RATE 18000.0 // mm/min
-  #define DEFAULT_Z_MAX_RATE 300.0 // mm/min
-  #define DEFAULT_X_ACCELERATION 3000 
-  #define DEFAULT_Y_ACCELERATION 3000
-  #define DEFAULT_Z_ACCELERATION 100
+  // Generic conservative settings for a RAMP CNC machine. You must update these yourself. 
+  // Keep in mind that Grbl is highly efficient and settings can be significantly different.
+  // Especially when optimizing for a different CNC task like going from 3d printing to 
+  // CNC milling or laser cutting. Unlike Marlin, these defaults are only applied when the 
+  // EEPROM is explicitly wiped, either by a `$RST=*` command or Grbl detecting a settings
+  // version type change (not frequent).
+  #define DEFAULT_X_STEPS_PER_MM 80.0
+  #define DEFAULT_Y_STEPS_PER_MM 80.0
+  #define DEFAULT_Z_STEPS_PER_MM 80.0
+  #define DEFAULT_X_MAX_RATE 2500.0 // mm/min
+  #define DEFAULT_Y_MAX_RATE 2500.0 // mm/min
+  #define DEFAULT_Z_MAX_RATE 500.0 // mm/min
+  #define DEFAULT_X_ACCELERATION (100.0*60.0*60.0) // 10*60*60 mm/min^2 = 10 mm/sec^2
+  #define DEFAULT_Y_ACCELERATION (100.0*60.0*60.0) // 10*60*60 mm/min^2 = 10 mm/sec^2
+  #define DEFAULT_Z_ACCELERATION (100.0*60.0*60.0) // 10*60*60 mm/min^2 = 10 mm/sec^2
   #define DEFAULT_X_MAX_TRAVEL 200.0 // mm
   #define DEFAULT_Y_MAX_TRAVEL 200.0 // mm
   #define DEFAULT_Z_MAX_TRAVEL 200.0 // mm
@@ -477,16 +483,16 @@
   #define DEFAULT_REPORT_INCHES 0 // false
   #define DEFAULT_INVERT_ST_ENABLE 0 // false
   #define DEFAULT_INVERT_LIMIT_PINS 0 // false
-  #define DEFAULT_SOFT_LIMIT_ENABLE 1 // true
+  #define DEFAULT_SOFT_LIMIT_ENABLE 0 // true
   #define DEFAULT_HARD_LIMIT_ENABLE 0  // false
   #define DEFAULT_INVERT_PROBE_PIN 0 // false
   #define DEFAULT_LASER_MODE 0 // false
-  #define DEFAULT_HOMING_ENABLE 1  // true
+  #define DEFAULT_HOMING_ENABLE 0  // true
   #define DEFAULT_HOMING_DIR_MASK 0 // move positive dir
   #define DEFAULT_HOMING_FEED_RATE 500.0 // mm/min
   #define DEFAULT_HOMING_SEEK_RATE 2000.0 // mm/min
   #define DEFAULT_HOMING_DEBOUNCE_DELAY 250 // msec (0-65k)
-  #define DEFAULT_HOMING_PULLOFF 5.0 // mm
+  #define DEFAULT_HOMING_PULLOFF 1.0 // mm
 #endif
 
 #endif

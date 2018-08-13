@@ -362,9 +362,10 @@ void report_build_info(char *line)
   printString(line);
   report_util_feedback_line_feed();
   printPgmString(PSTR("[OPT:")); // Generate compile-time build option list
-  serial_write('V');
-  serial_write('N');
-  serial_write('M');
+  serial_write('V'); // Variable spindle standard.
+  serial_write('N'); // Line number reporting standard.
+  serial_write('M'); // M7 mist coolant standard.
+  serial_write('+'); // Safety door support standard.
   #ifdef COREXY
     serial_write('C');
   #endif
@@ -395,6 +396,9 @@ void report_build_info(char *line)
   #ifdef ENABLE_PARKING_OVERRIDE_CONTROL
     serial_write('R');
   #endif
+  #ifndef HOMING_INIT_LOCK
+    serial_write('L');
+  #endif
   #ifndef ENABLE_RESTORE_EEPROM_WIPE_ALL // NOTE: Shown when disabled.
     serial_write('*');
   #endif
@@ -413,10 +417,6 @@ void report_build_info(char *line)
   #ifndef FORCE_BUFFER_SYNC_DURING_WCO_CHANGE // NOTE: Shown when disabled.
     serial_write('W');
   #endif
-  #ifndef HOMING_INIT_LOCK
-    serial_write('L');
-  #endif
-
   // NOTE: Compiled values, like override increments/max/min values, may be added at some point later.
   serial_write(',');
   print_uint8_base10(BLOCK_BUFFER_SIZE-1);
@@ -548,9 +548,7 @@ void report_realtime_status()
         if (bit_istrue(lim_pin_state,bit(Z_AXIS))) { serial_write('Z'); }
       }
       if (ctrl_pin_state) {
-        #ifdef ENABLE_SAFETY_DOOR_INPUT_PIN
-          if (bit_istrue(ctrl_pin_state,CONTROL_PIN_INDEX_SAFETY_DOOR)) { serial_write('D'); }
-        #endif
+        if (bit_istrue(ctrl_pin_state,CONTROL_PIN_INDEX_SAFETY_DOOR)) { serial_write('D'); }
         if (bit_istrue(ctrl_pin_state,CONTROL_PIN_INDEX_RESET)) { serial_write('R'); }
         if (bit_istrue(ctrl_pin_state,CONTROL_PIN_INDEX_FEED_HOLD)) { serial_write('H'); }
         if (bit_istrue(ctrl_pin_state,CONTROL_PIN_INDEX_CYCLE_START)) { serial_write('S'); }

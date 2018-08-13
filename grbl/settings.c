@@ -1,5 +1,5 @@
 /*
-  settings.c - eeprom configuration handling 
+  settings.c - eeprom configuration handling
   Part of Grbl
 
   Copyright (c) 2011-2016 Sungeun K. Jeon for Gnea Research LLC
@@ -22,6 +22,42 @@
 #include "grbl.h"
 
 settings_t settings;
+
+const __flash settings_t defaults = {\
+    .pulse_microseconds = DEFAULT_STEP_PULSE_MICROSECONDS,
+    .stepper_idle_lock_time = DEFAULT_STEPPER_IDLE_LOCK_TIME,
+    .step_invert_mask = DEFAULT_STEPPING_INVERT_MASK,
+    .dir_invert_mask = DEFAULT_DIRECTION_INVERT_MASK,
+    .status_report_mask = DEFAULT_STATUS_REPORT_MASK,
+    .junction_deviation = DEFAULT_JUNCTION_DEVIATION,
+    .arc_tolerance = DEFAULT_ARC_TOLERANCE,
+    .rpm_max = DEFAULT_SPINDLE_RPM_MAX,
+    .rpm_min = DEFAULT_SPINDLE_RPM_MIN,
+    .homing_dir_mask = DEFAULT_HOMING_DIR_MASK,
+    .homing_feed_rate = DEFAULT_HOMING_FEED_RATE,
+    .homing_seek_rate = DEFAULT_HOMING_SEEK_RATE,
+    .homing_debounce_delay = DEFAULT_HOMING_DEBOUNCE_DELAY,
+    .homing_pulloff = DEFAULT_HOMING_PULLOFF,
+    .flags = (DEFAULT_REPORT_INCHES << BIT_REPORT_INCHES) | \
+             (DEFAULT_LASER_MODE << BIT_LASER_MODE) | \
+             (DEFAULT_INVERT_ST_ENABLE << BIT_INVERT_ST_ENABLE) | \
+             (DEFAULT_HARD_LIMIT_ENABLE << BIT_HARD_LIMIT_ENABLE) | \
+             (DEFAULT_HOMING_ENABLE << BIT_HOMING_ENABLE) | \
+             (DEFAULT_SOFT_LIMIT_ENABLE << BIT_SOFT_LIMIT_ENABLE) | \
+             (DEFAULT_INVERT_LIMIT_PINS << BIT_INVERT_LIMIT_PINS) | \
+             (DEFAULT_INVERT_PROBE_PIN << BIT_INVERT_PROBE_PIN),
+    .steps_per_mm[X_AXIS] = DEFAULT_X_STEPS_PER_MM,
+    .steps_per_mm[Y_AXIS] = DEFAULT_Y_STEPS_PER_MM,
+    .steps_per_mm[Z_AXIS] = DEFAULT_Z_STEPS_PER_MM,
+    .max_rate[X_AXIS] = DEFAULT_X_MAX_RATE,
+    .max_rate[Y_AXIS] = DEFAULT_Y_MAX_RATE,
+    .max_rate[Z_AXIS] = DEFAULT_Z_MAX_RATE,
+    .acceleration[X_AXIS] = DEFAULT_X_ACCELERATION,
+    .acceleration[Y_AXIS] = DEFAULT_Y_ACCELERATION,
+    .acceleration[Z_AXIS] = DEFAULT_Z_ACCELERATION,
+    .max_travel[X_AXIS] = (-DEFAULT_X_MAX_TRAVEL),
+    .max_travel[Y_AXIS] = (-DEFAULT_Y_MAX_TRAVEL),
+    .max_travel[Z_AXIS] = (-DEFAULT_Z_MAX_TRAVEL)};
 
 
 // Method to store startup lines into EEPROM
@@ -67,46 +103,7 @@ void write_global_settings()
 // Method to restore EEPROM-saved Grbl global settings back to defaults.
 void settings_restore(uint8_t restore_flag) {
   if (restore_flag & SETTINGS_RESTORE_DEFAULTS) {
-    settings.pulse_microseconds = DEFAULT_STEP_PULSE_MICROSECONDS;
-    settings.stepper_idle_lock_time = DEFAULT_STEPPER_IDLE_LOCK_TIME;
-    settings.step_invert_mask = DEFAULT_STEPPING_INVERT_MASK;
-    settings.dir_invert_mask = DEFAULT_DIRECTION_INVERT_MASK;
-    settings.status_report_mask = DEFAULT_STATUS_REPORT_MASK;
-    settings.junction_deviation = DEFAULT_JUNCTION_DEVIATION;
-    settings.arc_tolerance = DEFAULT_ARC_TOLERANCE;
-
-    settings.rpm_max = DEFAULT_SPINDLE_RPM_MAX;
-    settings.rpm_min = DEFAULT_SPINDLE_RPM_MIN;
-
-    settings.homing_dir_mask = DEFAULT_HOMING_DIR_MASK;
-    settings.homing_feed_rate = DEFAULT_HOMING_FEED_RATE;
-    settings.homing_seek_rate = DEFAULT_HOMING_SEEK_RATE;
-    settings.homing_debounce_delay = DEFAULT_HOMING_DEBOUNCE_DELAY;
-    settings.homing_pulloff = DEFAULT_HOMING_PULLOFF;
-
-    settings.flags = 0;
-    if (DEFAULT_REPORT_INCHES) { settings.flags |= BITFLAG_REPORT_INCHES; }
-    if (DEFAULT_LASER_MODE) { settings.flags |= BITFLAG_LASER_MODE; }
-    if (DEFAULT_INVERT_ST_ENABLE) { settings.flags |= BITFLAG_INVERT_ST_ENABLE; }
-    if (DEFAULT_HARD_LIMIT_ENABLE) { settings.flags |= BITFLAG_HARD_LIMIT_ENABLE; }
-    if (DEFAULT_HOMING_ENABLE) { settings.flags |= BITFLAG_HOMING_ENABLE; }
-    if (DEFAULT_SOFT_LIMIT_ENABLE) { settings.flags |= BITFLAG_SOFT_LIMIT_ENABLE; }
-    if (DEFAULT_INVERT_LIMIT_PINS) { settings.flags |= BITFLAG_INVERT_LIMIT_PINS; }
-    if (DEFAULT_INVERT_PROBE_PIN) { settings.flags |= BITFLAG_INVERT_PROBE_PIN; }
-
-    settings.steps_per_mm[X_AXIS] = DEFAULT_X_STEPS_PER_MM;
-    settings.steps_per_mm[Y_AXIS] = DEFAULT_Y_STEPS_PER_MM;
-    settings.steps_per_mm[Z_AXIS] = DEFAULT_Z_STEPS_PER_MM;
-    settings.max_rate[X_AXIS] = DEFAULT_X_MAX_RATE;
-    settings.max_rate[Y_AXIS] = DEFAULT_Y_MAX_RATE;
-    settings.max_rate[Z_AXIS] = DEFAULT_Z_MAX_RATE;
-    settings.acceleration[X_AXIS] = DEFAULT_X_ACCELERATION;
-    settings.acceleration[Y_AXIS] = DEFAULT_Y_ACCELERATION;
-    settings.acceleration[Z_AXIS] = DEFAULT_Z_ACCELERATION;
-    settings.max_travel[X_AXIS] = (-DEFAULT_X_MAX_TRAVEL);
-    settings.max_travel[Y_AXIS] = (-DEFAULT_Y_MAX_TRAVEL);
-    settings.max_travel[Z_AXIS] = (-DEFAULT_Z_MAX_TRAVEL);
-
+    settings = defaults;
     write_global_settings();
   }
 

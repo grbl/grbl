@@ -76,29 +76,34 @@ void coolant_set_state(uint8_t mode)
 {
   if (sys.abort) { return; } // Block during abort.  
   
-  if (mode == COOLANT_DISABLE) {
+  if (mode & COOLANT_FLOOD_ENABLE) {
+    #ifdef INVERT_COOLANT_FLOOD_PIN
+      COOLANT_FLOOD_PORT &= ~(1 << COOLANT_FLOOD_BIT);
+    #else
+      COOLANT_FLOOD_PORT |= (1 << COOLANT_FLOOD_BIT);
+    #endif
+	} else {
+	  #ifdef INVERT_COOLANT_FLOOD_PIN
+			COOLANT_FLOOD_PORT |= (1 << COOLANT_FLOOD_BIT);
+		#else
+			COOLANT_FLOOD_PORT &= ~(1 << COOLANT_FLOOD_BIT);
+		#endif
+	}
   
-    coolant_stop(); 
-  
-  } else {
-  
-    if (mode & COOLANT_FLOOD_ENABLE) {
-      #ifdef INVERT_COOLANT_FLOOD_PIN
-        COOLANT_FLOOD_PORT &= ~(1 << COOLANT_FLOOD_BIT);
-      #else
-        COOLANT_FLOOD_PORT |= (1 << COOLANT_FLOOD_BIT);
-      #endif
-    }
-  
-    if (mode & COOLANT_MIST_ENABLE) {
-      #ifdef INVERT_COOLANT_MIST_PIN
-        COOLANT_MIST_PORT &= ~(1 << COOLANT_MIST_BIT);
-      #else
-        COOLANT_MIST_PORT |= (1 << COOLANT_MIST_BIT);
-      #endif
-    }
-  
-  }
+	if (mode & COOLANT_MIST_ENABLE) {
+		#ifdef INVERT_COOLANT_MIST_PIN
+			COOLANT_MIST_PORT &= ~(1 << COOLANT_MIST_BIT);
+		#else
+			COOLANT_MIST_PORT |= (1 << COOLANT_MIST_BIT);
+		#endif
+	} else {
+		#ifdef INVERT_COOLANT_MIST_PIN
+			COOLANT_MIST_PORT |= (1 << COOLANT_MIST_BIT);
+		#else
+			COOLANT_MIST_PORT &= ~(1 << COOLANT_MIST_BIT);
+		#endif
+	}
+	
   sys.report_ovr_counter = 0; // Set to report change immediately
 }
 

@@ -261,9 +261,9 @@ uint8_t gc_execute_line(char *line)
           case 7: case 8: case 9:
             word_bit = MODAL_GROUP_M8; 
             switch(int_value) {      
-              case 7: gc_block.modal.coolant = COOLANT_MIST_ENABLE; break;
-              case 8: gc_block.modal.coolant = COOLANT_FLOOD_ENABLE; break;
-              case 9: gc_block.modal.coolant = COOLANT_DISABLE; break;
+              case 7: gc_block.modal.coolant |= COOLANT_MIST_ENABLE; break;
+              case 8: gc_block.modal.coolant |= COOLANT_FLOOD_ENABLE; break;
+              case 9: gc_block.modal.coolant = COOLANT_DISABLE; break; // M9 disables both M7 and M8.
             }
             break;
           #ifdef ENABLE_PARKING_OVERRIDE_CONTROL
@@ -939,8 +939,7 @@ uint8_t gc_execute_line(char *line)
     // NOTE: Coolant M-codes are modal. Only one command per line is allowed. But, multiple states
     // can exist at the same time, while coolant disable clears all states.
     coolant_sync(gc_block.modal.coolant);
-    if (gc_block.modal.coolant == COOLANT_DISABLE) { gc_state.modal.coolant = COOLANT_DISABLE; }
-    else { gc_state.modal.coolant |= gc_block.modal.coolant; }
+    gc_state.modal.coolant = gc_block.modal.coolant;
   }
   pl_data->condition |= gc_state.modal.coolant; // Set condition flag for planner use.
 
