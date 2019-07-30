@@ -50,7 +50,10 @@ OBJECTS = $(addprefix $(BUILDDIR)/,$(notdir $(SOURCE:.c=.o)))
 all:	grbl.hex
 
 $(BUILDDIR)/%.o: $(SOURCEDIR)/%.c
-	$(COMPILE) -MMD -MP -c $< -o $@
+	$(COMPILE) -c $< -o $@
+
+$(BUILDDIR)/%.d: $(SOURCEDIR)/%.c
+	$(COMPILE) -MM -MT"$@ $(@:.d=.o)" -MP -MF $@ $<
 
 .S.o:
 	$(COMPILE) -x assembler-with-cpp -c $< -o $(BUILDDIR)/$@
