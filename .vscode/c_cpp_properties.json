@@ -1,0 +1,55 @@
+{
+    "configurations": [
+        {
+            "name": "!!! WARNING !!! AUTO-GENERATED FILE, PLEASE DO NOT MODIFY IT AND USE https://docs.platformio.org/page/projectconf/section_env_build.html#build-flags"
+        },
+        {
+            "name": "Win32",
+            "includePath": [
+                "c:/Users/perner/My Projects/grblForRAMPS/grbl",
+                "C:/Users/perner/.platformio/packages/framework-arduino-avr/cores/arduino",
+                "C:/Users/perner/.platformio/packages/framework-arduino-avr/variants/mega",
+                "C:/Users/perner/.platformio/packages/framework-arduino-avr/libraries/EEPROM/src",
+                "C:/Users/perner/.platformio/packages/framework-arduino-avr/libraries/HID/src",
+                "C:/Users/perner/.platformio/packages/framework-arduino-avr/libraries/SPI/src",
+                "C:/Users/perner/.platformio/packages/framework-arduino-avr/libraries/SoftwareSerial/src",
+                "C:/Users/perner/.platformio/packages/framework-arduino-avr/libraries/Wire/src",
+                "C:/Users/perner/.platformio/packages/tool-unity",
+                ""
+            ],
+            "browse": {
+                "limitSymbolsToIncludedHeaders": true,
+                "path": [
+                    "c:/Users/perner/My Projects/grblForRAMPS/grbl",
+                    "C:/Users/perner/.platformio/packages/framework-arduino-avr/cores/arduino",
+                    "C:/Users/perner/.platformio/packages/framework-arduino-avr/variants/mega",
+                    "C:/Users/perner/.platformio/packages/framework-arduino-avr/libraries/EEPROM/src",
+                    "C:/Users/perner/.platformio/packages/framework-arduino-avr/libraries/HID/src",
+                    "C:/Users/perner/.platformio/packages/framework-arduino-avr/libraries/SPI/src",
+                    "C:/Users/perner/.platformio/packages/framework-arduino-avr/libraries/SoftwareSerial/src",
+                    "C:/Users/perner/.platformio/packages/framework-arduino-avr/libraries/Wire/src",
+                    "C:/Users/perner/.platformio/packages/tool-unity",
+                    ""
+                ]
+            },
+            "defines": [
+                "PLATFORMIO=40304",
+                "ARDUINO_AVR_MEGA2560",
+                "F_CPU=16000000L",
+                "ARDUINO_ARCH_AVR",
+                "ARDUINO=10808",
+                "__AVR_ATmega2560__",
+                ""
+            ],
+            "intelliSenseMode": "clang-x64",
+            "cStandard": "c11",
+            "cppStandard": "c++11",
+            "compilerPath": "C:/Users/perner/.platformio/packages/toolchain-atmelavr/bin/avr-gcc.exe",
+            "compilerArgs": [
+                "-mmcu=atmega2560",
+                ""
+            ]
+        }
+    ],
+    "version": 4
+}
