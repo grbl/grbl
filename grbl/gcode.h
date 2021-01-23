@@ -44,6 +44,7 @@
 #define MODAL_GROUP_M4 11  // [M0,M1,M2,M30] Stopping
 #define MODAL_GROUP_M7 12 // [M3,M4,M5] Spindle turning
 #define MODAL_GROUP_M8 13 // [M7,M8,M9] Coolant control
+#define MODAL_GROUP_M80 14 // [M80,M81,M82,M83,M84] Relay control
 
 // #define OTHER_INPUT_F 14
 // #define OTHER_INPUT_S 15
@@ -116,6 +117,16 @@
 #define COOLANT_MIST_ENABLE 1 // M7
 #define COOLANT_FLOOD_ENABLE 2 // M8
 
+#define RELAY_DISABLE 0 // (Default: Must be zero) //M190
+#define RELAY_ENABLE 10 // (Default: Must be zero) //M180
+#define RELAY_1_ON 1 //M181
+#define RELAY_2_ON 2 //M182
+#define RELAY_3_ON 3 //M183
+#define RELAY_4_ON 4 //M184
+#define RELAY_1_OFF 5 //M191
+#define RELAY_2_OFF 6 //M192
+#define RELAY_3_OFF 7 //M193
+#define RELAY_4_OFF 8 //M194
 // Modal Group G8: Tool length offset
 #define TOOL_LENGTH_OFFSET_CANCEL 0 // G49 (Default: Must be zero)
 #define TOOL_LENGTH_OFFSET_ENABLE_DYNAMIC 1 // G43.1
@@ -154,6 +165,7 @@ typedef struct {
   // uint8_t control;      // {G61} NOTE: Don't track. Only default supported.
   uint8_t program_flow;    // {M0,M1,M2,M30}
   uint8_t coolant;         // {M7,M8,M9}
+  uint8_t relay;           // {M180,M181,M182,M183,M184,M190,M191,M192,M193,M194}
   uint8_t spindle;         // {M3,M4,M5}
 } gc_modal_t;  
 
