@@ -49,7 +49,7 @@ OBJECTS = $(addprefix $(BUILDDIR)/,$(notdir $(SOURCE:.c=.o)))
 # symbolic targets:
 all:	grbl.hex
 
-$(BUILDDIR)/%.o: $(SOURCEDIR)/%.c
+$(BUILDDIR)/%.o: $(SOURCEDIR)/%.c $(SOURCEDIR)/*.h $(SOURCEDIR)/cpu_map/cpu_map_atmega328p.h $(SOURCEDIR)/defaults/defaults_generic.h
 	$(COMPILE) -MMD -MP -c $< -o $@
 
 .S.o:
