@@ -11,16 +11,22 @@ response from the computer. This effectively adds another
 buffer layer to prevent buffer starvation.
 
 CHANGELOG:
+- 20170531: Status report feedback at 1.0 second intervals.
+    Configurable baudrate and report intervals. Bug fixes.
+- 20161212: Added push message feedback for simple streaming
 - 20140714: Updated baud rate to 115200. Added a settings
   write mode via simple streaming method. MIT-licensed.
 
+- 20230904: Updated for Python 3 and added read settings mode
+  -r, --read_settings. Sleep to 1 sec.  
+
 TODO: 
-- Add runtime command capabilities
+- Add realtime control commands during streaming.
 
 ---------------------
 The MIT License (MIT)
 
-Copyright (c) 2012-2014 Sungeun K. Jeon
+Copyright (c) 2012-2017 Sungeun K. Jeon
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
 of this software and associated documentation files (the "Software"), to deal
@@ -47,9 +53,14 @@ import re
 import time
 import sys
 import argparse
-# import threading
+import threading
 
 RX_BUFFER_SIZE = 128
+BAUD_RATE = 115200
+ENABLE_STATUS_REPORTS = True
+REPORT_INTERVAL = 1.0 # seconds
+
+is_run = True # Controls query timer
 
 # Define command line argument interface
 parser = argparse.ArgumentParser(description='Stream g-code file to grbl. (pySerial and argparse libraries required)')
@@ -61,45 +72,113 @@ parser.add_argument('-q','--quiet',action='store_true', default=False,
         help='suppress output text')
 parser.add_argument('-s','--settings',action='store_true', default=False, 
         help='settings write mode')        
+parser.add_argument('-c','--check',action='store_true', default=False,
+        help='stream in check mode')
+parser.add_argument('-r','--read_settings',action='store_true', default=False,
+        help='read settings')
+
 args = parser.parse_args()
 
 # Periodic timer to query for status reports
 # TODO: Need to track down why this doesn't restart consistently before a release.
-# def periodic():
-#     s.write('?')
-#     t = threading.Timer(0.1, periodic) # In seconds
-#     t.start()
+def send_status_query():
+    s.write('?'.encode())
+    
+def periodic_timer() :
+    while is_run:
+      send_status_query()
+      time.sleep(REPORT_INTERVAL)
 
 # Initialize
-s = serial.Serial(args.device_file,115200)
+s = serial.Serial(args.device_file,BAUD_RATE)
 f = args.gcode_file
 verbose = True
 if args.quiet : verbose = False
 settings_mode = False
 if args.settings : settings_mode = True
+check_mode = False
+if args.check : check_mode = True
+read_settings_mode = False
+if args.read_settings : read_settings_mode = True
 
 # Wake up grbl
-print "Initializing grbl..."
-s.write("\r\n\r\n")
+print("Initializing Grbl...")
+s.write("\r\n\r\n".encode())
 
 # Wait for grbl to initialize and flush startup text in serial input
-time.sleep(2)
+time.sleep(1)
+s.readline().strip().decode("utf-8") # dump the first line 
+print("Received:", s.readline().strip().decode("utf-8")) 
+
 s.flushInput()
+
+if check_mode :
+    print("Enabling Grbl Check-Mode: SND: [$C]",)
+    s.write("$C\n".encode())
+    while 1:
+        grbl_out = s.readline().strip() # Wait for grbl response with carriage return
+        if grbl_out.find('error'.encode()) >= 0 :
+            print("Received:",grbl_out)
+            print("  Failed to set Grbl check-mode. Aborting...")
+            quit()
+        elif grbl_out.find('ok'.encode()) >= 0 :
+            print("Received:", grbl_out)
+            break
+
+if read_settings_mode :
+    print("Enabling Grbl Read Settings Mode: SND: [$$]",)
+    s.write("$$\n".encode())
+
+    grbl_out = s.readline().strip() # Wait for grbl response with carriage return
+    print("Received:",grbl_out.decode("utf-8"))
+
+    while 1:
+        grbl_out = s.readline().strip() # Wait for grbl response with carriage return
+
+        if grbl_out.find('error'.encode()) >= 0 :
+            print("Received:",grbl_out.decode("utf-8"))
+            print("  Failed to set Grbl check-mode. Aborting...")
+            quit()
+        elif grbl_out.find('='.encode()) >= 0 :
+            print("Received:", grbl_out.decode("utf-8"))
+            pass
+        elif grbl_out.find('ok'.encode()) >= 0 :
+            if verbose: print("Received:", grbl_out.decode("utf-8"))
+            break
+    quit() 
+
+start_time = time.time();
+
+# Start status report periodic timer
+if ENABLE_STATUS_REPORTS :
+    timerThread = threading.Thread(target=periodic_timer)
+    timerThread.daemon = True
+    timerThread.start()
 
 # Stream g-code to grbl
 l_count = 0
+error_count = 0
 if settings_mode:
     # Send settings file via simple call-response streaming method. Settings must be streamed
     # in this manner since the EEPROM accessing cycles shut-off the serial interrupt.
-    print "SETTINGS MODE: Streaming", args.gcode_file.name, " to ", args.device_file
+    print("SETTINGS MODE: Streaming", args.gcode_file.name, " to ", args.device_file)
     for line in f:
         l_count += 1 # Iterate line counter    
         # l_block = re.sub('\s|\(.*?\)','',line).upper() # Strip comments/spaces/new line and capitalize
         l_block = line.strip() # Strip all EOL characters for consistency
-        if verbose: print 'SND: ' + str(l_count) + ':' + l_block,
-        s.write(l_block + '\n') # Send g-code block to grbl
-        grbl_out = s.readline().strip() # Wait for grbl response with carriage return
-        if verbose: print 'REC:',grbl_out
+        if verbose: print("SND>"+str(l_count)+": \"" + l_block + "\"")
+        s.write((l_block + '\n').encode()) # Send g-code block to grbl
+        while 1:
+            grbl_out = s.readline().strip() # Wait for grbl response with carriage return
+            if grbl_out.find('ok') >= 0 :
+                if verbose: print("  REC<"+str(l_count)+": \""+grbl_out+"\"")
+                break
+            elif grbl_out.find('error') >= 0 :
+                if verbose: print("  REC<"+str(l_count)+": \""+grbl_out+"\"")
+                error_count += 1
+                break
+            else:
+                print("    MSG: \""+grbl_out+"\"")
 else:    
     # Send g-code program via a more agressive streaming protocol that forces characters into
     # Grbl's serial read buffer to ensure Grbl has immediate access to the next g-code command
@@ -108,30 +187,47 @@ else:
     # responses, such that we never overflow Grbl's serial read buffer. 
     g_count = 0
     c_line = []
-    # periodic() # Start status report periodic timer
     for line in f:
         l_count += 1 # Iterate line counter
-        # l_block = re.sub('\s|\(.*?\)','',line).upper() # Strip comments/spaces/new line and capitalize
-        l_block = line.strip()
+        l_block = re.sub('\s|\(.*?\)','',line).upper() # Strip comments/spaces/new line and capitalize
+        # l_block = line.strip()
         c_line.append(len(l_block)+1) # Track number of characters in grbl serial read buffer
         grbl_out = '' 
         while sum(c_line) >= RX_BUFFER_SIZE-1 | s.inWaiting() :
             out_temp = s.readline().strip() # Wait for grbl response
-            if out_temp.find('ok') < 0 and out_temp.find('error') < 0 :
-                print "  Debug: ",out_temp # Debug response
-            else :
-                grbl_out += out_temp;
+            if out_temp.find(b'ok') < 0 and out_temp.find(b'error') < 0 :
+                print("    MSG: \""+ str(out_temp) + "\"") # Debug response
+            else:
+                if out_temp.find(b'error') >= 0 : error_count += 1
                 g_count += 1 # Iterate g-code counter
-                grbl_out += str(g_count); # Add line finished indicator
+                if verbose: print("  REC<"+str(g_count)+": \""+ str(out_temp)+"\"")
                 del c_line[0] # Delete the block character count corresponding to the last 'ok'
-        if verbose: print "SND: " + str(l_count) + " : " + l_block,
-        s.write(l_block + '\n') # Send g-code block to grbl
-        if verbose : print "BUF:",str(sum(c_line)),"REC:",grbl_out
+        s.write((l_block + '\n').encode()) # Send g-code block to grbl
+        if verbose: print("SND>"+str(l_count)+": \"" + l_block + "\"")
+    # Wait until all responses have been received.
+    while l_count > g_count :
+        out_temp = s.readline().strip() # Wait for grbl response
+        if out_temp.find(b'ok') < 0 and out_temp.find(b'error') < 0 :
+            print("    MSG: \""+out_temp+"\"") # Debug response
+        else:
+            if out_temp.find(b'error') >= 0 : error_count += 1
+            g_count += 1 # Iterate g-code counter
+            del c_line[0] # Delete the block character count corresponding to the last 'ok'
+            if verbose: print("  REC<"+str(g_count)+": \""+str(out_temp) + "\"")
 
 # Wait for user input after streaming is completed
-print "G-code streaming finished!\n"
-print "WARNING: Wait until grbl completes buffered g-code blocks before exiting."
-raw_input("  Press <Enter> to exit and disable grbl.") 
+print("\nG-code streaming finished!")
+end_time = time.time();
+is_run = False;
+print(" Time elapsed: ",end_time-start_time,"\n")
+if check_mode :
+    if error_count > 0 :
+        print("CHECK FAILED:",error_count,"errors found! See output for details.\n")
+    else :
+        print("CHECK PASSED: No errors found in g-code program.\n")
+else :
+    print("WARNING: Wait until Grbl completes buffered g-code blocks before exiting.")
+    input("Press <Enter> to exit and disable Grbl.") 
 
 # Close file and serial port
 f.close()
